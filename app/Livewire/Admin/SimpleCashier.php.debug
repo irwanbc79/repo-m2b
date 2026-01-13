@@ -1,0 +1,5 @@
+
+Line yang perlu dicek di updatedCounterpartId():
+- Apakah method ter-trigger?
+- Apakah $this->shipments ter-set?
+- Apakah count($shipments) > 0?

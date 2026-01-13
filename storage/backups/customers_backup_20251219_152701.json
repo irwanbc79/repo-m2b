@@ -1,0 +1,47 @@
+[
+    {
+        "id": 9,
+        "old_code": "CUST-1764733658",
+        "company": "PT. PUTRA RAJAWALI SUKSES MANDIRI"
+    },
+    {
+        "id": 10,
+        "old_code": "CUST-1764733857",
+        "company": "PT. RAJAWALI BAHRUM PERKASA"
+    },
+    {
+        "id": 12,
+        "old_code": "CUST-1764906479",
+        "company": "PT. ADANUSA UDHAYA UTAMA"
+    },
+    {
+        "id": 15,
+        "old_code": "CUST-4969925675",
+        "company": "PT. GUNUNG MAS SAKTI ABADI"
+    },
+    {
+        "id": 17,
+        "old_code": "CUS-0005",
+        "company": "PT. OCTO CORINDO SARANA"
+    },
+    {
+        "id": 20,
+        "old_code": "CUST-1765790985",
+        "company": "PT. SAMDA TOBA FARM"
+    },
+    {
+        "id": 22,
+        "old_code": "CUST-1765893120",
+        "company": "CV. SASKIARA NURSERY MULIA"
+    },
+    {
+        "id": 23,
+        "old_code": "CUS-0008",
+        "company": "PT. AMERTHA GRACIA"
+    },
+    {
+        "id": 24,
+        "old_code": "CUST-1766111261",
+        "company": "PT. UNIVISTA UTAMA"
+    }
+]

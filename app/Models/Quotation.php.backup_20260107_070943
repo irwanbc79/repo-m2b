@@ -1,0 +1,55 @@
+<?php
+
+namespace App\Models;
+
+use Illuminate\Database\Eloquent\Factories\HasFactory;
+use Illuminate\Database\Eloquent\Model;
+
+class Quotation extends Model
+{
+    use HasFactory;
+
+    protected $fillable = [
+        'customer_id', 
+        // DATA MANUAL (V3)
+        'manual_company', 
+        'manual_pic', 
+        'manual_email', 
+        'manual_phone',
+        
+        // DATA UTAMA
+        'quotation_number', // <--- Pastikan koma ini ada
+        'quotation_date', 
+        'valid_until',
+        'status', 
+        
+        // Keuangan
+        'subtotal', 
+        'service_total',
+        'reimbursement_total',
+        'tax_amount', 
+        'pph_amount',
+        'grand_total', 
+        
+        // Info Rute
+        'origin', 
+        'destination', 
+        'service_type', 
+        'notes'
+    ];
+
+    protected $casts = [
+        'quotation_date' => 'date',
+        'valid_until' => 'date',
+    ];
+
+    public function customer()
+    {
+        return $this->belongsTo(Customer::class);
+    }
+
+    public function items()
+    {
+        return $this->hasMany(QuotationItem::class);
+    }
+}

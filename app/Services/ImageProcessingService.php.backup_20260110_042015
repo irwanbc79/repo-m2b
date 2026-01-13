@@ -1,0 +1,403 @@
+<?php
+
+namespace App\Services;
+
+use Illuminate\Http\UploadedFile;
+use Illuminate\Support\Facades\Storage;
+use Illuminate\Support\Str;
+use Illuminate\Support\Facades\Log;
+use App\Models\Shipment;
+use App\Models\FieldPhoto;
+
+class ImageProcessingService
+{
+    protected int $maxWidth = 1920;
+    protected int $maxHeight = 1920;
+    protected int $thumbnailSize = 400;
+    protected int $quality = 85;
+    
+    /**
+     * Process upload dengan watermark profesional
+     * 
+     * @param UploadedFile $file
+     * @param int $shipmentId
+     * @param int $userId
+     * @param string|null $description - Keterangan/caption dari user
+     */
+    public function processUpload($file, $shipmentId, $userId, ?string $description = null): array
+    {
+        $shipment = Shipment::find($shipmentId);
+        $shipmentNumber = $shipment?->awb_number ?? $shipment?->bl_number ?? 'SHP-' . $shipmentId;
+        
+        // Get uploader name
+        $user = \App\Models\User::find($userId);
+        $uploaderName = $user?->name ?? 'Unknown';
+        
+        $year = date('Y');
+        $month = date('m');
+        $directory = "field-photos/{$year}/{$month}/{$shipmentId}";
+        $thumbnailDir = "{$directory}/thumbnails";
+        
+        Storage::disk('public')->makeDirectory($directory);
+        Storage::disk('public')->makeDirectory($thumbnailDir);
+        
+        $extension = $this->getImageExtension($file);
+        $filename = time() . '_' . Str::random(8) . '.jpg'; // Always save as jpg
+        
+        try {
+            $sourcePath = $file->getRealPath();
+            $imageInfo = @getimagesize($sourcePath);
+            
+            if (!$imageInfo) {
+                throw new \Exception('Invalid image file');
+            }
+            
+            list($origWidth, $origHeight, $imageType) = $imageInfo;
+            
+            $sourceImage = $this->createImageFromFile($sourcePath, $imageType);
+            
+            if (!$sourceImage) {
+                throw new \Exception('Could not create image from file');
+            }
+            
+            // Fix orientation from EXIF
+            $sourceImage = $this->fixOrientation($sourceImage, $sourcePath);
+            
+            // Get actual dimensions after rotation
+            $origWidth = imagesx($sourceImage);
+            $origHeight = imagesy($sourceImage);
+            
+            // Resize if needed
+            if ($origWidth > $this->maxWidth || $origHeight > $this->maxHeight) {
+                $ratio = min($this->maxWidth / $origWidth, $this->maxHeight / $origHeight);
+                $newWidth = (int)($origWidth * $ratio);
+                $newHeight = (int)($origHeight * $ratio);
+                
+                $resizedImage = imagecreatetruecolor($newWidth, $newHeight);
+                imagealphablending($resizedImage, false);
+                imagesavealpha($resizedImage, true);
+                imagecopyresampled($resizedImage, $sourceImage, 0, 0, 0, 0, $newWidth, $newHeight, $origWidth, $origHeight);
+                imagedestroy($sourceImage);
+                $sourceImage = $resizedImage;
+            }
+            
+            $finalWidth = imagesx($sourceImage);
+            $finalHeight = imagesy($sourceImage);
+            
+            // ============================================
+            // WATERMARK PROFESIONAL DENGAN KETERANGAN
+            // ============================================
+            $this->addProfessionalWatermark($sourceImage, $shipmentNumber, $uploaderName, $description);
+            
+            // Save main image
+            $mainPath = $directory . '/' . $filename;
+            $tempMain = tempnam(sys_get_temp_dir(), 'img_main_');
+            imagejpeg($sourceImage, $tempMain, $this->quality);
+            Storage::disk('public')->put($mainPath, file_get_contents($tempMain));
+            @unlink($tempMain);
+            
+            // Create thumbnail (tanpa watermark, untuk preview cepat)
+            $thumbRatio = min($this->thumbnailSize / $finalWidth, $this->thumbnailSize / $finalHeight);
+            $thumbWidth = (int)($finalWidth * $thumbRatio);
+            $thumbHeight = (int)($finalHeight * $thumbRatio);
+            
+            // Reload original untuk thumbnail tanpa watermark
+            $thumbSource = $this->createImageFromFile($sourcePath, $imageType);
+            $thumbSource = $this->fixOrientation($thumbSource, $sourcePath);
+            
+            $thumbImage = imagecreatetruecolor($thumbWidth, $thumbHeight);
+            imagecopyresampled($thumbImage, $thumbSource, 0, 0, 0, 0, $thumbWidth, $thumbHeight, imagesx($thumbSource), imagesy($thumbSource));
+            
+            $thumbPath = $thumbnailDir . '/' . $filename;
+            $tempThumb = tempnam(sys_get_temp_dir(), 'img_thumb_');
+            imagejpeg($thumbImage, $tempThumb, 80);
+            Storage::disk('public')->put($thumbPath, file_get_contents($tempThumb));
+            @unlink($tempThumb);
+            
+            imagedestroy($sourceImage);
+            imagedestroy($thumbSource);
+            imagedestroy($thumbImage);
+            
+            return [
+                'path' => $mainPath,
+                'thumbnail_path' => $thumbPath,
+                'width' => $finalWidth,
+                'height' => $finalHeight,
+                'size' => Storage::disk('public')->size($mainPath),
+                'mime_type' => 'image/jpeg',
+            ];
+            
+        } catch (\Exception $e) {
+            Log::error('Image processing error: ' . $e->getMessage(), [
+                'file' => $file->getClientOriginalName(),
+                'shipment' => $shipmentId
+            ]);
+            
+            // Fallback: simpan original tanpa processing
+            $fallbackPath = $directory . '/' . $filename;
+            $file->storeAs($directory, $filename, 'public');
+            
+            return [
+                'path' => $fallbackPath,
+                'thumbnail_path' => null,
+                'width' => null,
+                'height' => null,
+                'size' => $file->getSize(),
+                'mime_type' => $file->getMimeType(),
+            ];
+        }
+    }
+    
+    /**
+     * Watermark profesional dengan desain modern + keterangan
+     */
+    protected function addProfessionalWatermark($image, string $shipmentNumber, string $uploaderName, ?string $description = null): void
+    {
+        $imgWidth = imagesx($image);
+        $imgHeight = imagesy($image);
+        
+        // ============================================
+        // UKURAN STAMP RESPONSIF (min 20% dari lebar gambar)
+        // ============================================
+        $stampW = max(380, min(500, (int)($imgWidth * 0.28)));
+        
+        // Tinggi dinamis berdasarkan ada/tidaknya keterangan
+        $hasDescription = !empty($description) && strlen(trim($description)) > 0;
+        $baseHeight = $hasDescription ? 160 : 125;
+        $stampH = (int)($stampW * ($baseHeight / 380));
+        
+        $padding = (int)($stampW * 0.045);
+        $margin = max(15, (int)($imgWidth * 0.015));
+        
+        // Posisi stamp di pojok kanan bawah
+        $stampX = $imgWidth - $stampW - $margin;
+        $stampY = $imgHeight - $stampH - $margin;
+        
+        // ===== WARNA =====
+        $bgColor = imagecolorallocatealpha($image, 0, 35, 70, 30);        // Biru tua semi-transparan
+        $bgDarker = imagecolorallocatealpha($image, 0, 25, 50, 25);       // Untuk header
+        $borderColor = imagecolorallocatealpha($image, 255, 255, 255, 50); // Border putih
+        $accentColor = imagecolorallocate($image, 255, 200, 50);           // Kuning gold untuk shipment
+        $textWhite = imagecolorallocate($image, 255, 255, 255);
+        $textLight = imagecolorallocate($image, 230, 230, 230);
+        $textMuted = imagecolorallocate($image, 180, 180, 180);
+        $shadowColor = imagecolorallocatealpha($image, 0, 0, 0, 50);
+        $descBg = imagecolorallocatealpha($image, 255, 255, 255, 90);      // Background keterangan
+        
+        // ===== 1. SHADOW =====
+        imagefilledrectangle($image, $stampX + 5, $stampY + 5, $stampX + $stampW + 5, $stampY + $stampH + 5, $shadowColor);
+        
+        // ===== 2. BACKGROUND UTAMA =====
+        imagefilledrectangle($image, $stampX, $stampY, $stampX + $stampW, $stampY + $stampH, $bgColor);
+        
+        // Header background (lebih gelap)
+        $headerHeight = (int)($stampH * 0.22);
+        imagefilledrectangle($image, $stampX, $stampY, $stampX + $stampW, $stampY + $headerHeight, $bgDarker);
+        
+        // ===== 3. BORDER =====
+        imagerectangle($image, $stampX, $stampY, $stampX + $stampW, $stampY + $stampH, $borderColor);
+        imageline($image, $stampX, $stampY + $headerHeight, $stampX + $stampW, $stampY + $headerHeight, $borderColor);
+        
+        // ===== 4. FONT SETUP =====
+        $fontBold = '/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf';
+        $fontRegular = '/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf';
+        $useTTF = file_exists($fontBold);
+        
+        // Font sizes responsif
+        $fontHeader = max(11, (int)($stampW * 0.034));
+        $fontLarge = max(12, (int)($stampW * 0.038));
+        $fontMedium = max(10, (int)($stampW * 0.030));
+        $fontSmall = max(9, (int)($stampW * 0.026));
+        
+        $currentY = $stampY + $padding;
+        
+        // ===== 5. HEADER: M2B PORTAL - DOKUMEN PERUSAHAAN =====
+        if ($useTTF) {
+            imagettftext($image, $fontHeader, 0, $stampX + $padding, $currentY + $fontHeader, $textWhite, $fontBold, "M2B PORTAL");
+            imagettftext($image, $fontSmall, 0, $stampX + $padding + (int)($stampW * 0.32), $currentY + $fontHeader, $textMuted, $fontRegular, "DOKUMEN PERUSAHAAN");
+        } else {
+            imagestring($image, 5, $stampX + $padding, $currentY, "M2B PORTAL - DOKUMEN PERUSAHAAN", $textWhite);
+        }
+        
+        $currentY = $stampY + $headerHeight + $padding;
+        
+        // ===== 6. NOMOR SHIPMENT (Kuning/Gold) =====
+        $shipmentText = "No: " . $shipmentNumber;
+        if ($useTTF) {
+            imagettftext($image, $fontLarge, 0, $stampX + $padding, $currentY + $fontLarge, $accentColor, $fontBold, $shipmentText);
+        } else {
+            imagestring($image, 4, $stampX + $padding, $currentY, $shipmentText, $accentColor);
+        }
+        
+        $currentY += (int)($fontLarge * 1.7);
+        
+        // ===== 7. TANGGAL & WAKTU INDONESIA =====
+        $days = ['Minggu', 'Senin', 'Selasa', 'Rabu', 'Kamis', 'Jumat', 'Sabtu'];
+        $dayName = $days[(int)date('w')];
+        $dateText = $dayName . ', ' . date('d/m/Y') . ' - ' . date('H:i:s') . ' WIB';
+        
+        if ($useTTF) {
+            imagettftext($image, $fontMedium, 0, $stampX + $padding, $currentY + $fontMedium, $textLight, $fontRegular, $dateText);
+        } else {
+            imagestring($image, 3, $stampX + $padding, $currentY, $dateText, $textLight);
+        }
+        
+        $currentY += (int)($fontMedium * 1.6);
+        
+        // ===== 8. SURVEYOR/UPLOADER =====
+        $uploaderText = "Surveyor: " . mb_substr($uploaderName, 0, 30);
+        if ($useTTF) {
+            imagettftext($image, $fontSmall, 0, $stampX + $padding, $currentY + $fontSmall, $textMuted, $fontRegular, $uploaderText);
+        } else {
+            imagestring($image, 2, $stampX + $padding, $currentY, $uploaderText, $textMuted);
+        }
+        
+        // ===== 9. KETERANGAN/CAPTION (jika ada) =====
+        if ($hasDescription) {
+            $currentY += (int)($fontSmall * 2);
+            
+            // Garis pemisah
+            imageline($image, $stampX + $padding, $currentY - 5, $stampX + $stampW - $padding, $currentY - 5, $borderColor);
+            
+            // Potong keterangan jika terlalu panjang
+            $description = trim($description);
+            $maxChars = 50;
+            if (mb_strlen($description) > $maxChars) {
+                $description = mb_substr($description, 0, $maxChars - 3) . '...';
+            }
+            
+            // Background untuk keterangan
+            $descY = $currentY;
+            $descH = (int)($fontMedium * 1.8);
+            imagefilledrectangle($image, $stampX + $padding - 3, $descY - 3, $stampX + $stampW - $padding + 3, $descY + $descH, $descBg);
+            
+            // Icon dan teks keterangan
+            $descText = "📝 " . $description;
+            if ($useTTF) {
+                imagettftext($image, $fontSmall, 0, $stampX + $padding, $currentY + $fontSmall + 3, $bgDarker, $fontRegular, $descText);
+            } else {
+                imagestring($image, 2, $stampX + $padding, $currentY, $description, $bgDarker);
+            }
+        }
+        
+        // ===== 10. WATERMARK DIAGONAL DI TENGAH (sangat transparan) =====
+        $diagonalColor = imagecolorallocatealpha($image, 255, 255, 255, 105);
+        if ($useTTF && $imgWidth > 800) {
+            $diagFontSize = max(18, (int)($imgWidth * 0.022));
+            $diagText = "DOKUMEN PERUSAHAAN";
+            
+            $bbox = imagettfbbox($diagFontSize, -20, $fontBold, $diagText);
+            $diagX = ($imgWidth - abs($bbox[2] - $bbox[0])) / 2;
+            $diagY = $imgHeight / 2;
+            
+            imagettftext($image, $diagFontSize, -20, (int)$diagX, (int)$diagY, $diagonalColor, $fontBold, $diagText);
+        }
+        
+        // ===== 11. LOGO M2B DI POJOK KIRI BAWAH =====
+        $logoText = "portal.m2b.co.id";
+        $logoY = $imgHeight - $margin - 15;
+        $logoX = $margin;
+        
+        // Background untuk logo
+        if ($useTTF) {
+            $logoBbox = imagettfbbox($fontSmall, 0, $fontRegular, $logoText);
+            $logoW = abs($logoBbox[2] - $logoBbox[0]) + 16;
+            $logoH = abs($logoBbox[7] - $logoBbox[1]) + 10;
+            imagefilledrectangle($image, $logoX - 5, $logoY - $logoH + 3, $logoX + $logoW, $logoY + 8, $shadowColor);
+            imagettftext($image, $fontSmall, 0, $logoX, $logoY, $textWhite, $fontRegular, $logoText);
+        } else {
+            imagestring($image, 2, $logoX, $logoY - 10, $logoText, $textWhite);
+        }
+    }
+    
+    protected function createImageFromFile(string $path, int $type)
+    {
+        switch ($type) {
+            case IMAGETYPE_JPEG:
+                return @imagecreatefromjpeg($path);
+            case IMAGETYPE_PNG:
+                $img = @imagecreatefrompng($path);
+                if ($img) {
+                    imagesavealpha($img, true);
+                }
+                return $img;
+            case IMAGETYPE_GIF:
+                return @imagecreatefromgif($path);
+            case IMAGETYPE_WEBP:
+                return @imagecreatefromwebp($path);
+            default:
+                // Try JPEG as fallback
+                return @imagecreatefromjpeg($path);
+        }
+    }
+    
+    protected function fixOrientation($image, string $path)
+    {
+        if (!function_exists('exif_read_data')) {
+            return $image;
+        }
+        
+        try {
+            $exif = @exif_read_data($path);
+            if (!empty($exif['Orientation'])) {
+                switch ($exif['Orientation']) {
+                    case 3:
+                        $image = imagerotate($image, 180, 0);
+                        break;
+                    case 6:
+                        $image = imagerotate($image, -90, 0);
+                        break;
+                    case 8:
+                        $image = imagerotate($image, 90, 0);
+                        break;
+                }
+            }
+        } catch (\Exception $e) {
+            // Ignore EXIF errors
+        }
+        
+        return $image;
+    }
+    
+    protected function getImageExtension(UploadedFile $file): string
+    {
+        $ext = strtolower($file->getClientOriginalExtension());
+        
+        // Convert HEIC/HEIF to jpg
+        if (in_array($ext, ['heic', 'heif'])) {
+            return 'jpg';
+        }
+        
+        return in_array($ext, ['jpg', 'jpeg', 'png', 'gif', 'webp']) ? $ext : 'jpg';
+    }
+    
+    /**
+     * Delete photo files from storage
+     */
+    public function deletePhoto($photo): bool
+    {
+        try {
+            // Handle both FieldPhoto object and path string
+            if ($photo instanceof FieldPhoto) {
+                $path = $photo->file_path;
+                $thumbnailPath = $photo->thumbnail_path;
+            } else {
+                $path = $photo;
+                $thumbnailPath = null;
+            }
+            
+            if ($path && Storage::disk('public')->exists($path)) {
+                Storage::disk('public')->delete($path);
+            }
+            
+            if ($thumbnailPath && Storage::disk('public')->exists($thumbnailPath)) {
+                Storage::disk('public')->delete($thumbnailPath);
+            }
+            
+            return true;
+        } catch (\Exception $e) {
+            Log::error('Error deleting photo files: ' . $e->getMessage());
+            return false;
+        }
+    }
+}

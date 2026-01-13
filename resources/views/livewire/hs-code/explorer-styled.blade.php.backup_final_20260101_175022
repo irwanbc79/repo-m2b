@@ -1,0 +1,136 @@
+<div>
+    <style>
+        @keyframes spin { to { transform: rotate(360deg); } }
+    </style>
+
+    <div style="max-width: 1400px; margin: 0 auto; padding: 1rem;">
+        <!-- Header -->
+        <div style="background: linear-gradient(135deg, #0F2C59 0%, #1e3a8a 100%); border-radius: 1rem; padding: 2rem; margin-bottom: 1.5rem; box-shadow: 0 4px 6px rgba(0,0,0,0.1);">
+            <h1 style="font-size: 2rem; font-weight: 700; color: white; margin-bottom: 0.5rem;">
+                🔍 HS Code Explorer
+            </h1>
+            <p style="color: rgba(255,255,255,0.9); font-size: 1rem;">
+                Pencarian Kode HS BTKI 2022 - Total <strong>{{ number_format(DB::table('hs_codes')->count()) }}</strong> kode
+            </p>
+        </div>
+
+        <!-- Search Form -->
+        <div style="background: white; border-radius: 1rem; padding: 1.5rem; margin-bottom: 1.5rem; box-shadow: 0 2px 4px rgba(0,0,0,0.1);">
+            <div style="display: flex; gap: 0.5rem;">
+                <div style="flex: 1; position: relative;">
+                    <input 
+                        type="text" 
+                        id="searchInput"
+                        value="{{ $search }}"
+                        placeholder="🔎 Cari kode HS atau deskripsi... (contoh: 'sapi', 'susu', '01.01')"
+                        style="width: 100%; padding: 1rem; border: 2px solid #e2e8f0; border-radius: 0.75rem; font-size: 1rem; transition: border-color 0.2s;"
+                        onkeypress="if(event.key === 'Enter') { performSearch(); }"
+                        oninput="delayedSearch()"
+                        onfocus="this.style.borderColor='#0F2C59'"
+                        onblur="this.style.borderColor='#e2e8f0'"
+                    >
+                    <!-- Loading spinner -->
+                    <div wire:loading style="position: absolute; right: 1rem; top: 50%; transform: translateY(-50%);">
+                        <div style="width: 1.25rem; height: 1.25rem; border: 2px solid #e2e8f0; border-top-color: #0F2C59; border-radius: 50%; animation: spin 1s linear infinite;"></div>
+                    </div>
+                </div>
+                <button 
+                    type="button"
+                    onclick="performSearch()"
+                    style="padding: 1rem 2rem; background: #0F2C59; color: white; border: none; border-radius: 0.75rem; font-weight: 600; cursor: pointer; white-space: nowrap; transition: background 0.2s;"
+                    onmouseover="this.style.background='#1e3a8a'"
+                    onmouseout="this.style.background='#0F2C59'"
+                    wire:loading.attr="disabled"
+                >
+                    <span wire:loading.remove>Cari</span>
+                    <span wire:loading>⏳</span>
+                </button>
+            </div>
+
+            @if($search)
+                <div style="margin-top: 1rem; display: flex; gap: 0.5rem; align-items: center;">
+                    <span style="color: #64748b; font-size: 0.875rem;">
+                        📊 Hasil pencarian: <strong>"{{ $search }}"</strong>
+                    </span>
+                    <button 
+                        onclick="clearSearch()"
+                        style="padding: 0.25rem 0.75rem; background: #B91C1C; color: white; border: none; border-radius: 0.5rem; font-size: 0.75rem; cursor: pointer; transition: background 0.2s;"
+                        onmouseover="this.style.background='#991b1b'"
+                        onmouseout="this.style.background='#B91C1C'"
+                    >
+                        Clear ✕
+                    </button>
+                </div>
+            @endif
+        </div>
+
+        <!-- Results -->
+        @if($results->count() > 0)
+            <div style="background: white; border-radius: 1rem; padding: 1.5rem; box-shadow: 0 2px 4px rgba(0,0,0,0.1);">
+                <p style="color: #64748b; font-size: 0.875rem; margin-bottom: 1rem;">
+                    Menampilkan {{ $results->firstItem() }} - {{ $results->lastItem() }} dari {{ number_format($results->total()) }} hasil
+                </p>
+
+                <div style="display: grid; gap: 1rem;">
+                    @foreach($results as $item)
+                        <div style="border: 1px solid #e2e8f0; border-radius: 0.5rem; padding: 1rem; transition: all 0.2s; cursor: pointer;"
+                             onmouseover="this.style.borderColor='#0F2C59'; this.style.boxShadow='0 4px 6px rgba(15,44,89,0.1)'"
+                             onmouseout="this.style.borderColor='#e2e8f0'; this.style.boxShadow='none'">
+                            <div style="display: flex; justify-content: space-between; gap: 1rem;">
+                                <div style="flex: 1;">
+                                    <h3 style="font-size: 1.25rem; font-weight: 600; color: #0F2C59; margin-bottom: 0.5rem;">
+                                        {{ $item->hs_code }}
+                                    </h3>
+                                    <p style="color: #1e293b; line-height: 1.6;">
+                                        {{ \Illuminate\Support\Str::limit($item->description_id ?? 'Tidak ada deskripsi', 200) }}
+                                    </p>
+                                </div>
+                                <span style="background: #dbeafe; color: #1e3a8a; padding: 0.25rem 0.75rem; border-radius: 1rem; font-size: 0.75rem; font-weight: 600; white-space: nowrap; height: fit-content;">
+                                    Level {{ $item->hs_level }}
+                                </span>
+                            </div>
+                        </div>
+                    @endforeach
+                </div>
+
+                <div style="margin-top: 1.5rem;">
+                    {{ $results->links() }}
+                </div>
+            </div>
+        @elseif($search)
+            <div style="background: white; border-radius: 1rem; padding: 3rem; text-align: center; box-shadow: 0 2px 4px rgba(0,0,0,0.1);">
+                <div style="font-size: 3rem; margin-bottom: 1rem;">🔍</div>
+                <h3 style="font-size: 1.25rem; font-weight: 600; color: #1e293b; margin-bottom: 0.5rem;">Tidak ada hasil</h3>
+                <p style="color: #64748b;">Tidak ditemukan kode HS untuk "<strong>{{ $search }}</strong>"</p>
+            </div>
+        @else
+            <div style="background: white; border-radius: 1rem; padding: 3rem; text-align: center; box-shadow: 0 2px 4px rgba(0,0,0,0.1);">
+                <div style="font-size: 3rem; margin-bottom: 1rem;">📦</div>
+                <h3 style="font-size: 1.25rem; font-weight: 600; color: #1e293b; margin-bottom: 0.5rem;">Mulai Pencarian</h3>
+                <p style="color: #64748b; margin-bottom: 0.5rem;">Ketik kode HS atau deskripsi barang di kotak pencarian</p>
+                <p style="color: #94a3b8; font-size: 0.875rem;">💡 Tips: Hasil akan muncul otomatis saat Anda mengetik</p>
+            </div>
+        @endif
+    </div>
+
+    <script>
+        let searchTimeout;
+
+        function performSearch() {
+            const searchValue = document.getElementById('searchInput').value;
+            @this.set('search', searchValue);
+        }
+
+        function delayedSearch() {
+            clearTimeout(searchTimeout);
+            searchTimeout = setTimeout(() => {
+                performSearch();
+            }, 500); // Auto-search after 500ms of no typing
+        }
+
+        function clearSearch() {
+            document.getElementById('searchInput').value = '';
+            @this.set('search', '');
+        }
+    </script>
+</div>

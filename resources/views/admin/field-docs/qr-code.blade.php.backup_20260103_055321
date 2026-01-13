@@ -1,0 +1,51 @@
+@extends('layouts.admin')
+
+@section('header', '📱 QR Code - ' . $shipment->shipment_number)
+
+@section('content')
+<div class="max-w-md mx-auto space-y-6">
+    {{-- QR Code Card --}}
+    <div class="bg-white rounded-xl p-8 shadow-sm text-center">
+        <h2 class="text-lg font-bold text-gray-800 mb-2">{{ $shipment->shipment_number }}</h2>
+        <p class="text-gray-500 mb-6">{{ $shipment->customer->name ?? $shipment->customer_name ?? 'N/A' }}</p>
+        
+        {{-- QR Code --}}
+        <div class="bg-white p-4 rounded-xl inline-block border-2 border-gray-100">
+            {!! QrCode::size(200)->margin(1)->generate($shipment->shipment_number) !!}
+        </div>
+        
+        <p class="text-sm text-gray-400 mt-4">
+            Scan untuk langsung upload foto ke shipment ini
+        </p>
+    </div>
+
+    {{-- Actions --}}
+    <div class="flex flex-col gap-3">
+        <a href="{{ route('admin.field-docs.qr-download', $shipment->shipment_number) }}" 
+           class="w-full bg-blue-600 hover:bg-blue-700 text-white py-3 rounded-xl font-semibold text-center transition">
+            ⬇️ Download QR Code (SVG)
+        </a>
+        
+        <a href="{{ route('admin.field-docs.gallery', $shipment->shipment_number) }}" 
+           class="w-full bg-gray-100 hover:bg-gray-200 text-gray-700 py-3 rounded-xl font-semibold text-center transition">
+            📸 Lihat Gallery Foto
+        </a>
+        
+        <a href="{{ route('admin.field-docs.index') }}" 
+           class="w-full bg-gray-100 hover:bg-gray-200 text-gray-700 py-3 rounded-xl font-semibold text-center transition">
+            ← Kembali ke Dashboard
+        </a>
+    </div>
+
+    {{-- Instructions --}}
+    <div class="bg-blue-50 rounded-xl p-4">
+        <h3 class="font-semibold text-blue-800 mb-2">💡 Cara Penggunaan</h3>
+        <ol class="text-sm text-blue-700 space-y-1 list-decimal list-inside">
+            <li>Print atau tampilkan QR Code ini</li>
+            <li>Petugas lapangan scan dengan HP</li>
+            <li>Langsung masuk ke halaman upload foto</li>
+            <li>Foto otomatis terhubung ke shipment ini</li>
+        </ol>
+    </div>
+</div>
+@endsection

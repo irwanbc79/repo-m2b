@@ -1,0 +1,11 @@
+{
+    "Reset Password Notification": "Permintaan Reset Password",
+    "You are receiving this email because we received a password reset request for your account.": "Kami menerima permintaan untuk mengatur ulang kata sandi akun Portal M2B Anda.",
+    "Reset Password": "Atur Ulang Kata Sandi",
+    "This password reset link will expire in :count minutes.": "Tautan ini akan kadaluarsa dalam :count menit demi keamanan.",
+    "If you did not request a password reset, no further action is required.": "Jika Anda tidak merasa melakukan permintaan ini, mohon abaikan email ini. Akun Anda tetap aman.",
+    "Regards": "Hormat kami",
+    "Whoops!": "Ups!",
+    "Hello!": "Yth. Pelanggan,",
+    "If you're having trouble clicking the \":actionText\" button, copy and paste the URL below\ninto your web browser:": "Jika tombol \":actionText\" tidak berfungsi, silakan salin dan tempel tautan berikut ke browser Anda:"
+}

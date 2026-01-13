@@ -1,0 +1,297 @@
+<?php
+
+namespace App\Livewire;
+
+use Illuminate\Session\TokenMismatchException;
+
+use Livewire\Component;
+use Livewire\WithFileUploads;
+use App\Models\FieldPhoto;
+use App\Models\Shipment;
+use App\Services\ImageProcessingService;
+use Illuminate\Support\Facades\Auth;
+
+class FieldPhotoUpload extends Component
+{
+    use WithFileUploads;
+
+    // Properties
+    public $searchQuery = '';
+    public $searchResults = [];
+    public $showDropdown = false;
+    public $shipmentId = null;
+    public $shipment = null;
+    public $photos = [];
+    public $description = '';
+    public $uploadProgress = 0;
+    
+    // GPS properties
+    public $latitude = null;
+    public $longitude = null;
+    public $useGps = false;
+    
+    // QR Scanner
+    public $showQrScanner = false;
+
+    protected $listeners = [
+        'qrCodeScanned',
+        'gpsLocationReceived',
+    ];
+
+    protected $rules = [
+        'shipmentId' => 'required|exists:shipments,id',
+        'photos.*' => 'image|max:10240',
+        'description' => 'nullable|string|max:500',
+    ];
+
+    protected $messages = [
+        'shipmentId.required' => 'Pilih shipment terlebih dahulu',
+        'shipmentId.exists' => 'Shipment tidak ditemukan',
+        'photos.*.image' => 'File harus berupa gambar',
+        'photos.*.max' => 'Ukuran file maksimal 10MB',
+    ];
+
+    /**
+     * Mount - Inisialisasi dengan shipment jika ada
+     */
+    public function mount($shipment = null)
+    {
+        if ($shipment) {
+            $this->loadShipmentByAwb($shipment);
+        }
+    }
+
+    /**
+     * Load shipment berdasarkan AWB/BL/ID
+     */
+    public function loadShipmentByAwb($awbOrId)
+    {
+        $this->shipment = Shipment::with('customer')
+            ->where('awb_number', $awbOrId)
+            ->orWhere('bl_number', $awbOrId)
+            ->orWhere('id', $awbOrId)
+            ->first();
+        
+        if ($this->shipment) {
+            $this->shipmentId = $this->shipment->id;
+            $this->searchQuery = $this->shipment->awb_number ?: $this->shipment->bl_number ?: '';
+            $this->showDropdown = false;
+        }
+    }
+
+    /**
+     * Search shipments saat user mengetik
+     */
+    public function updatedSearchQuery()
+    {
+        if (strlen($this->searchQuery) >= 2) {
+            $query = $this->searchQuery;
+            $this->searchResults = Shipment::with('customer')
+                ->where(function($q) use ($query) {
+                    $q->where('awb_number', 'LIKE', "%{$query}%")
+                      ->orWhere('bl_number', 'LIKE', "%{$query}%")
+                      ->orWhereHas('customer', function($cq) use ($query) {
+                          $cq->where('company_name', 'LIKE', "%{$query}%");
+                      });
+                })
+                ->orderBy('created_at', 'desc')
+                ->limit(10)
+                ->get();
+            $this->showDropdown = true;
+        } else {
+            $this->searchResults = [];
+            $this->showDropdown = false;
+        }
+    }
+
+    /**
+     * Select shipment dari dropdown
+     */
+    public function selectShipment($id)
+    {
+        $this->shipment = Shipment::with('customer')->find($id);
+        if ($this->shipment) {
+            $this->shipmentId = $this->shipment->id;
+            $this->searchQuery = $this->shipment->awb_number ?: $this->shipment->bl_number ?: '';
+            $this->showDropdown = false;
+            $this->searchResults = [];
+        }
+    }
+
+    /**
+     * Clear selected shipment
+     */
+    public function clearShipment()
+    {
+        $this->shipment = null;
+        $this->shipmentId = null;
+        $this->searchQuery = '';
+        $this->searchResults = [];
+        $this->showDropdown = false;
+    }
+
+    public function updatedPhotos()
+    {
+        $this->validateOnly('photos.*');
+    }
+
+    public function removePhoto($index)
+    {
+        // Refresh session untuk hindari CSRF mismatch
+        session()->regenerateToken();
+        
+        // Reset semua error validation terlebih dahulu
+        $this->resetErrorBag();
+        $this->resetValidation();
+        
+        // Hapus foto dari array
+        if (isset($this->photos[$index])) {
+            // Hapus temporary file jika ada
+            try {
+                $photo = $this->photos[$index];
+                if (method_exists($photo, 'getPath') && file_exists($photo->getPath())) {
+                    // Biarkan Livewire yang handle cleanup
+                }
+            } catch (\Exception $e) {
+                // Ignore cleanup errors
+            }
+            
+            unset($this->photos[$index]);
+            $this->photos = array_values($this->photos); // Re-index array
+        }
+        
+        // Hapus GPS data terkait jika ada
+        if (isset($this->gpsData[$index])) {
+            unset($this->gpsData[$index]);
+            $this->gpsData = array_values($this->gpsData);
+        }
+        
+        // Clear any lingering errors
+        $this->resetErrorBag('photos');
+        $this->resetErrorBag('photos.*');
+        
+        // Dispatch event untuk update UI
+        $this->dispatch('photoRemoved', index: $index);
+    }
+
+    public function qrCodeScanned($result)
+    {
+        $this->showQrScanner = false;
+        
+        $shipment = Shipment::with('customer')
+            ->where('awb_number', $result)
+            ->orWhere('bl_number', $result)
+            ->orWhere('id', $result)
+            ->first();
+
+        if ($shipment) {
+            $this->shipment = $shipment;
+            $this->shipmentId = $shipment->id;
+            $this->searchQuery = $shipment->awb_number ?: $shipment->bl_number ?: '';
+            
+            $this->dispatch('notify', [
+                'type' => 'success',
+                'message' => 'Shipment ditemukan: ' . ($shipment->awb_number ?: $shipment->bl_number)
+            ]);
+        } else {
+            $this->dispatch('notify', [
+                'type' => 'error',
+                'message' => 'Shipment tidak ditemukan untuk kode: ' . $result
+            ]);
+        }
+    }
+
+    public function gpsLocationReceived($lat, $lng)
+    {
+        $this->latitude = $lat;
+        $this->longitude = $lng;
+        
+        $this->dispatch('notify', [
+            'type' => 'success',
+            'message' => 'Lokasi GPS berhasil direkam'
+        ]);
+    }
+
+    public function toggleGps()
+    {
+        $this->useGps = !$this->useGps;
+        
+        if ($this->useGps) {
+            $this->dispatch('requestGpsLocation');
+        } else {
+            $this->latitude = null;
+            $this->longitude = null;
+        }
+    }
+
+    public function toggleQrScanner()
+    {
+        $this->showQrScanner = !$this->showQrScanner;
+    }
+
+    public function save()
+    {
+        $this->validate();
+
+        if (empty($this->photos)) {
+            $this->addError('photos', 'Pilih minimal 1 foto untuk diupload');
+            return;
+        }
+
+        $imageService = app(ImageProcessingService::class);
+        $savedCount = 0;
+        $totalPhotos = count($this->photos);
+
+        foreach ($this->photos as $index => $photo) {
+            $this->uploadProgress = round((($index + 1) / $totalPhotos) * 100);
+            
+            try {
+                $processed = $imageService->processUpload(
+                    $photo,
+                    $this->shipmentId,
+                    Auth::id()
+                );
+
+                FieldPhoto::create([
+                    'shipment_id' => $this->shipmentId,
+                    'user_id' => Auth::id(),
+                    'original_filename' => $photo->getClientOriginalName(),
+                    'file_path' => $processed['path'],
+                    'thumbnail_path' => $processed['thumbnail_path'] ?? null,
+                    'file_size' => $processed['size'] ?? $photo->getSize(),
+                    'mime_type' => $processed['mime_type'] ?? $photo->getMimeType(),
+                    'width' => $processed['width'] ?? null,
+                    'height' => $processed['height'] ?? null,
+                    'description' => $this->description,
+                    'upload_ip' => request()->ip(),
+                    'latitude' => $this->latitude,
+                    'longitude' => $this->longitude,
+                    'status' => 'approved',
+                ]);
+
+                $savedCount++;
+            } catch (\Exception $e) {
+                \Log::error('Photo upload failed', [
+                    'error' => $e->getMessage(),
+                    'file' => $photo->getClientOriginalName()
+                ]);
+            }
+        }
+
+        $this->uploadProgress = 0;
+        $this->photos = [];
+        $this->description = '';
+        $this->latitude = null;
+        $this->longitude = null;
+
+        session()->flash('message', "Berhasil mengupload {$savedCount} foto!");
+        
+        $awbOrId = $this->shipment->awb_number ?: $this->shipment->id;
+        return redirect()->route('admin.field-docs.gallery', ['shipment' => $awbOrId]);
+    }
+
+    public function render()
+    {
+        return view('livewire.field-photo-upload');
+    }
+}

@@ -1,0 +1,305 @@
+<?php
+
+namespace App\Services;
+
+use App\Models\CashTransaction;
+use App\Models\Account;
+use App\Models\Journal;
+use App\Models\Invoice;
+use App\Models\Shipment;
+use App\Models\JobCost;
+use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Auth;
+use Carbon\Carbon;
+
+class CashierService
+{
+    /**
+     * Process payment transaction from Simple Cashier
+     * 
+     * @param array $data
+     * @return CashTransaction
+     */
+    public function processPayment(array $data)
+    {
+        return DB::transaction(function () use ($data) {
+            // 1. Determine accounts based on transaction type
+            $accounts = $this->determineAccounts($data);
+            
+            // 2. Create Journal Entry
+            $journal = $this->createJournal($data, $accounts);
+            
+            // 3. Create Cash Transaction
+            $cashTransaction = $this->createCashTransaction($data, $accounts, $journal);
+            
+            // 4. Update related records
+            $this->updateRelatedRecords($cashTransaction, $data);
+            
+            return $cashTransaction;
+        });
+    }
+
+    /**
+     * Determine debit and credit accounts
+     */
+    protected function determineAccounts(array $data)
+    {
+        $type = $data['type'] ?? $data['transaction_type'] ?? 'in'; // Support both keys
+        $category = $data['category'] ?? $data['cost_category'] ?? 'general'; // Support both keys
+        
+        // Bank account (always 1103 - Bank Mandiri for now)
+        $bankAccount = Account::where('code', '1103')->first();
+        
+        if ($type === 'in') {
+            // Cash In: Debit Bank, Credit other account
+            switch ($category) {
+                case 'payment_from_customer':
+                    // Debit: Bank, Credit: Piutang
+                    $creditAccount = Account::where('code', '1201')->first(); // Piutang Usaha
+                    break;
+                    
+                case 'down_payment':
+                    // Debit: Bank, Credit: Uang Muka Customer
+                    $creditAccount = Account::where('code', '2103')->first() 
+                                  ?? Account::where('code', '1201')->first(); // Fallback
+                    break;
+                    
+                default:
+                    // Debit: Bank, Credit: Revenue
+                    $creditAccount = Account::where('code', '4101')->first(); // Pendapatan Jasa
+            }
+            
+            return [
+                'debit_account' => $bankAccount,
+                'credit_account' => $creditAccount,
+            ];
+            
+        } else {
+            // Cash Out: Debit expense/payable, Credit Bank
+            switch ($category) {
+                case 'payment_to_vendor':
+                    // Debit: Biaya or Hutang Vendor, Credit: Bank
+                    $debitAccount = Account::where('code', '5101')->first() // Biaya Operasional
+                                 ?? Account::where('code', '2101')->first(); // Hutang Usaha
+                    break;
+                    
+                case 'operational_expense':
+                    // Debit: Biaya Operasional, Credit: Bank
+                    $debitAccount = Account::where('code', '5101')->first();
+                    break;
+                    
+                default:
+                    // Debit: Biaya Lain-lain, Credit: Bank
+                    $debitAccount = Account::where('code', '5199')->first() // Biaya Lain-lain
+                                 ?? Account::where('code', '5101')->first(); // Fallback
+            }
+            
+            return [
+                'debit_account' => $debitAccount,
+                'credit_account' => $bankAccount,
+            ];
+        }
+    }
+
+    /**
+     * Create Journal Entry
+     */
+    protected function createJournal(array $data, array $accounts)
+    {
+        // Generate journal number
+        $date = Carbon::parse($data['transaction_date'] ?? now());
+        $lastJournal = Journal::whereDate('created_at', $date)->orderBy('created_at', 'desc')->first();
+        $sequence = $lastJournal ? intval(substr($lastJournal->journal_number, -4)) + 1 : 1;
+        $journalNumber = 'JV-' . $date->format('Ymd') . '-' . str_pad($sequence, 4, '0', STR_PAD_LEFT);
+        
+        // Create Journal
+        $journal = Journal::create([
+            'journal_number' => $journalNumber,
+            'transaction_date' => $data['transaction_date'] ?? now(),
+            'description' => $data['description'] ?? 'Cash Transaction',
+            'created_by' => Auth::id(),
+        ]);
+        
+        // Create Journal Entries (Debit & Credit)
+        $journal->items()->create([
+            'account_id' => $accounts['debit_account']->id,
+            'debit' => $data['amount'] ?? 0,
+            'credit' => 0,
+        ]);
+        
+        $journal->items()->create([
+            'account_id' => $accounts['credit_account']->id,
+            'debit' => 0,
+            'credit' => $data['amount'] ?? 0,
+        ]);
+        
+        return $journal;
+    }
+
+    /**
+     * Create Cash Transaction record
+     */
+    protected function createCashTransaction(array $data, array $accounts, Journal $journal)
+    {
+        return CashTransaction::create([
+            'transaction_date' => $data['transaction_date'] ?? now(),
+            'type' => $data['type'] ?? $data['transaction_type'] ?? 'in',
+            'amount' => $data['amount'] ?? 0,
+            'account_id' => $accounts['debit_account']->id,
+            'counter_account_id' => $accounts['credit_account']->id,
+            'invoice_id' => $data['invoice_id'] ?? null,
+            'shipment_id' => $data['shipment_id'] ?? null,
+            'vendor_id' => $data['vendor_id'] ?? null,
+            'description' => $data['description'] ?? '',
+            'proof_file' => $data['proof_file'] ?? null,
+            'journal_id' => $journal->id,
+            'created_by' => Auth::id(),
+        ]);
+    }
+
+    /**
+     * Update related records (Invoice, Job Cost, etc.)
+     */
+    protected function updateRelatedRecords(CashTransaction $cashTransaction, array $data)
+    {
+        // Update Invoice status if payment is for invoice
+        if ($cashTransaction->invoice_id) {
+            $invoice = Invoice::find($cashTransaction->invoice_id);
+            if ($invoice && $invoice->status === 'unpaid') {
+                $invoice->update([
+                    'status' => 'paid',
+                    'payment_date' => $cashTransaction->transaction_date,
+                    'payment_proof' => $cashTransaction->proof_file,
+                ]);
+            }
+        }
+        
+        // Create/Update Job Cost if shipment related
+        if ($cashTransaction->shipment_id) {
+            $type = $data['type'] ?? $data['transaction_type'] ?? 'in';
+            
+            if ($type === 'out') {
+                // Cash out = Cost/Expense for shipment
+                JobCost::create([
+                    'shipment_id' => $cashTransaction->shipment_id,
+                    'cost_type' => $data['category'] ?? $data['cost_category'] ?? 'other',
+                    'description' => $data['description'] ?? 'Payment',
+                    'amount' => $cashTransaction->amount,
+                    'vendor_id' => $cashTransaction->vendor_id,
+                    'payment_date' => $cashTransaction->transaction_date,
+                    'payment_status' => 'paid',
+                    'cash_transaction_id' => $cashTransaction->id,
+                ]);
+            }
+        }
+    }
+
+    /**
+     * Get account pairing preview for UI
+     */
+    public function getAccountPairingPreview(array $data)
+    {
+        $accounts = $this->determineAccounts($data);
+        
+        $amount = $data['amount'] ?? 0;
+        $date = Carbon::parse($data['transaction_date'] ?? now());
+        $journalNumber = 'JV-' . $date->format('Ymd') . '-PREVIEW';
+        
+        return [
+            'journal_number' => $journalNumber,
+            'entries' => [
+                [
+                    'account_code' => $accounts['debit_account']->code,
+                    'account_name' => $accounts['debit_account']->name,
+                    'debit' => $amount,
+                    'credit' => 0,
+                ],
+                [
+                    'account_code' => $accounts['credit_account']->code,
+                    'account_name' => $accounts['credit_account']->name,
+                    'debit' => 0,
+                    'credit' => $amount,
+                ],
+            ],
+            'debit_account' => [
+                'id' => $accounts['debit_account']->id,
+                'code' => $accounts['debit_account']->code,
+                'name' => $accounts['debit_account']->name,
+                'amount' => $amount,
+            ],
+            'credit_account' => [
+                'id' => $accounts['credit_account']->id,
+                'code' => $accounts['credit_account']->code,
+                'name' => $accounts['credit_account']->name,
+                'amount' => $amount,
+            ],
+            'explanation' => $this->getExplanation($data['type'] ?? 'in', $data['category'] ?? 'general'),
+        ];
+    }
+
+    /**
+     * Get human-readable explanation
+     */
+    protected function getExplanation($type, $category)
+    {
+        if ($type === 'in') {
+            switch ($category) {
+                case 'payment_from_customer':
+                    return 'Customer membayar invoice, uang masuk ke bank, piutang berkurang';
+                case 'down_payment':
+                    return 'Uang muka dari customer, masuk ke bank';
+                default:
+                    return 'Pendapatan masuk ke bank';
+            }
+        } else {
+            switch ($category) {
+                case 'payment_to_vendor':
+                    return 'Bayar vendor/supplier, uang keluar dari bank';
+                case 'operational_expense':
+                    return 'Biaya operasional, uang keluar dari bank';
+                default:
+                    return 'Pengeluaran lain-lain dari bank';
+            }
+        }
+    }
+
+    /**
+     * Calculate customer outstanding (for preview)
+     */
+    public function getCustomerOutstanding($customerId)
+    {
+        $unpaidInvoices = Invoice::where('customer_id', $customerId)
+            ->where('status', 'unpaid')
+            ->sum('grand_total');
+            
+        return $unpaidInvoices;
+    }
+
+    /**
+     * Get shipment profitability (for preview)
+     */
+    public function getShipmentProfitability($shipmentId)
+    {
+        $shipment = Shipment::find($shipmentId);
+        
+        if (!$shipment) {
+            return null;
+        }
+        
+        // Calculate total costs
+        $totalCosts = JobCost::where('shipment_id', $shipmentId)->sum('amount');
+        
+        // Calculate revenue (from invoices)
+        $totalRevenue = Invoice::where('shipment_id', $shipmentId)->sum('grand_total');
+        
+        $profit = $totalRevenue - $totalCosts;
+        $profitMargin = $totalRevenue > 0 ? ($profit / $totalRevenue) * 100 : 0;
+        
+        return [
+            'revenue' => $totalRevenue,
+            'costs' => $totalCosts,
+            'profit' => $profit,
+            'margin_percent' => round($profitMargin, 2),
+        ];
+    }
+}

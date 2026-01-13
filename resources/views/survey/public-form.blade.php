@@ -1,0 +1,15 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Survey Kepuasan Pelanggan - M2B</title>
+    <meta name="description" content="Bantu kami meningkatkan layanan dengan mengisi survey kepuasan pelanggan PT. Mora Multi Berkah">
+    <script src="https://cdn.tailwindcss.com"></script>
+    @livewireStyles
+</head>
+<body class="antialiased">
+    <livewire:public-survey-form />
+    @livewireScripts
+</body>
+</html>

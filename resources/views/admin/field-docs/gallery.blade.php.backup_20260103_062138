@@ -1,0 +1,338 @@
+@extends('layouts.admin')
+
+@section('title', 'Dokumentasi ' . ($shipment->awb_number ?: $shipment->bl_number ?: 'Shipment #'.$shipment->id))
+
+@push('styles')
+{{-- GLightbox CSS --}}
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/glightbox@3.2.0/dist/css/glightbox.min.css">
+<style>
+    .photo-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+        gap: 1rem;
+    }
+    @media (max-width: 640px) {
+        .photo-grid {
+            grid-template-columns: repeat(2, 1fr);
+            gap: 0.5rem;
+        }
+    }
+    .photo-card {
+        position: relative;
+        aspect-ratio: 1;
+        overflow: hidden;
+        border-radius: 0.75rem;
+        background: #f3f4f6;
+        cursor: pointer;
+        transition: transform 0.2s, box-shadow 0.2s;
+    }
+    .photo-card:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 8px 25px rgba(0,0,0,0.15);
+    }
+    .photo-card img {
+        width: 100%;
+        height: 100%;
+        object-fit: cover;
+        transition: transform 0.3s;
+    }
+    .photo-card:hover img {
+        transform: scale(1.05);
+    }
+    .photo-overlay {
+        position: absolute;
+        bottom: 0;
+        left: 0;
+        right: 0;
+        background: linear-gradient(transparent, rgba(0,0,0,0.7));
+        padding: 2rem 0.75rem 0.75rem;
+        opacity: 0;
+        transition: opacity 0.3s;
+    }
+    .photo-card:hover .photo-overlay {
+        opacity: 1;
+    }
+    .photo-badge {
+        position: absolute;
+        top: 0.5rem;
+        right: 0.5rem;
+        display: flex;
+        gap: 0.25rem;
+    }
+    
+    /* ====== CUSTOM GLIGHTBOX NAVIGATION STYLES ====== */
+    /* Navigation Arrows - Make them VERY visible */
+    .glightbox-container .gnext,
+    .glightbox-container .gprev {
+        width: 60px !important;
+        height: 60px !important;
+        background: rgba(255, 255, 255, 0.95) !important;
+        border-radius: 50% !important;
+        box-shadow: 0 4px 15px rgba(0,0,0,0.3) !important;
+        display: flex !important;
+        align-items: center !important;
+        justify-content: center !important;
+        opacity: 1 !important;
+        transition: all 0.3s ease !important;
+    }
+    .glightbox-container .gnext:hover,
+    .glightbox-container .gprev:hover {
+        background: #ffffff !important;
+        transform: scale(1.1) !important;
+        box-shadow: 0 6px 20px rgba(0,0,0,0.4) !important;
+    }
+    .glightbox-container .gnext svg,
+    .glightbox-container .gprev svg {
+        width: 28px !important;
+        height: 28px !important;
+        fill: none !important;
+        stroke: #1f2937 !important;
+        stroke-width: 3 !important;
+    }
+    .glightbox-container .gprev {
+        left: 20px !important;
+    }
+    .glightbox-container .gnext {
+        right: 20px !important;
+    }
+    
+    /* Close button */
+    .glightbox-container .gclose {
+        width: 50px !important;
+        height: 50px !important;
+        background: rgba(255, 255, 255, 0.95) !important;
+        border-radius: 50% !important;
+        box-shadow: 0 4px 15px rgba(0,0,0,0.3) !important;
+        top: 20px !important;
+        right: 20px !important;
+        opacity: 1 !important;
+    }
+    .glightbox-container .gclose:hover {
+        background: #ef4444 !important;
+    }
+    .glightbox-container .gclose:hover svg {
+        stroke: white !important;
+    }
+    .glightbox-container .gclose svg {
+        width: 24px !important;
+        height: 24px !important;
+        stroke: #1f2937 !important;
+        stroke-width: 2.5 !important;
+    }
+    
+    /* Counter */
+    .glightbox-container .gslide-title {
+        font-size: 1rem !important;
+        font-weight: 600 !important;
+    }
+    .glightbox-container .gslide-desc {
+        font-size: 0.875rem !important;
+    }
+    
+    /* Description panel */
+    .gslide-description {
+        background: rgba(0,0,0,0.85) !important;
+        padding: 1rem !important;
+    }
+    
+    /* Mobile adjustments */
+    @media (max-width: 768px) {
+        .glightbox-container .gnext,
+        .glightbox-container .gprev {
+            width: 50px !important;
+            height: 50px !important;
+        }
+        .glightbox-container .gprev {
+            left: 10px !important;
+        }
+        .glightbox-container .gnext {
+            right: 10px !important;
+        }
+        .glightbox-container .gnext svg,
+        .glightbox-container .gprev svg {
+            width: 22px !important;
+            height: 22px !important;
+        }
+    }
+</style>
+@endpush
+
+@section('content')
+<div class="max-w-7xl mx-auto px-4 sm:px-6 py-6">
+    {{-- Header --}}
+    <div class="bg-white rounded-xl shadow-sm p-6 mb-6">
+        <div class="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
+            <div>
+                <h1 class="text-2xl font-bold text-gray-800 flex items-center gap-2">
+                    📸 Dokumentasi {{ $shipment->awb_number ?: $shipment->bl_number ?: 'Shipment #'.$shipment->id }}
+                </h1>
+                <p class="text-gray-500 mt-1">{{ $shipment->customer->company_name ?? 'N/A' }}</p>
+                <div class="flex items-center gap-2 mt-2 flex-wrap">
+                    <span class="text-xs px-2 py-1 rounded-full {{ $shipment->shipment_type === 'import' ? 'bg-blue-100 text-blue-700' : 'bg-green-100 text-green-700' }}">
+                        {{ ucfirst($shipment->shipment_type ?? 'N/A') }}
+                    </span>
+                    <span class="text-xs text-gray-500">{{ $shipment->origin }} → {{ $shipment->destination }}</span>
+                </div>
+            </div>
+            
+            {{-- Stats --}}
+            <div class="flex items-center gap-4 text-sm">
+                <div class="text-center px-4 py-2 bg-gray-50 rounded-lg">
+                    <span class="block text-2xl font-bold text-gray-800">{{ $stats['total'] ?? 0 }}</span>
+                    <span class="text-gray-500">📷 foto</span>
+                </div>
+                <div class="text-center px-4 py-2 bg-gray-50 rounded-lg">
+                    <span class="block text-2xl font-bold text-green-600">{{ $stats['with_location'] ?? 0 }}</span>
+                    <span class="text-gray-500">📍 dengan GPS</span>
+                </div>
+                <div class="text-center px-4 py-2 bg-gray-50 rounded-lg">
+                    <span class="block text-2xl font-bold text-blue-600">{{ $stats['today'] ?? 0 }}</span>
+                    <span class="text-gray-500">🕐 hari ini</span>
+                </div>
+            </div>
+        </div>
+        
+        {{-- Action Buttons --}}
+        <div class="flex flex-wrap gap-3 mt-6">
+            <a href="{{ route('admin.field-docs.upload', $shipment->awb_number ?: $shipment->id) }}" 
+               class="inline-flex items-center gap-2 px-4 py-2 bg-green-600 hover:bg-green-700 text-white rounded-lg transition">
+                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/>
+                </svg>
+                Tambah Foto
+            </a>
+            <a href="{{ route('admin.field-docs.qr', $shipment->awb_number ?: $shipment->id) }}" 
+               class="inline-flex items-center gap-2 px-4 py-2 bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-lg transition">
+                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v1m6 11h2m-6 0h-2v4m0-11v3m0 0h.01M12 12h4.01M16 20h2M4 12h4m12 0h.01M5 8h2a1 1 0 001-1V5a1 1 0 00-1-1H5a1 1 0 00-1 1v2a1 1 0 001 1zm12 0h2a1 1 0 001-1V5a1 1 0 00-1-1h-2a1 1 0 00-1 1v2a1 1 0 001 1zM5 20h2a1 1 0 001-1v-2a1 1 0 00-1-1H5a1 1 0 00-1 1v2a1 1 0 001 1z"/>
+                </svg>
+                QR Code
+            </a>
+            <a href="{{ route('admin.field-docs.index') }}" 
+               class="inline-flex items-center gap-2 px-4 py-2 bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-lg transition">
+                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 19l-7-7m0 0l7-7m-7 7h18"/>
+                </svg>
+                Kembali
+            </a>
+        </div>
+    </div>
+
+    {{-- Photo Gallery --}}
+    @if($shipment->fieldPhotos && $shipment->fieldPhotos->count() > 0)
+    <div class="bg-white rounded-xl shadow-sm p-6">
+        <div class="flex items-center justify-between mb-4">
+            <h2 class="text-lg font-semibold text-gray-800">Galeri Foto</h2>
+            <p class="text-sm text-gray-500">
+                <span class="hidden sm:inline">Klik foto untuk melihat lebih besar • </span>
+                <span class="text-blue-600">← → untuk navigasi</span>
+            </p>
+        </div>
+        
+        <div class="photo-grid">
+            @foreach($shipment->fieldPhotos as $index => $photo)
+            @php
+                $photoUrl = asset('storage/' . $photo->file_path);
+                $thumbUrl = asset('storage/' . ($photo->thumbnail_path ?: $photo->file_path));
+                $description = ($photo->description ?: 'Diupload oleh ' . ($photo->user->name ?? 'Unknown')) 
+                    . ' • ' . $photo->created_at->format('d/m/Y H:i')
+                    . ($photo->latitude ? ' • 📍 ' . number_format($photo->latitude, 4) . ', ' . number_format($photo->longitude, 4) : '');
+            @endphp
+            
+            <a href="{{ $photoUrl }}" 
+               class="photo-card glightbox"
+               data-gallery="shipment-gallery"
+               data-glightbox="title: Foto {{ $index + 1 }} dari {{ $shipment->fieldPhotos->count() }}; description: {{ $description }}">
+                
+                {{-- Thumbnail Image --}}
+                <img src="{{ $thumbUrl }}" 
+                     alt="{{ $photo->original_filename ?? 'Photo' }}"
+                     loading="lazy"
+                     onerror="this.onerror=null; this.src='{{ $photoUrl }}';">
+                
+                {{-- Badges --}}
+                <div class="photo-badge">
+                    @if($photo->latitude && $photo->longitude)
+                    <span class="px-1.5 py-0.5 bg-green-500 text-white text-xs rounded-full" title="GPS Location">
+                        📍
+                    </span>
+                    @endif
+                    @if($photo->created_at->isToday())
+                    <span class="px-1.5 py-0.5 bg-blue-500 text-white text-xs rounded-full">
+                        Baru
+                    </span>
+                    @endif
+                </div>
+                
+                {{-- Overlay Info --}}
+                <div class="photo-overlay">
+                    <p class="text-white text-sm font-medium truncate">{{ Str::limit($photo->original_filename ?? 'Photo', 25) }}</p>
+                    <p class="text-gray-300 text-xs">{{ $photo->created_at->format('d/m/Y H:i') }}</p>
+                    <p class="text-gray-300 text-xs flex items-center gap-1">
+                        <svg class="w-3 h-3" fill="currentColor" viewBox="0 0 20 20">
+                            <path fill-rule="evenodd" d="M10 9a3 3 0 100-6 3 3 0 000 6zm-7 9a7 7 0 1114 0H3z" clip-rule="evenodd"/>
+                        </svg>
+                        {{ $photo->user->name ?? 'Unknown' }}
+                    </p>
+                </div>
+            </a>
+            @endforeach
+        </div>
+        
+        {{-- Navigation Hint --}}
+        <div class="mt-6 p-4 bg-blue-50 rounded-lg text-center text-sm text-blue-700">
+            <p>💡 <strong>Tips:</strong> Gunakan tombol <kbd class="px-2 py-1 bg-white rounded border">←</kbd> <kbd class="px-2 py-1 bg-white rounded border">→</kbd> atau swipe untuk navigasi, <kbd class="px-2 py-1 bg-white rounded border">ESC</kbd> untuk menutup</p>
+        </div>
+    </div>
+    @else
+    {{-- Empty State --}}
+    <div class="bg-white rounded-xl shadow-sm p-12 text-center">
+        <div class="w-20 h-20 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-4">
+            <svg class="w-10 h-10 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"/>
+            </svg>
+        </div>
+        <h3 class="text-lg font-semibold text-gray-800 mb-2">Belum Ada Foto</h3>
+        <p class="text-gray-500 mb-6">Shipment ini belum memiliki dokumentasi foto</p>
+        <a href="{{ route('admin.field-docs.upload', $shipment->awb_number ?: $shipment->id) }}" 
+           class="inline-flex items-center gap-2 px-6 py-3 bg-green-600 hover:bg-green-700 text-white rounded-lg transition">
+            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/>
+            </svg>
+            Upload Foto Pertama
+        </a>
+    </div>
+    @endif
+</div>
+@endsection
+
+@push('scripts')
+{{-- GLightbox JS --}}
+<script src="https://cdn.jsdelivr.net/npm/glightbox@3.2.0/dist/js/glightbox.min.js"></script>
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    // Initialize GLightbox with visible navigation
+    const lightbox = GLightbox({
+        selector: '.glightbox',
+        touchNavigation: true,
+        loop: true,
+        zoomable: true,
+        draggable: true,
+        openEffect: 'zoom',
+        closeEffect: 'fade',
+        slideEffect: 'slide',
+        closeButton: true,
+        keyboardNavigation: true,
+        closeOnOutsideClick: true,
+        // Custom SVG icons for better visibility
+        svg: {
+            close: '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>',
+            next: '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 18 15 12 9 6"></polyline></svg>',
+            prev: '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 18 9 12 15 6"></polyline></svg>',
+        }
+    });
+    
+    console.log('📷 Gallery loaded. Total photos:', document.querySelectorAll('.glightbox').length);
+});
+</script>
+@endpush

@@ -1,0 +1,387 @@
+<?php
+
+namespace App\Livewire\Admin;
+
+use Livewire\Component;
+use Livewire\Attributes\Layout;
+use Livewire\WithPagination;
+use Livewire\WithFileUploads;
+use App\Models\BankTransaction;
+use App\Models\InvoicePayment;
+use App\Services\BankStatementImportService;
+use App\Services\BankReconciliationService;
+use Illuminate\Support\Facades\Storage;
+
+#[Layout('layouts.admin')]
+class BankReconciliation extends Component
+{
+    use WithPagination, WithFileUploads;
+
+    // Filter & Search
+    public $search = '';
+    public $filterBank = '';
+    public $filterStatus = '';
+    public $filterCategory = '';
+    public $filterDateFrom = '';
+    public $filterDateTo = '';
+
+    // Modal States
+    public $showImportModal = false;
+    public $showMatchModal = false;
+    public $showDetailModal = false;
+
+    // Import
+    public $csvFile;
+    public $selectedBank = 'mandiri';
+    public $importResult = null;
+
+    // Matching
+    public $selectedTransaction = null;
+    public $matchingPayments = [];
+    public $searchPayment = '';
+    public $matchingNotes = '';
+
+    // Statistics
+    public $statistics = [];
+
+    // Listeners
+    protected $listeners = ['refreshData' => '$refresh'];
+
+    public function mount()
+    {
+        // Set default filter ke bulan ini
+        $this->filterDateFrom = now()->startOfMonth()->format('Y-m-d');
+        $this->filterDateTo = now()->endOfMonth()->format('Y-m-d');
+        
+        $this->loadStatistics();
+    }
+
+    public function updatedSearch()
+    {
+        $this->resetPage();
+    }
+
+    public function updatedFilterBank()
+    {
+        $this->resetPage();
+        $this->loadStatistics();
+    }
+
+    public function updatedFilterStatus()
+    {
+        $this->resetPage();
+    }
+
+    public function updatedFilterDateFrom()
+    {
+        $this->loadStatistics();
+    }
+
+    public function updatedFilterDateTo()
+    {
+        $this->loadStatistics();
+    }
+
+    /**
+     * Load statistics
+     */
+    public function loadStatistics()
+    {
+        $service = new BankReconciliationService();
+        $this->statistics = $service->getStatistics(
+            $this->filterBank ?: null,
+            $this->filterDateFrom ?: null,
+            $this->filterDateTo ?: null
+        );
+    }
+
+    /**
+     * Open import modal
+     */
+    public function openImportModal()
+    {
+        $this->reset(['csvFile', 'importResult']);
+        $this->showImportModal = true;
+    }
+
+    /**
+     * Close import modal
+     */
+    public function closeImportModal()
+    {
+        $this->showImportModal = false;
+        $this->reset(['csvFile', 'importResult']);
+    }
+
+    /**
+     * Import CSV file
+     */
+    public function importCsv()
+    {
+        $this->validate([
+            'csvFile' => 'required|file|mimes:csv,txt|max:10240', // Max 10MB
+            'selectedBank' => 'required|in:mandiri,bca',
+        ], [
+            'csvFile.required' => 'File CSV wajib diupload',
+            'csvFile.mimes' => 'File harus berformat CSV atau TXT',
+            'csvFile.max' => 'Ukuran file maksimal 10MB',
+        ]);
+
+        try {
+            // Simpan file sementara
+            $path = $this->csvFile->store('temp/bank-statements');
+            $fullPath = Storage::path($path);
+
+            // Import
+            $service = new BankStatementImportService();
+            $this->importResult = $service->import($fullPath, $this->selectedBank);
+
+            // Hapus file temporary
+            Storage::delete($path);
+
+            if ($this->importResult['success']) {
+                session()->flash('success', "Berhasil mengimport {$this->importResult['imported']} transaksi");
+                $this->loadStatistics();
+            }
+
+        } catch (\Exception $e) {
+            $this->importResult = [
+                'success' => false,
+                'errors' => [$e->getMessage()],
+            ];
+        }
+    }
+
+    /**
+     * Open match modal
+     */
+    public function openMatchModal($transactionId)
+    {
+        $this->selectedTransaction = BankTransaction::find($transactionId);
+        
+        if (!$this->selectedTransaction) {
+            session()->flash('error', 'Transaksi tidak ditemukan');
+            return;
+        }
+
+        // Load potential matches
+        $this->loadMatchingPayments();
+        
+        $this->matchingNotes = '';
+        $this->showMatchModal = true;
+    }
+
+    /**
+     * Close match modal
+     */
+    public function closeMatchModal()
+    {
+        $this->showMatchModal = false;
+        $this->reset(['selectedTransaction', 'matchingPayments', 'searchPayment', 'matchingNotes']);
+    }
+
+    /**
+     * Load potential matching payments
+     */
+    public function loadMatchingPayments()
+    {
+        if (!$this->selectedTransaction) return;
+
+        $amount = $this->selectedTransaction->credit_amount;
+        $tolerance = $amount * 0.05; // 5% tolerance untuk pencarian
+
+        $query = InvoicePayment::with(['invoice.customer'])
+            ->whereDoesntHave('bankTransaction');
+
+        // Filter by search
+        if ($this->searchPayment) {
+            $query->whereHas('invoice', function ($q) {
+                $q->where('invoice_number', 'like', '%' . $this->searchPayment . '%')
+                    ->orWhereHas('customer', function ($q2) {
+                        $q2->where('company_name', 'like', '%' . $this->searchPayment . '%');
+                    });
+            });
+        } else {
+            // Default: cari berdasarkan jumlah yang mirip
+            $query->whereBetween('amount', [$amount - $tolerance, $amount + $tolerance]);
+        }
+
+        $this->matchingPayments = $query->orderBy('payment_date', 'desc')
+            ->limit(20)
+            ->get()
+            ->toArray();
+    }
+
+    /**
+     * Update search payment
+     */
+    public function updatedSearchPayment()
+    {
+        $this->loadMatchingPayments();
+    }
+
+    /**
+     * Match transaction dengan payment
+     */
+    public function matchWithPayment($paymentId)
+    {
+        if (!$this->selectedTransaction) return;
+
+        $payment = InvoicePayment::find($paymentId);
+        if (!$payment) {
+            session()->flash('error', 'Payment tidak ditemukan');
+            return;
+        }
+
+        $service = new BankReconciliationService();
+        $success = $service->matchTransaction(
+            $this->selectedTransaction,
+            $payment,
+            'manual',
+            $this->matchingNotes ?: null
+        );
+
+        if ($success) {
+            session()->flash('success', 'Transaksi berhasil di-match');
+            $this->closeMatchModal();
+            $this->loadStatistics();
+        } else {
+            session()->flash('error', 'Gagal melakukan matching');
+        }
+    }
+
+    /**
+     * Unmatch transaction
+     */
+    public function unmatchTransaction($transactionId)
+    {
+        $transaction = BankTransaction::find($transactionId);
+        if (!$transaction) {
+            session()->flash('error', 'Transaksi tidak ditemukan');
+            return;
+        }
+
+        $service = new BankReconciliationService();
+        $success = $service->unmatchTransaction($transaction);
+
+        if ($success) {
+            session()->flash('success', 'Matching berhasil dibatalkan');
+            $this->loadStatistics();
+        } else {
+            session()->flash('error', 'Gagal membatalkan matching');
+        }
+    }
+
+    /**
+     * Run auto-match
+     */
+    public function runAutoMatch()
+    {
+        $service = new BankReconciliationService();
+        $result = $service->autoMatchAll();
+
+        session()->flash('success', "Auto-match selesai: {$result['auto_matched']} transaksi berhasil di-match dari {$result['total_processed']} transaksi diproses");
+        
+        $this->loadStatistics();
+    }
+
+    /**
+     * Show transaction detail
+     */
+    public function showDetail($transactionId)
+    {
+        $this->selectedTransaction = BankTransaction::with(['invoicePayment.invoice.customer', 'matchedByUser'])
+            ->find($transactionId);
+        
+        if ($this->selectedTransaction) {
+            $this->showDetailModal = true;
+        }
+    }
+
+    /**
+     * Close detail modal
+     */
+    public function closeDetailModal()
+    {
+        $this->showDetailModal = false;
+        $this->selectedTransaction = null;
+    }
+
+    /**
+     * Delete transaction
+     */
+    public function deleteTransaction($transactionId)
+    {
+        $transaction = BankTransaction::find($transactionId);
+        if ($transaction) {
+            $transaction->delete();
+            session()->flash('success', 'Transaksi berhasil dihapus');
+            $this->loadStatistics();
+        }
+    }
+
+    /**
+     * Reset filters
+     */
+    public function resetFilters()
+    {
+        $this->reset(['search', 'filterBank', 'filterStatus', 'filterCategory']);
+        $this->filterDateFrom = now()->startOfMonth()->format('Y-m-d');
+        $this->filterDateTo = now()->endOfMonth()->format('Y-m-d');
+        $this->loadStatistics();
+    }
+
+    /**
+     * Export to Excel (placeholder)
+     */
+    public function exportExcel()
+    {
+        session()->flash('info', 'Fitur export akan segera tersedia');
+    }
+
+    public function render()
+    {
+        $query = BankTransaction::query()
+            ->with(['invoicePayment.invoice.customer', 'matchedByUser']);
+
+        // Apply filters
+        if ($this->search) {
+            $query->where(function ($q) {
+                $q->where('description', 'like', '%' . $this->search . '%')
+                    ->orWhere('additional_description', 'like', '%' . $this->search . '%')
+                    ->orWhere('reference_number', 'like', '%' . $this->search . '%');
+            });
+        }
+
+        if ($this->filterBank) {
+            $query->where('bank_name', $this->filterBank);
+        }
+
+        if ($this->filterStatus === 'reconciled') {
+            $query->reconciled();
+        } elseif ($this->filterStatus === 'unreconciled') {
+            $query->unreconciled();
+        }
+
+        if ($this->filterCategory) {
+            $query->where('category', $this->filterCategory);
+        }
+
+        if ($this->filterDateFrom) {
+            $query->whereDate('transaction_date', '>=', $this->filterDateFrom);
+        }
+
+        if ($this->filterDateTo) {
+            $query->whereDate('transaction_date', '<=', $this->filterDateTo);
+        }
+
+        $transactions = $query->orderBy('transaction_date', 'desc')
+            ->paginate(20);
+
+        return view('livewire.admin.bank-reconciliation', [
+            'transactions' => $transactions,
+            'categories' => BankTransaction::CATEGORIES,
+            'supportedBanks' => BankStatementImportService::getSupportedBanks(),
+        ]);
+    }
+}

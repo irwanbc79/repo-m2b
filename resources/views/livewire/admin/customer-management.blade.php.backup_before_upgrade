@@ -1,0 +1,211 @@
+<div class="space-y-6">
+    @section('header', 'Manage Customers')
+
+    {{-- ALERT SUKSES (HIJAU) --}}
+    @if (session()->has('message'))
+        <div class="bg-green-100 border border-green-400 text-green-700 px-4 py-3 rounded relative shadow-sm mb-4 flex items-center gap-2">
+            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path></svg>
+            {{ session('message') }}
+        </div>
+    @endif
+
+    {{-- ALERT ERROR (MERAH) --}}
+    @if (session()->has('error'))
+        <div class="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded relative shadow-sm mb-4 flex items-center gap-2">
+            <svg class="w-5 h-5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
+            <span>{{ session('error') }}</span>
+        </div>
+    @endif
+
+    <div class="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
+        <div class="p-6 border-b border-gray-100 flex justify-between items-center bg-gray-50">
+            {{-- SEARCH BAR --}}
+            <div class="relative w-64">
+                <input wire:model.live="search" type="text" placeholder="Search Customer..." class="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:border-m2b-primary transition">
+                <svg class="w-5 h-5 text-gray-400 absolute left-3 top-2.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path></svg>
+            </div>
+            
+            {{-- TOMBOL ADD (DIPERBAIKI) --}}
+            <button 
+                wire:click="create" 
+                class="bg-m2b-primary hover:bg-blue-900 text-white px-4 py-2 rounded-lg font-bold shadow-sm transition flex items-center gap-2"
+            >
+                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"></path></svg>
+                Add New Customer
+            </button>
+        </div>
+
+        {{-- TABLE --}}
+        <div class="overflow-x-auto">
+            <table class="w-full text-sm text-left">
+                <thead class="bg-gray-100 font-bold text-gray-600 uppercase text-xs border-b">
+                    <tr>
+                        <th class="px-6 py-3 w-1/4">Kode / NPWP</th>
+                        <th class="px-6 py-3 w-1/4">Perusahaan / Kota</th>
+                        <th class="px-6 py-3 w-1/4">Kontak / HP</th>
+                        <th class="px-6 py-3 w-1/6">Email / Login</th>
+                        <th class="px-6 py-3 text-center w-1/12">Action</th>
+                    </tr>
+                </thead>
+                <tbody class="divide-y divide-gray-100">
+                    @forelse($customers as $c)
+                    <tr class="hover:bg-gray-50 transition group">
+                        
+                        {{-- KOLOM 1: KODE --}}
+                        <td class="px-6 py-4 align-top">
+                            <div class="font-mono font-bold text-m2b-primary text-sm mb-1">{{ $c->customer_code }}</div>
+                            @if($c->npwp)
+                            <span class="inline-flex items-center px-2 py-0.5 rounded text-[10px] font-medium bg-orange-100 text-orange-800 mt-1">
+                                NPWP: {{ $c->npwp }}
+                            </span>
+                            @endif
+                        </td>
+
+                        {{-- KOLOM 2: PERUSAHAAN --}}
+                        <td class="px-6 py-4">
+                            <div class="font-bold text-gray-800">{{ $c->company_name }}</div>
+                            @if($c->city)
+                            <span class="text-xs text-gray-500 flex items-center mt-1 uppercase">
+                                <svg class="w-3 h-3 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z"></path><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 11a3 3 0 11-6 0 3 3 0 016 0z"></path></svg>
+                                {{ $c->city }}
+                            </span>
+                            @endif
+                        </td>
+
+                        {{-- KOLOM 3: KONTAK --}}
+                        <td class="px-6 py-4">
+                            <div class="text-gray-900 font-medium">{{ $c->user->name ?? '-' }}</div>
+                            @if($c->phone)
+                            <span class="text-xs text-blue-600 flex items-center mt-1">
+                                <svg class="w-3 h-3 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 5a2 2 0 012-2h3.28a1 1 0 01.948.684l1.498 4.493a1 1 0 01-.502 1.21l-2.257 1.13a11.042 11.042 0 005.516 5.516l1.13-2.257a1 1 0 011.21-.502l4.493 1.498a1 1 0 01.684.949V19a2 2 0 01-2 2h-1C9.716 21 3 14.284 3 6V5z"></path></svg>
+                                {{ $c->phone }}
+                            </span>
+                            @endif
+                        </td>
+
+                        {{-- KOLOM 4: EMAIL --}}
+                        <td class="px-6 py-4 text-gray-500 text-sm">
+                            {{ $c->user->email ?? '-' }}
+                        </td>
+
+                        {{-- KOLOM 5: ACTION (DIPERBAIKI) --}}
+                        <td class="px-6 py-4 text-center">
+                            <div class="flex justify-center gap-2">
+                                <button wire:click="edit({{ $c->id }})" class="p-1.5 text-blue-600 border border-blue-200 rounded hover:bg-blue-50 transition" title="Edit">
+                                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"></path></svg>
+                                </button>
+                                
+                                {{-- TOMBOL HAPUS DENGAN CONFIRMATION --}}
+                                <button 
+                                    wire:click="delete({{ $c->id }})" 
+                                    wire:confirm="Yakin ingin menghapus customer '{{ $c->company_name }}'? Data yang sudah dihapus tidak dapat dikembalikan."
+                                    wire:loading.attr="disabled"
+                                    class="p-1.5 text-red-600 border border-red-200 rounded hover:bg-red-50 transition" 
+                                    title="Delete"
+                                >
+                                    <span wire:loading.remove wire:target="delete({{ $c->id }})">
+                                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path></svg>
+                                    </span>
+                                    <span wire:loading wire:target="delete({{ $c->id }})">
+                                        <svg class="animate-spin w-4 h-4" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg>
+                                    </span>
+                                </button>
+                            </div>
+                        </td>
+                    </tr>
+                    @empty
+                    <tr><td colspan="5" class="px-6 py-12 text-center text-gray-500">Belum ada data customer.</td></tr>
+                    @endforelse
+                </tbody>
+            </table>
+        </div>
+        <div class="p-4 border-t bg-gray-50">{{ $customers->links() }}</div>
+    </div>
+
+    {{-- MODAL FORM (Create/Edit) --}}
+    @if($isModalOpen)
+    <div class="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4 backdrop-blur-sm overflow-y-auto" wire:ignore.self>
+        <div class="bg-white rounded-xl shadow-2xl w-full max-w-2xl animate-fade-in-up">
+            <div class="px-6 py-4 border-b bg-gray-50 flex justify-between items-center">
+                <h3 class="font-bold text-lg text-gray-800">{{ $isEditing ? 'Edit Customer' : 'Add New Customer' }}</h3>
+                <button wire:click="closeModal" class="text-gray-400 hover:text-gray-600">&times;</button>
+            </div>
+            <div class="p-6 grid grid-cols-1 md:grid-cols-2 gap-4">
+                {{-- Data Login User --}}
+                <div class="col-span-2 bg-blue-50 p-3 rounded border border-blue-100 mb-2">
+                    <h4 class="text-xs font-bold text-blue-800 uppercase mb-2">Data Akun Login</h4>
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <div>
+                            <label class="block text-xs font-bold text-gray-700 mb-1">Nama PIC</label>
+                            <input type="text" wire:model="name" class="w-full border-gray-300 rounded-lg text-sm" placeholder="Nama Person in Charge">
+                            @error('name') <span class="text-xs text-red-500">{{ $message }}</span> @enderror
+                        </div>
+                        <div>
+                            <label class="block text-xs font-bold text-gray-700 mb-1">Email Login</label>
+                            <input type="email" wire:model="email" class="w-full border-gray-300 rounded-lg text-sm" placeholder="email@perusahaan.com">
+                            @error('email') <span class="text-xs text-red-500">{{ $message }}</span> @enderror
+                        </div>
+                        <div>
+                            <label class="block text-xs font-bold text-gray-700 mb-1">Password {{ $isEditing ? '(Isi jika ingin ubah)' : '' }}</label>
+                            <input type="password" wire:model="password" class="w-full border-gray-300 rounded-lg text-sm">
+                            @error('password') <span class="text-xs text-red-500">{{ $message }}</span> @enderror
+                        </div>
+                        <div>
+                            <label class="block text-xs font-bold text-gray-700 mb-1">Role System</label>
+                            <select wire:model.live="role" class="w-full border-gray-300 rounded-lg text-sm bg-gray-50">
+                                <option value="customer">Customer (External)</option>
+                                <option value="shipment">Shipment Staff</option>
+                                <option value="finance">Finance Staff</option>
+                                <option value="manager">Manager</option>
+                                <option value="admin">Super Admin</option>
+                            </select>
+                        </div>
+                    </div>
+                </div>
+
+                {{-- Data Perusahaan --}}
+                <div class="col-span-2"><h4 class="text-xs font-bold text-gray-500 uppercase border-b pb-1 mb-2">Data Perusahaan</h4></div>
+
+                <div class="col-span-2">
+                    <label class="block text-xs font-bold text-gray-700 mb-1">Nama Perusahaan / PT</label>
+                    <input type="text" wire:model="company_name" class="w-full border-gray-300 rounded-lg text-sm uppercase">
+                    @error('company_name') <span class="text-xs text-red-500">{{ $message }}</span> @enderror
+                </div>
+                <div>
+                    <label class="block text-xs font-bold text-gray-700 mb-1">Kode Customer (Auto)</label>
+                    <input type="text" wire:model="customer_code" class="w-full border-gray-300 rounded-lg text-sm bg-gray-100 font-mono" readonly>
+                </div>
+                <div>
+                    <label class="block text-xs font-bold text-gray-700 mb-1">NPWP</label>
+                    <input type="text" wire:model="npwp" class="w-full border-gray-300 rounded-lg text-sm">
+                </div>
+                <div>
+                    <label class="block text-xs font-bold text-gray-700 mb-1">No. Telepon / HP</label>
+                    <input type="text" wire:model="phone" class="w-full border-gray-300 rounded-lg text-sm">
+                </div>
+                <div>
+                    <label class="block text-xs font-bold text-gray-700 mb-1">Kota / Wilayah</label>
+                    <input type="text" wire:model="city" class="w-full border-gray-300 rounded-lg text-sm uppercase">
+                </div>
+                <div class="col-span-2">
+                    <label class="block text-xs font-bold text-gray-700 mb-1">Alamat Lengkap</label>
+                    <textarea wire:model="address" class="w-full border-gray-300 rounded-lg text-sm" rows="2"></textarea>
+                </div>
+                <div class="col-span-2">
+                    <label class="block text-xs font-bold text-gray-700 mb-1">Alamat Gudang (Opsional)</label>
+                    <textarea wire:model="warehouse_address" class="w-full border-gray-300 rounded-lg text-sm" rows="2"></textarea>
+                </div>
+            </div>
+            <div class="px-6 py-4 bg-gray-50 flex justify-end gap-2 border-t">
+                <button wire:click="closeModal" class="px-4 py-2 border border-gray-300 text-gray-600 rounded-lg font-bold">Batal</button>
+                <button wire:click="save" wire:loading.attr="disabled" class="px-6 py-2 bg-blue-900 text-white rounded-lg font-bold hover:bg-blue-800 flex items-center gap-2">
+                    <span wire:loading.remove wire:target="save">
+                        {{ $isEditing ? 'Simpan Perubahan' : 'Buat Customer Baru' }}
+                    </span>
+                    <span wire:loading wire:target="save">Menyimpan...</span>
+                </button>
+            </div>
+        </div>
+    </div>
+    @endif
+</div>

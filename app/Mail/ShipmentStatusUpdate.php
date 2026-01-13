@@ -1,0 +1,45 @@
+<?php
+
+namespace App\Mail;
+
+use App\Models\Shipment;
+use Illuminate\Bus\Queueable;
+use Illuminate\Mail\Mailable;
+use Illuminate\Queue\SerializesModels;
+
+class ShipmentStatusUpdate extends Mailable
+{
+    use Queueable, SerializesModels;
+
+    public Shipment $shipment;
+
+    /**
+     * Create a new message instance.
+     */
+    public function __construct(Shipment $shipment)
+    {
+        $this->shipment = $shipment->load(['customer']);
+    }
+
+    /**
+     * Build the message.
+     */
+    public function build()
+    {
+        // latestStatus() returns HasMany collection, so we need ->first()
+        $latestStatus = $this->shipment->latestStatus()->first();
+
+        return $this->subject('Shipment Status Update - ' . $this->shipment->awb_number)
+            ->view('emails.shipment-status-update')
+            ->with([
+                'customerName' => $this->shipment->customer->company_name ?? 'Valued Customer',
+                'awbNumber' => $this->shipment->awb_number,
+                'status' => $latestStatus->status ?? $this->shipment->status ?? 'Updated',
+                'location' => $latestStatus->location ?? '-',
+                'notes' => $latestStatus->notes ?? '',
+                'trackingUrl' => route('customer.shipment.show', $this->shipment->id),
+                'origin' => $this->shipment->origin ?? '-',
+                'destination' => $this->shipment->destination ?? '-',
+            ]);
+    }
+}

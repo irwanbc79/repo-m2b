@@ -1,0 +1,105 @@
+@extends('layouts.admin')
+
+@section('header', '📸 Dokumentasi ' . ($shipment->awb_number ?: $shipment->bl_number ?: 'Shipment #'.$shipment->id))
+
+@section('content')
+<div class="space-y-6">
+    {{-- Shipment Info & Stats --}}
+    <div class="bg-white rounded-xl p-6 shadow-sm">
+        <div class="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
+            <div>
+                <h2 class="text-xl font-bold text-gray-800">{{ $shipment->awb_number ?: $shipment->bl_number ?: 'Shipment #'.$shipment->id }}</h2>
+                <p class="text-gray-500">{{ $shipment->customer->company_name ?? 'N/A' }}</p>
+                <div class="flex items-center gap-2 mt-1">
+                    <span class="text-xs px-2 py-0.5 rounded-full {{ $shipment->shipment_type === 'import' ? 'bg-blue-100 text-blue-700' : 'bg-green-100 text-green-700' }}">
+                        {{ ucfirst($shipment->shipment_type ?? 'N/A') }}
+                    </span>
+                    <span class="text-xs text-gray-500">{{ $shipment->origin }} → {{ $shipment->destination }}</span>
+                </div>
+            </div>
+            <div class="flex flex-wrap gap-3">
+                <span class="inline-flex items-center px-3 py-1.5 rounded-full text-sm font-medium bg-blue-100 text-blue-800">
+                    📷 {{ $stats['total'] }} foto
+                </span>
+                <span class="inline-flex items-center px-3 py-1.5 rounded-full text-sm font-medium bg-green-100 text-green-800">
+                    📍 {{ $stats['with_location'] }} dengan GPS
+                </span>
+                <span class="inline-flex items-center px-3 py-1.5 rounded-full text-sm font-medium bg-yellow-100 text-yellow-800">
+                    🕐 {{ $stats['today'] }} hari ini
+                </span>
+            </div>
+        </div>
+        
+        <div class="flex flex-wrap gap-2 mt-4 pt-4 border-t border-gray-100">
+            <a href="{{ route('admin.field-docs.upload', $shipment->awb_number ?: $shipment->id) }}" 
+               class="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg font-medium transition text-sm">
+                ➕ Tambah Foto
+            </a>
+            <a href="{{ route('admin.field-docs.qr', $shipment->awb_number ?: $shipment->id) }}" 
+               class="bg-gray-100 hover:bg-gray-200 text-gray-700 px-4 py-2 rounded-lg font-medium transition text-sm">
+                📱 QR Code
+            </a>
+            <a href="{{ route('admin.field-docs.index') }}" 
+               class="bg-gray-100 hover:bg-gray-200 text-gray-700 px-4 py-2 rounded-lg font-medium transition text-sm">
+                ← Kembali
+            </a>
+        </div>
+    </div>
+
+    {{-- Photo Grid --}}
+    @if($shipment->fieldPhotos->isEmpty())
+    <div class="bg-white rounded-xl p-12 shadow-sm text-center">
+        <svg class="mx-auto w-16 h-16 text-gray-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"/>
+        </svg>
+        <p class="text-gray-500 mt-4">Belum ada foto untuk shipment ini</p>
+        <a href="{{ route('admin.field-docs.upload', $shipment->awb_number ?: $shipment->id) }}" 
+           class="inline-block mt-4 bg-blue-600 hover:bg-blue-700 text-white px-6 py-2 rounded-lg font-medium transition">
+            Upload Foto Pertama
+        </a>
+    </div>
+    @else
+    <div class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-4">
+        @foreach($shipment->fieldPhotos as $photo)
+        <div class="bg-white rounded-xl shadow-sm overflow-hidden group relative">
+            {{-- Photo --}}
+            <a href="{{ asset('storage/' . $photo->file_path) }}" 
+               target="_blank"
+               class="block aspect-square bg-gray-100">
+                <img src="{{ asset('storage/' . ($photo->thumbnail_path ?? $photo->file_path)) }}" 
+                     alt="{{ $photo->original_filename }}"
+                     class="w-full h-full object-cover group-hover:opacity-90 transition"
+                     loading="lazy"
+                     onerror="this.src='data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 fill=%22%23e5e7eb%22 viewBox=%220 0 24 24%22><rect width=%2224%22 height=%2224%22/><text x=%2212%22 y=%2214%22 text-anchor=%22middle%22 fill=%22%239ca3af%22 font-size=%228%22>📷</text></svg>'">
+            </a>
+            
+            {{-- Info Overlay --}}
+            <div class="p-3">
+                <p class="text-xs text-gray-500 truncate" title="{{ $photo->original_filename }}">
+                    {{ $photo->original_filename }}
+                </p>
+                <div class="flex items-center justify-between mt-1">
+                    <span class="text-xs text-gray-400">
+                        {{ $photo->created_at->format('d/m H:i') }}
+                    </span>
+                    <div class="flex items-center gap-1">
+                        @if($photo->latitude && $photo->longitude)
+                        <a href="https://maps.google.com/?q={{ $photo->latitude }},{{ $photo->longitude }}" 
+                           target="_blank"
+                           class="text-green-600 hover:text-green-700"
+                           title="Lihat di Google Maps">
+                            📍
+                        </a>
+                        @endif
+                    </div>
+                </div>
+                <p class="text-xs text-gray-400 truncate mt-1">
+                    👤 {{ $photo->user->name ?? 'Unknown' }}
+                </p>
+            </div>
+        </div>
+        @endforeach
+    </div>
+    @endif
+</div>
+@endsection

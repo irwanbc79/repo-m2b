@@ -1,0 +1,83 @@
+<?php
+
+namespace App\Services;
+
+use Intervention\Image\Facades\Image;
+use Illuminate\Support\Facades\Storage;
+use Illuminate\Support\Str;
+
+class ImageProcessingService
+{
+    protected $maxWidth = 1920;
+    protected $maxHeight = 1920;
+    protected $quality = 80;
+    protected $thumbnailSize = 400;
+
+    public function processUpload($file, $shipmentId, $userId)
+    {
+        // Generate unique filename
+        $filename = time() . '_' . Str::random(10) . '.' . $file->getClientOriginalExtension();
+        $thumbnailFilename = 'thumb_' . $filename;
+
+        // Paths
+        $path = "field-photos/{$shipmentId}/{$filename}";
+        $thumbnailPath = "field-photos/{$shipmentId}/thumbnails/{$thumbnailFilename}";
+
+        // Load image
+        $image = Image::make($file);
+        $originalWidth = $image->width();
+        $originalHeight = $image->height();
+
+        // Resize if needed
+        if ($originalWidth > $this->maxWidth || $originalHeight > $this->maxHeight) {
+            $image->resize($this->maxWidth, $this->maxHeight, function ($constraint) {
+                $constraint->aspectRatio();
+                $constraint->upsize();
+            });
+        }
+
+        // Add watermark
+        $this->addWatermark($image, $shipmentId, $userId);
+
+        // Save main image
+        $imageData = $image->encode('jpg', $this->quality);
+        Storage::disk('public')->put($path, $imageData);
+
+        // Create thumbnail
+        $thumbnail = Image::make($file)
+            ->fit($this->thumbnailSize, $this->thumbnailSize)
+            ->encode('jpg', 75);
+        Storage::disk('public')->put($thumbnailPath, $thumbnail);
+
+        return [
+            'path' => $path,
+            'thumbnail_path' => $thumbnailPath,
+            'width' => $image->width(),
+            'height' => $image->height(),
+            'size' => Storage::disk('public')->size($path),
+            'mime_type' => $image->mime()
+        ];
+    }
+
+    protected function addWatermark($image, $shipmentId, $userId)
+    {
+        $watermarkText = "SHP-{$shipmentId} | " . now()->format('d/m/Y H:i');
+        
+        // Simple text watermark (no font file needed)
+        $image->text($watermarkText, 20, $image->height() - 20, function($font) {
+            $font->size(20);
+            $font->color('#ffffff');
+            $font->align('left');
+            $font->valign('bottom');
+        });
+    }
+
+    public function deletePhoto($fieldPhoto)
+    {
+        Storage::disk('public')->delete($fieldPhoto->file_path);
+        
+        if ($fieldPhoto->thumbnail_path) {
+            Storage::disk('public')->delete($fieldPhoto->thumbnail_path);
+        }
+    }
+}

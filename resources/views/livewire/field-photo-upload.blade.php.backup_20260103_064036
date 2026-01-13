@@ -1,0 +1,415 @@
+<div class="bg-white rounded-xl shadow-sm p-6">
+    @if (session()->has('message'))
+        <div class="mb-4 p-4 bg-green-100 text-green-700 rounded-lg">
+            {{ session('message') }}
+        </div>
+    @endif
+
+    <form wire:submit="save">
+        {{-- Shipment Search with Dropdown --}}
+        <div class="mb-6">
+            <label class="block text-sm font-medium text-gray-700 mb-2">Cari Shipment (AWB/BL Number)</label>
+            <div class="relative">
+                <div class="flex gap-2">
+                    <div class="flex-1 relative">
+                        <input type="text" 
+                               wire:model.live.debounce.300ms="searchQuery"
+                               wire:focus="$set('showDropdown', true)"
+                               class="w-full rounded-lg border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 pr-10"
+                               placeholder="Cari AWB, BL number atau nama customer..."
+                               autocomplete="off"
+                               @if($shipment) disabled @endif>
+                        
+                        {{-- Loading indicator --}}
+                        <div wire:loading wire:target="searchQuery" class="absolute right-3 top-1/2 -translate-y-1/2">
+                            <svg class="animate-spin h-5 w-5 text-gray-400" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                                <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                                <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                            </svg>
+                        </div>
+                        
+                        {{-- Clear button --}}
+                        @if($searchQuery && !$shipment)
+                        <button type="button" 
+                                wire:click="$set('searchQuery', '')"
+                                class="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600">
+                            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
+                            </svg>
+                        </button>
+                        @endif
+                        
+                        {{-- Dropdown Results --}}
+                        @if($showDropdown && count($searchResults) > 0 && !$shipment)
+                        <div class="absolute z-50 w-full mt-1 bg-white border border-gray-200 rounded-lg shadow-lg max-h-72 overflow-y-auto">
+                            @foreach($searchResults as $result)
+                            <button type="button"
+                                    wire:click="selectShipment({{ $result->id }})"
+                                    class="w-full px-4 py-3 text-left hover:bg-blue-50 focus:bg-blue-50 focus:outline-none border-b border-gray-100 last:border-b-0 transition">
+                                <div class="flex items-start justify-between gap-2">
+                                    <div class="min-w-0 flex-1">
+                                        <p class="font-semibold text-gray-800 truncate">{{ $result->awb_number ?: $result->bl_number ?: 'ID: '.$result->id }}</p>
+                                        <p class="text-sm text-gray-500 truncate">{{ $result->customer->company_name ?? 'N/A' }}</p>
+                                        <div class="flex items-center gap-2 mt-1">
+                                            <span class="text-xs px-2 py-0.5 rounded-full {{ $result->shipment_type === 'import' ? 'bg-blue-100 text-blue-700' : 'bg-green-100 text-green-700' }}">
+                                                {{ ucfirst($result->shipment_type ?? 'N/A') }}
+                                            </span>
+                                            <span class="text-xs text-gray-400">{{ $result->origin }} → {{ $result->destination }}</span>
+                                        </div>
+                                    </div>
+                                    <span class="text-xs text-gray-400 whitespace-nowrap">
+                                        {{ $result->created_at->format('d/m/Y') }}
+                                    </span>
+                                </div>
+                            </button>
+                            @endforeach
+                        </div>
+                        @elseif($showDropdown && strlen($searchQuery) >= 2 && count($searchResults) == 0 && !$shipment)
+                        <div wire:loading.remove wire:target="searchQuery" class="absolute z-50 w-full mt-1 bg-white border border-gray-200 rounded-lg shadow-lg p-4 text-center text-gray-500">
+                            <p>Tidak ditemukan shipment untuk "{{ $searchQuery }}"</p>
+                        </div>
+                        @endif
+                    </div>
+                    
+                    <button type="button" 
+                            wire:click="toggleQrScanner"
+                            class="px-4 py-2 bg-gray-100 hover:bg-gray-200 rounded-lg transition flex items-center gap-2 whitespace-nowrap">
+                        📷 Scan QR
+                    </button>
+                </div>
+            </div>
+            
+            @error('shipmentId') 
+                <p class="mt-1 text-sm text-red-600">{{ $message }}</p>
+            @enderror
+            
+            {{-- Selected Shipment Info --}}
+            @if($shipment)
+            <div class="mt-3 p-4 bg-green-50 rounded-lg border border-green-200">
+                <div class="flex items-start justify-between gap-3">
+                    <div class="flex-1 min-w-0">
+                        <p class="font-semibold text-green-800 flex items-center gap-2">
+                            <span class="text-lg">✅</span>
+                            <span class="truncate">{{ $shipment->awb_number ?: $shipment->bl_number ?: 'Shipment #'.$shipment->id }}</span>
+                        </p>
+                        <p class="text-sm text-green-600 truncate mt-0.5">
+                            {{ $shipment->customer->company_name ?? 'N/A' }}
+                        </p>
+                        <div class="flex items-center gap-2 mt-1 flex-wrap">
+                            <span class="text-xs px-2 py-0.5 rounded-full {{ $shipment->shipment_type === 'import' ? 'bg-blue-100 text-blue-700' : 'bg-green-100 text-green-700' }}">
+                                {{ ucfirst($shipment->shipment_type ?? 'N/A') }}
+                            </span>
+                            <span class="text-xs text-green-600">{{ $shipment->origin }} → {{ $shipment->destination }}</span>
+                        </div>
+                    </div>
+                    <div class="flex flex-col gap-1">
+                        <a href="{{ route('admin.field-docs.gallery', $shipment->awb_number ?: $shipment->id) }}" 
+                           class="text-xs text-green-700 hover:underline whitespace-nowrap">
+                            Lihat Gallery →
+                        </a>
+                        <button type="button" 
+                                wire:click="clearShipment"
+                                class="text-xs text-red-600 hover:underline whitespace-nowrap text-left">
+                            Ganti Shipment
+                        </button>
+                    </div>
+                </div>
+            </div>
+            @endif
+        </div>
+
+        {{-- Photo Upload Area --}}
+        <div class="mb-6">
+            <label class="block text-sm font-medium text-gray-700 mb-2">Pilih Foto</label>
+            <div class="border-2 border-dashed border-gray-300 rounded-xl p-8 text-center hover:border-blue-400 transition cursor-pointer"
+                 onclick="document.getElementById('photo-input').click()">
+                <input type="file" 
+                       id="photo-input"
+                       wire:model="photos" 
+                       multiple 
+                       accept="image/jpeg,image/png,image/webp,image/heic,image/heif"
+                       capture="environment"
+                       class="hidden">
+                <svg class="mx-auto w-12 h-12 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"/>
+                </svg>
+                <p class="mt-2 text-gray-500">Tap untuk pilih foto atau ambil foto baru</p>
+                <p class="text-xs text-gray-400 mt-1">Maksimal 10MB per file • Otomatis diberi watermark</p>
+            </div>
+            
+            {{-- Loading indicator for photo upload --}}
+            <div wire:loading wire:target="photos" class="mt-2 text-center text-sm text-blue-600">
+                <svg class="animate-spin inline h-4 w-4 mr-1" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                    <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                    <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                </svg>
+                Memproses foto...
+            </div>
+            
+            @error('photos.*') 
+                <p class="mt-1 text-sm text-red-600">{{ $message }}</p>
+            @enderror
+
+            {{-- Photo Previews --}}
+            @if(count($photos) > 0)
+            <div class="mt-4 grid grid-cols-3 sm:grid-cols-4 gap-3">
+                @foreach($photos as $index => $photo)
+                <div class="relative aspect-square bg-gray-100 rounded-lg overflow-hidden group">
+                    @php
+                        $previewUrl = null;
+                        try {
+                            $previewUrl = $photo->temporaryUrl();
+                        } catch (\Exception $e) {
+                            $previewUrl = null;
+                        }
+                    @endphp
+                    
+                    @if($previewUrl)
+                        <img src="{{ $previewUrl }}" 
+                             class="w-full h-full object-cover"
+                             alt="Preview"
+                             onerror="this.style.display='none'; this.nextElementSibling.style.display='flex';">
+                        <div class="w-full h-full hidden items-center justify-center bg-gray-200 absolute inset-0">
+                            <svg class="w-8 h-8 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"/>
+                            </svg>
+                        </div>
+                    @else
+                        <div class="w-full h-full flex flex-col items-center justify-center bg-gray-200 p-2">
+                            <svg class="w-8 h-8 text-gray-400 mb-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"/>
+                            </svg>
+                            <span class="text-xs text-gray-500 text-center truncate w-full">{{ $photo->getClientOriginalName() }}</span>
+                        </div>
+                    @endif
+                    
+                    <button type="button" 
+                            wire:click="removePhoto({{ $index }})"
+                            class="absolute top-1 right-1 w-7 h-7 bg-red-500 text-white rounded-full flex items-center justify-center text-sm hover:bg-red-600 shadow-lg opacity-80 sm:opacity-0 sm:group-hover:opacity-100 transition">
+                        ×
+                    </button>
+                    
+                    <div class="absolute bottom-1 left-1 right-1">
+                        <span class="text-xs bg-black/50 text-white px-1.5 py-0.5 rounded truncate block text-center">
+                            {{ strtoupper(pathinfo($photo->getClientOriginalName(), PATHINFO_EXTENSION)) }}
+                        </span>
+                    </div>
+                </div>
+                @endforeach
+            </div>
+            <p class="text-sm text-gray-500 mt-2">{{ count($photos) }} foto dipilih</p>
+            @endif
+        </div>
+
+        {{-- GPS Toggle - IMPROVED --}}
+        <div class="mb-6">
+            <label class="flex items-center gap-3 cursor-pointer">
+                <input type="checkbox" 
+                       wire:click="toggleGps" 
+                       @if($useGps) checked @endif
+                       class="rounded border-gray-300 text-blue-600 focus:ring-blue-500 w-5 h-5">
+                <span class="text-sm text-gray-700">📍 Sertakan lokasi GPS</span>
+            </label>
+            
+            @if($latitude && $longitude)
+            <p class="text-xs text-green-600 mt-2 ml-8 flex items-center gap-1">
+                <svg class="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
+                    <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd"/>
+                </svg>
+                Lokasi terekam: {{ number_format($latitude, 6) }}, {{ number_format($longitude, 6) }}
+            </p>
+            @elseif($useGps && !$latitude)
+            <p class="text-xs text-yellow-600 mt-2 ml-8 flex items-center gap-1" id="gps-status">
+                <svg class="w-4 h-4 animate-pulse" fill="currentColor" viewBox="0 0 20 20">
+                    <path fill-rule="evenodd" d="M5.05 4.05a7 7 0 119.9 9.9L10 18.9l-4.95-4.95a7 7 0 010-9.9zM10 11a2 2 0 100-4 2 2 0 000 4z" clip-rule="evenodd"/>
+                </svg>
+                <span id="gps-status-text">Menunggu akses lokasi...</span>
+            </p>
+            @endif
+            
+            <p class="text-xs text-gray-400 mt-1 ml-8">
+                Lokasi akan disimpan bersama foto untuk verifikasi
+            </p>
+        </div>
+
+        {{-- Description --}}
+        <div class="mb-6">
+            <label class="block text-sm font-medium text-gray-700 mb-2">Keterangan (Opsional)</label>
+            <textarea wire:model="description" 
+                      rows="2"
+                      class="w-full rounded-lg border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
+                      placeholder="Tambahkan keterangan foto..."></textarea>
+        </div>
+
+        {{-- Upload Progress --}}
+        @if($uploadProgress > 0)
+        <div class="mb-6">
+            <div class="w-full bg-gray-200 rounded-full h-3">
+                <div class="bg-blue-600 h-3 rounded-full transition-all duration-300" style="width: {{ $uploadProgress }}%"></div>
+            </div>
+            <p class="text-sm text-gray-500 mt-2 text-center">Mengupload & memproses foto... {{ $uploadProgress }}%</p>
+        </div>
+        @endif
+
+        {{-- Submit Button --}}
+        <button type="submit" 
+                class="w-full bg-blue-600 hover:bg-blue-700 text-white py-3 rounded-xl font-semibold shadow-lg transition disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+                wire:loading.attr="disabled"
+                @if(!$shipment || count($photos) == 0) disabled @endif>
+            <span wire:loading.remove wire:target="save">
+                💾 Simpan {{ count($photos) }} Foto
+            </span>
+            <span wire:loading wire:target="save">
+                <svg class="animate-spin h-5 w-5 inline" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                    <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                    <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                </svg>
+                Menyimpan...
+            </span>
+        </button>
+    </form>
+
+    {{-- QR Scanner Modal --}}
+    @if($showQrScanner)
+    <div class="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4" wire:click.self="toggleQrScanner">
+        <div class="bg-white rounded-xl p-6 max-w-sm w-full">
+            <div class="flex items-center justify-between mb-4">
+                <h3 class="text-lg font-semibold">📷 Scan QR Code Shipment</h3>
+                <button type="button" wire:click="toggleQrScanner" class="text-gray-400 hover:text-gray-600">
+                    <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
+                    </svg>
+                </button>
+            </div>
+            <div id="qr-reader" class="w-full rounded-lg overflow-hidden"></div>
+            <p class="text-xs text-gray-500 text-center mt-3">Arahkan kamera ke QR Code shipment</p>
+        </div>
+    </div>
+    
+    <script>
+        document.addEventListener('livewire:navigated', initQrScanner);
+        document.addEventListener('DOMContentLoaded', initQrScanner);
+        
+        function initQrScanner() {
+            if (document.getElementById('qr-reader') && typeof Html5QrcodeScanner !== 'undefined') {
+                let scanner = new Html5QrcodeScanner("qr-reader", {
+                    fps: 10,
+                    qrbox: { width: 250, height: 250 }
+                });
+                
+                scanner.render(
+                    (decodedText) => {
+                        @this.call('qrCodeScanned', decodedText);
+                        scanner.clear();
+                    },
+                    (error) => {}
+                );
+            }
+        }
+    </script>
+    @endif
+</div>
+
+@push('scripts')
+<script>
+document.addEventListener('livewire:initialized', () => {
+    // GPS Location Handler - IMPROVED with retry and better error handling
+    Livewire.on('requestGpsLocation', () => {
+        const statusText = document.getElementById('gps-status-text');
+        
+        if (!navigator.geolocation) {
+            if (statusText) statusText.textContent = 'Browser tidak mendukung GPS';
+            showGpsNotification('error', 'Browser tidak mendukung GPS');
+            return;
+        }
+        
+        if (statusText) statusText.textContent = 'Mengakses lokasi...';
+        
+        // Try with high accuracy first
+        const options = {
+            enableHighAccuracy: true,
+            timeout: 30000,  // 30 seconds (increased from 10)
+            maximumAge: 60000  // Cache for 1 minute
+        };
+        
+        navigator.geolocation.getCurrentPosition(
+            // Success
+            (position) => {
+                console.log('GPS Success:', position.coords);
+                @this.call('gpsLocationReceived', position.coords.latitude, position.coords.longitude);
+                showGpsNotification('success', 'Lokasi GPS berhasil direkam');
+            },
+            // Error - try with lower accuracy
+            (error) => {
+                console.warn('GPS High Accuracy Failed:', error.message);
+                
+                if (statusText) statusText.textContent = 'Mencoba mode alternatif...';
+                
+                // Retry with lower accuracy
+                const fallbackOptions = {
+                    enableHighAccuracy: false,
+                    timeout: 20000,
+                    maximumAge: 300000  // 5 minutes cache
+                };
+                
+                navigator.geolocation.getCurrentPosition(
+                    (position) => {
+                        console.log('GPS Fallback Success:', position.coords);
+                        @this.call('gpsLocationReceived', position.coords.latitude, position.coords.longitude);
+                        showGpsNotification('success', 'Lokasi GPS berhasil direkam (mode alternatif)');
+                    },
+                    (fallbackError) => {
+                        console.error('GPS Fallback Failed:', fallbackError);
+                        let message = 'Gagal mendapatkan lokasi GPS';
+                        
+                        switch(fallbackError.code) {
+                            case fallbackError.PERMISSION_DENIED:
+                                message = 'Akses lokasi ditolak. Izinkan akses lokasi di pengaturan browser.';
+                                break;
+                            case fallbackError.POSITION_UNAVAILABLE:
+                                message = 'Lokasi tidak tersedia. Pastikan GPS/Location aktif.';
+                                break;
+                            case fallbackError.TIMEOUT:
+                                message = 'Waktu habis. Coba di tempat dengan sinyal GPS lebih baik.';
+                                break;
+                        }
+                        
+                        if (statusText) statusText.textContent = message;
+                        showGpsNotification('error', message);
+                    },
+                    fallbackOptions
+                );
+            },
+            options
+        );
+    });
+    
+    function showGpsNotification(type, message) {
+        // Create toast notification
+        const toast = document.createElement('div');
+        toast.className = `fixed bottom-4 right-4 px-4 py-3 rounded-lg shadow-lg z-50 ${type === 'success' ? 'bg-green-500' : 'bg-red-500'} text-white max-w-xs`;
+        toast.innerHTML = `
+            <div class="flex items-center gap-2">
+                <span>${type === 'success' ? '✅' : '❌'}</span>
+                <span class="text-sm">${message}</span>
+            </div>
+        `;
+        document.body.appendChild(toast);
+        
+        setTimeout(() => {
+            toast.remove();
+        }, 5000);
+    }
+});
+
+// Close dropdown when clicking outside
+document.addEventListener('click', function(e) {
+    const searchInput = document.querySelector('[wire\\:model\\.live\\.debounce\\.300ms="searchQuery"]');
+    const dropdown = document.querySelector('.absolute.z-50');
+    
+    if (searchInput && !searchInput.contains(e.target) && (!dropdown || !dropdown.contains(e.target))) {
+        @this.set('showDropdown', false);
+    }
+});
+</script>
+@endpush

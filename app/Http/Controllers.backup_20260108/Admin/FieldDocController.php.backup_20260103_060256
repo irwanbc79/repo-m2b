@@ -1,0 +1,171 @@
+<?php
+
+namespace App\Http\Controllers\Admin;
+
+use App\Http\Controllers\Controller;
+use App\Models\FieldPhoto;
+use App\Models\Shipment;
+use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Response;
+use SimpleSoftwareIO\QrCode\Facades\QrCode;
+
+class FieldDocController extends Controller
+{
+    /**
+     * Dashboard Dokumentasi Lapangan
+     */
+    public function index()
+    {
+        $stats = [
+            'today' => FieldPhoto::whereDate('created_at', today())->count(),
+            'week' => FieldPhoto::whereBetween('created_at', [now()->startOfWeek(), now()->endOfWeek()])->count(),
+            'total' => FieldPhoto::count(),
+            'with_location' => FieldPhoto::whereNotNull('latitude')->whereNotNull('longitude')->count(),
+        ];
+        
+        $recentShipments = Shipment::whereHas('fieldPhotos')
+            ->withCount('fieldPhotos')
+            ->latest('updated_at')
+            ->take(10)
+            ->get();
+        
+        return view('admin.field-docs.index', compact('stats', 'recentShipments'));
+    }
+
+    /**
+     * Form Upload Foto
+     */
+    public function upload(Request $request, $shipment = null)
+    {
+        $shipmentModel = null;
+        
+        if ($shipment) {
+            // Cari berdasarkan awb_number, bl_number, atau id
+            $shipmentModel = Shipment::where('awb_number', $shipment)
+                ->orWhere('bl_number', $shipment)
+                ->orWhere('id', $shipment)
+                ->first();
+        }
+        
+        return view('admin.field-docs.upload', compact('shipmentModel'));
+    }
+
+    /**
+     * Mobile Upload (untuk petugas lapangan)
+     */
+    public function mobileUpload($shipment = null)
+    {
+        $shipmentModel = null;
+        
+        if ($shipment) {
+            // Cari berdasarkan awb_number, bl_number, atau id
+            $shipmentModel = Shipment::where('awb_number', $shipment)
+                ->orWhere('bl_number', $shipment)
+                ->orWhere('id', $shipment)
+                ->first();
+        }
+        
+        return view('admin.field-docs.mobile-upload', compact('shipmentModel'));
+    }
+
+    /**
+     * Gallery Foto per Shipment
+     */
+    public function gallery($shipmentIdentifier)
+    {
+        // Cari berdasarkan awb_number, bl_number, atau id
+        $shipment = Shipment::where('awb_number', $shipmentIdentifier)
+            ->orWhere('bl_number', $shipmentIdentifier)
+            ->orWhere('id', $shipmentIdentifier)
+            ->with(['fieldPhotos' => function($q) {
+                $q->latest()->with('user');
+            }, 'customer'])
+            ->firstOrFail();
+        
+        $stats = [
+            'total' => $shipment->fieldPhotos->count(),
+            'with_location' => $shipment->fieldPhotos->filter(fn($p) => $p->latitude && $p->longitude)->count(),
+            'today' => $shipment->fieldPhotos->filter(fn($p) => $p->created_at->isToday())->count(),
+        ];
+        
+        return view('admin.field-docs.gallery', compact('shipment', 'stats'));
+    }
+
+    /**
+     * Display QR Code
+     */
+    public function qrCode($shipmentIdentifier)
+    {
+        $shipment = Shipment::where('awb_number', $shipmentIdentifier)
+            ->orWhere('bl_number', $shipmentIdentifier)
+            ->orWhere('id', $shipmentIdentifier)
+            ->firstOrFail();
+        
+        return view('admin.field-docs.qr-code', compact('shipment'));
+    }
+
+    /**
+     * Download QR Code as SVG
+     */
+    public function downloadQr($shipmentIdentifier)
+    {
+        $shipment = Shipment::where('awb_number', $shipmentIdentifier)
+            ->orWhere('bl_number', $shipmentIdentifier)
+            ->orWhere('id', $shipmentIdentifier)
+            ->firstOrFail();
+        
+        $qrContent = $shipment->awb_number ?: $shipment->bl_number ?: $shipment->id;
+        
+        $qrCode = QrCode::size(300)
+            ->format('svg')
+            ->margin(2)
+            ->errorCorrection('H')
+            ->generate($qrContent);
+        
+        $filename = "QR_{$qrContent}.svg";
+        
+        return Response::make($qrCode, 200, [
+            'Content-Type' => 'image/svg+xml',
+            'Content-Disposition' => "attachment; filename=\"{$filename}\""
+        ]);
+    }
+
+    /**
+     * Export PDF Report
+     */
+    public function exportPdf($shipmentIdentifier)
+    {
+        // TODO: Implement PDF export
+        return redirect()->back()->with('info', 'Export PDF coming soon');
+    }
+
+    /**
+     * API: Search Shipments
+     */
+    public function searchShipments(Request $request)
+    {
+        $query = $request->get('q', '');
+        
+        if (strlen($query) < 2) {
+            return response()->json([]);
+        }
+        
+        $shipments = Shipment::with('customer')
+            ->where('awb_number', 'LIKE', "%{$query}%")
+            ->orWhere('bl_number', 'LIKE', "%{$query}%")
+            ->orWhereHas('customer', function($q) use ($query) {
+                $q->where('company_name', 'LIKE', "%{$query}%");
+            })
+            ->limit(10)
+            ->get();
+        
+        return response()->json($shipments->map(function($s) {
+            return [
+                'id' => $s->id,
+                'awb_number' => $s->awb_number,
+                'bl_number' => $s->bl_number,
+                'customer_name' => $s->customer->company_name ?? 'N/A'
+            ];
+        }));
+    }
+}

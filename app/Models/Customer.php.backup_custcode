@@ -1,0 +1,28 @@
+<?php
+
+namespace App\Models;
+
+use Illuminate\Database\Eloquent\Factories\HasFactory;
+use Illuminate\Database\Eloquent\Model;
+
+class Customer extends Model
+{
+    use HasFactory;
+
+    // Guarded kosong = Semua kolom boleh diisi (Aman untuk Mass Assignment)
+    protected $guarded = []; 
+
+    // Relasi ke User (Login)
+    public function user()
+    {
+        return $this->belongsTo(User::class);
+    }
+
+    // Relasi ke Shipments (Pengiriman) - INI YANG HILANG
+    public function shipments()
+    {
+        // Asumsi: 1 Customer punya Banyak Shipment
+        // Dan di tabel 'shipments' ada kolom 'customer_id'
+        return $this->hasMany(Shipment::class);
+    }
+}

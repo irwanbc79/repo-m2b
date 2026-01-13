@@ -1,0 +1,528 @@
+<?php
+
+use Illuminate\Support\Facades\Route;
+use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Hash;
+use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Password;
+use Illuminate\Support\Facades\Artisan;
+use Illuminate\Support\Facades\Log;
+use Illuminate\Foundation\Auth\EmailVerificationRequest;
+
+// Models
+use App\Models\User;
+use App\Models\Customer;
+use App\Models\Invoice;
+use App\Models\Quotation;
+use App\Models\Document;
+use App\Models\Shipment;
+
+// Livewire Controllers (Customer)
+use App\Livewire\Customer\Dashboard as CustomerDashboard;
+use App\Livewire\Customer\ShipmentList;
+use App\Livewire\Customer\ShipmentDetail;
+use App\Livewire\Customer\CreateShipment;
+use App\Livewire\Customer\Profile as CustomerProfile;
+use App\Livewire\Customer\KursPajakPage;
+use App\Livewire\Customer\CustomsCalculator as CustomerCalculator;
+
+// Livewire Controllers (Admin)
+use App\Livewire\Admin\UserManagement;
+use App\Livewire\Admin\Dashboard as AdminDashboard;
+use App\Livewire\Admin\ShipmentManagement;
+use App\Livewire\Admin\CustomerManagement;
+use App\Livewire\Admin\InvoiceManager;
+use App\Livewire\Admin\QuotationManager;
+use App\Livewire\Admin\Reports;
+use App\Livewire\Admin\Accounting\ChartOfAccounts;
+use App\Livewire\Admin\AuditLogManager;
+use App\Livewire\Admin\CustomsCalculator as AdminCalculator;
+use App\Livewire\Admin\VendorManagement;
+use App\Livewire\Admin\JobCostingManager;
+
+// IMPORT CLASS INBOX (WAJIB ADA)
+use App\Livewire\Admin\EmailInbox;
+use App\Http\Controllers\Admin\EmailAttachmentController;
+
+
+/*
+|--------------------------------------------------------------------------
+| Web Routes
+|--------------------------------------------------------------------------
+|
+| Berikut file routes/web.php yang telah diperbarui.
+| Perhatian khusus: route /debug-email telah diperbaiki agar tidak memicu
+| IMAP 'SEARCH' kosong yang menyebabkan error pada beberapa server.
+|
+*/
+
+// --- HALAMAN UTAMA ---
+Route::get('/', function () {
+    if (Auth::check()) {
+        return Auth::user()->role === 'customer' ? redirect()->route('customer.dashboard') : redirect()->route('admin.dashboard');
+    }
+    return redirect()->route('login');
+})->name('home');
+
+Route::get('/admin/inbox/attachment/{mailbox}/{id}', [EmailAttachmentController::class, 'download'])
+    ->name('admin.inbox.attachment')
+    ->middleware(['web', 'auth', 'admin']); // sesuaikan middleware anda
+
+
+// --- GUEST ROUTES (LOGIN, REGISTER, FORGOT PASSWORD) ---
+Route::middleware('guest')->group(function () {
+    // Login
+    Route::get('/login', function () { return view('auth.login'); })->name('login');
+    Route::post('/login', function (Request $request) {
+        $credentials = $request->validate(['email'=>'required','password'=>'required']);
+        if (Auth::attempt($credentials)) {
+            $request->session()->regenerate();
+            return Auth::user()->role === 'customer' ? redirect()->intended(route('customer.dashboard')) : redirect()->intended(route('admin.dashboard'));
+        }
+        return back()->withErrors(['email'=>'Email salah.']);
+    });
+    
+    // Register
+    Route::get('/register', function () { return view('auth.register'); })->name('register');
+    Route::post('/register', function (Request $request) {
+        $request->validate(['name'=>'required', 'company_name'=>'required', 'email'=>'required|email|unique:users', 'password'=>'required|confirmed']);
+        DB::transaction(function () use ($request) {
+            $user = User::create(['name' => $request->name, 'email' => $request->email, 'password' => Hash::make($request->password), 'role' => 'customer']);
+            Customer::create(['user_id' => $user->id, 'customer_code' => 'CUST-' . time(), 'company_name' => $request->company_name, 'address' => '-', 'city' => 'Indonesia']);
+            $user->sendEmailVerificationNotification();
+        });
+        return redirect()->route('login')->with('status', 'Registrasi berhasil!');
+    });
+
+    // Forgot Password
+    Route::get('/forgot-password', function () { return view('auth.forgot-password'); })->name('password.request');
+    Route::post('/forgot-password', function (Request $request) {
+        $request->validate(['email'=>'required|email']);
+        $status = Password::sendResetLink($request->only('email'));
+        return $status===Password::RESET_LINK_SENT ? back()->with('status',__($status)) : back()->withErrors(['email'=>__($status)]);
+    });
+    
+    Route::get('/reset-password/{token}', function ($token, Request $request) { 
+        return view('auth.reset-password', ['token'=>$token, 'email'=>$request->query('email')]); 
+    })->name('password.reset');
+    
+    Route::post('/reset-password', function (Request $request) {
+        $request->validate(['token'=>'required', 'email'=>'required|email', 'password'=>'required|confirmed']);
+        $status = Password::reset($request->only('email','password','password_confirmation','token'), function($user,$pass){ $user->forceFill(['password'=>Hash::make($pass)])->save(); });
+        return $status===Password::PASSWORD_RESET ? redirect()->route('login')->with('status',__($status)) : back()->withErrors(['email'=>[__($status)]]);
+    })->name('password.update');
+});
+
+// --- AUTH COMMON ---
+Route::post('/logout', function () { Auth::logout(); return redirect('/'); })->name('logout');
+Route::get('/email/verify', function () { return view('auth.verify-email'); })->middleware('auth')->name('verification.notice');
+Route::get('/email/verify/{id}/{hash}', function (EmailVerificationRequest $request) { $request->fulfill(); return redirect('/')->with('status', 'Email verified!'); })->middleware(['auth', 'signed'])->name('verification.verify');
+Route::post('/email/verification-notification', function (Request $request) { $request->user()->sendEmailVerificationNotification(); return back()->with('status', 'Link sent!'); })->middleware(['auth', 'throttle:6,1'])->name('verification.send');
+
+// --- CUSTOMER ROUTES ---
+Route::middleware(['auth', 'customer'])->prefix('customer')->name('customer.')->group(function () {
+    Route::get('/dashboard', CustomerDashboard::class)->name('dashboard');
+    Route::get('/shipments', ShipmentList::class)->name('shipments.index');
+    Route::get('/shipments/create', CreateShipment::class)->name('shipments.create');
+    Route::get('/shipments/{id}', ShipmentDetail::class)->name('shipment.show');
+    Route::get('/profile', CustomerProfile::class)->name('profile');
+    
+    // Fitur Tambahan Customer
+    Route::get('/kurs-pajak', KursPajakPage::class)->name('kurs');
+    Route::get('/calculator', CustomerCalculator::class)->name('calculator');
+});
+
+// --- ADMIN ROUTES ---
+Route::middleware(['auth', 'admin'])->prefix('admin')->name('admin.')->group(function () {
+    Route::get('/dashboard', AdminDashboard::class)->name('dashboard');
+    Route::get('/shipments', ShipmentManagement::class)->name('shipments.index');
+    
+    // INBOX (Fix Namespace & Route Name)
+    // Menggunakan nama 'inbox.index' (akan menjadi 'admin.inbox.index' karena prefix name)
+    // Pastikan di blade memanggil route('admin.inbox.index')
+    // JIKA di blade bapak memanggil route('inbox.index'), maka route ini HARUS dikeluarkan dari grup name('admin.')
+    // SOLUSI: Saya keluarkan dari grup name('admin.') di bawah.
+    
+    // Detail Shipment
+    Route::get('/shipments/{id}', \App\Livewire\Admin\ShipmentDetail::class)->name('shipments.show'); 
+    
+       // Cetak Surat Jalan
+    Route::get('/shipments/{id}/print-do', function ($id) {
+        $shipment = Shipment::with('customer')->findOrFail($id);
+        return view('admin.print-do', compact('shipment'));
+    })->name('shipments.print-do');
+
+    Route::get('/customers', CustomerManagement::class)->name('customers.index');
+    Route::get('/users', UserManagement::class)->name('users.index');
+    Route::get('/reports', Reports::class)->name('reports');
+    Route::get('/profile', CustomerProfile::class)->name('profile');
+    Route::get('/invoices', InvoiceManager::class)->name('invoices.index');
+    Route::get('/quotations', QuotationManager::class)->name('quotations.index');
+    Route::get('/vendors', VendorManagement::class)->name('vendors.index');
+    Route::get('/job-costing', JobCostingManager::class)->name('job-costing.index');
+    Route::get('/calculator', AdminCalculator::class)->name('calculator');
+    
+    // --- PRINT ROUTES (FIX AKSES DITOLAK 403) ---
+    // Dipindahkan ke sini (dalam middleware admin) agar staff bisa akses
+    Route::get('/invoices/{id}/print', function ($id) {
+        $invoice = Invoice::with(['shipment.customer', 'items'])->findOrFail($id);
+        
+        $f = new NumberFormatter("id", NumberFormatter::SPELLOUT);
+        $terbilangText = ucwords($f->format($invoice->grand_total)) . " Rupiah";
+        
+        // PENTING: Gunakan file 'admin.invoice-print' (tampilan browser)
+        return view('admin.invoice-print', compact('invoice', 'terbilangText'));
+    })->name('invoices.print'); 
+
+    Route::get('/quotations/{id}/print', function ($id) {
+        $quotation = Quotation::with('customer', 'items')->findOrFail($id);
+        $f = new NumberFormatter("id", NumberFormatter::SPELLOUT);
+        $terbilangText = ucwords($f->format($quotation->grand_total)) . " Rupiah";
+        return view('admin.quotation-print', compact('quotation', 'terbilangText'));
+    })->name('quotations.print');
+});
+
+Route::get('/admin/inbox', EmailInbox::class)->name('inbox.index');
+
+// --- ROUTE INBOX SPESIFIK (AGAR SESUAI PANGGILAN DI BLADE) ---
+Route::middleware(['auth', 'admin'])->group(function () {
+    // Route ini bernama 'inbox.index' (tanpa prefix admin.) agar cocok dengan admin.blade.php
+    Route::get('/admin/inbox', EmailInbox::class)->name('inbox.index');
+});
+
+// --- ADMIN ACCOUNTING ---
+Route::middleware(['auth', 'admin'])->prefix('admin')->group(function () {
+    Route::get('/accounting/coa', ChartOfAccounts::class)->name('accounting.coa');
+    Route::get('/accounting/journal', \App\Livewire\Admin\Accounting\JournalEntry::class)->name('accounting.journal');
+    
+    // RUTE BARU: MANAJEMEN KASIR - MENGGUNAKAN FQCN LENGKAP
+    Route::get('/accounting/cashier', \App\Livewire\Admin\Accounting\CashierManagement::class)->name('accounting.cashier');
+    // RUTE KASIR SEDERHANA (SIMPLE CASHIER) - NO ACCOUNTING TERMS
+    Route::get('/kasir-sederhana', \App\Livewire\Admin\SimpleCashier::class)->name('simple-cashier');
+    
+    Route::get('/accounting/ledger', \App\Livewire\Admin\Accounting\GeneralLedger::class)->name('accounting.ledger');
+    Route::get('/accounting/trial-balance', \App\Livewire\Admin\Accounting\TrialBalance::class)->name('accounting.trial_balance');
+    Route::get('/accounting/profit-loss', \App\Livewire\Admin\Accounting\ProfitLoss::class)->name('accounting.profit_loss');
+    Route::get('/accounting/balance-sheet', \App\Livewire\Admin\Accounting\BalanceSheet::class)->name('accounting.balance_sheet');
+    Route::get('/audit-logs', AuditLogManager::class)->name('audit-logs');
+});
+
+// --- UTILITIES ---
+Route::get('/document/{id}/view', function ($id) {
+    $doc = Document::findOrFail($id);
+    if (\Illuminate\Support\Facades\Storage::disk('public')->exists($doc->file_path)) {
+        return redirect(asset('storage/' . $doc->file_path));
+    }
+    abort(404, 'File not found');
+})->name('document.view');
+
+// ... (tambahkan di bagian utility atau di mana route utility berada)
+
+// Route untuk menampilkan file dokumen (yang sudah tersimpan di Storage lokal)
+Route::get('/document/{id}/view', function ($id) {
+    $doc = \App\Models\Document::findOrFail($id);
+    
+    // Cek keberadaan file di public disk
+    if (\Illuminate\Support\Facades\Storage::disk('public')->exists($doc->file_path)) {
+        $path = storage_path('app/public/' . $doc->file_path);
+        
+        // Pastikan file_path tidak mengandung dummy placeholder jika convert gagal
+        if (str_contains($doc->file_path, 'pending_download')) {
+             return redirect()->back()->with('error', 'File belum tersedia di server. Coba download manual dari inbox.');
+        }
+
+        return response()->file($path, [
+            'Content-Type' => $doc->mime_type ?? 'application/pdf',
+            'Content-Disposition' => 'inline; filename="' . $doc->filename . '"',
+        ]);
+    }
+    
+    abort(404, 'File tidak ditemukan di server.');
+})->name('document.view');
+
+// ... (pastikan route admin.inbox.download IMAP tetap ada untuk tombol di Inbox)
+
+// Route pembersih cache
+Route::get('/bersih-bersih', function () {
+    Artisan::call('route:clear'); 
+    Artisan::call('cache:clear');
+    Artisan::call('view:clear');
+    Artisan::call('config:clear'); // Tambahan
+    return "Semua Cache Bersih! Silakan coba akses /admin/inbox lagi.";
+});
+// ... (Kode route lain tetap sama)
+
+// --- ALAT DIAGNOSTIK EMAIL M2B ---
+Route::get('/debug-email', function () {
+    $accounts = ['sales', 'import', 'export', 'domestic'];
+    $target = request('akun', 'sales'); // Default cek sales
+
+    echo "<h1>🔍 Diagnostik Email M2B</h1>";
+    echo "<p>Sedang memeriksa akun: <strong>".strtoupper($target)."</strong></p>";
+    
+    // 1. Cek Config Laravel
+    $config = config("imap.accounts.$target");
+    echo "<h3>1. Cek Konfigurasi (config/imap.php)</h3>";
+    if (!$config) {
+        echo "<span style='color:red'>[FAIL] Konfigurasi tidak ditemukan! Cek file config/imap.php</span>";
+        return;
+    }
+    echo "Host: " . $config['host'] . "<br>";
+    echo "Port: " . $config['port'] . "<br>";
+    echo "User: " . $config['username'] . "<br>";
+    echo "Encryption: " . $config['encryption'] . "<br>";
+    echo "Validate Cert: " . ($config['validate_cert'] ? 'YES' : 'NO') . "<br>";
+
+    // 2. Cek Koneksi Server (Socket)
+    echo "<h3>2. Cek Koneksi Server (Socket)</h3>";
+    $fp = @fsockopen($config['host'], $config['port'], $errno, $errstr, 5);
+    if (!$fp) {
+        echo "<span style='color:red'>[FAIL] Tidak bisa terhubung ke server! ($errno - $errstr)</span><br>";
+        echo "Kemungkinan: Firewall memblokir port ".$config['port']." atau Hostname salah.";
+        return;
+    }
+    echo "<span style='color:green'>[OK] Server bisa dihubungi lewat Port ".$config['port'].".</span><br>";
+    fclose($fp);
+
+    // 3. Cek Login IMAP (Real Login) - SAFE QUERY (hindari SEARCH kosong)
+    echo "<h3>3. Cek Login IMAP</h3>";
+    try {
+        $client = \Webklex\IMAP\Facades\Client::account($target);
+        $client->connect();
+        echo "<span style='color:green; font-weight:bold; font-size:16px;'>[SUCCESS] LOGIN BERHASIL! 🎉</span><br>";
+
+        // Ambil folder INBOX dengan pendekatan yang lebih aman:
+        $folder = $client->getFolder('INBOX');
+        
+        // Route download attachment (IMAP streaming)
+Route::middleware(['auth','admin'])->get('/admin/inbox/attachment/{account}/{uid}/{idx}', function($account, $uid, $idx) {
+    try {
+        $client = \Webklex\IMAP\Facades\Client::account($account);
+        $client->connect();
+        $folder = $client->getFolder('INBOX');
+
+        // cari message by UID (coba where UID, fallback)
+        $msg = null;
+        try {
+            $msg = $folder->messages()->where('UID', (int)$uid)->limit(1)->get()->first();
+        } catch (\Throwable $ex) {
+            $all = $folder->messages()->all()->limit(100)->get();
+            foreach ($all as $m) {
+                if ((string)$m->getUid() == (string)$uid) { $msg = $m; break; }
+            }
+        }
+
+        if (!$msg) abort(404, 'Message not found');
+
+        $atts = $msg->getAttachments();
+        $idx = (int)$idx;
+        if (!isset($atts[$idx])) abort(404, 'Attachment not found');
+
+        $att = $atts[$idx];
+
+        // Ambil nama, tipe dan konten
+        $filename = 'attachment';
+        try { $filename = $att->getName(); } catch (\Throwable $e) { if (property_exists($att,'name')) $filename = $att->name; }
+        $mime = 'application/octet-stream';
+        try { $mime = $att->getMimeType(); } catch (\Throwable $e) { if(property_exists($att,'mime')) $mime = $att->mime; }
+
+        // baca konten (coba beberapa method)
+        $content = null;
+        try { $content = $att->getContent(); } catch (\Throwable $e) {}
+        try { if (is_null($content) && method_exists($att,'getDecodedContent')) $content = $att->getDecodedContent(); } catch (\Throwable $e) {}
+        try { if (is_null($content) && method_exists($att,'getBytes')) $content = $att->getBytes(); } catch (\Throwable $e) {}
+        try { if (is_null($content) && method_exists($att,'content')) $content = $att->content; } catch (\Throwable $e) {}
+
+        if (is_null($content)) abort(500, 'Tidak bisa membaca konten attachment');
+
+        // Jika $content objekt stream, ambil string
+        if (is_object($content) && method_exists($content,'getContents')) {
+            $bin = $content->getContents();
+        } else {
+            $bin = (string)$content;
+        }
+
+        return response($bin, 200)
+                ->header('Content-Type', $mime)
+                ->header('Content-Disposition', 'attachment; filename="'.basename($filename).'"');
+
+    } catch (\Throwable $e) {
+        abort(500, 'Download gagal: ' . $e->getMessage());
+    }
+});
+
+
+        // Langkah 1: coba messages()->all()
+        $count = null;
+        try {
+            $messages = $folder->messages()->all()->get();
+            $count = is_countable($messages) ? $messages->count() : 'N/A';
+        } catch (\Exception $e1) {
+            // Jika gagal (mis. server menolak SEARCH kosong), coba query() dengan kriteria jelas (UNSEEN)
+            Log::warning("IMAP messages()->all() gagal untuk akun {$target}: " . $e1->getMessage());
+            try {
+                $messages = $folder->query()->unseen()->get();
+                $count = is_countable($messages) ? $messages->count() : 'N/A';
+            } catch (\Exception $e2) {
+                // Fallback terakhir: tangkap error dan tampilkan pesan
+                Log::error("IMAP fallback (unseen) juga gagal untuk akun {$target}: " . $e2->getMessage(), ['trace' => $e2->getTraceAsString()]);
+                $count = 'ERROR COUNT: ' . $e2->getMessage();
+            }
+        }
+
+        echo "Jumlah Email di Inbox: <strong>{$count}</strong>";
+
+    } catch (\Exception $e) {
+        // Login gagal atau error IMAP lainnya
+        Log::error("IMAP connect/login error for account {$target}: " . $e->getMessage(), ['trace' => $e->getTraceAsString()]);
+        echo "<span style='color:red; font-weight:bold; font-size:16px;'>[FAIL] LOGIN GAGAL! ❌</span><br>";
+        echo "Pesan Error: " . $e->getMessage() . "<br><br>";
+        echo "<strong>Saran Perbaikan:</strong><br>";
+        echo "1. Pastikan password di file .env sudah benar (tidak ada spasi di awal/akhir).<br>";
+        echo "2. Coba ganti 'IMAP_ENCRYPTION' di .env menjadi 'ssl' atau 'tls'.<br>";
+        echo "3. Coba set 'IMAP_VALIDATE_CERT=false' di .env jika sertifikat SSL server self-signed.<br>";
+        echo "4. Jika masih gagal, jalankan tes openssl di server hosting (openssl s_client -connect {$config['host']}:{$config['port']}).<br>";
+    }
+
+    echo "<hr><p>Cek akun lain: ";
+    foreach($accounts as $acc) {
+        echo "<a href='/debug-email?akun=$acc'>".ucfirst($acc)."</a> | ";
+    }
+    echo "</p>";
+});
+// ... (Kode route lainnya tetap sama)
+
+// --- ALAT PERBAIKAN & TES KONEKSI EMAIL ---
+Route::get('/fix-imap', function () {
+    // 1. BERSIHKAN SEMUA CACHE KONFIGURASI (CRUCIAL)
+    try {
+        Artisan::call('config:clear');
+        Artisan::call('cache:clear');
+    } catch (\Exception $e) {
+        // Abaikan jika gagal di hosting tertentu
+    }
+
+    echo "<h2 style='font-family:sans-serif'>🛠️ M2B Email Connection Fixer</h2>";
+    echo "<p style='color:green'>✅ Cache Konfigurasi Berhasil Direset!</p>";
+
+    // 2. TES KONEKSI AKUN SALES
+    $account = 'sales';
+    echo "<hr><h3>Mencoba koneksi akun: " . strtoupper($account) . "...</h3>";
+    
+    // Debug: Lihat apakah config terbaca benar dari .env
+    $configHost = config("imap.accounts.$account.host");
+    $configUser = config("imap.accounts.$account.username");
+    
+    echo "<ul>";
+    echo "<li>Host: <strong>$configHost</strong> (Harus: bandung01.emailkerja.id)</li>";
+    echo "<li>User: <strong>$configUser</strong> (Harus: sales@m2b.co.id)</li>";
+    echo "</ul>";
+
+    try {
+        $client = \Webklex\IMAP\Facades\Client::account($account);
+        $client->connect();
+        
+        $folder = $client->getFolder('INBOX');
+        $count = $folder->query()->count();
+        
+        echo "<div style='background:#dcfce7; color:#166534; padding:15px; border-radius:8px; border:1px solid #bbf7d0;'>";
+        echo "<strong>🎉 KONEKSI SUKSES!</strong><br>";
+        echo "Berhasil terhubung ke Inbox Sales.<br>";
+        echo "Jumlah Email: <strong>$count</strong>";
+        echo "</div>";
+        
+        echo "<p><a href='/admin/inbox' style='display:inline-block; margin-top:20px; padding:10px 20px; background:#1e3a8a; color:white; text-decoration:none; border-radius:5px;'>Buka Inbox Sekarang &rarr;</a></p>";
+
+    } catch (\Exception $e) {
+        echo "<div style='background:#fee2e2; color:#991b1b; padding:15px; border-radius:8px; border:1px solid #fecaca;'>";
+        echo "<strong>❌ KONEKSI GAGAL</strong><br>";
+        echo "Error: " . $e->getMessage();
+        echo "</div>";
+        echo "<p><strong>Saran:</strong> Cek kembali password di file .env. Pastikan diapit tanda kutip dua. Contoh: <code>IMAP_SALES_PASS=\"Password123\"</code></p>";
+    }
+});
+// ...
+
+// ... (Kode route lain tetap ada)
+
+// ROUTE UTILITY: DOWNLOAD / PREVIEW IMAP ATTACHMENT
+Route::middleware(['auth', 'admin'])->get('/admin/inbox/download/{account}/{uid}/{id}/{mode?}', function ($account, $uid, $id, $mode = 'inline') {
+    try {
+        // Konek Sesaat
+        $client = \Webklex\IMAP\Facades\Client::account($account);
+        $client->connect();
+        
+        $folder = $client->getFolder('INBOX');
+        $message = $folder->query()->whereUid($uid)->get()->first();
+        
+        if (!$message) abort(404, 'Email tidak ditemukan.');
+        
+        $attachment = null;
+        foreach($message->getAttachments() as $att) {
+            if ($att->getId() == $id) {
+                $attachment = $att;
+                break;
+            }
+        }
+        
+        if (!$attachment) abort(404, 'File tidak ditemukan.');
+
+        // Stream File
+        return response($attachment->getContent())
+            ->header('Content-Type', $attachment->getMimeType())
+            ->header('Content-Disposition', $mode . '; filename="'.$attachment->getName().'"');
+
+    } catch (\Exception $e) {
+        return "Gagal mengambil file: " . $e->getMessage();
+    }
+})->name('admin.inbox.download');
+
+// =======================================================
+// DEV ONLY — ACCOUNTING WORKFLOW TEST (SAFE VERSION)
+// =======================================================
+
+Route::get('/__dev/test-proforma', function () {
+    $invoice = \App\Models\Invoice::where('type', 'proforma')->firstOrFail();
+
+    if (!$invoice->payment_date) {
+        $invoice->payment_date = now();
+        $invoice->save();
+    }
+
+    app(\App\Services\Business\AccountingWorkflowService::class)
+        ->handleProformaPaid($invoice);
+
+    return 'TEST PROFORMA OK : '.$invoice->invoice_number;
+});
+
+Route::get('/__dev/test-commercial', function () {
+    $invoice = \App\Models\Invoice::where('type', 'commercial')
+        ->where('down_payment', '>', 0)
+        ->firstOrFail();
+
+    if (!$invoice->payment_date) {
+        $invoice->payment_date = now();
+        $invoice->save();
+    }
+
+    app(\App\Services\Business\AccountingWorkflowService::class)
+        ->handleCommercialPaid($invoice);
+
+    return 'TEST COMMERCIAL OK : '.$invoice->invoice_number;
+});
+
+// ...
+// Print receipt route
+Route::get('/admin/kasir-sederhana/print/{id}', function($id) {
+    $transaction = \App\Models\CashTransaction::with([
+        'customer', 
+        'vendor', 
+        'shipment', 
+        'journal.items.account',
+        'journal.approver',
+        'creator'
+    ])->findOrFail($id);
+    
+    return view('livewire.admin.print-receipt', ['transaction' => $transaction->toArray()]);
+})->name('cashier.print')->middleware('auth');

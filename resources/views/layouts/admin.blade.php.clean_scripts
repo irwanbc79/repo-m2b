@@ -1,0 +1,19 @@
+        </main>
+    </div>
+
+    {{-- Scripts: Load Order is Critical --}}
+    {{-- 1. Livewire Core (must be first) --}}
+    <script src="{{ asset('vendor/livewire/livewire.js') }}"></script>
+    
+    {{-- 2. Alpine.js (after Livewire) --}}
+    <script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.x.x/dist/cdn.min.js"></script>
+    
+    {{-- 3. Debug Log --}}
+    <script>
+        console.log('✅ Scripts loaded:', {
+            livewire: typeof window.Livewire !== 'undefined',
+            alpine: typeof window.Alpine !== 'undefined'
+        });
+    </script>
+</body>
+</html>

@@ -1,0 +1,234 @@
+<?php
+
+namespace App\Services;
+
+use Intervention\Image\ImageManager;
+use Intervention\Image\Drivers\Gd\Driver;
+use Illuminate\Support\Facades\Storage;
+use Illuminate\Support\Str;
+use App\Models\Shipment;
+
+class ImageProcessingService
+{
+    protected $maxWidth = 1920;
+    protected $maxHeight = 1920;
+    protected $quality = 85;
+    protected $thumbnailSize = 400;
+    protected ImageManager $manager;
+
+    public function __construct()
+    {
+        $this->manager = new ImageManager(new Driver());
+    }
+
+    public function processUpload($file, $shipmentId, $userId)
+    {
+        $extension = strtolower($file->getClientOriginalExtension());
+        
+        if (in_array($extension, ['heic', 'heif'])) {
+            $extension = 'jpg';
+        }
+        
+        $filename = time() . '_' . Str::random(10) . '.' . $extension;
+        $thumbnailFilename = 'thumb_' . $filename;
+
+        $directory = "field-photos/" . date('Y/m') . "/{$shipmentId}";
+        $path = "{$directory}/{$filename}";
+        $thumbnailPath = "{$directory}/thumbnails/{$thumbnailFilename}";
+
+        Storage::disk('public')->makeDirectory($directory);
+        Storage::disk('public')->makeDirectory("{$directory}/thumbnails");
+
+        try {
+            // Load image
+            $image = $this->manager->read($file->getRealPath());
+            
+            $originalWidth = $image->width();
+            $originalHeight = $image->height();
+
+            // Resize if needed
+            if ($originalWidth > $this->maxWidth || $originalHeight > $this->maxHeight) {
+                $image->scaleDown(width: $this->maxWidth, height: $this->maxHeight);
+            }
+
+            // Get shipment info for watermark
+            $shipment = Shipment::find($shipmentId);
+            $shipmentNumber = $shipment ? ($shipment->awb_number ?: $shipment->bl_number ?: 'SHP-' . $shipmentId) : 'SHP-' . $shipmentId;
+
+            // Add watermark with stamp
+            $this->addWatermarkStamp($image, $shipmentNumber);
+
+            // Encode and save main image
+            $encoded = $image->toJpeg($this->quality);
+            Storage::disk('public')->put($path, (string) $encoded);
+
+            // Create thumbnail (without watermark for cleaner preview)
+            $thumbnail = $this->manager->read($file->getRealPath());
+            $thumbnail->cover($this->thumbnailSize, $this->thumbnailSize);
+            $thumbnailEncoded = $thumbnail->toJpeg(75);
+            Storage::disk('public')->put($thumbnailPath, (string) $thumbnailEncoded);
+
+            return [
+                'path' => $path,
+                'thumbnail_path' => $thumbnailPath,
+                'width' => $image->width(),
+                'height' => $image->height(),
+                'size' => Storage::disk('public')->size($path),
+                'mime_type' => 'image/jpeg'
+            ];
+            
+        } catch (\Exception $e) {
+            \Log::error('Image processing failed', [
+                'error' => $e->getMessage(),
+                'file' => $file->getClientOriginalName(),
+                'shipment_id' => $shipmentId
+            ]);
+            
+            $path = $file->storeAs($directory, $filename, 'public');
+            
+            return [
+                'path' => $path,
+                'thumbnail_path' => $path,
+                'width' => null,
+                'height' => null,
+                'size' => $file->getSize(),
+                'mime_type' => $file->getMimeType()
+            ];
+        }
+    }
+
+    /**
+     * Add watermark stamp dengan:
+     * - "DOKUMEN PERUSAHAAN" di tengah (semi-transparan)
+     * - Stamp box di pojok kanan bawah: No Shipment + Date & Time
+     */
+    protected function addWatermarkStamp($image, $shipmentNumber)
+    {
+        $width = $image->width();
+        $height = $image->height();
+        
+        // === 1. WATERMARK TENGAH: "DOKUMEN PERUSAHAAN" (diagonal, semi-transparan) ===
+        $centerText = "DOKUMEN PERUSAHAAN";
+        
+        // Buat watermark diagonal dengan teks berulang
+        $image->text($centerText, (int)($width * 0.5), (int)($height * 0.3), function($font) {
+            $font->size(28);
+            $font->color('rgba(255, 255, 255, 0.15)');
+            $font->align('center');
+            $font->valign('middle');
+        });
+        
+        $image->text($centerText, (int)($width * 0.5), (int)($height * 0.5), function($font) {
+            $font->size(28);
+            $font->color('rgba(255, 255, 255, 0.15)');
+            $font->align('center');
+            $font->valign('middle');
+        });
+        
+        $image->text($centerText, (int)($width * 0.5), (int)($height * 0.7), function($font) {
+            $font->size(28);
+            $font->color('rgba(255, 255, 255, 0.15)');
+            $font->align('center');
+            $font->valign('middle');
+        });
+
+        // === 2. STAMP BOX di pojok kanan bawah ===
+        $now = now();
+        $dateTime = $now->format('d/m/Y H:i:s');
+        $dayName = $this->getIndonesianDay($now->dayOfWeek);
+        
+        // Stamp text lines
+        $line1 = "📷 DOKUMEN PERUSAHAAN";
+        $line2 = "No: " . $shipmentNumber;
+        $line3 = $dayName . ", " . $dateTime;
+        
+        // Calculate stamp box position (bottom-right)
+        $padding = 15;
+        $lineHeight = 22;
+        $boxWidth = 280;
+        $boxHeight = 85;
+        $boxX = $width - $boxWidth - $padding;
+        $boxY = $height - $boxHeight - $padding;
+        
+        // Draw semi-transparent black background box
+        $image->drawRectangle($boxX, $boxY, function ($draw) use ($boxWidth, $boxHeight) {
+            $draw->size($boxWidth, $boxHeight);
+            $draw->background('rgba(0, 0, 0, 0.7)');
+            $draw->border('rgba(255, 255, 255, 0.5)', 2);
+        });
+        
+        // Draw text on stamp box
+        $textX = $boxX + 12;
+        $textY = $boxY + 8;
+        
+        // Line 1: Header
+        $image->text($line1, $textX, $textY, function($font) {
+            $font->size(14);
+            $font->color('rgba(255, 255, 255, 0.95)');
+            $font->align('left');
+            $font->valign('top');
+        });
+        
+        // Line 2: Shipment Number
+        $image->text($line2, $textX, $textY + $lineHeight + 2, function($font) {
+            $font->size(16);
+            $font->color('rgba(255, 220, 0, 1)'); // Yellow for emphasis
+            $font->align('left');
+            $font->valign('top');
+        });
+        
+        // Line 3: Date & Time
+        $image->text($line3, $textX, $textY + ($lineHeight * 2) + 6, function($font) {
+            $font->size(13);
+            $font->color('rgba(200, 200, 200, 0.95)');
+            $font->align('left');
+            $font->valign('top');
+        });
+        
+        // === 3. Small M2B Logo/Text di pojok kiri bawah ===
+        $image->text("M2B Portal", $padding, $height - $padding, function($font) {
+            $font->size(12);
+            $font->color('rgba(255, 255, 255, 0.6)');
+            $font->align('left');
+            $font->valign('bottom');
+        });
+    }
+
+    /**
+     * Get Indonesian day name
+     */
+    protected function getIndonesianDay($dayOfWeek)
+    {
+        $days = [
+            0 => 'Minggu',
+            1 => 'Senin', 
+            2 => 'Selasa',
+            3 => 'Rabu',
+            4 => 'Kamis',
+            5 => 'Jumat',
+            6 => 'Sabtu'
+        ];
+        return $days[$dayOfWeek] ?? '';
+    }
+
+    public function deletePhoto($fieldPhoto)
+    {
+        try {
+            if ($fieldPhoto->file_path) {
+                Storage::disk('public')->delete($fieldPhoto->file_path);
+            }
+            
+            if ($fieldPhoto->thumbnail_path) {
+                Storage::disk('public')->delete($fieldPhoto->thumbnail_path);
+            }
+            
+            return true;
+        } catch (\Exception $e) {
+            \Log::error('Failed to delete photo', [
+                'error' => $e->getMessage(),
+                'photo_id' => $fieldPhoto->id
+            ]);
+            return false;
+        }
+    }
+}

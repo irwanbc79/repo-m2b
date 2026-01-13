@@ -1,0 +1,191 @@
+<?php
+
+namespace App\Livewire\Admin;
+
+use Livewire\Component;
+use Livewire\WithPagination;
+use Livewire\WithFileUploads;
+use App\Models\Shipment;
+use App\Models\Customer;
+use App\Models\Document;
+use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Storage;
+use Intervention\Image\ImageManager;
+use Intervention\Image\Drivers\Gd\Driver;
+use App\Mail\ShipmentStatusUpdated;
+use Illuminate\Support\Facades\Mail;
+use App\Models\ActivityLog;
+
+class ShipmentManagement extends Component
+{
+    use WithPagination, WithFileUploads;
+
+    public $search = '';
+    public $isModalOpen = false;
+    public $isEditing = false;
+    public $editingId = null;
+
+    // Form Data (Status dihapus dari default manual input, diset auto)
+    public $form = [
+        'customer_id' => '',
+        'awb_number' => '',
+        'origin' => '',
+        'destination' => '',
+        'service_type' => 'import',
+        'shipment_type' => 'sea',
+        'container_mode' => 'FCL',
+        'container_info' => '',
+        'pieces' => 0,
+        'package_type' => 'Colli',
+        'weight' => 0,
+        'status' => 'pending', // Default
+        'lane_status' => '',
+        'estimated_arrival' => '',
+        'notes' => ''
+    ];
+    
+    public $mark_as_completed = false; // Checkbox UI
+
+    public $uploadingShipmentId = null;
+    public $internal_photo;
+    public $internal_note;
+
+    public function updatingSearch() { $this->resetPage(); }
+
+    public function render()
+    {
+        $searchTerm = '%' . $this->search . '%';
+        $shipments = Shipment::with(['customer', 'documents'])
+            ->where(function($q) use ($searchTerm) {
+                $q->where('awb_number', 'like', $searchTerm)
+                  ->orWhere('origin', 'like', $searchTerm)
+                  ->orWhere('destination', 'like', $searchTerm)
+                  ->orWhereHas('customer', function($c) use ($searchTerm) {
+                      $c->where('company_name', 'like', $searchTerm)
+                        ->orWhere('customer_code', 'like', $searchTerm);
+                  });
+            })
+            ->latest()
+            ->paginate(10);
+
+        $customers = Customer::orderBy('company_name')->get();
+
+        return view('livewire.admin.shipment-management', [
+            'shipments' => $shipments,
+            'customers' => $customers
+        ])->layout('layouts.admin');
+    }
+
+    public function create()
+    {
+        $this->resetValidation();
+        $this->resetForm();
+        $this->isEditing = false;
+        $this->isModalOpen = true;
+    }
+
+    public function edit($id)
+    {
+        $this->resetValidation();
+        $this->editingId = $id;
+        $shipment = Shipment::findOrFail($id);
+        
+        $this->form = $shipment->only([
+            'customer_id', 'awb_number', 'origin', 'destination', 
+            'service_type', 'shipment_type', 'container_mode', 'container_info',
+            'pieces', 'package_type', 'weight', 'status', 'lane_status', 'estimated_arrival', 'notes'
+        ]);
+        
+        if($this->form['estimated_arrival']) {
+            $this->form['estimated_arrival'] = date('Y-m-d', strtotime($this->form['estimated_arrival']));
+        }
+        
+        $this->mark_as_completed = ($this->form['status'] === 'completed');
+
+        $this->isEditing = true;
+        $this->isModalOpen = true;
+    }
+
+    public function save()
+    {
+        $this->validate([
+            'form.customer_id' => 'required',
+            'form.origin' => 'required',
+            'form.destination' => 'required',
+            'form.service_type' => 'required',
+            'form.weight' => 'required|numeric',
+            'form.pieces' => 'required|numeric',
+            'form.package_type' => 'required',
+            'form.estimated_arrival' => 'nullable|date',
+            'form.lane_status' => 'nullable|string',
+        ]);
+
+        if (empty($this->form['estimated_arrival'])) $this->form['estimated_arrival'] = null;
+        if (empty($this->form['lane_status'])) $this->form['lane_status'] = null;
+
+        // Auto Generate AWB
+        if (empty($this->form['awb_number'])) {
+            $prefix = match($this->form['service_type']) {
+                'import' => 'IMP', 'export' => 'EXP', 'domestic' => 'DOM', default => 'JOB'
+            };
+            $this->form['awb_number'] = $prefix . '-' . date('ymd') . '-' . rand(100,999);
+        }
+
+        // AUTO STATUS LOGIC
+        if ($this->mark_as_completed) {
+            $this->form['status'] = 'completed';
+        } elseif (!empty($this->form['lane_status'])) {
+            $this->form['status'] = 'in_progress';
+        } else {
+             // Jika create baru -> Pending. Jika edit -> Pertahankan status lama (kecuali di-override di atas)
+             if (!$this->isEditing) $this->form['status'] = 'pending';
+        }
+
+        if ($this->isEditing) {
+            $shipment = Shipment::find($this->editingId);
+            $oldStatus = $shipment->status;
+            $shipment->update($this->form);
+
+            if ($oldStatus !== $this->form['status']) {
+                ActivityLog::record('Shipment', 'UPDATE STATUS', $shipment->awb_number, "Status berubah ke '{$this->form['status']}'");
+                $shipment->load('customer.user');
+                if ($shipment->customer && $shipment->customer->user) {
+                    try { Mail::to($shipment->customer->user->email)->send(new ShipmentStatusUpdated($shipment)); } catch (\Exception $e) {}
+                }
+            } else {
+                ActivityLog::record('Shipment', 'UPDATE INFO', $shipment->awb_number, "Mengubah detail data shipment.");
+            }
+            $message = 'Shipment Updated Successfully.';
+        } else {
+            $shipment = Shipment::create($this->form);
+            ActivityLog::record('Shipment', 'CREATE', $shipment->awb_number, "Membuat shipment baru.");
+            $message = 'Shipment Created Successfully.';
+        }
+
+        $this->closeModal();
+        session()->flash('message', $message);
+    }
+    
+    // ... [KEEP UPLOAD INTERNAL LOGIC & DELETE AS IS] ...
+    public function uploadInternalEvidence() {
+         $this->validate(['internal_photo'=>'required|image|max:10240', 'internal_note'=>'required|string|max:255']);
+         try {
+             $filename='INTERNAL_'.time().'_'.rand(100,999).'.webp'; $path='documents/internal_evidence/'.$filename;
+             $manager=new ImageManager(new Driver()); $image=$manager->read($this->internal_photo->getRealPath()); $image->scale(width:1000); $encoded=$image->toWebp(70);
+             Storage::disk('public')->put($path,(string)$encoded);
+             Document::create(['shipment_id'=>$this->uploadingShipmentId,'document_type'=>'internal_photo','filename'=>$filename,'file_path'=>$path,'description'=>$this->internal_note,'is_internal'=>true,'uploaded_by'=>Auth::id(),'file_size'=>strlen((string)$encoded),'mime_type'=>'image/webp','uploaded_at'=>now()]);
+             $this->reset(['internal_photo','internal_note','uploadingShipmentId']); session()->flash('message','Foto Internal berhasil disimpan.');
+         } catch(\Exception $e) { session()->flash('error','Gagal upload: '.$e->getMessage()); }
+    }
+
+    public function deleteShipment($id) {
+        if(Auth::user()->role!=='admin'){session()->flash('error','Access Denied');return;}
+        $shipment=Shipment::find($id); if($shipment){foreach($shipment->documents as $doc){if(Storage::disk('public')->exists($doc->file_path))Storage::disk('public')->delete($doc->file_path);$doc->delete();}ActivityLog::record('Shipment','DELETE',$shipment->awb_number,"Hapus data.");$shipment->delete();session()->flash('message','Shipment deleted.');}
+    }
+
+    public function closeModal() { $this->isModalOpen = false; $this->resetForm(); }
+    private function resetForm() {
+        $this->reset('form', 'editingId', 'mark_as_completed');
+        $this->form['service_type']='import'; $this->form['shipment_type']='sea'; $this->form['status']='pending'; $this->form['container_mode']='LCL'; $this->form['package_type']='Colli'; $this->form['lane_status']='';
+    }
+}

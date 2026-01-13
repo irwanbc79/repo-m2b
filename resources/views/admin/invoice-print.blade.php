@@ -1,0 +1,450 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="utf-8">
+    <title>{{ $invoice->type }} - {{ $invoice->invoice_number }}</title>
+    <link rel="icon" type="image/png" href="{{ asset('images/m2b-logo.png') }}">
+    
+    {{-- Tailwind CDN untuk preview di browser --}}
+    <script src="https://cdn.tailwindcss.com"></script>
+    
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap');
+        
+        body { 
+            font-family: 'Inter', sans-serif; 
+            -webkit-print-color-adjust: exact !important; 
+            print-color-adjust: exact !important;
+            color: #0f172a;
+        }
+        
+        @media print {
+            @page { margin: 0; size: A4; }
+            body { margin: 0; padding: 0; background-color: white !important; }
+            .no-print { display: none !important; }
+            .print-container { padding: 1cm 1.25cm; width: 100%; max-width: 100%; min-height: 29.7cm; box-shadow: none !important; }
+            
+            .bg-slate-900 { background-color: #0f172a !important; color: white !important; }
+            .bg-slate-950 { background-color: #020617 !important; color: white !important; }
+            .bg-blue-50 { background-color: #eff6ff !important; }
+            .bg-green-50 { background-color: #f0fdf4 !important; }
+            .text-blue-900 { color: #1e3a8a !important; }
+        }
+
+        /* LOGIKA VISUAL SIGNATURE & STAMP */
+        .signature-box {
+            position: relative;
+            width: 220px;
+            height: 110px;
+            margin: 0 auto;
+        }
+        .img-sign {
+            position: absolute;
+            z-index: 1;
+            width: 160px;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+        }
+        .img-stamp {
+            position: absolute;
+            z-index: 2;
+            width: 110px;
+            top: 40%;
+            left: 20%;
+            opacity: 0.85; /* Memberikan efek stempel basah */
+        }
+        
+        .stamp-overlay {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%) rotate(-15deg);
+            font-size: 72px;
+            font-weight: 900;
+            letter-spacing: 8px;
+            padding: 20px 40px;
+            border: 8px solid;
+            border-radius: 20px;
+            opacity: 0.12;
+            pointer-events: none;
+            z-index: 100;
+            text-transform: uppercase;
+            white-space: nowrap;
+        }
+        .stamp-paid { color: #16a34a; border-color: #16a34a; }
+        .stamp-unpaid { color: #dc2626; border-color: #dc2626; }
+    </style>
+</head>
+<body class="bg-gray-100 p-0 sm:p-8">
+
+    @php
+        // Helper Terbilang
+        if (!function_exists('penyebut')) {
+            function penyebut($nilai) {
+                $nilai = abs(round($nilai));
+                $huruf = array("", "satu", "dua", "tiga", "empat", "lima", "enam", "tujuh", "delapan", "sembilan", "sepuluh", "sebelas");
+                $temp = "";
+                if ($nilai < 12) $temp = " ". $huruf[(int)$nilai];
+                else if ($nilai < 20) $temp = penyebut($nilai - 10). " belas";
+                else if ($nilai < 100) $temp = penyebut(floor($nilai/10))." puluh". penyebut($nilai % 10);
+                else if ($nilai < 200) $temp = " seratus" . penyebut($nilai - 100);
+                else if ($nilai < 1000) $temp = penyebut(floor($nilai/100)) . " ratus" . penyebut($nilai % 100);
+                else if ($nilai < 2000) $temp = " seribu" . penyebut($nilai - 1000);
+                else if ($nilai < 1000000) $temp = penyebut(floor($nilai/1000)) . " ribu" . penyebut($nilai % 1000);
+                else if ($nilai < 1000000000) $temp = penyebut(floor($nilai/1000000)) . " juta" . penyebut($nilai % 1000000);
+                return $temp;
+            }
+        }
+        if (!function_exists('terbilang')) {
+            function terbilang($nilai) {
+                if($nilai < 0) return "minus ". trim(penyebut($nilai));
+                return ucwords(trim(penyebut($nilai))) . " Rupiah";
+            }
+        }
+        
+        // Fungsi Terbilang English
+        if (!function_exists('numberToWordsEn')) {
+            function numberToWordsEn($number) {
+                $number = abs(floor($number));
+                if ($number == 0) return 'Zero';
+                $ones = ['', 'One', 'Two', 'Three', 'Four', 'Five', 'Six', 'Seven', 'Eight', 'Nine', 'Ten', 'Eleven', 'Twelve', 'Thirteen', 'Fourteen', 'Fifteen', 'Sixteen', 'Seventeen', 'Eighteen', 'Nineteen'];
+                $tens = ['', '', 'Twenty', 'Thirty', 'Forty', 'Fifty', 'Sixty', 'Seventy', 'Eighty', 'Ninety'];
+                $result = '';
+                if ($number >= 1000000000) { $result .= numberToWordsEn(floor($number / 1000000000)) . ' Billion '; $number %= 1000000000; }
+                if ($number >= 1000000) { $result .= numberToWordsEn(floor($number / 1000000)) . ' Million '; $number %= 1000000; }
+                if ($number >= 1000) { $result .= numberToWordsEn(floor($number / 1000)) . ' Thousand '; $number %= 1000; }
+                if ($number >= 100) { $result .= numberToWordsEn(floor($number / 100)) . ' Hundred '; $number %= 100; }
+                if ($number >= 20) { $result .= $tens[floor($number / 10)] . ' '; $number %= 10; }
+                if ($number > 0) { $result .= $ones[$number] . ' '; }
+                return trim($result);
+            }
+        }
+        
+        // Generate terbilang berdasarkan pilihan bahasa
+        $lang = $invoice->terbilang_lang ?? 'id';
+        $terbilangID = ucwords(trim(penyebut($invoice->grand_total))) . ' Rupiah';
+        $terbilangEN = numberToWordsEn($invoice->grand_total) . ' Rupiah';
+        if ($lang === 'id') { $terbilangText = $terbilangID; }
+        elseif ($lang === 'en') { $terbilangText = $terbilangEN; }
+        else { $terbilangText = $terbilangID . '\n' . $terbilangEN; }
+        $customer = $invoice->customer ?? ($invoice->shipment->customer ?? null);
+    @endphp
+    
+    <div class="print-container max-w-[21cm] mx-auto bg-white p-10 shadow-2xl relative flex flex-col text-sm min-h-[29.7cm]">
+        
+        {{-- WATERMARK STATUS --}}
+        @if($invoice->status === "paid")
+            <div class="stamp-overlay stamp-paid">LUNAS</div>
+        @elseif($invoice->status === "unpaid")
+            <div class="stamp-overlay stamp-unpaid">BELUM LUNAS</div>
+        @endif
+        
+        {{-- HEADER --}}
+        <div class="flex justify-between items-start border-b-[3px] border-blue-900 pb-4 mb-6">
+            <div class="flex items-center gap-4">
+                <img
+    src="{{ !empty($isPdf)
+        ? public_path('images/m2b-logo.png')
+        : asset('images/m2b-logo.png')
+    }}"
+    class="h-20 w-auto object-contain"
+>
+
+                <div>
+                    <h1 class="text-2xl font-black text-blue-900 tracking-tight uppercase leading-none">PT. Mora Multi Berkah</h1>
+                    <p class="font-bold text-slate-500 text-[11px] tracking-widest uppercase mt-1">Logistic Solution & Freight Forwarding</p>
+                    <div class="text-[11px] mt-1.5 text-slate-700 font-medium leading-tight">
+                        <p>Jl. Kapt. Sumarsono Komp. Graha Metropolitan Blok G No. 14</p>
+                        <p>Medan, Sumatera Utara - Indonesia</p>
+                        <p>Telp: 061-44020012 | Email: finance@m2b.co.id</p>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="text-right pt-1">
+                @if(strtolower($invoice->type) == 'proforma')
+                    <h2 class="text-4xl font-black text-blue-900 uppercase tracking-tight leading-none relative z-10">PROFORMA</h2>
+                    <h2 class="text-4xl font-black text-gray-100 uppercase tracking-tight leading-none -mt-3 relative z-0">INVOICE</h2>
+                @else
+                    <h2 class="text-4xl font-black text-blue-900 uppercase tracking-tight leading-none">INVOICE</h2>
+                    <span class="text-xs font-bold text-slate-500 uppercase tracking-[0.3em] block text-right mt-1 border-t border-slate-300 pt-1">COMMERCIAL</span>
+                @endif
+            </div>
+        </div>
+
+        {{-- INFO SECTION --}}
+        <div class="flex justify-between gap-4 mb-6">
+            <div class="w-[60%]">
+                <div class="bg-slate-50 border border-slate-300 p-3 rounded h-full relative">
+                    <div class="absolute top-0 left-0 w-1 h-full bg-blue-900"></div>
+                    <p class="text-[10px] font-bold text-slate-400 uppercase mb-1 tracking-wider pl-2">TAGIHAN KEPADA (BILL TO):</p>
+                    <h3 class="text-lg font-black text-blue-900 uppercase leading-none mb-1 pl-2">{{ $customer->company_name ?? 'CUSTOMER' }}</h3>
+                    <div class="text-xs text-slate-700 leading-snug pl-2 font-medium">
+                        <p>{{ $customer->address ?? '-' }}</p>
+                        @if($customer && $customer->npwp)
+                            <div class="mt-1 font-mono text-[10px] font-bold text-slate-600 uppercase">NPWP: {{ $customer->npwp }}</div>
+                        @endif
+                    </div>
+                </div>
+            </div>
+
+            <div class="w-[40%] flex flex-col justify-center pl-4">
+                <table class="w-full text-right text-sm">
+                    <tr>
+                        <td class="pb-1 text-slate-400 font-bold text-[10px] uppercase">Nomor Invoice</td>
+                        <td class="pb-1 font-black text-base text-slate-800">{{ $invoice->invoice_number }}</td>
+                    </tr>
+                    <tr>
+                        <td class="pb-1 text-slate-400 font-bold text-[10px] uppercase">Tanggal</td>
+                        <td class="pb-1 font-bold text-slate-700">{{ $invoice->invoice_date->format('d/m/Y') }}</td>
+                    </tr>
+                    <tr>
+                        <td class="pb-1 text-slate-400 font-bold text-[10px] uppercase">Jatuh Tempo</td>
+                        <td class="pb-1 font-bold text-red-600">{{ $invoice->due_date ? $invoice->due_date->format('d/m/Y') : '-' }}</td>
+                    </tr>
+                    @if($invoice->shipment)
+                    <tr class="border-t border-dashed border-slate-300">
+                        <td class="pt-1 text-slate-400 font-bold text-[10px] uppercase">Ref No.</td>
+                        <td class="pt-1 font-bold text-blue-700">{{ $invoice->shipment->awb_number }}</td>
+                    </tr>
+                    @endif
+                </table>
+            </div>
+        </div>
+
+        {{-- TABLES --}}
+        <div class="flex-1">
+            {{-- I. SERVICES --}}
+            @if($invoice->items->where('item_type', 'service')->count() > 0)
+            <div class="mb-4">
+                <h4 class="font-bold text-blue-900 border-b-2 border-blue-900 mb-1 text-xs uppercase inline-block italic">I. Jasa Pengurusan (Services)</h4>
+                <table class="w-full text-sm">
+                    <thead>
+                        <tr class="bg-blue-50 text-blue-900 uppercase text-[10px] font-black tracking-wide border-y border-blue-200">
+                            <th class="py-2 px-2 text-left w-[50%]">Description</th>
+                            <th class="py-2 px-2 text-center w-[10%]">Qty</th>
+                            <th class="py-2 px-2 text-right w-[20%]">Unit Price</th>
+                            <th class="py-2 px-2 text-right w-[20%]">Amount</th>
+                        </tr>
+                    </thead>
+                    <tbody class="divide-y divide-slate-200">
+                        @foreach($invoice->items->where('item_type', 'service') as $item)
+                        <tr>
+                            <td class="py-2 px-2 font-bold text-slate-700">{{ $item->description }}</td>
+                            <td class="py-2 px-2 text-center text-slate-600 font-medium">{{ $item->qty + 0 }}</td>
+                            <td class="py-2 px-2 text-right text-slate-600 font-medium">{{ number_format($item->price, 0, ',', '.') }}</td>
+                            <td class="py-2 px-2 text-right font-bold text-slate-900">{{ number_format($item->total, 0, ',', '.') }}</td>
+                        </tr>
+                        @endforeach
+                        <tr>
+                            <td colspan="3" class="pt-2 px-2 text-right font-bold text-slate-400 text-[10px] uppercase">Service Subtotal</td>
+                            <td class="pt-2 px-2 text-right font-bold text-slate-800 italic">{{ number_format($invoice->service_total, 0, ',', '.') }}</td>
+                        </tr>
+                        <tr>
+                            <td colspan="3" class="pb-2 px-2 text-right font-bold text-slate-400 text-[10px] uppercase">VAT / PPN ({{ $invoice->tax_rate }}%)</td>
+                            <td class="pb-2 px-2 text-right font-bold text-slate-800">{{ number_format($invoice->tax_amount, 0, ',', '.') }}</td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+            @endif
+
+            {{-- II. REIMBURSEMENT --}}
+            @if($invoice->items->where('item_type', 'reimbursement')->count() > 0)
+            <div class="mb-4">
+                <h4 class="font-bold text-green-800 border-b-2 border-green-800 mb-1 text-xs uppercase inline-block italic">II. Dana Talangan (Reimbursement) - Non PPN</h4>
+                <table class="w-full text-sm">
+                    <thead>
+                        <tr class="bg-green-50 text-green-900 uppercase text-[10px] font-black tracking-wide border-y border-green-200">
+                            <th class="py-2 px-2 text-left w-[50%]">Description</th>
+                            <th class="py-2 px-2 text-center w-[10%]">Qty</th>
+                            <th class="py-2 px-2 text-right w-[20%]">Unit Price</th>
+                            <th class="py-2 px-2 text-right w-[20%]">Amount</th>
+                        </tr>
+                    </thead>
+                    <tbody class="divide-y divide-slate-200">
+                        @foreach($invoice->items->where('item_type', 'reimbursement') as $item)
+                        <tr>
+                            <td class="py-2 px-2 font-bold text-slate-700">{{ $item->description }}</td>
+                            <td class="py-2 px-2 text-center text-slate-600 font-medium">{{ $item->qty + 0 }}</td>
+                            <td class="py-2 px-2 text-right text-slate-600 font-medium">{{ number_format($item->price, 0, ',', '.') }}</td>
+                            <td class="py-2 px-2 text-right font-bold text-slate-900">{{ number_format($item->total, 0, ',', '.') }}</td>
+                        </tr>
+                        @endforeach
+                        <tr>
+                            <td colspan="3" class="py-2 px-2 text-right font-bold text-slate-400 text-[10px] uppercase">Reimbursement Total</td>
+                            <td class="py-2 px-2 text-right font-bold text-slate-800 italic">{{ number_format($invoice->reimbursement_total, 0, ',', '.') }}</td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+            @endif
+        </div>
+
+        {{-- BOX TOTAL --}}
+<div class="flex justify-end mt-4 mb-6">
+    <div class="w-full max-w-[45%] bg-slate-900 text-white rounded-xl overflow-hidden shadow-xl">
+        <div class="p-4 space-y-1.5 text-[10px] font-black uppercase">
+
+            {{-- SERVICE --}}
+            <div class="flex justify-between text-slate-400">
+                <span>Service Subtotal</span>
+                <span class="font-mono text-white">
+                    {{ number_format($invoice->service_total, 0, ',', '.') }}
+                </span>
+            </div>
+
+            {{-- VAT --}}
+            @if($invoice->tax_amount > 0)
+            <div class="flex justify-between text-slate-400">
+                <span>PPN ({{ $invoice->tax_rate }}%)</span>
+                <span class="font-mono text-white">
+                    {{ number_format($invoice->tax_amount, 0, ',', '.') }}
+                </span>
+            </div>
+            @endif
+
+            {{-- REIMBURSEMENT --}}
+            @if($invoice->reimbursement_total > 0)
+            <div class="flex justify-between text-slate-400">
+                <span>Reimbursement (Non PPN)</span>
+                <span class="font-mono text-white">
+                    {{ number_format($invoice->reimbursement_total, 0, ',', '.') }}
+                </span>
+            </div>
+            @endif
+
+            {{-- DISCOUNT --}}
+            @if($invoice->discount_amount > 0)
+            <div class="flex justify-between text-red-400 border-t border-slate-700/50 pt-1.5">
+                <span>Less Discount</span>
+                <span class="font-mono">
+                    ({{ number_format($invoice->discount_amount, 0, ',', '.') }})
+                </span>
+            </div>
+            @endif
+
+            {{-- PPH --}}
+            @if($invoice->pph_amount > 0)
+            <div class="flex justify-between text-orange-400">
+                <span>Less PPh 23</span>
+                <span class="font-mono">
+                    ({{ number_format($invoice->pph_amount, 0, ',', '.') }})
+                </span>
+            </div>
+            @endif
+
+            {{-- DOWN PAYMENT --}}
+            @if($invoice->down_payment > 0)
+            <div class="bg-slate-950 px-2 py-2 rounded flex justify-between items-center text-yellow-400 border border-slate-800 mt-2">
+                <span>Less Paid DP</span>
+                <span class="font-mono">
+                    - {{ number_format($invoice->down_payment, 0, ',', '.') }}
+                </span>
+            </div>
+            @endif
+        </div>
+
+        {{-- GRAND TOTAL --}}
+        <div class="bg-black px-5 py-4 flex justify-between items-center border-t border-slate-700">
+            <span class="text-blue-400 font-black uppercase tracking-[0.2em] text-[10px]">
+                Balance Due
+            </span>
+            <span class="text-2xl font-black text-white tracking-tighter">
+                <span class="text-xs align-top mr-1 font-medium text-slate-500">IDR</span>
+                {{ number_format($invoice->grand_total, 0, ',', '.') }}
+            </span>
+        </div>
+    </div>
+</div>
+
+
+        {{-- TERBILANG --}}
+        <div class="border-l-4 border-blue-900 pl-4 py-3 italic text-slate-700 text-xs mb-5 bg-slate-50 rounded-r-xl">
+            <span class="font-black text-blue-900 text-[10px] uppercase block mb-1 not-italic tracking-widest">Terbilang (Saying):</span>
+            {!! nl2br("# " . e($terbilangText) . " #") !!}
+        </div>
+
+        {{-- FOOTER & SIGNATURE LOGIC --}}
+        <div class="mt-4">
+            <div class="flex justify-between items-end border-t-2 border-slate-100 pt-6">
+                <div class="w-7/12">
+                    <p class="font-bold text-[10px] text-slate-400 uppercase mb-2 tracking-wider">Payment Instructions (Transfer to):</p>
+                    <div class="bg-blue-50 border border-blue-200 p-4 rounded-2xl inline-block min-w-[300px] shadow-sm">
+                        <div class="flex items-center gap-3 mb-2">
+                            <span class="bg-blue-600 text-white text-[9px] font-black px-2 py-1 rounded uppercase tracking-widest">Bank Mandiri</span>
+                            <span class="font-black text-blue-900 text-xs uppercase tracking-tight">PT. MORA MULTI BERKAH</span>
+                        </div>
+                        <div class="text-2xl font-mono font-black text-slate-800 tracking-widest">106-00-5598-8896</div>
+                    </div>
+                </div>
+                
+                {{-- AREA PENGESAHAN --}}
+<div class="text-center w-56 leading-tight">
+
+    <p class="text-[10px] text-slate-500 font-bold uppercase tracking-widest mb-0.5">
+        Medan, {{ $invoice->invoice_date->format('d M Y') }}
+    </p>
+
+    <p class="font-black text-blue-900 text-xs uppercase tracking-tight mb-1">
+        PT. MORA MULTI BERKAH
+    </p>
+
+    {{-- SIGNATURE + STAMP --}}
+    @php
+        $signerData = $signer ?? ['name' => 'Nurul Asyikin', 'title' => 'Sales & Finance', 'sign' => 'sign_nurul.png'];
+        $sigType = $signatureType ?? 'full';
+    @endphp
+    
+    @if($sigType == 'full')
+    {{-- Full: Sign + Stamp --}}
+    <div class="flex justify-center my-1">
+        <img src="{{ !empty($isPdf) ? public_path('images/assets/signatures/' . $signerData['sign']) : asset('images/assets/signatures/' . $signerData['sign']) }}"
+             alt="Signature & Stamp" style="height:155px; width:auto; display:block;">
+    </div>
+    @elseif($sigType == 'stamp_only')
+    {{-- Stamp Only --}}
+    <div class="flex justify-center my-1">
+        <img src="{{ !empty($isPdf) ? public_path('images/assets/signatures/stamp_m2b.png') : asset('images/assets/signatures/stamp_m2b.png') }}"
+             alt="Company Stamp" style="height:100px; width:auto; display:block;">
+    </div>
+    @else
+    {{-- Blank: Untuk materai fisik --}}
+    <div class="flex justify-center my-1" style="height:100px;">
+        <div class="border-2 border-dashed border-gray-300 rounded-lg flex items-center justify-center" style="width:150px; height:100px;">
+            <span class="text-gray-400 text-xs">Materai</span>
+        </div>
+    </div>
+    @endif
+    
+    <p class="font-black text-slate-900 text-sm underline mt-0.5 mb-0 leading-tight">
+        {{ $signerData['name'] }}
+    </p>
+    <p class="font-bold text-slate-400 text-[10px] uppercase tracking-tighter leading-tight">
+        {{ strtoupper($signerData['title']) }}
+    </p>
+</div>
+
+            </div>
+        </div>
+
+        {{-- FOOTER SLOGAN --}}
+        <div class="text-center mt-12 pt-4 border-t border-slate-100 no-print">
+            <p class="text-[9px] font-black text-slate-300 uppercase tracking-[0.5em]">L O G I S T I C  |  S O L U T I O N  |  P A R T N E R</p>
+        </div>
+
+    </div>
+    
+    {{-- FLOATING PRINT BUTTON --}}
+    @if(empty($isPdf) && empty($isPreview))
+    <div class="fixed bottom-8 right-8 no-print z-50">
+        <button onclick="window.print()" class="bg-blue-900 hover:bg-blue-800 text-white p-5 rounded-3xl shadow-2xl transition transform hover:-translate-y-1 flex items-center gap-3 font-black ring-8 ring-white group">
+            <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z"></path></svg>
+            <span class="text-xs tracking-widest uppercase">Cetak Invoice Resmi</span>
+        </button>
+    </div>
+    @endif
+
+</body>
+</html>

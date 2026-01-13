@@ -1,0 +1,203 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <title>Laporan Transaksi Kas</title>
+    <style>
+        body {
+            font-family: 'DejaVu Sans', sans-serif;
+            font-size: 10pt;
+            line-height: 1.4;
+            color: #333;
+        }
+        
+        .header {
+            text-align: center;
+            border-bottom: 2px solid #2563eb;
+            padding-bottom: 15px;
+            margin-bottom: 20px;
+        }
+        
+        .company-name {
+            font-size: 18pt;
+            font-weight: bold;
+            color: #2563eb;
+        }
+        
+        .report-title {
+            font-size: 14pt;
+            font-weight: bold;
+            margin-top: 10px;
+        }
+        
+        .filters-info {
+            background: #f3f4f6;
+            padding: 10px;
+            margin-bottom: 20px;
+            border-radius: 4px;
+            font-size: 9pt;
+        }
+        
+        .summary-boxes {
+            display: table;
+            width: 100%;
+            margin-bottom: 20px;
+        }
+        
+        .summary-box {
+            display: table-cell;
+            width: 33.33%;
+            padding: 10px;
+            text-align: center;
+            border: 1px solid #e5e7eb;
+        }
+        
+        .summary-label {
+            font-size: 9pt;
+            color: #666;
+            margin-bottom: 5px;
+        }
+        
+        .summary-value {
+            font-size: 14pt;
+            font-weight: bold;
+        }
+        
+        .text-green { color: #16a34a; }
+        .text-red { color: #dc2626; }
+        .text-blue { color: #2563eb; }
+        
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 10px;
+            font-size: 9pt;
+        }
+        
+        th {
+            background: #2563eb;
+            color: white;
+            padding: 8px 5px;
+            text-align: left;
+            font-weight: bold;
+        }
+        
+        td {
+            padding: 6px 5px;
+            border-bottom: 1px solid #e5e7eb;
+        }
+        
+        tr:nth-child(even) {
+            background: #f9fafb;
+        }
+        
+        .text-right { text-align: right; }
+        .text-center { text-align: center; }
+        
+        .footer {
+            margin-top: 30px;
+            padding-top: 10px;
+            border-top: 1px solid #ddd;
+            font-size: 8pt;
+            color: #999;
+            text-align: center;
+        }
+        
+        .badge {
+            display: inline-block;
+            padding: 2px 8px;
+            border-radius: 10px;
+            font-size: 8pt;
+            font-weight: bold;
+        }
+        
+        .badge-posted {
+            background: #dcfce7;
+            color: #16a34a;
+        }
+        
+        .badge-draft {
+            background: #fef3c7;
+            color: #d97706;
+        }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <div class="company-name">M2B LOGISTICS</div>
+        <div class="report-title">LAPORAN TRANSAKSI KAS</div>
+    </div>
+    
+    <div class="filters-info">
+        <strong>Filter yang diterapkan:</strong><br>
+        Periode: {{ \Carbon\Carbon::parse($filters['dateFrom'])->format('d/m/Y') }} - {{ \Carbon\Carbon::parse($filters['dateTo'])->format('d/m/Y') }}
+        @if($filters['type'] !== 'all')
+            | Tipe: {{ $filters['type'] === 'in' ? 'Cash In' : 'Cash Out' }}
+        @endif
+        @if($filters['status'] !== 'all')
+            | Status: {{ ucfirst($filters['status']) }}
+        @endif
+    </div>
+    
+    <div class="summary-boxes">
+        <div class="summary-box">
+            <div class="summary-label">Total Penerimaan</div>
+            <div class="summary-value text-green">IDR {{ number_format($totalIn, 0, ',', '.') }}</div>
+        </div>
+        <div class="summary-box">
+            <div class="summary-label">Total Pengeluaran</div>
+            <div class="summary-value text-red">IDR {{ number_format($totalOut, 0, ',', '.') }}</div>
+        </div>
+        <div class="summary-box">
+            <div class="summary-label">Net Cash Flow</div>
+            <div class="summary-value text-blue">IDR {{ number_format($netCash, 0, ',', '.') }}</div>
+        </div>
+    </div>
+    
+    <table>
+        <thead>
+            <tr>
+                <th style="width: 8%;">Tanggal</th>
+                <th style="width: 12%;">No. Jurnal</th>
+                <th style="width: 6%;">Jenis Transaksi</th>
+                <th style="width: 18%;">Nama Customer/Vendor</th>
+                <th style="width: 12%;">Shipment</th>
+                <th style="width: 14%;" class="text-right">Jumlah (IDR)</th>
+                <th style="width: 20%;">Deskripsi</th>
+                <th style="width: 10%;" class="text-center">Status</th>
+            </tr>
+        </thead>
+        <tbody>
+            @foreach($transactions as $trx)
+            <tr>
+                <td>{{ \Carbon\Carbon::parse($trx->transaction_date)->format('d/m/Y') }}</td>
+                <td>{{ $trx->journal->journal_number ?? '-' }}</td>
+                <td>{{ $trx->type === 'in' ? 'In' : 'Out' }}</td>
+                <td>
+                    @if($trx->customer)
+                        {{ $trx->customer->company_name }}
+                    @elseif($trx->vendor)
+                        {{ $trx->vendor->name }}
+                    @else
+                        -
+                    @endif
+                </td>
+                <td>{{ $trx->shipment->awb_number ?? '-' }}</td>
+                <td class="text-right">{{ number_format($trx->amount, 0, ',', '.') }}</td>
+                <td>{{ $trx->description ?? '-' }}</td>
+                <td class="text-center">
+                    <span class="badge {{ ($trx->journal->status ?? 'draft') === 'posted' ? 'badge-posted' : 'badge-draft' }}">
+                        {{ ($trx->journal->status ?? 'draft') === 'posted' ? 'Posted' : 'Draft' }}
+                    </span>
+                </td>
+            </tr>
+            @endforeach
+        </tbody>
+    </table>
+    
+    <div class="footer">
+        Dicetak pada: {{ now()->format('d/m/Y H:i:s') }}<br>
+        Total {{ count($transactions) }} transaksi
+    </div>
+</body>
+</html>

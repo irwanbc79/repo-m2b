@@ -1,0 +1,362 @@
+@php
+    // Memastikan baris ini adalah baris pertama, tanpa spasi di depannya.
+@endphp
+
+<div class="space-y-6">
+    {{-- Memindahkan fungsi ke dalam div (atau sebaiknya didefinisikan di komponen Livewire jika ini adalah bagian dari logika) --}}
+    @php
+        if (!function_exists('hasKeyword')) {
+            function hasKeyword($haystack, $needles) {
+                if (empty($haystack) || empty($needles)) return false;
+                // Memastikan $haystack adalah array sebelum di-loop
+                if (!is_array($haystack)) $haystack = [$haystack]; 
+                
+                foreach ($haystack as $item) {
+                    // Memastikan $item adalah string sebelum strtolower
+                    if (!is_string($item)) continue; 
+                    
+                    foreach ($needles as $needle) {
+                        if (str_contains(strtolower($item), strtolower($needle))) return true;
+                    }
+                }
+                return false;
+            }
+        }
+        
+        // Logic tracker visual
+        $type = strtolower($shipment->service_type);
+        // Menggunakan map untuk memastikan tipe data benar, sebelum diubah ke array
+        $docs = ($shipment->documents ?? collect([]))->pluck('description')->map(fn($i) => is_string($i) ? strtolower($i) : '')->toArray(); 
+        $currentStep = 1;
+        $steps = []; 
+
+        if ($type == 'import') {
+            $steps = ['Pending', 'Manifest / BC 1.1', 'Customs Billing', 'Customs Released (SPPB)', 'Delivery', 'Completed'];
+            if (hasKeyword($docs, ['manifest', 'bc 1.1'])) $currentStep = 2;
+            if (hasKeyword($docs, ['billing', 'ebilling'])) $currentStep = 3;
+            if (hasKeyword($docs, ['sppb', 'pengeluaran'])) $currentStep = 4;
+            if (hasKeyword($docs, ['sp2', 'surat jalan'])) $currentStep = 5;
+            if ($shipment->status == 'completed') $currentStep = 6;
+        } elseif ($type == 'export') {
+            $steps = ['Booking', 'Stuffing', 'Customs Released (NPE)', 'On Board', 'Completed'];
+            if (hasKeyword($docs, ['gate in', 'stuffing'])) $currentStep = 2;
+            if (hasKeyword($docs, ['npe', 'pib'])) $currentStep = 3;
+            if (hasKeyword($docs, ['bl final', 'on board'])) $currentStep = 4;
+            if ($shipment->status == 'completed') $currentStep = 5;
+        } else {
+            // Domestic
+            $steps = ['Booking', 'Cargo In', 'Sailing', 'Arrived', 'Delivered'];
+            if (hasKeyword($docs, ['tanda terima'])) $currentStep = 2;
+            if (hasKeyword($docs, ['manifest', 'resi'])) $currentStep = 3;
+            if ($shipment->estimated_arrival && now() >= \Carbon\Carbon::parse($shipment->estimated_arrival)) $currentStep = 4;
+            if ($shipment->status == 'completed') $currentStep = 5;
+        }
+    @endphp
+
+    {{-- Header & Breadcrumb --}}
+    <div class="flex items-center justify-between">
+        <div class="flex items-center gap-2 text-sm text-gray-500">
+            <a href="{{ route('admin.shipments.index') }}" class="hover:text-m2b-primary transition flex items-center gap-1">
+                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 19l-7-7m0 0l7-7m-7 7h18"></path></svg>
+                Back to Manage Shipments
+            </a>
+            <span>/</span>
+            <span class="font-bold text-gray-800">Detail #{{ $shipment->awb_number }}</span>
+        </div>
+        
+        @if (session()->has('message'))
+            <span class="text-xs font-bold text-green-600 bg-green-100 px-3 py-1 rounded-full animate-pulse">{{ session('message') }}</span>
+        @endif
+    </div>
+
+    {{-- KARTU UTAMA --}}
+    <div class="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
+        <div class="bg-slate-900 p-6 text-white flex justify-between items-center">
+            <div>
+                <h1 class="text-3xl font-black tracking-tight text-white">{{ $shipment->awb_number }}</h1>
+                <p class="text-slate-400 text-sm mt-1 font-mono">CUSTOMER: <span class="text-white font-bold">{{ $shipment->customer->company_name ?? 'N/A' }}</span></p>
+            </div>
+            <div class="text-right flex flex-col items-end gap-2">
+                <span class="px-3 py-1 rounded text-xs font-bold uppercase tracking-wider border border-white/20 bg-white/10">
+                    {{ str_replace('_', ' ', $shipment->status) }}
+                </span>
+                @if($shipment->lane_status)
+                    <span class="px-3 py-1 rounded text-xs font-bold uppercase tracking-wider flex items-center gap-1 shadow-sm {{ $shipment->lane_status == 'green' ? 'bg-green-500 text-white' : 'bg-red-600 text-white' }}">
+                        {{ $shipment->lane_status == 'green' ? '🟢 JALUR HIJAU' : '🔴 JALUR MERAH' }}
+                    </span>
+                @endif
+            </div>
+        </div>
+
+        {{-- VISUAL TRACKER --}}
+        <div class="p-8 border-b border-gray-100 overflow-x-auto bg-slate-50">
+            <div class="min-w-[700px]"> 
+                {{-- Tracker logic dipindahkan ke atas, variabel $steps dan $currentStep sudah tersedia --}}
+                <div class="relative mt-2 mb-2">
+                    <div class="absolute top-1/2 left-0 w-full h-1 bg-gray-200 -translate-y-1/2 rounded-full z-0"></div>
+                    <div class="absolute top-1/2 left-0 h-1 bg-m2b-primary -translate-y-1/2 rounded-full z-0 transition-all duration-1000" style="width: {{ count($steps) > 1 ? ($currentStep - 1) / (count($steps) - 1) * 100 : 0 }}%"></div>
+                    <div class="relative z-10 flex justify-between w-full">
+                        @foreach($steps as $index => $label)
+                            @php $stepNum = $index + 1; @endphp
+                            <div class="flex flex-col items-center gap-3 w-32">
+                                <div class="w-8 h-8 rounded-full flex items-center justify-center border-2 font-bold text-xs shadow-sm {{ $currentStep >= $stepNum ? 'bg-m2b-primary border-m2b-primary text-white' : 'bg-white border-gray-300 text-gray-400' }}">
+                                    {{ $currentStep > $stepNum ? '✓' : $stepNum }}
+                                </div>
+                                <p class="text-[10px] font-bold uppercase tracking-wide text-center {{ $currentStep >= $stepNum ? 'text-m2b-primary' : 'text-gray-400' }}">{{ $label }}</p>
+                            </div>
+                        @endforeach
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        {{-- INFO GRID & EDIT BUTTON --}}
+        <div class="p-6 bg-white border-b border-gray-200">
+            <div class="flex justify-between items-start mb-4">
+                <h3 class="font-bold text-gray-800">Informasi Pengiriman</h3>
+                <button wire:click="edit" class="text-xs bg-blue-50 text-blue-600 px-3 py-1.5 rounded-lg font-bold hover:bg-blue-100 flex items-center gap-1 transition">
+                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"></path></svg>
+                    Edit Data & Notes
+                </button>
+            </div>
+            <div class="grid grid-cols-1 md:grid-cols-4 gap-6">
+                <div><span class="text-[10px] font-bold text-gray-400 uppercase">Service</span><p class="font-bold text-gray-800 capitalize">{{ $shipment->service_type }} ({{ $shipment->shipment_type }})</p></div>
+                <div><span class="text-[10px] font-bold text-gray-400 uppercase">Cargo</span><p class="font-bold text-gray-800">{{ $shipment->container_mode }}</p><p class="text-xs text-gray-500">{{ $shipment->container_info }}</p></div>
+                <div><span class="text-[10px] font-bold text-gray-400 uppercase">Notes</span><p class="text-xs text-gray-600 italic bg-gray-50 p-2 rounded border border-gray-100">{{ $shipment->notes ?: 'Tidak ada catatan.' }}</p></div>
+                <div><span class="text-[10px] font-bold text-gray-400 uppercase">Est. Arrival</span><p class="font-bold text-m2b-primary font-mono text-lg">{{ $shipment->estimated_arrival ? date('d M Y', strtotime($shipment->estimated_arrival)) : 'TBA' }}</p></div>
+            </div>
+        </div>
+    </div>
+
+    <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+        {{-- KOLOM KIRI: DOKUMEN --}}
+        <div class="lg:col-span-2 space-y-6" id="documents"> {{-- Menambahkan ID untuk tautan dari halaman Manage --}}
+            <div class="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
+                <h3 class="font-bold text-gray-800 mb-4 flex items-center gap-2">
+                    <svg class="w-5 h-5 text-m2b-primary" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path></svg>
+                    Dokumen Shipment (Resmi/Publik)
+                </h3>
+                @if($shipment->documents->where('is_internal', false)->count() > 0)
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        @foreach($shipment->documents->where('is_internal', false) as $doc)
+                        <div class="flex items-center p-3 border border-gray-200 rounded-lg hover:bg-slate-50 transition group relative">
+                            <div class="bg-red-50 text-red-600 p-2.5 rounded mr-3">
+                                <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 21h10a2 2 0 002-2V9.414a1 1 0 00-.293-.707l-5.414-5.414A1 1 0 0012.586 3H7a2 2 0 00-2 2v14a2 2 0 002 2z"></path></svg>
+                            </div>
+                            <div class="overflow-hidden flex-1">
+                                <p class="text-sm font-bold text-gray-700 truncate group-hover:text-blue-800">{{ $doc->description }}</p>
+                                <p class="text-[10px] text-gray-400 uppercase mt-0.5">{{ pathinfo($doc->filename, PATHINFO_EXTENSION) }} • {{ $doc->created_at->format('d M H:i') }}</p>
+                            </div>
+                            <div class="flex gap-1">
+                                <button wire:click="viewDocument({{ $doc->id }})" class="p-1.5 text-blue-500 hover:bg-blue-100 rounded"><svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"></path><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"></path></svg></button>
+                                <button wire:click="deleteDocument({{ $doc->id }})" wire:confirm="Hapus dokumen ini?" class="p-1.5 text-red-500 hover:bg-red-100 rounded"><svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path></svg></button>
+                            </div>
+                        </div>
+                        @endforeach
+                    </div>
+                @else
+                    <div class="text-center py-10 text-gray-400 text-sm italic border-2 border-dashed border-gray-100 rounded-lg">Belum ada dokumen publik.</div>
+                @endif
+            </div>
+        </div>
+
+        {{-- KOLOM KANAN: TOOLS ADMIN --}}
+        <div class="lg:col-span-1 space-y-6">
+            <div class="bg-blue-50 rounded-xl shadow-sm border border-blue-100 p-6">
+                <div class="flex items-center gap-2 mb-4 text-blue-900 border-b border-blue-200 pb-3"><div class="bg-blue-600 text-white p-1.5 rounded"><svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12"></path></svg></div><div><h4 class="font-bold text-sm">Upload Dokumen</h4><p class="text-[10px] text-blue-600">Auto-Update Status</p></div></div>
+                <div class="space-y-3">
+                    <div>
+                        <label class="block text-[10px] font-bold text-gray-500 uppercase mb-1">Jenis</label>
+                        <select wire:model="doc_type" class="w-full border-blue-200 rounded-lg text-xs focus:ring-blue-500 focus:border-blue-500 bg-white py-2">
+                            <option value="">-- Pilih Jenis --</option>
+                            <optgroup label="Dokumen Utama (Memicu Status)">
+                                <option value="Manifest / BC 1.1">Manifest / BC 1.1</option>
+                                <option value="Billing Pungutan">Billing Pungutan (Auto Hijau)</option>
+                                <option value="SPJM">SPJM (Auto Merah)</option>
+                                <option value="SPPB">SPPB (Released)</option>
+                                <option value="SP2">SP2 / Surat Jalan</option>
+                                <option value="NPE">NPE (Ekspor)</option>
+                            </optgroup>
+                            <optgroup label="Dokumen Umum">
+                                <option value="Bill of Lading">Bill of Lading (BL)</option>
+                                <option value="Invoice">Commercial Invoice</option>
+                                <option value="Packing List">Packing List</option>
+                            </optgroup>
+                        </select>
+                        @error('doc_type') <span class="text-red-500 text-[10px]">{{ $message }}</span> @enderror
+                    </div>
+                    <div><input type="file" wire:model="file_upload" class="w-full text-xs text-slate-500 file:mr-2 file:py-1.5 file:px-3 file:rounded-lg file:border-0 file:text-xs file:font-bold file:bg-white file:text-blue-700 hover:file:bg-blue-100">@error('file_upload') <span class="text-red-500 text-[10px] block mt-1">{{ $message }}</span> @enderror</div>
+                    <div><textarea wire:model="custom_note" rows="1" class="w-full border-blue-200 rounded-lg text-xs focus:ring-blue-500 focus:border-blue-500" placeholder="Catatan..."></textarea></div>
+                    <button wire:click="uploadPublic" wire:loading.attr="disabled" class="w-full bg-blue-600 text-white font-bold py-2 rounded-lg hover:bg-blue-700 transition shadow-md flex justify-center items-center gap-2 text-xs uppercase tracking-wider"><span wire:loading.remove wire:target="uploadPublic">Upload ke Customer</span><span wire:loading wire:target="uploadPublic">...</span></button>
+                </div>
+            </div>
+            
+            {{-- DOKUMENTASI INTERNAL --}}
+            <div class="space-y-2">
+                <div class="flex justify-between items-center"><h3 class="font-bold text-purple-900 flex items-center gap-2 text-sm"><span class="bg-purple-100 text-purple-700 p-1 rounded"><svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 9a2 2 0 012-2h.93a2 2 0 001.664-.89l.812-1.22A2 2 0 0110.07 4h3.86a2 2 0 011.664.89l.812 1.22A2 2 0 0018.07 7H19a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V9z"></path><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 13a3 3 0 11-6 0 3 3 0 016 0z"></path></svg></span>Internal Only</h3><button wire:click="openInternalModal" class="text-[10px] bg-purple-600 hover:bg-purple-700 text-white px-2 py-1 rounded font-bold transition">+ Upload Internal</button></div>
+                <div class="bg-purple-50 rounded-xl shadow-inner border border-purple-100 p-3 min-h-[150px]">
+                    @if($shipment->documents->where('is_internal', true)->count() > 0)
+                        <div class="grid grid-cols-2 gap-2">
+                            @foreach($shipment->documents->where('is_internal', true) as $doc)
+                            <div class="group relative bg-white p-1.5 rounded-lg shadow-sm border border-purple-100 hover:shadow-md transition">
+                                <div class="aspect-square bg-gray-100 rounded overflow-hidden mb-1 relative">
+                                    @if(in_array(strtolower(pathinfo($doc->filename, PATHINFO_EXTENSION)), ['jpg','jpeg','png','webp']))<img src="{{ asset('storage/' . $doc->file_path) }}" class="w-full h-full object-cover" alt="Evidence">@else<div class="w-full h-full flex items-center justify-center text-gray-400"><svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 21h10a2 2 0 002-2V9.414a1 1 0 00-.293-.707l-5.414-5.414A1 1 0 0012.586 3H7a2 2 0 00-2 2v14a2 2 0 002 2z"></path></svg></div>@endif
+                                    <button wire:click="viewDocument({{ $doc->id }})" class="absolute inset-0 bg-black/0 group-hover:bg-black/20 transition flex items-center justify-center"><svg class="w-6 h-6 text-white opacity-0 group-hover:opacity-100 drop-shadow-lg" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"></path><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"></path></svg></button>
+                                </div>
+                                <p class="text-[9px] font-bold text-purple-900 leading-tight truncate" title="{{ $doc->description }}">{{ $doc->description }}</p>
+                                <button wire:click="deleteDocument({{ $doc->id }})" wire:confirm="Hapus?" class="absolute top-1 right-1 bg-red-500 text-white rounded-full p-0.5 opacity-0 group-hover:opacity-100 transition shadow-sm hover:bg-red-600"><svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg></button>
+                            </div>
+                            @endforeach
+                        </div>
+                    @else
+                        <div class="flex flex-col items-center justify-center h-full py-8 text-purple-300">
+                            <svg class="w-8 h-8 mb-1" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 9a2 2 0 012-2h.93a2 2 0 001.664-.89l.812-1.22A2 2 0 0110.07 4h3.86a2 2 0 011.664.89l.812 1.22A2 2 0 0018.07 7H19a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V9z"></path><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 13a3 3 0 11-6 0 3 3 0 016 0z"></path></svg>
+                            <p class="text-[10px] text-center">Belum ada foto internal.</p>
+                        </div>
+                    @endif
+                </div>
+            </div>
+        </div>
+    </div>
+
+    {{-- MODAL EDIT SHIPMENT (CLEAN STATUS) --}}
+    @if($isModalOpen)
+    <div class="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4 backdrop-blur-sm overflow-y-auto">
+        <div class="bg-white rounded-xl shadow-2xl w-full max-w-4xl max-h-[90vh] overflow-hidden flex flex-col animate-fade-in-up">
+            <div class="px-6 py-4 border-b border-slate-100 flex items-center justify-between bg-slate-50">
+                <h3 class="text-lg font-bold text-slate-800">Edit Shipment Details</h3>
+                <button wire:click="closeModal" class="text-slate-400 hover:text-slate-600">&times;</button>
+            </div>
+            <div class="p-6 overflow-y-auto">
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-8">
+                    <div class="space-y-5">
+                        <div>
+                            <label class="block text-xs font-bold text-slate-500 uppercase mb-1">Reference No</label>
+                            <input type="text" wire:model="form.awb_number" class="w-full border-slate-300 rounded-lg text-sm bg-slate-50" readonly>
+                        </div>
+                        <div>
+                            <label class="block text-xs font-bold text-slate-500 uppercase mb-1">Customer</label>
+                            <select wire:model="form.customer_id" class="w-full border-slate-300 rounded-lg text-sm" disabled>
+                                @foreach(\App\Models\Customer::all() as $c) <option value="{{ $c->id }}">{{ $c->company_name }}</option> @endforeach
+                            </select>
+                        </div>
+                        <div class="grid grid-cols-2 gap-4">
+                            <div><label class="block text-xs font-bold text-slate-500 uppercase mb-1">Origin</label><input type="text" wire:model="form.origin" class="w-full border-slate-300 rounded-lg text-sm"></div>
+                            <div><label class="block text-xs font-bold text-slate-500 uppercase mb-1">Destination</label><input type="text" wire:model="form.destination" class="w-full border-slate-300 rounded-lg text-sm"></div>
+                        </div>
+                        <div class="grid grid-cols-2 gap-4">
+                            <div><label class="block text-xs font-bold text-slate-500 uppercase mb-1">Service Type</label><select wire:model="form.service_type" class="w-full border-slate-300 rounded-lg text-sm"><option value="import">Import</option><option value="export">Export</option><option value="domestic">Domestic</option></select></div>
+                            <div><label class="block text-xs font-bold text-slate-500 uppercase mb-1">Transport</label><select wire:model="form.shipment_type" class="w-full border-slate-300 rounded-lg text-sm"><option value="sea">Sea Freight</option><option value="air">Air Freight</option><option value="land">Land Freight</option></select></div>
+                        </div>
+                        <div class="mt-4">
+                            <label class="block text-xs font-bold text-slate-500 uppercase mb-1">Customer Notes / Catatan</label>
+                            <textarea wire:model="form.notes" rows="3" class="w-full border-slate-300 rounded-lg text-sm bg-slate-50 focus:ring-blue-500 focus:border-blue-500" placeholder="Catatan tambahan..."></textarea>
+                        </div>
+                    </div>
+                    <div class="bg-slate-50 p-5 rounded-xl border border-slate-200 space-y-4">
+                        <h4 class="text-xs font-bold text-blue-900 uppercase tracking-wider mb-2">CARGO DETAILS</h4>
+                        <div class="grid grid-cols-2 gap-3">
+                            <div><label class="text-xs font-bold text-slate-500 block mb-1">Mode</label><select wire:model="form.container_mode" class="w-full border-slate-300 rounded-lg text-sm"><option value="LCL">LCL</option><option value="FCL">FCL</option></select></div>
+                            <div><label class="text-xs font-bold text-slate-500 block mb-1">Details</label><input type="text" wire:model="form.container_info" class="w-full border-slate-300 rounded-lg text-sm"></div>
+                        </div>
+                        <div class="grid grid-cols-2 gap-3">
+                            <div><label class="text-xs font-bold text-slate-500 block mb-1">Qty</label><input type="number" wire:model="form.pieces" class="w-full border-slate-300 rounded-lg text-sm"></div>
+                            <div>
+                                <label class="text-xs font-bold text-slate-500 block mb-1">Unit</label>
+                                <select wire:model="form.package_type" class="w-full border-slate-300 rounded-lg text-sm">
+                                    <option value="">-- Pilih Unit --</option>
+                                    
+                                    {{-- UNIT KOTAK / PACKAGING --}}
+                                    <option value="Ctn">Ctn (Cartons)</option>
+                                    <option value="Box">Box (Kotak)</option>
+                                    <option value="Pkgs">Pkgs (Packages/Kemasan)</option>
+                                    <option value="Plt">Plt (Pallet)</option>
+                                    <option value="Crate">Crate (Krat Kayu/Plastik)</option>
+                                    <option value="Bdl">Bdl (Bundle/Ikatan)</option>
+                                    
+                                    {{-- UNIT SATUAN/BERAT --}}
+                                    <option value="Pcs">Pcs (Pieces/Biji)</option>
+                                    <option value="Kg">Kg (Kilogram)</option>
+                                    <option value="Ton">Ton (Tonnase)</option>
+                                    <option value="M3">M3 (Cubic Meter)</option>
+                                    
+                                    {{-- UNIT LAIN-LAIN --}}
+                                    <option value="Bag">Bag (Tas/Karung)</option>
+                                    <option value="Sack">Sack (Karung)</option>
+                                    <option value="Drum">Drum (Barel)</option>
+                                    <option value="Roll">Roll (Gulungan)</option>
+                                    <option value="Tubes">Tubes (Tabung)</option>
+                                    <option value="Other">Other (Lainnya)</option>
+                                </select>
+                            </div>
+                        </div>
+                        <div><label class="text-xs font-bold text-slate-500 block mb-1">Weight (Kg)</label><input type="number" wire:model="form.weight" class="w-full border-slate-300 rounded-lg text-sm"></div>
+                        <hr class="border-slate-200 my-2">
+                        
+                        {{-- STATUS REMOVED, REPLACED WITH CHECKBOX --}}
+                        <div class="flex items-center gap-3 bg-white p-3 rounded-lg border border-gray-200 shadow-sm">
+                            <input type="checkbox" wire:model="mark_as_completed" id="markCompleted" class="w-5 h-5 text-green-600 rounded focus:ring-green-500">
+                            <label for="markCompleted" class="text-sm font-bold text-gray-700 cursor-pointer select-none">
+                                Tandai Shipment Selesai (Completed)
+                            </label>
+                        </div>
+                        
+                        <div>
+                            <label class="text-xs font-bold text-slate-500 block mb-1">Est. Arrival</label>
+                            <input type="date" wire:model="form.estimated_arrival" class="w-full border-slate-300 rounded-lg text-sm">
+                        </div>
+
+                        {{-- STATUS JALUR MANUAL --}}
+                        <div class="mt-2 p-3 rounded-lg border bg-white border-blue-200 shadow-sm">
+                            <label class="text-xs font-bold text-blue-800 uppercase flex items-center gap-1 mb-1">
+                                Status Jalur Manual
+                            </label>
+                            <select wire:model="form.lane_status" class="w-full rounded-lg text-sm font-bold">
+                                <option value="">-- Otomatis / Belum Ada --</option>
+                                <option value="green">🟩 JALUR HIJAU</option>
+                                <option value="red">🟥 JALUR MERAH</option>
+                            </select>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="bg-slate-50 px-6 py-4 border-t border-slate-200 flex justify-end gap-3">
+                <button wire:click="closeModal" class="px-4 py-2 bg-white border border-slate-300 rounded-lg text-slate-600 font-medium hover:bg-slate-50">Cancel</button>
+                <button wire:click="save" class="px-6 py-2 bg-slate-900 text-white rounded-lg font-bold hover:bg-slate-800">Save Shipment</button>
+            </div>
+        </div>
+    </div>
+    @endif
+    
+    {{-- MODAL INTERNAL UPLOAD (Diperbaiki agar menggunakan 'file_upload' dan 'doc_type') --}}
+    @if($showInternalModal)
+    <div class="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4 backdrop-blur-sm">
+        <div class="bg-white p-6 rounded-xl w-full max-w-md shadow-2xl animate-fade-in-up border-t-4 border-purple-600">
+            <div class="flex justify-between items-center mb-4 border-b pb-3">
+                <h3 class="font-bold text-lg text-purple-900">Upload Bukti Internal</h3>
+                <button wire:click="closeInternalModal" class="text-gray-400 hover:text-red-500">&times;</button>
+            </div>
+            <div class="space-y-4">
+                <div class="border-2 border-dashed border-purple-200 rounded-lg p-6 bg-purple-50 text-center relative hover:bg-purple-100 transition">
+                    <label class="cursor-pointer block">
+                        <span class="text-sm font-bold text-purple-700 hover:text-purple-900 block mb-2">Pilih File Foto / Dokumen</span>
+                        <input type="file" wire:model="file_upload" class="text-xs text-slate-500 mx-auto">
+                    </label>
+                </div>
+                <div>
+                    <label class="text-xs font-bold text-gray-600 uppercase">Keterangan</label>
+                    <input type="text" wire:model="doc_type" placeholder="Contoh: Kondisi barang..." class="w-full border border-purple-200 rounded-lg px-3 py-2 text-sm">
+                </div>
+            </div>
+            <div class="mt-6 flex justify-end gap-3 pt-4 border-t">
+                <button wire:click="closeInternalModal" class="px-4 py-2 bg-gray-100 text-gray-600 rounded-lg text-sm font-bold">Batal</button>
+                {{-- Menggunakan wire:loading.attr="disabled" dan wire:target="uploadInternal" --}}
+                <button wire:click="uploadInternal" wire:loading.attr="disabled" wire:target="uploadInternal" class="px-4 py-2 bg-purple-700 text-white rounded-lg text-sm font-bold hover:bg-purple-800 transition disabled:opacity-50">
+                    <span wire:loading.remove wire:target="uploadInternal">Simpan</span>
+                    <span wire:loading wire:target="uploadInternal">Uploading...</span>
+                </button>
+            </div>
+        </div>
+    </div>
+    @endif
+</div>

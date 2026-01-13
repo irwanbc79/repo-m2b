@@ -1,0 +1,134 @@
+<?php
+
+namespace App\Console\Commands;
+
+use Illuminate\Console\Command;
+use Webklex\IMAP\Facades\Client;
+use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Storage;
+use Illuminate\Support\Facades\Log;
+use Carbon\Carbon;
+use Illuminate\Support\Str;
+
+class SyncEmailInbox extends Command
+{
+    protected $signature = 'email:sync {mailbox?} {--force}';
+    protected $description = 'Deep Sync IMAP for Outlook/O365 - Focused on Today Emails';
+
+    protected array $mailboxes = ['sales', 'import', 'export', 'finance', 'gmail'];
+
+    public function handle()
+    {
+        $targetMailbox = $this->argument('mailbox');
+        $isForce = $this->option('force');
+
+        $mailboxes = $targetMailbox ? [$targetMailbox] : $this->mailboxes;
+
+        foreach ($mailboxes as $mailbox) {
+            $this->info("------------------------------------------");
+            $this->info("🔄 Memproses Akun: " . strtoupper($mailbox));
+            $this->syncMailbox($mailbox, $isForce);
+        }
+
+        return Command::SUCCESS;
+    }
+
+    protected function syncMailbox(string $mailbox, bool $isForce = false)
+    {
+        try {
+            $client = Client::account($mailbox);
+            if (!$client->isConnected()) { $client->connect(); }
+
+            // Outlook Fix: Cari folder INBOX atau folder lain yang mungkin menampung email masuk
+            $folders = $client->getFolders();
+            $targetFolder = null;
+            foreach ($folders as $folder) {
+                $name = strtolower($folder->name);
+                if ($name === 'inbox' || str_contains($name, 'fokus') || str_contains($name, 'focused')) {
+                    $targetFolder = $folder;
+                    break;
+                }
+            }
+
+            if (!$targetFolder) {
+                $this->error("   ❌ Folder masuk tidak ditemukan.");
+                return;
+            }
+
+            $this->info("   📂 Scan Folder: {$targetFolder->name}");
+
+            // Ambil email lebih banyak (200) tanpa filter status seen/unseen agar email hari ini tidak terlewat
+            $messages = $targetFolder->messages()->all()->limit(50)->setFetchOrder('desc')->get();
+            $this->info("   🔍 Memeriksa " . $messages->count() . " email terbaru di server...");
+
+            $syncedCount = 0;
+
+            foreach ($messages as $message) {
+                $uid = (int) $message->getUid();
+                $msgId = (string)$message->getMessageId();
+
+                // Cek ganda di database (UID & Message-ID)
+                $exists = DB::table('emails')
+                    ->where('mailbox', $mailbox)
+                    ->where(function($q) use ($uid, $msgId) {
+                        $q->where('uid', $uid)->orWhere('message_id', $msgId);
+                    })->exists();
+
+                if ($exists) continue;
+
+                DB::beginTransaction();
+                try {
+                    $from = $message->getFrom()[0]->mail ?? 'unknown@m2b.co.id';
+                    $fromName = $message->getFrom()[0]->personal ?? $from;
+                    $subject = (string) $message->getSubject();
+                    $dateObj = $message->getDate();
+                    $date = $dateObj instanceof Carbon ? $dateObj : Carbon::parse($dateObj->first());
+                    
+                    // Body: Utamakan HTML, bersihkan sedikit
+                    $body = $message->getHTMLBody() ?: $message->getTextBody() ?: "(Email Kosong)";
+
+                    $emailId = DB::table('emails')->insertGetId([
+                        'mailbox'    => $mailbox,
+                        'uid'        => $uid,
+                        'message_id' => $msgId,
+                        'subject'    => $subject,
+                        'from_email' => $from,
+                        'from_name'  => $fromName,
+                        'body'       => $body,
+                        'is_read'    => $message->getFlags()->has('seen'),
+                        'email_date' => $date,
+                        'created_at' => now(),
+                        'updated_at' => now(),
+                    ]);
+
+                    foreach ($message->getAttachments() as $att) {
+                        $filename = $att->getName();
+                        $path = "email_attachments/{$mailbox}/{$uid}";
+                        $fullPath = "{$path}/" . Str::slug(pathinfo($filename, PATHINFO_FILENAME)) . "_" . uniqid() . "." . (pathinfo($filename, PATHINFO_EXTENSION) ?: 'bin');
+                        Storage::put($fullPath, $att->getContent());
+
+                        DB::table('email_attachments')->insert([
+                            'email_id' => $emailId, 'filename' => $filename, 'file_path'=> $fullPath,
+                            'mime_type'=> $att->getMimeType(), 'size' => $att->getSize(), 'created_at'=> now(),
+                        ]);
+                    }
+
+                    DB::commit();
+                    $syncedCount++;
+                    $this->line("   ✅ SYNCED: {$subject}");
+
+                } catch (\Throwable $e) {
+                    DB::rollBack();
+                    Log::error("Error syncing UID {$uid}: " . $e->getMessage());
+                }
+            }
+
+            $this->info("   📊 Hasil: {$syncedCount} email baru masuk ke portal.");
+
+        } catch (\Throwable $e) {
+            $this->error("   ❌ Koneksi Error: " . $e->getMessage());
+            $this->error("   📍 File: " . $e->getFile() . ":" . $e->getLine());
+            $this->error("   🔍 Trace: " . $e->getTraceAsString());
+        }
+    }
+}

@@ -1,0 +1,102 @@
+<div style="max-width: 1400px; margin: 0 auto; padding: 1rem;">
+    <!-- Header Card -->
+    <div style="background: linear-gradient(135deg, #0F2C59 0%, #1e3a8a 100%); border-radius: 1rem; padding: 2rem; margin-bottom: 1.5rem; box-shadow: 0 4px 6px rgba(0,0,0,0.1);">
+        <h1 style="font-size: 2rem; font-weight: 700; color: white; margin-bottom: 0.5rem;">
+            🔍 HS Code Explorer
+        </h1>
+        <p style="color: rgba(255,255,255,0.9); font-size: 1rem;">
+            Pencarian Kode HS BTKI 2022 - Total <strong>{{ number_format(DB::table('hs_codes')->count()) }}</strong> kode
+        </p>
+    </div>
+
+    <!-- Search Card -->
+    <div style="background: white; border-radius: 1rem; padding: 1.5rem; margin-bottom: 1.5rem; box-shadow: 0 2px 4px rgba(0,0,0,0.1);">
+        <div style="position: relative;">
+            <input 
+                type="text" 
+                wire:model.live.debounce.300ms="search"
+                placeholder="🔎 Cari kode HS atau deskripsi barang... (contoh: 'kuda', 'susu', '01.01')"
+                style="width: 100%; padding: 1rem 1rem 1rem 3rem; border: 2px solid #e2e8f0; border-radius: 0.75rem; font-size: 1rem; outline: none;"
+            >
+            <span style="position: absolute; left: 1rem; top: 50%; transform: translateY(-50%); font-size: 1.25rem;">🔍</span>
+            
+            <!-- Loading Indicator -->
+            <div wire:loading wire:target="search" style="position: absolute; right: 1rem; top: 50%; transform: translateY(-50%);">
+                <div style="width: 1.5rem; height: 1.5rem; border: 3px solid #e2e8f0; border-top-color: #0F2C59; border-radius: 50%; animation: spin 1s linear infinite;"></div>
+            </div>
+        </div>
+
+        @if($search)
+            <p style="margin-top: 1rem; color: #64748b; font-size: 0.875rem;">
+                📊 Hasil pencarian untuk: <strong>"{{ $search }}"</strong>
+            </p>
+        @endif
+    </div>
+
+    <!-- Results -->
+    @if($results->count() > 0)
+        <div style="background: white; border-radius: 1rem; padding: 1.5rem; box-shadow: 0 2px 4px rgba(0,0,0,0.1);">
+            <p style="color: #64748b; font-size: 0.875rem; margin-bottom: 1rem;">
+                Menampilkan {{ $results->firstItem() ?? 0 }} - {{ $results->lastItem() ?? 0 }} dari {{ number_format($results->total()) }} hasil
+            </p>
+
+            <div style="display: grid; gap: 1rem;">
+                @foreach($results as $item)
+                    <div style="border: 1px solid #e2e8f0; border-radius: 0.5rem; padding: 1rem; transition: all 0.2s; cursor: pointer;" 
+                         onmouseover="this.style.borderColor='#0F2C59'; this.style.boxShadow='0 4px 6px rgba(15,44,89,0.1)'" 
+                         onmouseout="this.style.borderColor='#e2e8f0'; this.style.boxShadow='none'">
+                        <div style="display: flex; justify-content: space-between; align-items: start;">
+                            <div style="flex: 1;">
+                                <h3 style="font-size: 1.25rem; font-weight: 600; color: #0F2C59; margin-bottom: 0.5rem;">
+                                    {{ $item->hs_code }}
+                                </h3>
+                                <p style="color: #1e293b; line-height: 1.6;">
+                                    {{ \Illuminate\Support\Str::limit($item->description_id ?? 'Tidak ada deskripsi', 200) }}
+                                </p>
+                            </div>
+                            <div>
+                                <span style="background: #dbeafe; color: #1e3a8a; padding: 0.25rem 0.75rem; border-radius: 1rem; font-size: 0.75rem; font-weight: 600;">
+                                    Level {{ $item->hs_level }}
+                                </span>
+                            </div>
+                        </div>
+                    </div>
+                @endforeach
+            </div>
+
+            <!-- Pagination -->
+            <div style="margin-top: 1.5rem;">
+                {{ $results->links() }}
+            </div>
+        </div>
+    @elseif($search)
+        <div style="background: white; border-radius: 1rem; padding: 3rem; text-align: center; box-shadow: 0 2px 4px rgba(0,0,0,0.1);">
+            <div style="font-size: 3rem; margin-bottom: 1rem;">🔍</div>
+            <h3 style="font-size: 1.25rem; font-weight: 600; color: #1e293b; margin-bottom: 0.5rem;">
+                Tidak ada hasil
+            </h3>
+            <p style="color: #64748b;">
+                Tidak ditemukan kode HS untuk pencarian "<strong>{{ $search }}</strong>"
+            </p>
+        </div>
+    @else
+        <div style="background: white; border-radius: 1rem; padding: 3rem; text-align: center; box-shadow: 0 2px 4px rgba(0,0,0,0.1);">
+            <div style="font-size: 3rem; margin-bottom: 1rem;">📦</div>
+            <h3 style="font-size: 1.25rem; font-weight: 600; color: #1e293b; margin-bottom: 0.5rem;">
+                Mulai Pencarian
+            </h3>
+            <p style="color: #64748b; margin-bottom: 1.5rem;">
+                Ketik kode HS atau deskripsi barang di kotak pencarian
+            </p>
+            <p style="color: #94a3b8; font-size: 0.875rem;">
+                💡 Tips: Coba ketik "kuda", "susu", atau "01.01"
+            </p>
+        </div>
+    @endif
+</div>
+
+<style>
+    @keyframes spin {
+        to { transform: rotate(360deg); }
+    }
+</style>

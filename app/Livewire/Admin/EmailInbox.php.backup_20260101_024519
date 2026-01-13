@@ -1,0 +1,116 @@
+<?php
+
+namespace App\Livewire\Admin;
+
+use Livewire\Component;
+use Livewire\WithPagination;
+use Illuminate\Support\Facades\DB;
+use App\Models\Shipment;
+use App\Models\Customer;
+use App\Models\Document;
+use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Artisan;
+use Carbon\Carbon;
+
+class EmailInbox extends Component
+{
+    use WithPagination;
+
+    public $activeAccount = 'sales';
+    public $mailboxes = ['sales', 'import', 'export'];
+    public $emails = [];
+    public $selectedEmail = null;
+    public $showConvertModal = false;
+
+    public function mount()
+    {
+        $this->activeAccount = request()->query('mailbox', 'sales');
+        if (!in_array($this->activeAccount, $this->mailboxes)) {
+            $this->activeAccount = 'sales';
+        }
+        $this->loadEmails();
+
+        // Handle direct selection dari URL jika ada
+        $emailId = request()->query('email');
+        if ($emailId) {
+            $this->selectEmail((int)$emailId);
+        }
+    }
+
+    public function loadEmails()
+    {
+        $this->emails = DB::table('emails')
+            ->where('mailbox', $this->activeAccount)
+            ->orderByDesc('email_date')
+            ->limit(100)
+            ->get()
+            ->map(fn($email) => [
+                'db_id' => $email->id,
+                'uid' => $email->uid,
+                'subject' => $email->subject ?: '(No Subject)',
+                'from' => $email->from_email,
+                'name' => $email->from_name ?: $email->from_email,
+                'date' => $email->email_date ? Carbon::parse($email->email_date)->format('d M H:i') : '',
+                'is_read' => (bool)$email->is_read,
+                'attachments' => DB::table('email_attachments')->where('email_id', $email->id)->count()
+            ])->toArray();
+    }
+
+    /**
+     * Pilih email menggunakan wire:click (TANPA RELOAD)
+     */
+    public function selectEmail($dbId)
+    {
+        $email = DB::table('emails')->where('id', $dbId)->first();
+        if (!$email) return;
+
+        DB::table('emails')->where('id', $dbId)->update(['is_read' => true]);
+
+        $attachments = DB::table('email_attachments')
+            ->where('email_id', $email->id)
+            ->get()
+            ->toArray();
+
+        $this->selectedEmail = [
+            'db_id' => $email->id,
+            'subject' => $email->subject ?: '(No Subject)',
+            'from' => $email->from_email,
+            'name' => $email->from_name ?: $email->from_email,
+            'date' => Carbon::parse($email->email_date)->format('d M Y H:i'),
+            'body' => $email->body ?: '(Konten kosong)',
+            'attachments' => $attachments,
+        ];
+        
+        $this->loadEmails();
+    }
+
+    public function syncNow()
+    {
+        try {
+            Artisan::call('email:sync', ['mailbox' => $this->activeAccount, '--force' => true]);
+            $this->loadEmails();
+            session()->flash('message', 'Sinkronisasi selesai.');
+        } catch (\Exception $e) {
+            session()->flash('error', 'Sync gagal: ' . $e->getMessage());
+        }
+    }
+
+    public function switchAccount($account)
+    {
+        $this->activeAccount = $account;
+        $this->selectedEmail = null;
+        $this->loadEmails();
+    }
+
+    public function getUnreadCount($account)
+    {
+        return DB::table('emails')->where('mailbox', $account)->where('is_read', false)->count();
+    }
+
+    public function render()
+    {
+        return view('livewire.admin.email-inbox', [
+            'customers' => Customer::orderBy('company_name')->get()
+        ])->layout('layouts.admin');
+    }
+}

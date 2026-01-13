@@ -1,0 +1,353 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <title>Invoice {{ $invoice->invoice_number }}</title>
+    <style>
+        @page {
+            size: 9.5in 11in;
+            margin: 0.2in 0.2in;
+        }
+        
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        
+        body {
+            font-family: 'Courier New', monospace;
+            font-size: 9pt;
+            line-height: 1.2;
+            color: #000;
+            width: 9.1in;
+        }
+        
+        .container { padding: 0.1in; }
+        
+        /* Header */
+        .header {
+            display: flex;
+            justify-content: space-between;
+            border-bottom: 2px solid #000;
+            padding-bottom: 5px;
+            margin-bottom: 8px;
+        }
+        
+        .company-name { font-size: 12pt; font-weight: bold; }
+        .company-info { font-size: 8pt; }
+        
+        .invoice-box { text-align: right; }
+        .invoice-box h1 {
+            font-size: 16pt;
+            border: 2px solid #000;
+            padding: 2px 12px;
+            display: inline-block;
+        }
+        .invoice-number { font-size: 10pt; font-weight: bold; margin-top: 3px; }
+        
+        .status-badge {
+            display: inline-block;
+            padding: 1px 6px;
+            font-size: 8pt;
+            font-weight: bold;
+            border: 1px solid;
+        }
+        .status-unpaid { background: #fee; border-color: #c00; color: #c00; }
+        .status-paid { background: #efe; border-color: #0a0; color: #0a0; }
+        
+        /* Info Section */
+        .info-row {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 8px;
+        }
+        
+        .customer-box, .detail-box { width: 48%; font-size: 8pt; }
+        .box-title { font-weight: bold; text-decoration: underline; margin-bottom: 3px; }
+        
+        /* Items Table */
+        .items-table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-bottom: 8px;
+            font-size: 8pt;
+        }
+        
+        .items-table th {
+            background: #333;
+            color: #fff;
+            padding: 3px;
+            border: 1px solid #000;
+            text-align: center;
+        }
+        
+        .items-table td {
+            padding: 3px;
+            border: 1px solid #000;
+        }
+        
+        .col-no { width: 5%; text-align: center; }
+        .col-desc { width: 50%; }
+        .col-qty { width: 10%; text-align: center; }
+        .col-price { width: 17%; text-align: right; }
+        .col-amount { width: 18%; text-align: right; }
+        
+        .empty-row td { height: 16px; }
+        
+        /* Totals */
+        .totals-row {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 6px;
+        }
+        
+        .terbilang {
+            width: 55%;
+            border: 1px solid #000;
+            padding: 4px;
+            font-size: 8pt;
+            background: #fffde7;
+        }
+        
+        .totals-box { width: 40%; font-size: 9pt; }
+        .totals-box table { width: 100%; }
+        .totals-box td { padding: 2px 4px; }
+        .totals-box .lbl { text-align: left; }
+        .totals-box .val { text-align: right; font-weight: bold; }
+        .grand-total { border-top: 2px solid #000; font-size: 10pt; }
+        
+        /* Footer Info */
+        .footer-row {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 5px;
+            font-size: 8pt;
+        }
+        
+        .notes-box, .bank-box {
+            flex: 1;
+            border: 1px solid #000;
+            padding: 4px;
+        }
+        .bank-box { background: #e3f2fd; }
+        
+        /* ======================= */
+        /* SIGNATURE - 3X LEBIH BESAR */
+        /* ======================= */
+        .sig-row {
+            display: flex;
+            justify-content: space-between;
+            margin-top: 8px;
+        }
+        
+        .sig-col {
+            width: 32%;
+            text-align: center;
+            font-size: 8pt;
+        }
+        
+        .sig-area {
+            height: 130px;
+            border-bottom: 1px solid #000;
+            margin: 5px 0;
+            position: relative;
+        }
+        
+        .sig-area .stamp {
+            position: absolute;
+            bottom: 0;
+            left: 50%;
+            transform: translateX(-50%);
+            height: 120px;
+            width: auto;
+            opacity: 0.7;
+        }
+        
+        .sig-area .sign {
+            position: absolute;
+            bottom: 10px;
+            left: 50%;
+            transform: translateX(-50%);
+            height: 100px;
+            width: auto;
+            z-index: 2;
+        }
+        
+        .sig-name { font-weight: bold; font-size: 9pt; margin-top: 2px; }
+        .sig-role { font-size: 8pt; }
+        
+        /* Print Bar */
+        .print-bar {
+            position: fixed;
+            top: 0; left: 0; right: 0;
+            background: #2d3748;
+            color: #fff;
+            padding: 8px 15px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            z-index: 1000;
+        }
+        
+        .print-bar a, .print-bar button {
+            padding: 6px 14px;
+            border-radius: 4px;
+            text-decoration: none;
+            font-weight: bold;
+            cursor: pointer;
+            border: none;
+            margin-left: 8px;
+        }
+        
+        .btn-back { background: #718096; color: #fff; }
+        .btn-print { background: #48bb78; color: #fff; font-size: 12pt; }
+        
+        @media print {
+            .print-bar { display: none !important; }
+            body { padding-top: 0 !important; }
+        }
+        
+        @media screen {
+            body { padding-top: 50px; }
+        }
+    </style>
+</head>
+<body>
+    <div class="print-bar">
+        <span>📄 <strong>{{ $invoice->invoice_number }}</strong></span>
+        <div>
+            <a href="{{ route('finance.simple-invoice.index') }}" class="btn-back">← Kembali</a>
+            <button onclick="window.print()" class="btn-print">🖨️ CETAK</button>
+        </div>
+    </div>
+
+    <div class="container">
+        <!-- Header -->
+        <div class="header">
+            <div>
+                <div class="company-name">PT. MORA MULTI BERKAH</div>
+                <div class="company-info">
+                    Logistic Solutions & Freight Forwarding<br>
+                    Jl. Kapt. Sumarsono Komp. Graha Metropolitan Blok G No. 14<br>
+                    Medan, Sumatera Utara | Telp: 061-4520012 | finance@m2b.co.id
+                </div>
+            </div>
+            <div class="invoice-box">
+                <h1>INVOICE</h1>
+                <div class="invoice-number">{{ $invoice->invoice_number }}</div>
+                <div class="status-badge status-{{ $invoice->status }}">{{ strtoupper($invoice->status) }}</div>
+            </div>
+        </div>
+
+        <!-- Info Row -->
+        <div class="info-row">
+            <div class="customer-box">
+                <div class="box-title">TAGIHAN KEPADA:</div>
+                <strong>{{ $invoice->customer_name }}</strong><br>
+                {{ $invoice->customer_address }}
+            </div>
+            <div class="detail-box">
+                <table>
+                    <tr><td>Tanggal</td><td>: {{ $invoice->invoice_date->format('d/m/Y') }}</td></tr>
+                    <tr><td>Jatuh Tempo</td><td>: {{ $invoice->invoice_date->addDays(30)->format('d/m/Y') }}</td></tr>
+                    <tr><td>Currency</td><td>: {{ $invoice->currency }}</td></tr>
+                    @if($invoice->status === 'paid' && $invoice->paid_date)
+                    <tr><td>Tgl Bayar</td><td>: {{ $invoice->paid_date->format('d/m/Y') }}</td></tr>
+                    @endif
+                </table>
+            </div>
+        </div>
+
+        <!-- Items Table -->
+        <table class="items-table">
+            <thead>
+                <tr>
+                    <th class="col-no">NO</th>
+                    <th class="col-desc">KETERANGAN</th>
+                    <th class="col-qty">QTY</th>
+                    <th class="col-price">HARGA</th>
+                    <th class="col-amount">JUMLAH</th>
+                </tr>
+            </thead>
+            <tbody>
+                @forelse($invoice->items as $index => $item)
+                <tr>
+                    <td class="col-no">{{ $index + 1 }}</td>
+                    <td class="col-desc">{{ $item->description }}</td>
+                    <td class="col-qty">{{ number_format($item->quantity, 0) }}</td>
+                    <td class="col-price">{{ number_format($item->unit_price, 0, ',', '.') }}</td>
+                    <td class="col-amount">{{ number_format($item->quantity * $item->unit_price, 0, ',', '.') }}</td>
+                </tr>
+                @empty
+                <tr><td colspan="5" style="text-align:center;">-</td></tr>
+                @endforelse
+                
+                @php $emptyRows = max(0, min(4, 5 - count($invoice->items))); @endphp
+                @for($i = 0; $i < $emptyRows; $i++)
+                <tr class="empty-row"><td></td><td></td><td></td><td></td><td></td></tr>
+                @endfor
+            </tbody>
+        </table>
+
+        <!-- Totals Row -->
+        <div class="totals-row">
+            <div class="terbilang">
+                <strong>TERBILANG:</strong><br>
+                <em># {{ $invoice->terbilang }} #</em>
+            </div>
+            <div class="totals-box">
+                <table>
+                    <tr>
+                        <td class="lbl">SUBTOTAL</td>
+                        <td class="val">{{ $invoice->currency }} {{ number_format($invoice->subtotal ?? $invoice->total, 0, ',', '.') }}</td>
+                    </tr>
+                    <tr class="grand-total">
+                        <td class="lbl"><strong>TOTAL</strong></td>
+                        <td class="val">{{ $invoice->currency }} {{ number_format($invoice->total, 0, ',', '.') }}</td>
+                    </tr>
+                </table>
+            </div>
+        </div>
+
+        <!-- Footer Info -->
+        <div class="footer-row">
+            <div class="notes-box">
+                <strong>CATATAN:</strong><br>
+                {{ $invoice->notes ?: 'Pembayaran via transfer bank.' }}
+            </div>
+            <div class="bank-box">
+                <strong>TRANSFER KE:</strong><br>
+                Bank Mandiri | Rek: 106-00-5598809-6<br>
+                A/N: PT. MORA MULTI BERKAH
+            </div>
+        </div>
+
+        <!-- Signature Row - 3X LEBIH BESAR -->
+        <div class="sig-row">
+            <div class="sig-col">
+                Penerima,
+                <div class="sig-area"></div>
+                <div class="sig-name">(.......................)</div>
+            </div>
+            
+            <div class="sig-col"></div>
+            
+            <div class="sig-col">
+                Medan, {{ $invoice->invoice_date->format('d M Y') }}<br>
+                PT. MORA MULTI BERKAH
+                <div class="sig-area">
+                    @if(file_exists(public_path('images/assets/signatures/stamp_m2b.png')))
+                    <img src="{{ asset('images/assets/signatures/stamp_m2b.png') }}" class="stamp" alt="">
+                    @endif
+                    @if(file_exists(public_path('images/assets/signatures/sign_nurul.png')))
+                    <img src="{{ asset('images/assets/signatures/sign_nurul.png') }}" class="sign" alt="">
+                    @endif
+                </div>
+                <div class="sig-name">Nurul Asyikin</div>
+                <div class="sig-role">Finance Department</div>
+            </div>
+        </div>
+    </div>
+
+    @if(request()->has('auto'))
+    <script>window.onload = function() { window.print(); }</script>
+    @endif
+</body>
+</html>

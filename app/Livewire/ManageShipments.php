@@ -1,0 +1,166 @@
+<?php
+
+namespace App\Livewire;
+
+use Livewire\Component;
+use Livewire\WithPagination;
+use App\Models\Shipment;
+use Illuminate\Support\Facades\Auth;
+
+class ManageShipments extends Component
+{
+    use WithPagination;
+
+    public $search = '';
+    public $statusFilter = 'all';
+    public $selectedShipments = [];
+    public $selectAll = false;
+    
+    // Cancel modal
+    public $showCancelModal = false;
+    public $shipmentToCancel = null;
+    public $cancellationReason = '';
+
+    protected $queryString = ['search', 'statusFilter'];
+
+    public function mount()
+    {
+        // Initialize
+    }
+
+    public function updatedSearch()
+    {
+        $this->resetPage();
+    }
+
+    public function updatedStatusFilter()
+    {
+        $this->resetPage();
+        $this->selectedShipments = [];
+        $this->selectAll = false;
+    }
+
+    public function updatedSelectAll($value)
+    {
+        if ($value) {
+            $shipments = $this->getShipmentsQuery()
+                ->where('status', '!=', Shipment::STATUS_CANCEL)
+                ->limit(50)
+                ->get();
+            
+            $this->selectedShipments = $shipments->pluck('id')->toArray();
+        } else {
+            $this->selectedShipments = [];
+        }
+    }
+
+    protected function getShipmentsQuery()
+    {
+        $query = Shipment::query()
+            ->with(['customer', 'cancelledBy'])
+            ->orderBy('created_at', 'desc');
+
+        if ($this->search) {
+            $query->where(function($q) {
+                $q->where('awb_number', 'like', '%' . $this->search . '%')
+                  ->orWhere('bl_number', 'like', '%' . $this->search . '%')
+                  ->orWhereHas('customer', function($customerQuery) {
+                      $customerQuery->where('company_name', 'like', '%' . $this->search . '%');
+                  });
+            });
+        }
+
+        if ($this->statusFilter !== 'all') {
+            $query->where('status', $this->statusFilter);
+        }
+
+        return $query;
+    }
+
+    public function openCancelModal($shipmentId)
+    {
+        $this->shipmentToCancel = $shipmentId;
+        $this->cancellationReason = '';
+        $this->showCancelModal = true;
+    }
+
+    public function closeCancelModal()
+    {
+        $this->showCancelModal = false;
+        $this->shipmentToCancel = null;
+        $this->cancellationReason = '';
+    }
+
+    public function confirmCancel()
+    {
+        if (!$this->shipmentToCancel) {
+            $this->dispatch('notification', [
+                'type' => 'error',
+                'message' => 'Shipment tidak valid.'
+            ]);
+            return;
+        }
+
+        $shipment = Shipment::find($this->shipmentToCancel);
+        
+        if (!$shipment) {
+            session()->flash('error', 'Shipment tidak ditemukan.');
+            $this->closeCancelModal();
+            return;
+        }
+
+        if ($shipment->isCancelled()) {
+            session()->flash('error', 'Shipment sudah dibatalkan sebelumnya.');
+            $this->closeCancelModal();
+            return;
+        }
+
+        // Cancel the shipment
+        $shipment->cancel(Auth::id(), $this->cancellationReason);
+
+        session()->flash('success', "Shipment {$shipment->awb_number} berhasil dibatalkan.");
+        
+        $this->closeCancelModal();
+        $this->selectedShipments = array_diff($this->selectedShipments, [$this->shipmentToCancel]);
+    }
+
+    public function bulkCancel()
+    {
+        if (empty($this->selectedShipments)) {
+            session()->flash('error', 'Pilih minimal 1 shipment untuk dibatalkan.');
+            return;
+        }
+
+        $cancelledCount = 0;
+        
+        foreach ($this->selectedShipments as $shipmentId) {
+            $shipment = Shipment::find($shipmentId);
+            
+            if ($shipment && !$shipment->isCancelled()) {
+                $shipment->cancel(Auth::id(), 'Bulk cancellation');
+                $cancelledCount++;
+            }
+        }
+
+        session()->flash('success', "{$cancelledCount} shipment berhasil dibatalkan.");
+        $this->selectedShipments = [];
+        $this->selectAll = false;
+    }
+
+    public function render()
+    {
+        $shipments = $this->getShipmentsQuery()->paginate(10);
+        
+        return view('livewire.manage-shipments', [
+            'shipments' => $shipments,
+            'statuses' => Shipment::getStatuses(),
+            'statusCounts' => [
+                'all' => Shipment::count(),
+                'pending' => Shipment::where('status', Shipment::STATUS_PENDING)->count(),
+                'in_progress' => Shipment::where('status', Shipment::STATUS_IN_PROGRESS)->count(),
+                'completed' => Shipment::where('status', Shipment::STATUS_COMPLETED)->count(),
+                'cancel' => Shipment::where('status', Shipment::STATUS_CANCEL)->count(),
+            ],
+        ]);
+    }
+}

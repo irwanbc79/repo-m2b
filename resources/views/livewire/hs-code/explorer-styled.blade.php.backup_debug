@@ -1,0 +1,117 @@
+<div style="max-width: 1200px; margin: 0 auto; padding: 2rem;">
+    
+    {{-- Header --}}
+    <div style="background: white; border-radius: 12px; box-shadow: 0 1px 3px rgba(0,0,0,0.1); padding: 1.5rem; margin-bottom: 1.5rem;">
+        <h1 style="font-size: 2rem; font-weight: bold; color: #1f2937; margin-bottom: 0.5rem;">
+            🔍 HS Code Explorer
+        </h1>
+        <p style="color: #6b7280;">Pencarian Kode HS BTKI 2022 - Total {{ number_format(DB::table('hs_codes')->count()) }} kode</p>
+    </div>
+
+    {{-- Search Box --}}
+    <div style="background: white; border-radius: 12px; box-shadow: 0 1px 3px rgba(0,0,0,0.1); padding: 1.5rem; margin-bottom: 1.5rem;">
+        <div style="position: relative;">
+            <input 
+                type="text" 
+                wire:model.live.debounce.500ms="search"
+                placeholder="🔎 Cari kode HS atau deskripsi barang... (contoh: 'kuda', 'susu', '01.01')"
+                style="width: 100%; padding: 1rem; font-size: 1.1rem; border: 2px solid #e5e7eb; border-radius: 8px; outline: none;"
+                onfocus="this.style.borderColor='#3b82f6'"
+                onblur="this.style.borderColor='#e5e7eb'"
+            >
+            
+            {{-- Loading Indicator --}}
+            <div wire:loading style="position: absolute; right: 1rem; top: 50%; transform: translateY(-50%);">
+                <div style="width: 20px; height: 20px; border: 2px solid #3b82f6; border-top-color: transparent; border-radius: 50%; animation: spin 1s linear infinite;"></div>
+            </div>
+        </div>
+        
+        {{-- Debug Info --}}
+        <div style="margin-top: 0.75rem; font-size: 0.75rem; color: #9ca3af;">
+            Search value: "{{ $search }}" | Length: {{ strlen($search) }}
+        </div>
+        
+        @if(!empty($search))
+            <div style="margin-top: 0.75rem; font-size: 0.875rem; color: #6b7280;">
+                📊 Hasil pencarian untuk: <strong>"{{ $search }}"</strong>
+            </div>
+        @endif
+    </div>
+
+    {{-- Results --}}
+    @if($results->count() > 0)
+        <div style="background: white; border-radius: 12px; box-shadow: 0 1px 3px rgba(0,0,0,0.1); overflow: hidden;">
+            
+            {{-- Results Header --}}
+            <div style="padding: 1rem 1.5rem; border-bottom: 1px solid #e5e7eb; background: #f9fafb;">
+                <p style="font-size: 0.875rem; color: #6b7280;">
+                    Menampilkan {{ $results->firstItem() ?? 0 }} - {{ $results->lastItem() ?? 0 }} dari {{ number_format($results->total()) }} hasil
+                </p>
+            </div>
+
+            {{-- Results List --}}
+            <div>
+                @foreach($results as $code)
+                    <div style="padding: 1.5rem; border-bottom: 1px solid #f3f4f6; transition: background 0.2s;"
+                         onmouseover="this.style.background='#f9fafb'"
+                         onmouseout="this.style.background='white'">
+                        <div style="display: flex; align-items: start; justify-content: space-between;">
+                            <div style="flex: 1;">
+                                <div style="display: flex; align-items: center; gap: 0.75rem; margin-bottom: 0.5rem;">
+                                    <span style="font-family: monospace; font-weight: bold; font-size: 1.125rem; color: #2563eb;">
+                                        {{ $code->hs_code }}
+                                    </span>
+                                    <span style="padding: 0.25rem 0.5rem; background: #e5e7eb; color: #4b5563; border-radius: 4px; font-size: 0.75rem;">
+                                        Level {{ $code->hs_level }}
+                                    </span>
+                                </div>
+                                <p style="color: #374151; line-height: 1.5;">{{ $code->description_id }}</p>
+                            </div>
+                        </div>
+                    </div>
+                @endforeach
+            </div>
+
+            {{-- Pagination --}}
+            @if($results->hasPages())
+                <div style="padding: 1rem 1.5rem; border-top: 1px solid #e5e7eb; background: #f9fafb;">
+                    {{ $results->links() }}
+                </div>
+            @endif
+        </div>
+    @elseif(!empty($search))
+        <div style="background: white; border-radius: 12px; box-shadow: 0 1px 3px rgba(0,0,0,0.1); padding: 3rem; text-align: center;">
+            <div style="font-size: 3rem; margin-bottom: 1rem;">😕</div>
+            <p style="color: #6b7280; font-size: 1.125rem;">Tidak ada hasil ditemukan untuk "{{ $search }}"</p>
+            <p style="color: #9ca3af; margin-top: 0.5rem;">Coba dengan kata kunci lain</p>
+        </div>
+    @else
+        <div style="background: linear-gradient(135deg, #dbeafe 0%, #e0e7ff 100%); border-radius: 12px; box-shadow: 0 1px 3px rgba(0,0,0,0.1); padding: 3rem; text-align: center;">
+            <div style="font-size: 4rem; margin-bottom: 1rem;">🔍</div>
+            <h3 style="font-size: 1.25rem; font-weight: 600; color: #1f2937; margin-bottom: 0.5rem;">
+                Mulai Pencarian Kode HS
+            </h3>
+            <p style="color: #4b5563; margin-bottom: 1.5rem;">
+                Ketik kode HS atau deskripsi barang di atas
+            </p>
+            
+            <div style="max-width: 500px; margin: 0 auto; background: white; border-radius: 8px; padding: 1rem; text-align: left;">
+                <p style="font-size: 0.875rem; font-weight: 500; color: #374151; margin-bottom: 0.5rem;">
+                    💡 Contoh pencarian:
+                </p>
+                <ul style="font-size: 0.875rem; color: #6b7280; line-height: 1.75; list-style: none; padding: 0;">
+                    <li>• <code style="background: #f3f4f6; padding: 0.25rem 0.5rem; border-radius: 4px;">01.01</code> - Cari kode spesifik</li>
+                    <li>• <code style="background: #f3f4f6; padding: 0.25rem 0.5rem; border-radius: 4px;">kuda</code> - Cari berdasarkan nama barang</li>
+                    <li>• <code style="background: #f3f4f6; padding: 0.25rem 0.5rem; border-radius: 4px;">susu</code> - Cari produk dairy</li>
+                </ul>
+            </div>
+        </div>
+    @endif
+
+</div>
+
+<style>
+@keyframes spin {
+    to { transform: rotate(360deg); }
+}
+</style>

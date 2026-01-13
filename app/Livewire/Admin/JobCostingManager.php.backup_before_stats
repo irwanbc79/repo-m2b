@@ -1,0 +1,135 @@
+<?php
+
+namespace App\Livewire\Admin;
+
+use Livewire\Component;
+use Livewire\WithPagination;
+use Livewire\WithFileUploads;
+use App\Models\Shipment;
+use App\Models\JobCost;
+use App\Models\Vendor;
+use Intervention\Image\ImageManager;
+use Intervention\Image\Drivers\Gd\Driver;
+use Illuminate\Support\Facades\Storage;
+
+class JobCostingManager extends Component
+{
+    use WithPagination, WithFileUploads;
+
+    public $search = '';
+    public $isModalOpen = false;
+    public $selectedShipment = null;
+    public $shipmentIdForCost = null;
+
+    // Form Input Biaya
+    public $vendor_id, $description, $amount, $payment_proof, $status = 'unpaid';
+
+    // --- RENDER DASHBOARD PROFIT ---
+    public function render()
+    {
+        // Ambil Shipment beserta Invoices dan JobCosts untuk hitung profit
+        $shipments = Shipment::with(['customer', 'invoices', 'jobCosts'])
+            ->where('awb_number', 'like', '%' . $this->search . '%')
+            ->orWhereHas('customer', fn($q) => $q->where('company_name', 'like', '%' . $this->search . '%'))
+            ->orderBy('created_at', 'desc')
+            ->paginate(10);
+
+        // Siapkan data Vendor untuk dropdown di modal
+        $vendors = Vendor::orderBy('name')->get();
+
+        return view('livewire.admin.job-costing-manager', compact('shipments', 'vendors'))->layout('layouts.admin');
+    }
+
+    // --- MANAGE COST (BUKA MODAL) ---
+    public function manageCosts($shipmentId)
+    {
+        $this->shipmentIdForCost = $shipmentId;
+        $this->selectedShipment = Shipment::with(['jobCosts.vendor', 'invoices'])->find($shipmentId);
+        $this->resetInput();
+        $this->isModalOpen = true;
+    }
+
+    public function closeModal()
+    {
+        $this->isModalOpen = false;
+        $this->selectedShipment = null;
+        $this->resetInput();
+    }
+
+    private function resetInput()
+    {
+        $this->vendor_id = '';
+        $this->description = '';
+        $this->amount = '';
+        $this->payment_proof = null;
+        $this->status = 'unpaid';
+    }
+
+    // --- SIMPAN BIAYA BARU DENGAN AUTO RESIZE ---
+    public function saveCost()
+    {
+        $this->validate([
+            'description' => 'required|string',
+            'amount' => 'required|numeric|min:0',
+            'vendor_id' => 'nullable|exists:vendors,id', // Vendor opsional
+            'payment_proof' => 'nullable|image|max:10240', // Max 10MB
+        ]);
+
+        $data = [
+            'shipment_id' => $this->shipmentIdForCost,
+            'vendor_id' => $this->vendor_id ?: null,
+            'description' => $this->description,
+            'amount' => $this->amount, 
+            'status' => $this->status,
+            'created_by' => auth()->id(),
+            'date_paid' => $this->status == 'paid' ? now() : null,
+        ];
+
+        // LOGIC RESIZE IMAGE
+        if ($this->payment_proof) {
+            $extension = $this->payment_proof->getClientOriginalExtension();
+            $filename = 'COST_' . time() . '_' . uniqid() . '.' . $extension;
+            $path = $this->payment_proof->storeAs('costs', $filename, 'public');
+            
+            // Cek jika Gambar -> Resize
+            if (in_array(strtolower($extension), ['jpg', 'jpeg', 'png', 'webp'])) {
+                try {
+                    $manager = new ImageManager(new Driver());
+                    $image = $manager->read(storage_path('app/public/' . $path));
+                    
+                    if ($image->width() > 1000) {
+                        $image->scale(width: 1000);
+                        $image->save(storage_path('app/public/' . $path), 80);
+                    }
+                } catch (\Exception $e) {
+                    // Ignore error resizing
+                }
+            }
+            $data['payment_proof'] = $path;
+        }
+
+        JobCost::create($data);
+
+        // Refresh Data Modal
+        $this->selectedShipment = Shipment::with(['jobCosts.vendor', 'invoices'])->find($this->shipmentIdForCost);
+        $this->resetInput();
+        
+        session()->flash('message', 'Biaya berhasil ditambahkan.');
+    }
+
+    // --- HAPUS BIAYA ---
+    public function deleteCost($costId)
+    {
+        $cost = JobCost::find($costId);
+        if ($cost) {
+            if ($cost->payment_proof) {
+                Storage::disk('public')->delete($cost->payment_proof);
+            }
+            $cost->delete();
+            
+            // Refresh Data
+            $this->selectedShipment = Shipment::with(['jobCosts.vendor'])->find($this->shipmentIdForCost);
+            session()->flash('message', 'Biaya dihapus.');
+        }
+    }
+}

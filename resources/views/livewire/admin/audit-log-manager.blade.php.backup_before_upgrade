@@ -1,0 +1,53 @@
+<div class="space-y-6">
+    @section('header', 'Audit Logs / Rekam Jejak')
+
+    <div class="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
+        <div class="p-6 border-b border-gray-100">
+            <input wire:model.live="search" type="text" placeholder="Cari Log (User, AWB, Aktivitas)..." class="w-full md:w-96 border-gray-300 rounded-lg focus:outline-none focus:border-m2b-primary">
+        </div>
+
+        <div class="overflow-x-auto">
+            <table class="w-full text-sm text-left">
+                <thead class="bg-gray-800 text-white text-xs uppercase">
+                    <tr>
+                        <th class="px-6 py-3">Waktu</th>
+                        <th class="px-6 py-3">User / Pelaku</th>
+                        <th class="px-6 py-3">Modul</th>
+                        <th class="px-6 py-3">Ref No</th>
+                        <th class="px-6 py-3">Aktivitas</th>
+                        <th class="px-6 py-3">IP Address</th>
+                    </tr>
+                </thead>
+                <tbody class="divide-y divide-gray-100">
+                    @forelse($logs as $log)
+                    <tr class="hover:bg-gray-50">
+                        <td class="px-6 py-4 text-gray-500 whitespace-nowrap">
+                            {{ $log->created_at->format('d M Y, H:i') }}
+                        </td>
+                        <td class="px-6 py-4 font-bold text-gray-800">
+                            {{ $log->user_name }}
+                            <span class="block text-xs text-gray-400 font-normal uppercase">{{ $log->role }}</span>
+                        </td>
+                        <td class="px-6 py-4">
+                            <span class="px-2 py-1 rounded text-[10px] font-bold bg-blue-100 text-blue-800 uppercase">{{ $log->module }}</span>
+                        </td>
+                        <td class="px-6 py-4 font-mono text-m2b-primary">
+                            {{ $log->target_ref }}
+                        </td>
+                        <td class="px-6 py-4">
+                            <strong class="{{ $log->action == 'DELETE' ? 'text-red-600' : 'text-gray-700' }}">{{ $log->action }}</strong>
+                            <p class="text-xs text-gray-500 mt-1">{{ $log->description }}</p>
+                        </td>
+                        <td class="px-6 py-4 text-xs text-gray-400 font-mono">
+                            {{ $log->ip_address }}
+                        </td>
+                    </tr>
+                    @empty
+                    <tr><td colspan="6" class="px-6 py-10 text-center text-gray-500 italic">Belum ada aktivitas terekam.</td></tr>
+                    @endforelse
+                </tbody>
+            </table>
+        </div>
+        <div class="p-4 border-t">{{ $logs->links() }}</div>
+    </div>
+</div>

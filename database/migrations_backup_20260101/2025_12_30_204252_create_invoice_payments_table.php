@@ -1,0 +1,29 @@
+<?php
+
+use Illuminate\Database\Migrations\Migration;
+use Illuminate\Database\Schema\Blueprint;
+use Illuminate\Support\Facades\Schema;
+
+return new class extends Migration
+{
+    public function up(): void
+    {
+        Schema::create('invoice_payments', function (Blueprint $table) {
+            $table->id();
+            $table->foreignId('invoice_id')->constrained()->onDelete('cascade');
+            $table->decimal('amount', 15, 2);
+            $table->date('payment_date');
+            $table->string('payment_method')->default('Transfer Bank');
+            $table->string('proof_file')->nullable();
+            $table->string('proof_filename')->nullable();
+            $table->text('notes')->nullable();
+            $table->unsignedBigInteger('recorded_by')->nullable();
+            $table->timestamps();
+        });
+    }
+
+    public function down(): void
+    {
+        Schema::dropIfExists('invoice_payments');
+    }
+};

@@ -1,0 +1,173 @@
+<div class="space-y-6">
+    @section('header', 'Audit Logs / Rekam Jejak')
+
+    {{-- Stats Cards --}}
+    <div class="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-7 gap-4">
+        <div class="bg-white rounded-xl p-4 shadow-sm border border-gray-100 text-center">
+            <p class="text-2xl font-black text-gray-800">{{ number_format($stats['total'] ?? 0) }}</p>
+            <p class="text-xs text-gray-500">Total Logs</p>
+        </div>
+        <div class="bg-blue-50 rounded-xl p-4 shadow-sm border border-blue-100 text-center">
+            <p class="text-2xl font-black text-blue-600">{{ $stats['today'] ?? 0 }}</p>
+            <p class="text-xs text-gray-500">Hari Ini</p>
+        </div>
+        <div class="bg-indigo-50 rounded-xl p-4 shadow-sm border border-indigo-100 text-center">
+            <p class="text-2xl font-black text-indigo-600">{{ $stats['this_week'] ?? 0 }}</p>
+            <p class="text-xs text-gray-500">Minggu Ini</p>
+        </div>
+        <div class="bg-purple-50 rounded-xl p-4 shadow-sm border border-purple-100 text-center">
+            <p class="text-2xl font-black text-purple-600">{{ $stats['users_active'] ?? 0 }}</p>
+            <p class="text-xs text-gray-500">Users Aktif</p>
+        </div>
+        <div class="bg-green-50 rounded-xl p-4 shadow-sm border border-green-100 text-center">
+            <p class="text-2xl font-black text-green-600">{{ $stats['creates'] ?? 0 }}</p>
+            <p class="text-xs text-gray-500">Create</p>
+        </div>
+        <div class="bg-amber-50 rounded-xl p-4 shadow-sm border border-amber-100 text-center">
+            <p class="text-2xl font-black text-amber-600">{{ $stats['updates'] ?? 0 }}</p>
+            <p class="text-xs text-gray-500">Update</p>
+        </div>
+        <div class="bg-red-50 rounded-xl p-4 shadow-sm border border-red-100 text-center">
+            <p class="text-2xl font-black text-red-600">{{ $stats['deletes'] ?? 0 }}</p>
+            <p class="text-xs text-gray-500">Delete</p>
+        </div>
+    </div>
+
+    {{-- Main Card --}}
+    <div class="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
+        {{-- Filters --}}
+        <div class="p-6 border-b border-gray-100 bg-gray-50">
+            <div class="flex flex-col lg:flex-row lg:items-center gap-4">
+                {{-- Search --}}
+                <div class="relative flex-1 max-w-md">
+                    <svg class="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/></svg>
+                    <input wire:model.live.debounce.300ms="search" type="text" placeholder="Cari log..." class="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
+                </div>
+
+                {{-- Filter Dropdowns --}}
+                <div class="flex flex-wrap items-center gap-3">
+                    <select wire:model.live="filterUser" class="border-gray-300 rounded-lg text-sm py-2 px-3 focus:ring-2 focus:ring-blue-500">
+                        <option value="">Semua User</option>
+                        @foreach($filterOptions['users'] ?? [] as $user)
+                            <option value="{{ $user }}">{{ $user }}</option>
+                        @endforeach
+                    </select>
+
+                    <select wire:model.live="filterModule" class="border-gray-300 rounded-lg text-sm py-2 px-3 focus:ring-2 focus:ring-blue-500">
+                        <option value="">Semua Modul</option>
+                        @foreach($filterOptions['modules'] ?? [] as $module)
+                            <option value="{{ $module }}">{{ $module }}</option>
+                        @endforeach
+                    </select>
+
+                    <select wire:model.live="filterAction" class="border-gray-300 rounded-lg text-sm py-2 px-3 focus:ring-2 focus:ring-blue-500">
+                        <option value="">Semua Action</option>
+                        @foreach($filterOptions['actions'] ?? [] as $action)
+                            <option value="{{ $action }}">{{ $action }}</option>
+                        @endforeach
+                    </select>
+
+                    <input wire:model.live="filterDateFrom" type="date" class="border-gray-300 rounded-lg text-sm py-2 px-3 focus:ring-2 focus:ring-blue-500" title="Dari Tanggal">
+                    <input wire:model.live="filterDateTo" type="date" class="border-gray-300 rounded-lg text-sm py-2 px-3 focus:ring-2 focus:ring-blue-500" title="Sampai Tanggal">
+
+                    @if($filterUser || $filterModule || $filterAction || $filterDateFrom || $filterDateTo)
+                    <button wire:click="clearFilters" class="text-sm text-red-600 hover:text-red-800 font-medium">
+                        ✕ Reset Filter
+                    </button>
+                    @endif
+                </div>
+            </div>
+        </div>
+
+        {{-- Table --}}
+        <div class="overflow-x-auto">
+            <table class="w-full text-sm text-left">
+                <thead class="bg-gray-800 text-white text-xs uppercase">
+                    <tr>
+                        <th class="px-6 py-3">Waktu</th>
+                        <th class="px-6 py-3">User</th>
+                        <th class="px-6 py-3">Modul</th>
+                        <th class="px-6 py-3">Ref No</th>
+                        <th class="px-6 py-3">Aktivitas</th>
+                        <th class="px-6 py-3">IP Address</th>
+                    </tr>
+                </thead>
+                <tbody class="divide-y divide-gray-100">
+                    @forelse($logs as $log)
+                    <tr class="hover:bg-gray-50 transition">
+                        <td class="px-6 py-4 whitespace-nowrap">
+                            <p class="text-gray-800 font-medium">{{ $log->created_at->format('d M Y') }}</p>
+                            <p class="text-xs text-gray-500">{{ $log->created_at->format('H:i:s') }}</p>
+                        </td>
+                        <td class="px-6 py-4">
+                            <div class="flex items-center gap-3">
+                                @php
+                                    $colors = ['A' => 'bg-red-500', 'B' => 'bg-blue-500', 'C' => 'bg-green-500', 'D' => 'bg-yellow-500', 'E' => 'bg-purple-500', 'F' => 'bg-pink-500', 'G' => 'bg-indigo-500', 'H' => 'bg-teal-500', 'I' => 'bg-orange-500', 'J' => 'bg-cyan-500'];
+                                    $initial = strtoupper(substr($log->user_name ?? 'U', 0, 1));
+                                    $bgColor = $colors[$initial] ?? 'bg-gray-500';
+                                @endphp
+                                <div class="w-8 h-8 {{ $bgColor }} rounded-full flex items-center justify-center text-white font-bold text-sm">
+                                    {{ $initial }}
+                                </div>
+                                <div>
+                                    <p class="font-bold text-gray-800">{{ $log->user_name }}</p>
+                                    <p class="text-xs text-gray-400 uppercase">{{ $log->role }}</p>
+                                </div>
+                            </div>
+                        </td>
+                        <td class="px-6 py-4">
+                            <span class="px-2.5 py-1 rounded-lg text-[10px] font-bold bg-slate-100 text-slate-700 uppercase">{{ $log->module }}</span>
+                        </td>
+                        <td class="px-6 py-4 font-mono text-blue-600 font-medium">
+                            {{ $log->target_ref ?: '-' }}
+                        </td>
+                        <td class="px-6 py-4">
+                            @php
+                                $actionColors = [
+                                    'CREATE' => 'bg-green-100 text-green-700 border-green-200',
+                                    'UPDATE' => 'bg-blue-100 text-blue-700 border-blue-200',
+                                    'UPDATE STATUS' => 'bg-amber-100 text-amber-700 border-amber-200',
+                                    'UPDATE INFO' => 'bg-cyan-100 text-cyan-700 border-cyan-200',
+                                    'DELETE' => 'bg-red-100 text-red-700 border-red-200',
+                                    'LOGIN' => 'bg-purple-100 text-purple-700 border-purple-200',
+                                    'LOGOUT' => 'bg-gray-100 text-gray-700 border-gray-200',
+                                ];
+                                $color = $actionColors[$log->action] ?? 'bg-gray-100 text-gray-700 border-gray-200';
+                            @endphp
+                            <span class="inline-flex items-center px-2.5 py-1 rounded-lg text-xs font-bold border {{ $color }}">
+                                @if($log->action == 'CREATE')
+                                    <svg class="w-3 h-3 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/></svg>
+                                @elseif(str_contains($log->action, 'UPDATE'))
+                                    <svg class="w-3 h-3 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"/></svg>
+                                @elseif($log->action == 'DELETE')
+                                    <svg class="w-3 h-3 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/></svg>
+                                @endif
+                                {{ $log->action }}
+                            </span>
+                            <p class="text-xs text-gray-500 mt-1 max-w-xs truncate" title="{{ $log->description }}">{{ $log->description }}</p>
+                        </td>
+                        <td class="px-6 py-4 text-xs text-gray-400 font-mono">
+                            {{ $log->ip_address }}
+                        </td>
+                    </tr>
+                    @empty
+                    <tr>
+                        <td colspan="6" class="px-6 py-12 text-center">
+                            <svg class="w-12 h-12 text-gray-300 mx-auto mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/></svg>
+                            <p class="text-gray-500 font-medium">Belum ada aktivitas terekam</p>
+                        </td>
+                    </tr>
+                    @endforelse
+                </tbody>
+            </table>
+        </div>
+
+        {{-- Pagination --}}
+        <div class="px-6 py-4 border-t border-gray-100 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+            <p class="text-sm text-gray-600">
+                Menampilkan {{ $logs->firstItem() ?? 0 }} - {{ $logs->lastItem() ?? 0 }} dari {{ $logs->total() }} log
+            </p>
+            {{ $logs->links() }}
+        </div>
+    </div>
+</div>

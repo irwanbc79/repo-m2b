@@ -1,0 +1,45 @@
+<?php
+
+namespace App\Models;
+
+use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Factories\HasFactory;
+
+class InvoicePayment extends Model
+{
+    use HasFactory;
+
+    protected $fillable = [
+        'invoice_id',
+        'amount',
+        'payment_date',
+        'payment_method',
+        'proof_file',
+        'proof_filename',
+        'notes',
+        'recorded_by',
+    ];
+
+    protected $casts = [
+        'amount' => 'decimal:2',
+        'payment_date' => 'date',
+    ];
+
+    public function invoice()
+    {
+        return $this->belongsTo(Invoice::class);
+    }
+
+    public function recorder()
+    {
+        return $this->belongsTo(User::class, 'recorded_by');
+    }
+
+    /**
+     * Relasi ke BankTransaction
+     */
+    public function bankTransaction()
+    {
+        return $this->hasOne(\App\Models\BankTransaction::class, 'invoice_payment_id');
+    }
+}
