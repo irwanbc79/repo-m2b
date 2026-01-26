@@ -57,15 +57,17 @@ class QuotationManager extends Component
 
     public function getStats()
     {
-        return [
-            "total" => \App\Models\Quotation::count(),
-            "draft" => \App\Models\Quotation::where("status", "draft")->count(),
-            "sent" => \App\Models\Quotation::where("status", "sent")->count(),
-            "accepted" => \App\Models\Quotation::where("status", "accepted")->count(),
-            "expired" => \App\Models\Quotation::where("valid_until", "<", now())->count(),
-            "expiring_soon" => \App\Models\Quotation::where("valid_until", "<=", now()->addDays(7))->where("valid_until", ">=", now())->count(),
-            "total_value" => \App\Models\Quotation::sum("grand_total"),
-        ];
+        return Cache::remember('quotation_stats', 300, function() {
+            return [
+                "total" => \App\Models\Quotation::count(),
+                "draft" => \App\Models\Quotation::where("status", "draft")->count(),
+                "sent" => \App\Models\Quotation::where("status", "sent")->count(),
+                "accepted" => \App\Models\Quotation::where("status", "accepted")->count(),
+                "expired" => \App\Models\Quotation::where("valid_until", "<", now())->count(),
+                "expiring_soon" => \App\Models\Quotation::where("valid_until", "<=", now()->addDays(7))->where("valid_until", ">=", now())->count(),
+                "total_value" => \App\Models\Quotation::sum("grand_total"),
+            ];
+        });
     }
 
 

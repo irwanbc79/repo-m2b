@@ -16,7 +16,8 @@ use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
 use Illuminate\Support\Facades\Mail;
 use Barryvdh\DomPDF\Facade\Pdf;
-use App\Services\AccountingService; 
+use App\Services\AccountingService;
+use Illuminate\Support\Facades\Cache; 
 
 class InvoiceManager extends Component
 {
@@ -120,15 +121,17 @@ class InvoiceManager extends Component
         
         $invoices = $query->latest()->paginate(10);
         
-        $stats = [
-            'total' => Invoice::count(),
+        $stats = Cache::remember('invoice_stats', 300, function() {
+            return [
+                'total' => Invoice::count(),
             'unpaid' => Invoice::where('status', 'unpaid')->count(),
             'paid' => Invoice::where('status', 'paid')->count(),
             'overdue' => Invoice::where('status', 'unpaid')->where('due_date', '<', now())->count(),
             'total_receivable' => Invoice::whereIn('status', ['unpaid', 'partial'])->sum('grand_total'),
             'total_collected' => Invoice::where('status', 'paid')->sum('grand_total'),
             'faktur_pajak_requests' => Invoice::where('status', 'paid')->where('faktur_pajak_requested', true)->whereNull('faktur_pajak_path')->count(),
-        ];
+            ];
+        });
         
         $customersList = Customer::orderBy('company_name')->limit(500)->get();
         $customerShipments = Shipment::with("customer")->where("status", "!=", "cancelled")->orderBy("created_at", "desc")->limit(200)->get();

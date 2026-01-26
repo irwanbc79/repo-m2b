@@ -12,6 +12,7 @@ use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Auth;
 use Carbon\Carbon;
+use Illuminate\Support\Facades\Cache;
 
 class CustomerManagement extends Component
 {
@@ -89,17 +90,19 @@ class CustomerManagement extends Component
 
     public function getStats()
     {
-        $now = Carbon::now();
-        $startOfMonth = $now->copy()->startOfMonth();
+        return Cache::remember('customer_stats', 300, function() {
+            $now = Carbon::now();
+            $startOfMonth = $now->copy()->startOfMonth();
 
-        return [
+            return [
             'total' => Customer::count(),
             'new_this_month' => Customer::where('created_at', '>=', $startOfMonth)->count(),
             'with_shipments' => Customer::whereHas('shipments')->count(),
             'cities' => Customer::distinct('city')->whereNotNull('city')->count(),
             'total_credit_limit' => Customer::sum('credit_limit'),
             'vip_count' => Customer::where('business_type', 'VIP')->count(),
-        ];
+            ];
+        });
     }
 
     public function getCities()

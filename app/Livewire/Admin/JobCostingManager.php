@@ -15,6 +15,7 @@ use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 use Exception;
+use Illuminate\Support\Facades\Cache;
 
 class JobCostingManager extends Component
 {
@@ -123,9 +124,10 @@ class JobCostingManager extends Component
     
     public function getStats()
     {
-        try {
-            // Eager load relationships untuk performa
-            $shipments = Shipment::with(['invoices', 'jobCosts'])->active()->limit(500)->get();
+        return Cache::remember('jobcost_stats', 300, function() {
+            try {
+                // Eager load relationships untuk performa
+                $shipments = Shipment::with(['invoices', 'jobCosts'])->active()->limit(500)->get();
             
             $totalRevenue = 0;
             $totalCost = 0;
@@ -165,8 +167,8 @@ class JobCostingManager extends Component
                 'low_margin' => $lowMarginCount,
                 'shipments_with_costs' => $shipments->filter(fn($s) => $s->jobCosts->count() > 0)->count(),
                 'unpaid_costs' => JobCost::where('status', 'unpaid')->sum('amount'),
-            ];
-        } catch (Exception $e) {
+                ];
+            } catch (Exception $e) {
             Log::error('Error calculating stats: ' . $e->getMessage());
             
             return [
@@ -178,8 +180,9 @@ class JobCostingManager extends Component
                 'low_margin' => 0,
                 'shipments_with_costs' => 0,
                 'unpaid_costs' => 0,
-            ];
-        }
+                ];
+            }
+        });
     }
 
     // =========================================
