@@ -12,6 +12,7 @@ use App\Models\Email;
 use Carbon\Carbon;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Cache;
 
 class Dashboard extends Component
 {
@@ -98,7 +99,9 @@ class Dashboard extends Component
 
     public function getMainStats()
     {
-        $dateRange = $this->getDateRange();
+        $cacheKey = "dashboard_main_stats_" . $this->period . "_" . $this->startDate . "_" . $this->endDate;
+        return Cache::remember($cacheKey, 300, function() {
+            $dateRange = $this->getDateRange();
         $startDate = $dateRange["start"];
         $endDate = $dateRange["end"];
 
@@ -132,11 +135,13 @@ class Dashboard extends Component
             'revenue_growth' => $prevRevenue > 0 ? round((($currentRevenue - $prevRevenue) / $prevRevenue) * 100, 1) : 0,
             'total_vendors' => Vendor::count(),
         ];
+        });
     }
 
     public function getFinancialStats()
     {
-        return [
+        return Cache::remember("dashboard_financial_stats", 300, function() {
+            return [
             'unpaid_invoices' => Invoice::where('status', 'unpaid')->count(),
             'unpaid_amount' => Invoice::where('status', 'unpaid')->sum('grand_total'),
             'overdue_invoices' => Invoice::where('status', 'unpaid')->where('due_date', '<', now())->count(),
@@ -147,7 +152,8 @@ class Dashboard extends Component
                 ->sum('grand_total'),
             'cash_in_today' => CashTransaction::whereDate('transaction_date', today())->where('type', 'in')->sum('amount'),
             'cash_out_today' => CashTransaction::whereDate('transaction_date', today())->where('type', 'out')->sum('amount'),
-        ];
+            ];
+        });
     }
 
     public function getAlerts()
