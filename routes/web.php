@@ -266,7 +266,7 @@ Route::middleware(['auth', 'admin'])->prefix('admin')->name('admin.')->group(fun
     Route::get('/users', UserManagement::class)->name('users.index');
     Route::get('/user-requests', UserRequestManager::class)->name('user-requests.index');
     Route::get('/reports', Reports::class)->name('reports');
-    Route::get('/profile', CustomerProfile::class)->name('profile');
+    Route::get('/profile', \App\Livewire\Admin\AdminProfile::class)->name('profile');
     Route::get('/invoices', InvoiceManager::class)->name('invoices.index');
     Route::get('/products', \App\Livewire\Admin\ProductManager::class)->name('products');
     Route::get('/quotations', QuotationManager::class)->name('quotations.index');
