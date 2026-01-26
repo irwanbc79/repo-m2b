@@ -16,6 +16,7 @@ use App\Mail\ShipmentStatusUpdated;
 use Illuminate\Support\Facades\Mail;
 use App\Models\ActivityLog;
 use Carbon\Carbon;
+use Illuminate\Support\Facades\Cache;
 
 class ShipmentManagement extends Component
 {
@@ -110,10 +111,11 @@ class ShipmentManagement extends Component
 
     public function getStats()
     {
-        $now = Carbon::now();
-        $startOfMonth = $now->copy()->startOfMonth();
+        return Cache::remember('shipment_stats', 300, function() {
+            $now = Carbon::now();
+            $startOfMonth = $now->copy()->startOfMonth();
 
-        return [
+            return [
             'total' => Shipment::count(),
             'pending' => Shipment::where('status', 'pending')->count(),
             'in_progress' => Shipment::where('status', 'in_progress')->count(),
@@ -123,6 +125,7 @@ class ShipmentManagement extends Component
             'total_weight' => Shipment::sum('weight'),
             'total_volume' => Shipment::sum('volume'),
             'total_pieces' => Shipment::sum('pieces')];
+        });
     }
 
     public function getCustomersList()
