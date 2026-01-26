@@ -130,8 +130,8 @@ class InvoiceManager extends Component
             'faktur_pajak_requests' => Invoice::where('status', 'paid')->where('faktur_pajak_requested', true)->whereNull('faktur_pajak_path')->count(),
         ];
         
-        $customersList = Customer::orderBy('company_name')->get();
-        $customerShipments = Shipment::with("customer")->where("status", "!=", "cancelled")->orderBy("created_at", "desc")->get();
+        $customersList = Customer::orderBy('company_name')->limit(500)->get();
+        $customerShipments = Shipment::with("customer")->where("status", "!=", "cancelled")->orderBy("created_at", "desc")->limit(200)->get();
         return view('livewire.admin.invoice-manager', compact('invoices', 'customersList', 'customerShipments', 'stats'))->layout('layouts.admin');
     }
 

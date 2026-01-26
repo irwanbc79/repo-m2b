@@ -125,7 +125,7 @@ class JobCostingManager extends Component
     {
         try {
             // Eager load relationships untuk performa
-            $shipments = Shipment::with(['invoices', 'jobCosts'])->active()->get();
+            $shipments = Shipment::with(['invoices', 'jobCosts'])->active()->limit(500)->get();
             
             $totalRevenue = 0;
             $totalCost = 0;
