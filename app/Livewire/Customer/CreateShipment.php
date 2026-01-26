@@ -20,7 +20,9 @@ class CreateShipment extends Component
     public $pieces;
     public $package_type = 'Colli';
     public $weight;
+    public $volume;
     public $notes;
+    public $hs_code;
 
     // Rules Validasi
     protected $rules = [
@@ -31,7 +33,8 @@ class CreateShipment extends Component
         'container_mode' => 'required',
         'pieces' => 'required|numeric|min:1',
         'package_type' => 'required',
-        'weight' => 'required|numeric|min:0.1',
+        'weight' => 'nullable|numeric|min:0',
+        'volume' => 'nullable|numeric|min:0',
     ];
 
     public function save()
@@ -61,9 +64,11 @@ class CreateShipment extends Component
             'container_info' => $this->container_info,
             'pieces' => $this->pieces,
             'package_type' => $this->package_type,
-            'weight' => $this->weight,
+            'weight' => $this->weight ?: 0,
+            'volume' => $this->volume ?: 0,
             'status' => 'pending', 
             'notes' => $this->notes,
+            'hs_code' => $this->hs_code,
         ]);
 
         // Opsional: Kirim Email Notifikasi ke Admin

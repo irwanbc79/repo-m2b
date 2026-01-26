@@ -48,7 +48,7 @@ class ShipmentDetail extends Component
         $this->form = $this->shipment->only([
             'customer_id', 'awb_number', 'origin', 'destination', 
             'service_type', 'shipment_type', 'container_mode', 'container_info',
-            'pieces', 'package_type', 'weight', 'volume', 'status', 'lane_status', 'estimated_arrival', 'notes'
+            'pieces', 'package_type', 'weight', 'volume', 'hs_code', 'status', 'lane_status', 'estimated_arrival', 'notes'
         ]);
         
         if($this->form['estimated_arrival']) {
@@ -210,6 +210,16 @@ class ShipmentDetail extends Component
                 Mail::send('emails.shipment-document-update', $data, function ($message) use ($customerEmail, $data) {
                     $message->to($customerEmail)
                             ->subject("Pembaruan Status Pengiriman: {$data['newStatus']} - {$data['awb']}");
+
+                // Log ke sent_emails
+                \App\Models\SentEmail::create([
+                    'mailbox' => 'no_reply',
+                    'to_email' => $customerEmail,
+                    'subject' => "Pembaruan Status Pengiriman: {$data['newStatus']} - {$data['awb']}",
+                    'body' => "Status dokumen diupdate ke {$data['newStatus']}",
+                    'user_id' => auth()->id(),
+                    'user_name' => auth()->user()->name,
+                ]);
                 });
             } catch (\Exception $e) {
                 // Log error jika email gagal, tapi jangan hentikan proses

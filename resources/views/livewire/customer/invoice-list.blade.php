@@ -105,6 +105,7 @@
                         <th class="px-4 py-3 text-left font-semibold text-gray-700">Jatuh Tempo</th>
                         <th class="px-4 py-3 text-right font-semibold text-gray-700">Total</th>
                         <th class="px-4 py-3 text-center font-semibold text-gray-700">Status</th>
+                        <th class="px-4 py-3 text-center font-semibold text-gray-700">Faktur Pajak</th>
                         <th class="px-4 py-3 text-center font-semibold text-gray-700">Aksi</th>
                     </tr>
                 </thead>
@@ -165,6 +166,36 @@
                             </span>
                             @endif
                         </td>
+                        <!-- Kolom Faktur Pajak -->
+                        <td class="px-4 py-3 text-center">
+                            @if($invoice->status === 'paid')
+                                @if($invoice->faktur_pajak_path)
+                                    {{-- Sudah ada faktur pajak - tampilkan View & Download --}}
+                                    <div class="flex items-center justify-center gap-1">
+                                        <button wire:click="openFakturPajakPreview({{ $invoice->id }})" class="p-1.5 text-blue-600 hover:bg-blue-100 rounded-lg transition" title="Preview Faktur Pajak">
+                                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"/></svg>
+                                        </button>
+                                        <a href="{{ asset('storage/' . $invoice->faktur_pajak_path) }}" download class="p-1.5 text-green-600 hover:bg-green-100 rounded-lg transition" title="Download Faktur Pajak">
+                                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"/></svg>
+                                        </a>
+                                    </div>
+                                @elseif($invoice->faktur_pajak_requested)
+                                    {{-- Sudah request, menunggu upload --}}
+                                    <span class="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-yellow-100 text-yellow-700">
+                                        <svg class="w-3 h-3 mr-1 animate-pulse" fill="currentColor" viewBox="0 0 20 20"><circle cx="10" cy="10" r="10"/></svg>
+                                        Diproses
+                                    </span>
+                                @else
+                                    {{-- Belum request --}}
+                                    <button wire:click="requestFakturPajak({{ $invoice->id }})" class="inline-flex items-center px-2.5 py-1.5 text-xs font-medium text-blue-700 bg-blue-50 hover:bg-blue-100 rounded-lg transition" title="Request Faktur Pajak">
+                                        <svg class="w-3.5 h-3.5 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/></svg>
+                                        Request
+                                    </button>
+                                @endif
+                            @else
+                                <span class="text-xs text-gray-400">-</span>
+                            @endif
+                        </td>
                         <td class="px-4 py-3 text-center">
                             <div class="flex items-center justify-center gap-1">
                                 {{-- View/Print Invoice --}}
@@ -178,8 +209,14 @@
                                 </button>
                                 
                                 {{-- Upload Payment Proof (hanya untuk unpaid & belum upload) --}}
-                                    {{-- Upload bukti bayar sementara dinonaktifkan --}}
-                                
+                                @if($invoice->status === 'unpaid' && !$invoice->payment_proof)
+                                <button
+                                    wire:click="openUploadModal({{ $invoice->id }})"
+                                    class="p-1.5 text-orange-600 hover:bg-orange-100 rounded-lg transition"
+                                    title="Upload Bukti Bayar">
+                                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12"/></svg>
+                                </button>
+                                @endif
                                 {{-- View Payment Proof (jika sudah upload) --}}
                                 @if($invoice->payment_proof)
 <button
@@ -380,4 +417,30 @@
 </div>
 {{-- ============================================================ --}}
 
+
+{{-- Modal Preview Faktur Pajak --}}
+@if($previewFakturPajakModal)
+<div class="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm" wire:click.self="closeFakturPajakPreview">
+    <div class="bg-white rounded-2xl shadow-2xl w-full max-w-4xl mx-4 max-h-[90vh] flex flex-col overflow-hidden">
+        <div class="flex items-center justify-between px-6 py-4 border-b bg-gradient-to-r from-blue-600 to-blue-700 shrink-0">
+            <div>
+                <h3 class="font-bold text-white text-lg">Preview Faktur Pajak</h3>
+                @if($previewFakturPajakNumber)
+                <p class="text-blue-100 text-sm">No: {{ $previewFakturPajakNumber }}</p>
+                @endif
+            </div>
+            <div class="flex items-center gap-2">
+                <a href="{{ asset('storage/' . $previewFakturPajakPath) }}" download class="px-4 py-2 bg-white/20 hover:bg-white/30 text-white rounded-lg text-sm font-medium flex items-center gap-2 transition">
+                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"/></svg>
+                    Download
+                </a>
+                <button wire:click="closeFakturPajakPreview" class="text-white/80 hover:text-white text-2xl px-2">×</button>
+            </div>
+        </div>
+        <div class="flex-1 overflow-y-auto bg-gray-100 p-4">
+            <iframe src="{{ asset('storage/' . $previewFakturPajakPath) }}" class="w-full h-[70vh] border-0 bg-white rounded-lg shadow"></iframe>
+        </div>
+    </div>
+</div>
+@endif
 </div>

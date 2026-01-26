@@ -12,10 +12,30 @@ class Customer extends Model
     // Guarded kosong = Semua kolom boleh diisi (Aman untuk Mass Assignment)
     protected $guarded = []; 
 
-    // Relasi ke User (Login)
+    // Relasi ke User (Login) - LEGACY: untuk backward compatibility
     public function user()
     {
         return $this->belongsTo(User::class);
+    }
+
+    // Relasi ke Multiple Users (Many-to-Many via pivot table)
+    public function users()
+    {
+        return $this->belongsToMany(User::class, 'customer_user')
+                    ->withPivot('is_primary')
+                    ->withTimestamps();
+    }
+
+    // Get Primary User (PIC Utama)
+    public function primaryUser()
+    {
+        return $this->users()->wherePivot('is_primary', true)->first();
+    }
+
+    // Get All Secondary Users (PIC Tambahan)
+    public function secondaryUsers()
+    {
+        return $this->users()->wherePivot('is_primary', false);
     }
 
     // Relasi ke Shipments (Pengiriman)

@@ -137,6 +137,7 @@
                         <th class="px-4 py-3 text-left text-xs font-semibold text-gray-600 uppercase">Customer</th>
                         <th class="px-4 py-3 text-left text-xs font-semibold text-gray-600 uppercase">Route</th>
                         <th class="px-4 py-3 text-left text-xs font-semibold text-gray-600 uppercase">Cargo</th>
+                        <th class="px-4 py-3 text-left text-xs font-semibold text-gray-600 uppercase">HS Code / Description</th>
                         <th class="px-4 py-3 text-left text-xs font-semibold text-gray-600 uppercase">Docs</th>
                         <th class="px-4 py-3 text-left text-xs font-semibold text-gray-600 uppercase">Status</th>
                         <th class="px-4 py-3 text-center text-xs font-semibold text-gray-600 uppercase">Aksi</th>
@@ -163,7 +164,13 @@
                         <td class="px-4 py-3">
                             <p class="text-sm text-gray-800">{{ number_format($shipment->weight ?? 0, 0) }} Kg</p>
                             <p class="text-xs text-gray-500">{{ number_format($shipment->volume ?? 0, 3) }} CBM</p>
-                            <p class="text-xs text-gray-400">{{ $shipment->pieces ?? 0 }} pcs</p>
+                            <p class="text-xs text-gray-400">{{ $shipment->pieces ?? 0 }} {{ $shipment->package_type ?? "pcs" }}</p>
+                        </td>
+                        <td class="px-4 py-3">
+                            <div class="text-sm text-gray-700 line-clamp-1">{{ $shipment->container_info ?: ($shipment->commodity ?: "-") }}</div>
+                            @if($shipment->hs_code)
+                                <div class="text-xs font-mono text-blue-600 mt-1">HS: {{ $shipment->hs_code }}</div>
+                            @endif
                         </td>
                         <td class="px-4 py-3">
                             @php $docCount = $shipment->documents->count() ?? 0; @endphp
@@ -201,15 +208,26 @@
                                 <button wire:click="confirmDelete({{ $shipment->id }})" class="p-2 text-gray-500 hover:text-red-600 hover:bg-red-50 rounded-lg" title="Hapus">
                                     <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/></svg>
                                 </button>
-                            <button wire:click="openCancelModal({{ $shipment->id }})" 
-                                class="p-2 text-gray-500 hover:text-red-600 hover:bg-red-50 rounded-lg" 
-                                title="Batalkan Shipment"
-                                @if($shipment->status === 'cancel') disabled class="opacity-50 cursor-not-allowed" @endif>
-                                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M18.364 18.364A9 9 0 005.636 5.636m12.728 12.728A9 9 0 015.636 5.636m12.728 12.728L5.636 5.636"/>
-                                </svg>
-                            </button>
-                            </div>
+                            {{-- Tombol Cancel / View Cancel Reason --}}
+                            @if($shipment->status === 'cancel')
+                                {{-- Jika sudah cancel: tampilkan tombol view alasan --}}
+                                <button wire:click="viewCancelReason({{ $shipment->id }})" 
+                                    class="p-2 text-orange-500 hover:text-orange-700 hover:bg-orange-50 rounded-lg" 
+                                    title="Lihat Alasan Pembatalan">
+                                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/>
+                                    </svg>
+                                </button>
+                            @else
+                                {{-- Jika belum cancel: tampilkan tombol batalkan --}}
+                                <button wire:click="openCancelModal({{ $shipment->id }})" 
+                                    class="p-2 text-gray-500 hover:text-red-600 hover:bg-red-50 rounded-lg" 
+                                    title="Batalkan Shipment">
+                                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M18.364 18.364A9 9 0 005.636 5.636m12.728 12.728A9 9 0 015.636 5.636m12.728 12.728L5.636 5.636"/>
+                                    </svg>
+                                </button>
+                            @endif
                         </td>
                     </tr>
                     @empty
@@ -472,36 +490,116 @@
                         <div class="grid grid-cols-2 gap-3">
                             <div><label class="text-xs font-bold text-slate-500 block mb-1">Qty</label><input type="number" wire:model="form.pieces" class="w-full border-slate-300 rounded-lg text-sm"></div>
                             <div>
-                                <label class="text-xs font-bold text-slate-500 block mb-1">Unit</label>
+                                <label class="text-xs font-bold text-slate-500 block mb-1">Jenis Kemasan</label>
                                 <select wire:model="form.package_type" class="w-full border-slate-300 rounded-lg text-sm">
-                                    <option value="">-- Pilih Unit --</option>
-                                    
-                                    {{-- UNIT KOTAK / PACKAGING --}}
-                                    <option value="Ctn">Ctn (Cartons)</option>
-                                    <option value="Box">Box (Kotak)</option>
-                                    <option value="Pkgs">Pkgs (Packages/Kemasan)</option>
-                                    <option value="Plt">Plt (Pallet)</option>
-                                    <option value="Crate">Crate (Krat Kayu/Plastik)</option>
-                                    <option value="Bdl">Bdl (Bundle/Ikatan)</option>
-                                    
-                                    {{-- UNIT SATUAN/BERAT --}}
-                                    <option value="Pcs">Pcs (Pieces/Biji)</option>
-                                    <option value="Kg">Kg (Kilogram)</option>
-                                    <option value="Ton">Ton (Tonnase)</option>
-                                    <option value="M3">M3 (Cubic Meter)</option>
-                                    
-                                    {{-- UNIT LAIN-LAIN --}}
-                                    <option value="Bag">Bag (Tas/Karung)</option>
-                                    <option value="Sack">Sack (Karung)</option>
-                                    <option value="Drum">Drum (Barel)</option>
-                                    <option value="Roll">Roll (Gulungan)</option>
-                                    <option value="Tubes">Tubes (Tabung)</option>
-                                    <option value="Other">Other (Lainnya)</option>
+                                    <option value="">-- Pilih Jenis Kemasan --</option>
+                                    <optgroup label="📦 Packaging">
+                                        <option value="Ctn">Ctn - Cartons</option>
+                                        <option value="Box">Box - Kotak</option>
+                                        <option value="Pkgs">Pkgs - Packages</option>
+                                        <option value="Plt">Plt - Pallet</option>
+                                        <option value="Crate">Crate - Krat</option>
+                                        <option value="Case">Case - Peti</option>
+                                        <option value="Skid">Skid - Alas Kayu</option>
+                                    </optgroup>
+                                    <optgroup label="🔗 Bundle/Gulungan">
+                                        <option value="Bdl">Bdl - Bundle</option>
+                                        <option value="Bale">Bale - Bal</option>
+                                        <option value="Coil">Coil - Gulungan</option>
+                                        <option value="Roll">Roll - Roll</option>
+                                        <option value="Reel">Reel - Kumparan</option>
+                                    </optgroup>
+                                    <optgroup label="🔢 Satuan">
+                                        <option value="Pcs">Pcs - Pieces</option>
+                                        <option value="Unit">Unit - Unit</option>
+                                        <option value="Set">Set - Set</option>
+                                        <option value="Pair">Pair - Pasang</option>
+                                        <option value="Dozen">Dozen - Lusin</option>
+                                        <option value="Ea">Ea - Each</option>
+                                    </optgroup>
+                                    <optgroup label="🛢️ Wadah/Container">
+                                        <option value="Bag">Bag - Tas</option>
+                                        <option value="Sack">Sack - Karung</option>
+                                        <option value="Drum">Drum - Drum</option>
+                                        <option value="Barrel">Barrel - Barel</option>
+                                        <option value="IBC">IBC - IBC Tank</option>
+                                        <option value="Jerrycan">Jerrycan - Jerigen</option>
+                                        <option value="Bottle">Bottle - Botol</option>
+                                        <option value="Can">Can - Kaleng</option>
+                                        <option value="Cylinder">Cylinder - Tabung Gas</option>
+                                        <option value="Tubes">Tubes - Tabung</option>
+                                        <option value="Tote">Tote - Tote Bag</option>
+                                    </optgroup>
+                                    <optgroup label="⚖️ Berat">
+                                        <option value="Kg">Kg - Kilogram</option>
+                                        <option value="Ton">Ton - Metric Ton</option>
+                                        <option value="MT">MT - Metric Ton</option>
+                                        <option value="Lbs">Lbs - Pounds</option>
+                                        <option value="Gram">Gram - Gram</option>
+                                    </optgroup>
+                                    <optgroup label="📐 Volume">
+                                        <option value="M3">M3 - Cubic Meter</option>
+                                        <option value="CBM">CBM - Cubic Meter</option>
+                                        <option value="Ltr">Ltr - Liter</option>
+                                        <option value="Gal">Gal - Gallon</option>
+                                        <option value="CFT">CFT - Cubic Feet</option>
+                                    </optgroup>
+                                    <optgroup label="📏 Panjang/Luas">
+                                        <option value="Mtr">Mtr - Meter</option>
+                                        <option value="Ft">Ft - Feet</option>
+                                        <option value="Yard">Yard - Yard</option>
+                                        <option value="SQM">SQM - Square Meter</option>
+                                        <option value="SQF">SQF - Square Feet</option>
+                                    </optgroup>
+                                    <optgroup label="🚢 Logistik">
+                                        <option value="TEU">TEU - 20ft Container</option>
+                                        <option value="FEU">FEU - 40ft Container</option>
+                                        <option value="Lot">Lot - Lot</option>
+                                        <option value="Shipment">Shipment - Pengiriman</option>
+                                    </optgroup>
+                                    <optgroup label="📋 Lainnya">
+                                        <option value="Other">Other - Lainnya</option>
+                                    </optgroup>
                                 </select>
                             </div>
                         </div>
                         <div><label class="text-xs font-bold text-slate-500 block mb-1">Weight (Kg)</label><input type="number" wire:model="form.weight" class="w-full border-slate-300 rounded-lg text-sm"></div>
                         <div><label class="text-xs font-bold text-slate-500 block mb-1">Volume (CBM)</label><input type="number" step="0.001" wire:model="form.volume" class="w-full border-slate-300 rounded-lg text-sm" placeholder="0.000"></div>
+                        <div x-data="hsCodeAutocomplete()" class="relative">
+                            <label class="text-xs font-bold text-slate-500 block mb-1">HS Code</label>
+                            <input 
+                                type="text" 
+                                x-model="search"
+                                @input.debounce.300ms="fetchResults"
+                                @focus="showDropdown = true"
+                                @click.away="showDropdown = false"
+                                wire:model="form.hs_code" 
+                                class="w-full border-slate-300 rounded-lg text-sm font-mono" 
+                                placeholder="Ketik HS Code atau deskripsi..." 
+                                maxlength="12"
+                                autocomplete="off"
+                            >
+                            <!-- Dropdown Results -->
+                            <div x-show="showDropdown && results.length > 0" 
+                                 x-cloak
+                                 class="absolute z-50 w-full mt-1 bg-white border border-gray-300 rounded-lg shadow-lg max-h-60 overflow-y-auto">
+                                <template x-for="item in results" :key="item.hs_code">
+                                    <div @click="selectItem(item)" 
+                                         class="px-3 py-2 hover:bg-blue-50 cursor-pointer border-b border-gray-100 last:border-0">
+                                        <div class="flex items-center gap-2">
+                                            <span class="font-mono text-sm font-bold text-blue-600" x-text="item.hs_code"></span>
+                                            <span class="text-xs px-1.5 py-0.5 rounded" 
+                                                  :class="item.hs_level == 4 ? 'bg-green-100 text-green-700' : (item.hs_level == 6 ? 'bg-blue-100 text-blue-700' : 'bg-gray-100 text-gray-600')"
+                                                  x-text="item.hs_level + ' digit'"></span>
+                                        </div>
+                                        <p class="text-xs text-gray-600 mt-0.5 line-clamp-2" x-text="item.description_id"></p>
+                                    </div>
+                                </template>
+                            </div>
+                            <!-- Selected Description -->
+                            <p class="text-xs text-gray-400 mt-1" x-show="!selectedDesc">Ketik minimal 2 karakter untuk mencari</p>
+                            <p class="text-xs text-green-600 mt-1" x-show="selectedDesc" x-text="selectedDesc"></p>
+                        </div>
                         
                         <hr class="border-slate-200 my-2">
                         
@@ -533,7 +631,7 @@
             
             <div class="bg-slate-50 px-6 py-4 border-t border-slate-200 flex justify-end gap-3">
                 <button wire:click="closeModal" class="px-4 py-2 bg-white border border-slate-300 rounded-lg text-slate-600 font-medium hover:bg-slate-50">Cancel</button>
-                <button wire:click="save" class="px-6 py-2 bg-m2b-primary text-white rounded-lg text-sm font-bold hover:bg-blue-900 transition shadow-md flex items-center">
+                <button type="button" wire:click="save" class="px-6 py-2 bg-m2b-primary text-white rounded-lg text-sm font-bold hover:bg-blue-900 transition shadow-md flex items-center">
                     <span wire:loading.remove wire:target="save">Save Shipment</span>
                     <span wire:loading wire:target="save">Saving...</span>
                 </button>
@@ -647,6 +745,34 @@
     </div>
     @endif
     
+    <script>
+    function hsCodeAutocomplete() {
+        return {
+            search: "",
+            results: [],
+            showDropdown: false,
+            selectedDesc: "",
+            async fetchResults() {
+                if (this.search.length < 2) {
+                    this.results = [];
+                    return;
+                }
+                try {
+                    const response = await fetch(`/api/hs-codes/search?q=${encodeURIComponent(this.search)}`);
+                    this.results = await response.json();
+                } catch (e) {
+                    this.results = [];
+                }
+            },
+            selectItem(item) {
+                this.search = item.hs_code;
+                this.selectedDesc = item.description_id;
+                this.showDropdown = false;
+                this.$wire.set("form.hs_code", item.hs_code);
+            }
+        }
+    }
+    </script>
     @script
     <script>
         $wire.on('openPrintWindow', (event) => {
@@ -719,4 +845,64 @@
         </div>
     </div>
     @endif
+
+{{-- MODAL VIEW CANCEL REASON --}}
+@if($showCancelReasonModal && $cancelReasonShipment)
+<div class="fixed inset-0 z-50 overflow-y-auto">
+    <div class="flex items-center justify-center min-h-screen px-4">
+        <div class="fixed inset-0 bg-black/50 transition-opacity" wire:click="closeCancelReasonModal"></div>
+        
+        <div class="relative bg-white rounded-2xl shadow-2xl w-full max-w-md transform transition-all">
+            {{-- Header --}}
+            <div class="bg-gradient-to-r from-red-500 to-red-600 px-6 py-4 rounded-t-2xl">
+                <div class="flex items-center justify-between">
+                    <h3 class="text-lg font-bold text-white flex items-center gap-2">
+                        <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M18.364 18.364A9 9 0 005.636 5.636m12.728 12.728A9 9 0 015.636 5.636m12.728 12.728L5.636 5.636"/>
+                        </svg>
+                        Shipment Dibatalkan
+                    </h3>
+                    <button wire:click="closeCancelReasonModal" class="text-white/80 hover:text-white">
+                        <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
+                        </svg>
+                    </button>
+                </div>
+            </div>
+            
+            {{-- Body --}}
+            <div class="p-6 space-y-4">
+                <div class="bg-gray-50 rounded-lg p-4 border border-gray-200">
+                    <p class="text-xs text-gray-500 uppercase font-semibold mb-1">No. Referensi</p>
+                    <p class="text-lg font-bold text-gray-800">{{ $cancelReasonShipment->awb_number }}</p>
+                </div>
+                
+                <div class="space-y-3">
+                    <div>
+                        <p class="text-xs text-gray-500 uppercase font-semibold mb-1">Dibatalkan Oleh</p>
+                        <p class="text-sm font-medium text-gray-800">{{ $cancelReasonShipment->cancelledBy->name ?? 'Unknown' }}</p>
+                    </div>
+                    
+                    <div>
+                        <p class="text-xs text-gray-500 uppercase font-semibold mb-1">Waktu Pembatalan</p>
+                        <p class="text-sm font-medium text-gray-800">{{ $cancelReasonShipment->cancelled_at ? \Carbon\Carbon::parse($cancelReasonShipment->cancelled_at)->format('d M Y, H:i') : '-' }}</p>
+                    </div>
+                    
+                    <div>
+                        <p class="text-xs text-gray-500 uppercase font-semibold mb-1">Alasan Pembatalan</p>
+                        <div class="bg-red-50 border border-red-200 rounded-lg p-3 mt-1">
+                            <p class="text-sm text-red-800">{{ $cancelReasonShipment->cancellation_reason ?: 'Tidak ada alasan yang dicatat.' }}</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            {{-- Footer --}}
+            <div class="px-6 py-4 bg-gray-50 rounded-b-2xl">
+                <button wire:click="closeCancelReasonModal" class="w-full px-4 py-2 bg-gray-600 text-white rounded-lg font-semibold hover:bg-gray-700 transition">Tutup</button>
+            </div>
+        </div>
+    </div>
+</div>
+@endif
 </div>

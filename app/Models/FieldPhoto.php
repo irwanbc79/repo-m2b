@@ -21,6 +21,7 @@ class FieldPhoto extends Model
         'width',
         'height',
         'description',
+        'category',
         'upload_ip',
         'latitude',
         'longitude',

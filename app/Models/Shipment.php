@@ -31,6 +31,7 @@ class Shipment extends Model
         'pieces',
         'package_type',
         'commodity',
+        'hs_code',
         'estimated_departure',
         'estimated_arrival',
         'actual_departure',
@@ -62,6 +63,38 @@ class Shipment extends Model
     const STATUS_CANCELLED = 'cancelled';
     const STATUS_CANCEL = 'cancelled'; // Alias untuk backward compatibility
 
+    // =========================================
+    // STATUS PER SERVICE TYPE
+    // =========================================
+    
+    // IMPORT STATUSES
+    const STATUS_IMPORT_BOOKING = 'booking';
+    const STATUS_IMPORT_DOCUMENT = 'document_collection';
+    const STATUS_IMPORT_MANIFEST = 'manifest_submitted';
+    const STATUS_IMPORT_BILLING = 'billing_issued';
+    const STATUS_IMPORT_INSPECTION = 'physical_inspection'; // Jalur Merah
+    const STATUS_IMPORT_RELEASED = 'customs_released';
+    const STATUS_IMPORT_DELIVERY = 'delivery';
+    
+    // EXPORT STATUSES
+    const STATUS_EXPORT_BOOKING = 'booking';
+    const STATUS_EXPORT_DOCUMENT = 'document_collection';
+    const STATUS_EXPORT_PEB = 'peb_submitted';
+    const STATUS_EXPORT_BILLING = 'billing_issued'; // Jika ada Bea Keluar
+    const STATUS_EXPORT_INSPECTION = 'physical_inspection'; // PPB
+    const STATUS_EXPORT_RELEASED = 'export_released';
+    const STATUS_EXPORT_ONBOARD = 'on_board';
+    
+    // DOMESTIC STATUSES
+    const STATUS_DOMESTIC_BOOKING = 'booking';
+    const STATUS_DOMESTIC_PICKUP = 'pickup';
+    const STATUS_DOMESTIC_TRANSIT = 'in_transit';
+    const STATUS_DOMESTIC_DELIVERY = 'delivery';
+    
+    // LANE STATUS
+    const LANE_GREEN = 'green';
+    const LANE_RED = 'red';
+
     /**
      * Get all available statuses
      */
@@ -79,6 +112,109 @@ class Shipment extends Model
     /**
      * Get status badge HTML
      */
+
+    /**
+     * Get status flow berdasarkan service type
+     */
+    public static function getStatusFlow(string $serviceType): array
+    {
+        return match(strtolower($serviceType)) {
+            'import' => [
+                'booking' => ['order' => 1, 'label' => 'Booking', 'icon' => '📋'],
+                'document_collection' => ['order' => 2, 'label' => 'Document Collection', 'icon' => '📄'],
+                'manifest_submitted' => ['order' => 3, 'label' => 'Manifest Submitted', 'icon' => '📝'],
+                'billing_issued' => ['order' => 4, 'label' => 'Billing Issued', 'icon' => '💰'],
+                'physical_inspection' => ['order' => 4.5, 'label' => 'Physical Inspection', 'icon' => '🔍', 'optional' => true],
+                'customs_released' => ['order' => 5, 'label' => 'Customs Released', 'icon' => '✅'],
+                'delivery' => ['order' => 6, 'label' => 'Delivery', 'icon' => '🚚'],
+                'completed' => ['order' => 7, 'label' => 'Completed', 'icon' => '🎉'],
+            ],
+            'export' => [
+                'booking' => ['order' => 1, 'label' => 'Booking', 'icon' => '📋'],
+                'document_collection' => ['order' => 2, 'label' => 'Document Collection', 'icon' => '📄'],
+                'peb_submitted' => ['order' => 3, 'label' => 'PEB Submitted', 'icon' => '📝'],
+                'billing_issued' => ['order' => 3.5, 'label' => 'Billing (Bea Keluar)', 'icon' => '💰', 'optional' => true],
+                'physical_inspection' => ['order' => 3.7, 'label' => 'PPB (Pemeriksaan)', 'icon' => '🔍', 'optional' => true],
+                'export_released' => ['order' => 4, 'label' => 'NPE Released', 'icon' => '✅'],
+                'on_board' => ['order' => 5, 'label' => 'On Board', 'icon' => '🚢'],
+                'completed' => ['order' => 6, 'label' => 'Completed', 'icon' => '🎉'],
+            ],
+            default => [ // Domestic
+                'booking' => ['order' => 1, 'label' => 'Booking', 'icon' => '📋'],
+                'pickup' => ['order' => 2, 'label' => 'Pickup', 'icon' => '📦'],
+                'in_transit' => ['order' => 3, 'label' => 'In Transit', 'icon' => '🚚'],
+                'delivery' => ['order' => 4, 'label' => 'Delivery', 'icon' => '🏠'],
+                'completed' => ['order' => 5, 'label' => 'Completed', 'icon' => '🎉'],
+            ],
+        };
+    }
+
+    /**
+     * Get document triggers untuk auto-update status
+     */
+    public static function getDocumentTriggers(string $serviceType): array
+    {
+        return match(strtolower($serviceType)) {
+            'import' => [
+                'Bill of Lading' => 'document_collection',
+                'Invoice' => 'document_collection',
+                'Packing List' => 'document_collection',
+                'Manifest / BC 1.1' => 'manifest_submitted',
+                'Billing Pungutan' => 'billing_issued',
+                'SPJM' => 'physical_inspection',
+                'SPPB' => 'customs_released',
+                'SP2' => 'delivery',
+            ],
+            'export' => [
+                'Invoice' => 'document_collection',
+                'Packing List' => 'document_collection',
+                'BC 3.0' => 'peb_submitted',
+                'Billing Bea Keluar' => 'billing_issued',
+                'PPB' => 'physical_inspection',
+                'NPE' => 'export_released',
+                'Bill of Lading' => 'on_board',
+            ],
+            default => [ // Domestic
+                'Surat Jalan Pickup' => 'pickup',
+                'Manifest' => 'in_transit',
+                'Surat Jalan' => 'delivery',
+                'Bukti Terima' => 'completed',
+            ],
+        };
+    }
+
+    /**
+     * Get current step number berdasarkan status
+     */
+    public function getCurrentStep(): int
+    {
+        $flow = self::getStatusFlow($this->service_type);
+        $currentStatus = $this->status ?? 'booking';
+        
+        // Map old status to new
+        $statusMap = [
+            'pending' => 'booking',
+            'in_progress' => 'document_collection',
+            'on_board' => 'on_board',
+            'cancel' => 'cancelled',
+        ];
+        
+        $mappedStatus = $statusMap[$currentStatus] ?? $currentStatus;
+        
+        return isset($flow[$mappedStatus]) ? (int) $flow[$mappedStatus]['order'] : 1;
+    }
+
+    /**
+     * Check apakah status bisa diupdate ke status baru (tidak boleh mundur)
+     */
+    public function canUpdateStatusTo(string $newStatus): bool
+    {
+        $flow = self::getStatusFlow($this->service_type);
+        $currentOrder = $this->getCurrentStep();
+        $newOrder = isset($flow[$newStatus]) ? $flow[$newStatus]['order'] : 0;
+        
+        return $newOrder > $currentOrder;
+    }
     public function getStatusBadgeAttribute(): string
     {
         $badges = [
@@ -144,6 +280,11 @@ class Shipment extends Model
     /**
      * Relationship to Customer
      */
+    public function cancelledByUser()
+    {
+        return $this->belongsTo(User::class, 'cancelled_by');
+    }
+
     public function customer(): BelongsTo
     {
         return $this->belongsTo(Customer::class);

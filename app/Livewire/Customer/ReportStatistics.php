@@ -16,11 +16,10 @@ class ReportStatistics extends Component
     
     public function mount()
     {
-        $this->year = now()->year;
-        
-        // Get available years from shipments
         $user = Auth::user();
+        
         if ($user->customer) {
+            // Get available years from shipments
             $years = Shipment::where('customer_id', $user->customer->id)
                 ->selectRaw('YEAR(created_at) as year')
                 ->distinct()
@@ -29,8 +28,12 @@ class ReportStatistics extends Component
                 ->toArray();
             
             $this->availableYears = !empty($years) ? $years : [now()->year];
+            
+            // PERBAIKAN: Default ke tahun TERAKHIR yang ada datanya, bukan tahun sekarang
+            $this->year = !empty($years) ? $years[0] : now()->year;
         } else {
             $this->availableYears = [now()->year];
+            $this->year = now()->year;
         }
     }
 

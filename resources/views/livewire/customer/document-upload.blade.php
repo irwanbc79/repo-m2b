@@ -14,7 +14,7 @@
 
         <div>
             <label class="text-sm">File</label>
-            <input type="file" wire:model="file" class="w-full" />
+            <input type="file" wire:model="files" class="w-full" />
             @error('file') <div class="text-red-600 text-sm">{{ $message }}</div> @enderror
         </div>
 

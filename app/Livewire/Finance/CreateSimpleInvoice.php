@@ -12,6 +12,7 @@ class CreateSimpleInvoice extends Component
     public $customer_address = '';
     public $customer_id = null;
     public $invoice_date;
+    public $due_date;
     public $currency = 'IDR'; // Fixed to IDR only
     public $notes = '';
     
@@ -21,6 +22,7 @@ class CreateSimpleInvoice extends Component
         'customer_name' => 'required|max:255',
         'customer_address' => 'nullable',
         'invoice_date' => 'required|date',
+        'due_date' => 'required|date|after_or_equal:invoice_date',
         'items.*.description' => 'required|max:500',
         'items.*.quantity' => 'required|integer|min:1',
         'items.*.unit_price' => 'required|numeric|min:0',
@@ -29,6 +31,7 @@ class CreateSimpleInvoice extends Component
     public function mount()
     {
         $this->invoice_date = now()->format('Y-m-d');
+        $this->due_date = now()->addDays(7)->format('Y-m-d');
         $this->addItem();
     }
 
@@ -85,6 +88,7 @@ class CreateSimpleInvoice extends Component
 
         $invoice = SimpleInvoice::create([
             'invoice_date' => $this->invoice_date,
+            'due_date' => $this->due_date,
             'customer_name' => $this->customer_name,
             'customer_address' => $this->customer_address,
             'customer_id' => $this->customer_id,

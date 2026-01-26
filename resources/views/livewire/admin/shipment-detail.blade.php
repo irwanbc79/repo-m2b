@@ -4,17 +4,14 @@
 
 <div class="space-y-6">
     {{-- Memindahkan fungsi ke dalam div (atau sebaiknya didefinisikan di komponen Livewire jika ini adalah bagian dari logika) --}}
-    @php
+        @php
+        // Helper function
         if (!function_exists('hasKeyword')) {
             function hasKeyword($haystack, $needles) {
                 if (empty($haystack) || empty($needles)) return false;
-                // Memastikan $haystack adalah array sebelum di-loop
                 if (!is_array($haystack)) $haystack = [$haystack]; 
-                
                 foreach ($haystack as $item) {
-                    // Memastikan $item adalah string sebelum strtolower
                     if (!is_string($item)) continue; 
-                    
                     foreach ($needles as $needle) {
                         if (str_contains(strtolower($item), strtolower($needle))) return true;
                     }
@@ -23,34 +20,57 @@
             }
         }
         
-        // Logic tracker visual
-        $type = strtolower($shipment->service_type);
-        // Menggunakan map untuk memastikan tipe data benar, sebelum diubah ke array
-        $docs = $shipment->documents->pluck('description')->map(fn($i) => is_string($i) ? strtolower($i) : '')->toArray(); 
+        // Logic tracker visual menggunakan method dari Model
+        use App\Models\Shipment;
+        
+        $serviceType = strtolower($shipment->service_type ?? 'domestic');
+        $statusFlow = Shipment::getStatusFlow($serviceType);
+        
+        // Filter hanya status non-optional untuk tampilan utama
+        $mainSteps = collect($statusFlow)->filter(fn($s) => !($s['optional'] ?? false))->values();
+        $steps = $mainSteps->pluck('label')->toArray();
+        
+        // Helper: cek dokumen
+        $docs = $shipment->documents->pluck('description')->map(fn($i) => strtolower($i ?? ''))->toArray();
+        $hasDoc = function($keywords) use ($docs) {
+            foreach ($docs as $doc) {
+                foreach ((array)$keywords as $kw) {
+                    if (str_contains($doc, strtolower($kw))) return true;
+                }
+            }
+            return false;
+        };
+        
+        // Tentukan current step berdasarkan DOKUMEN
         $currentStep = 1;
-        $steps = []; 
-
-        if ($type == 'import') {
-            $steps = ['Pending', 'Manifest / BC 1.1', 'Customs Billing', 'Customs Released (SPPB)', 'Delivery', 'Completed'];
-            if (hasKeyword($docs, ['manifest', 'bc 1.1'])) $currentStep = 2;
-            if (hasKeyword($docs, ['billing', 'ebilling'])) $currentStep = 3;
-            if (hasKeyword($docs, ['sppb', 'pengeluaran'])) $currentStep = 4;
-            if (hasKeyword($docs, ['sp2', 'surat jalan'])) $currentStep = 5;
-            if ($shipment->status == 'completed') $currentStep = 6;
-        } elseif ($type == 'export') {
-            $steps = ['Booking', 'Stuffing', 'Customs Released (NPE)', 'On Board', 'Completed'];
-            if ($shipment->status == 'in_progress') { $currentStep = hasKeyword($docs, ['gate in', 'stuffing']) ? 2 : 1; }
-            if ($shipment->status == 'customs_released' || hasKeyword($docs, ['npe'])) $currentStep = 3;
-            if ($shipment->status == 'on_board' || hasKeyword($docs, ['bl final'])) $currentStep = 4;
-            if ($shipment->status == 'completed') $currentStep = 5;
+        
+        if ($serviceType === 'import') {
+            if ($hasDoc(['bill of lading', 'bl', 'invoice', 'packing list'])) $currentStep = 2;
+            if ($hasDoc(['manifest', 'bc 1.1', 'bc1.1'])) $currentStep = 3;
+            if ($hasDoc(['billing', 'ebilling', 'pungutan'])) $currentStep = 4;
+            if ($hasDoc(['sppb', 'pengeluaran', 'released'])) $currentStep = 5;
+            if ($hasDoc(['sp2', 'surat jalan', 'delivery'])) $currentStep = 6;
+            if ($shipment->status === 'completed') $currentStep = 7;
+        } elseif ($serviceType === 'export') {
+            if ($hasDoc(['invoice', 'packing list', 'si', 'shipping instruction'])) $currentStep = 2;
+            if ($hasDoc(['peb', 'bc 3.0', 'bc3.0'])) $currentStep = 3;
+            if ($hasDoc(['npe', 'persetujuan ekspor'])) $currentStep = 4;
+            if ($hasDoc(['bl final', 'on board', 'shipped']) || $shipment->status === 'on_board') $currentStep = 5;
+            if ($shipment->status === 'completed') $currentStep = 6;
         } else {
-            // Domestic
-            $steps = ['Booking', 'Cargo In', 'Sailing', 'Arrived', 'Delivered'];
-            if (hasKeyword($docs, ['tanda terima'])) $currentStep = 2;
-            if (hasKeyword($docs, ['manifest', 'resi'])) $currentStep = 3;
-            if ($shipment->estimated_arrival && now() >= \Carbon\Carbon::parse($shipment->estimated_arrival)) $currentStep = 4;
-            if ($shipment->status == 'completed') $currentStep = 5;
+            if ($hasDoc(['pickup', 'tanda terima', 'penjemputan'])) $currentStep = 2;
+            if ($hasDoc(['manifest', 'resi', 'transit'])) $currentStep = 3;
+            if ($hasDoc(['surat jalan', 'delivery', 'antar'])) $currentStep = 4;
+            if ($shipment->status === 'completed') $currentStep = 5;
         }
+        
+        // Auto-detect jalur merah berdasarkan SPJM
+        $hasSPJM = $hasDoc(['spjm', 'surat pemberitahuan jalur merah']);
+        $isRedLane = $hasSPJM || ($shipment->lane_status ?? '') === 'red';
+        
+        // Label status deskriptif
+        $stepLabels = array_column($mainSteps->toArray(), 'label');
+        $currentStepLabel = $stepLabels[$currentStep - 1] ?? 'Booking';
     @endphp
 
     {{-- Header & Breadcrumb --}}
@@ -78,11 +98,11 @@
             </div>
             <div class="text-right flex flex-col items-end gap-2">
                 <span class="px-3 py-1 rounded text-xs font-bold uppercase tracking-wider border border-white/20 bg-white/10">
-                    {{ str_replace('_', ' ', $shipment->status) }}
+                    {{ strtoupper($currentStepLabel) }}
                 </span>
-                @if($shipment->lane_status)
-                    <span class="px-3 py-1 rounded text-xs font-bold uppercase tracking-wider flex items-center gap-1 shadow-sm {{ $shipment->lane_status == 'green' ? 'bg-green-500 text-white' : 'bg-red-600 text-white' }}">
-                        {{ $shipment->lane_status == 'green' ? '🟢 JALUR HIJAU' : '🔴 JALUR MERAH' }}
+                @if($serviceType === 'import' && $currentStep >= 4)
+                    <span class="px-3 py-1 rounded text-xs font-bold uppercase tracking-wider flex items-center gap-1 shadow-sm {{ $isRedLane ? 'bg-red-600 text-white' : 'bg-green-500 text-white' }}">
+                        {{ $isRedLane ? '🔴 JALUR MERAH' : '🟢 JALUR HIJAU' }}
                     </span>
                 @endif
             </div>
@@ -279,35 +299,94 @@
                         <div class="grid grid-cols-2 gap-3">
                             <div><label class="text-xs font-bold text-slate-500 block mb-1">Qty</label><input type="number" wire:model="form.pieces" class="w-full border-slate-300 rounded-lg text-sm"></div>
                             <div>
-                                <label class="text-xs font-bold text-slate-500 block mb-1">Unit</label>
+                                <label class="text-xs font-bold text-slate-500 block mb-1">Jenis Kemasan</label>
                                 <select wire:model="form.package_type" class="w-full border-slate-300 rounded-lg text-sm">
-                                    <option value="">-- Pilih Unit --</option>
-                                    
-                                    {{-- UNIT KOTAK / PACKAGING --}}
-                                    <option value="Ctn">Ctn (Cartons)</option>
-                                    <option value="Box">Box (Kotak)</option>
-                                    <option value="Pkgs">Pkgs (Packages/Kemasan)</option>
-                                    <option value="Plt">Plt (Pallet)</option>
-                                    <option value="Crate">Crate (Krat Kayu/Plastik)</option>
-                                    <option value="Bdl">Bdl (Bundle/Ikatan)</option>
-                                    
-                                    {{-- UNIT SATUAN/BERAT --}}
-                                    <option value="Pcs">Pcs (Pieces/Biji)</option>
-                                    <option value="Kg">Kg (Kilogram)</option>
-                                    <option value="Ton">Ton (Tonnase)</option>
-                                    <option value="M3">M3 (Cubic Meter)</option>
-                                    
-                                    {{-- UNIT LAIN-LAIN --}}
-                                    <option value="Bag">Bag (Tas/Karung)</option>
-                                    <option value="Sack">Sack (Karung)</option>
-                                    <option value="Drum">Drum (Barel)</option>
-                                    <option value="Roll">Roll (Gulungan)</option>
-                                    <option value="Tubes">Tubes (Tabung)</option>
-                                    <option value="Other">Other (Lainnya)</option>
+                                    <option value="">-- Pilih Jenis Kemasan --</option>
+                                    <optgroup label="📦 Packaging">
+                                        <option value="Ctn">Ctn - Cartons</option>
+                                        <option value="Box">Box - Kotak</option>
+                                        <option value="Pkgs">Pkgs - Packages</option>
+                                        <option value="Plt">Plt - Pallet</option>
+                                        <option value="Crate">Crate - Krat</option>
+                                        <option value="Case">Case - Peti</option>
+                                        <option value="Skid">Skid - Alas Kayu</option>
+                                    </optgroup>
+                                    <optgroup label="🔗 Bundle/Gulungan">
+                                        <option value="Bdl">Bdl - Bundle</option>
+                                        <option value="Bale">Bale - Bal</option>
+                                        <option value="Coil">Coil - Gulungan</option>
+                                        <option value="Roll">Roll - Roll</option>
+                                        <option value="Reel">Reel - Kumparan</option>
+                                    </optgroup>
+                                    <optgroup label="🔢 Satuan">
+                                        <option value="Pcs">Pcs - Pieces</option>
+                                        <option value="Unit">Unit - Unit</option>
+                                        <option value="Set">Set - Set</option>
+                                        <option value="Pair">Pair - Pasang</option>
+                                        <option value="Dozen">Dozen - Lusin</option>
+                                        <option value="Ea">Ea - Each</option>
+                                    </optgroup>
+                                    <optgroup label="🛢️ Wadah/Container">
+                                        <option value="Bag">Bag - Tas</option>
+                                        <option value="Sack">Sack - Karung</option>
+                                        <option value="Drum">Drum - Drum</option>
+                                        <option value="Barrel">Barrel - Barel</option>
+                                        <option value="IBC">IBC - IBC Tank</option>
+                                        <option value="Jerrycan">Jerrycan - Jerigen</option>
+                                        <option value="Bottle">Bottle - Botol</option>
+                                        <option value="Can">Can - Kaleng</option>
+                                        <option value="Cylinder">Cylinder - Tabung Gas</option>
+                                        <option value="Tubes">Tubes - Tabung</option>
+                                        <option value="Tote">Tote - Tote Bag</option>
+                                    </optgroup>
+                                    <optgroup label="⚖️ Berat">
+                                        <option value="Kg">Kg - Kilogram</option>
+                                        <option value="Ton">Ton - Metric Ton</option>
+                                        <option value="MT">MT - Metric Ton</option>
+                                        <option value="Lbs">Lbs - Pounds</option>
+                                        <option value="Gram">Gram - Gram</option>
+                                    </optgroup>
+                                    <optgroup label="📐 Volume">
+                                        <option value="M3">M3 - Cubic Meter</option>
+                                        <option value="CBM">CBM - Cubic Meter</option>
+                                        <option value="Ltr">Ltr - Liter</option>
+                                        <option value="Gal">Gal - Gallon</option>
+                                        <option value="CFT">CFT - Cubic Feet</option>
+                                    </optgroup>
+                                    <optgroup label="📏 Panjang/Luas">
+                                        <option value="Mtr">Mtr - Meter</option>
+                                        <option value="Ft">Ft - Feet</option>
+                                        <option value="Yard">Yard - Yard</option>
+                                        <option value="SQM">SQM - Square Meter</option>
+                                        <option value="SQF">SQF - Square Feet</option>
+                                    </optgroup>
+                                    <optgroup label="🚢 Logistik">
+                                        <option value="TEU">TEU - 20ft Container</option>
+                                        <option value="FEU">FEU - 40ft Container</option>
+                                        <option value="Lot">Lot - Lot</option>
+                                        <option value="Shipment">Shipment - Pengiriman</option>
+                                    </optgroup>
+                                    <optgroup label="📋 Lainnya">
+                                        <option value="Other">Other - Lainnya</option>
+                                    </optgroup>
                                 </select>
                             </div>
                         </div>
                         <div><label class="text-xs font-bold text-slate-500 block mb-1">Weight (Kg)</label><input type="number" wire:model="form.weight" class="w-full border-slate-300 rounded-lg text-sm"></div>
+                        <div x-data="hsCodeAutocomplete()" class="relative">
+                            <label class="text-xs font-bold text-slate-500 block mb-1">HS Code</label>
+                            <input type="text" x-model="search" @input.debounce.300ms="fetchResults" @focus="showDropdown = true" @click.away="showDropdown = false" wire:model="form.hs_code" class="w-full border-slate-300 rounded-lg text-sm font-mono" placeholder="Ketik HS Code atau deskripsi..." maxlength="12" autocomplete="off">
+                            <div x-show="showDropdown && results.length > 0" x-cloak class="absolute z-50 w-full mt-1 bg-white border border-gray-300 rounded-lg shadow-lg max-h-60 overflow-y-auto">
+                                <template x-for="item in results" :key="item.hs_code">
+                                    <div @click="selectItem(item)" class="px-3 py-2 hover:bg-blue-50 cursor-pointer border-b border-gray-100">
+                                        <span class="font-mono text-sm font-bold text-blue-600" x-text="item.hs_code"></span>
+                                        <p class="text-xs text-gray-600 mt-0.5" x-text="item.description_id"></p>
+                                    </div>
+                                </template>
+                            </div>
+                            <p class="text-xs text-gray-400 mt-1" x-show="!selectedDesc">Ketik minimal 2 karakter</p>
+                            <p class="text-xs text-green-600 mt-1" x-show="selectedDesc" x-text="selectedDesc"></p>
+                        </div>
                         <hr class="border-slate-200 my-2">
                         
                         {{-- STATUS REMOVED, REPLACED WITH CHECKBOX --}}
@@ -523,4 +602,27 @@ style="display: none;">
         
     </div>
 </div>
+<script>
+function hsCodeAutocomplete() {
+    return {
+        search: "",
+        results: [],
+        showDropdown: false,
+        selectedDesc: "",
+        async fetchResults() {
+            if (this.search.length < 2) { this.results = []; return; }
+            try {
+                const response = await fetch(`/api/hs-codes/search?q=${encodeURIComponent(this.search)}`);
+                this.results = await response.json();
+            } catch (e) { this.results = []; }
+        },
+        selectItem(item) {
+            this.search = item.hs_code;
+            this.selectedDesc = item.description_id;
+            this.showDropdown = false;
+            this.$wire.set("form.hs_code", item.hs_code);
+        }
+    }
+}
+</script>
 </div>

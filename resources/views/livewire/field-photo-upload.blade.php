@@ -119,24 +119,35 @@
             @endif
         </div>
 
-        {{-- Photo Upload Area --}}
+        {{-- Photo Upload Area - Dual Options --}}
         <div class="mb-6">
             <label class="block text-sm font-medium text-gray-700 mb-2">Pilih Foto</label>
-            <div class="border-2 border-dashed border-gray-300 rounded-xl p-8 text-center hover:border-blue-400 transition cursor-pointer"
-                 onclick="document.getElementById('photo-input').click()">
-                <input type="file" 
-                       id="photo-input"
-                       wire:model="photos" 
-                       multiple 
-                       accept="image/jpeg,image/png,image/webp,image/heic,image/heif"
-                       capture="environment"
-                       class="hidden">
-                <svg class="mx-auto w-12 h-12 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"/>
-                </svg>
-                <p class="mt-2 text-gray-500">Tap untuk pilih foto atau ambil foto baru</p>
-                <p class="text-xs text-gray-400 mt-1">Maksimal 10MB per file • Otomatis diberi watermark</p>
+            
+            {{-- Hidden Inputs --}}
+            <input type="file" id="camera-input" wire:model="photos" multiple accept="image/*" capture="environment" class="hidden">
+            <input type="file" id="gallery-input" wire:model="photos" multiple accept="image/jpeg,image/png,image/webp,image/heic,image/heif" class="hidden">
+            
+            {{-- Dual Buttons --}}
+            <div class="grid grid-cols-2 gap-3 mb-3">
+                <button type="button" onclick="document.getElementById('camera-input').click()"
+                        class="flex flex-col items-center justify-center p-5 border-2 border-dashed border-blue-300 rounded-xl hover:border-blue-500 hover:bg-blue-50 transition">
+                    <div class="w-10 h-10 bg-blue-100 rounded-full flex items-center justify-center mb-2">
+                        <svg class="w-5 h-5 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 9a2 2 0 012-2h.93a2 2 0 001.664-.89l.812-1.22A2 2 0 0110.07 4h3.86a2 2 0 011.664.89l.812 1.22A2 2 0 0018.07 7H19a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V9z"/><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 13a3 3 0 11-6 0 3 3 0 016 0z"/></svg>
+                    </div>
+                    <span class="text-sm font-medium text-blue-700">📷 Ambil Foto</span>
+                    <span class="text-xs text-gray-400">Buka Kamera</span>
+                </button>
+                
+                <button type="button" onclick="document.getElementById('gallery-input').click()"
+                        class="flex flex-col items-center justify-center p-5 border-2 border-dashed border-green-300 rounded-xl hover:border-green-500 hover:bg-green-50 transition">
+                    <div class="w-10 h-10 bg-green-100 rounded-full flex items-center justify-center mb-2">
+                        <svg class="w-5 h-5 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"/></svg>
+                    </div>
+                    <span class="text-sm font-medium text-green-700">🖼️ Pilih Galeri</span>
+                    <span class="text-xs text-gray-400">Upload Multiple</span>
+                </button>
             </div>
+            <p class="text-xs text-gray-400 text-center">Maksimal 10MB per file • Otomatis diberi watermark</p>
             
             {{-- Loading indicator for photo upload --}}
             <div wire:loading wire:target="photos" class="mt-2 text-center text-sm text-blue-600">

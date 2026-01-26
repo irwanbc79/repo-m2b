@@ -10,13 +10,14 @@ class SimpleInvoice extends Model
     use SoftDeletes;
 
     protected $fillable = [
-        'invoice_number', 'invoice_date', 'customer_id', 'customer_name',
+        'invoice_number', 'invoice_date', 'due_date', 'customer_id', 'customer_name',
         'customer_address', 'currency', 'subtotal', 'total', 'terbilang',
         'notes', 'status', 'paid_date', 'payment_proof', 'payment_notes', 'created_by',
     ];
 
     protected $casts = [
         'invoice_date' => 'date',
+        'due_date' => 'date',
         'paid_date' => 'date',
         'subtotal' => 'decimal:2',
         'total' => 'decimal:2',

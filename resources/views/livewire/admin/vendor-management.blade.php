@@ -208,7 +208,7 @@
                             <div>
                                 <label class="block text-sm font-bold text-gray-700 mb-1">Kode Vendor (Auto) *</label>
                                 {{-- Kunci: wire:model.defer untuk field readonly agar nilainya terkirim --}}
-                                <input type="text" wire:model.defer="code" readonly class="w-full border-gray-300 rounded-lg shadow-sm text-sm bg-gray-100 text-gray-500 font-bold" placeholder="VEN-00X">
+                                <input type="text" wire:model="code" readonly class="w-full border-gray-300 rounded-lg shadow-sm text-sm bg-gray-100 text-gray-500 font-bold" placeholder="VEN-00X">
                                 @error('code')<span class="text-red-500 text-xs">{{ $message }}</span>@enderror
                             </div>
                             
@@ -243,28 +243,28 @@
                             {{-- NPWP --}}
                             <div>
                                 <label class="block text-sm font-bold text-gray-700 mb-1">NPWP</label>
-                                <input type="text" wire:model.defer="npwp" class="w-full border-gray-300 rounded-lg shadow-sm text-sm" placeholder="00.000.000.0-000.000">
+                                <input type="text" wire:model="npwp" class="w-full border-gray-300 rounded-lg shadow-sm text-sm" placeholder="00.000.000.0-000.000">
                                 @error('npwp')<span class="text-red-500 text-xs">{{ $message }}</span>@enderror
                             </div>
                             
                             {{-- Alamat --}}
                             <div class="md:col-span-2">
                                 <label class="block text-sm font-bold text-gray-700 mb-1">Alamat Lengkap</label>
-                                <textarea wire:model.defer="address" class="w-full border-gray-300 rounded-lg shadow-sm text-sm"></textarea>
+                                <textarea wire:model="address" class="w-full border-gray-300 rounded-lg shadow-sm text-sm"></textarea>
                                 @error('address')<span class="text-red-500 text-xs">{{ $message }}</span>@enderror
                             </div>
                             
                             {{-- Info Bank --}}
                             <div class="md:col-span-2">
                                 <label class="block text-sm font-bold text-gray-700 mb-1">Info Rekening Bank (Nama Bank, No Rek, Atas Nama)</label>
-                                <textarea wire:model.defer="bank_details" class="w-full border-gray-300 rounded-lg shadow-sm text-sm"></textarea>
+                                <textarea wire:model="bank_details" class="w-full border-gray-300 rounded-lg shadow-sm text-sm"></textarea>
                                 @error('bank_details')<span class="text-red-500 text-xs">{{ $message }}</span>@enderror
                             </div>
                             
                             {{-- Website --}}
                             <div>
                                 <label class="block text-sm font-bold text-gray-700 mb-1">Website</label>
-                                <input type="url" wire:model.defer="website" class="w-full border-gray-300 rounded-lg shadow-sm text-sm" placeholder="https://">
+                                <input type="url" wire:model="website" class="w-full border-gray-300 rounded-lg shadow-sm text-sm" placeholder="https://">
                                 @error('website')<span class="text-red-500 text-xs">{{ $message }}</span>@enderror
                             </div>
                         </div>
@@ -294,13 +294,13 @@
                                     
                                     <div>
                                         <label class="block text-xs font-bold text-gray-500">Role / Divisi</label>
-                                        <input type="text" wire:model.defer="contacts.{{ $index }}.role" class="w-full border-gray-300 rounded-lg shadow-sm text-sm" placeholder="Contoh: Operasional">
+                                        <input type="text" wire:model="contacts.{{ $index }}.role" class="w-full border-gray-300 rounded-lg shadow-sm text-sm" placeholder="Contoh: Operasional">
                                         @error("contacts.$index.role")<span class="text-red-500 text-xs">{{ $message }}</span>@enderror
                                     </div>
                                     
                                     <div>
                                         <label class="block text-xs font-bold text-gray-500">Email</label>
-                                        <input type="email" wire:model.defer="contacts.{{ $index }}.email" class="w-full border-gray-300 rounded-lg shadow-sm text-sm" placeholder="email@vendor.com">
+                                        <input type="email" wire:model="contacts.{{ $index }}.email" class="w-full border-gray-300 rounded-lg shadow-sm text-sm" placeholder="email@vendor.com">
                                         @error("contacts.$index.email")<span class="text-red-500 text-xs">{{ $message }}</span>@enderror
                                     </div>
                                     

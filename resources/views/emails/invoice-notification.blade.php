@@ -81,7 +81,7 @@
             <div class="highlight-box">
                 <div class="detail-row">
                     <span class="label">Jenis Dokumen</span>
-                    <span class="value">: {{ $invoice->type == 'Proforma' ? 'Proforma Invoice' : 'Commercial Invoice' }}</span>
+                    <span class="value">: {{ strtolower($invoice->type) == 'proforma' ? 'Proforma Invoice' : 'Commercial Invoice' }}</span>
                 </div>
                 <div class="detail-row">
                     <span class="label">Nomor Invoice</span>

@@ -87,4 +87,129 @@ class User extends Authenticatable
         // Ubah ["admin", "staf_accounting"] jadi "Admin, Staf Accounting"
         return implode(', ', array_map(fn($r) => ucwords(str_replace('_', ' ', $r)), $roles));
     }
+
+    /**
+     * Check if user has specific permission
+     */
+    public function hasPermission(string $permission): bool
+    {
+        $userRoles = $this->roles ?? [$this->role];
+        $config = config("permissions.roles");
+        
+        foreach ($userRoles as $role) {
+            if (!isset($config[$role])) continue;
+            
+            $rolePermissions = $config[$role]["permissions"] ?? [];
+            
+            // Super admin / director has all permissions
+            if (in_array("*", $rolePermissions)) {
+                return true;
+            }
+            
+            // Check exact match
+            if (in_array($permission, $rolePermissions)) {
+                return true;
+            }
+            
+            // Check wildcard (e.g., "invoice.*" matches "invoice.view")
+            $permissionGroup = explode(".", $permission)[0];
+            if (in_array("{$permissionGroup}.*", $rolePermissions)) {
+                return true;
+            }
+        }
+        
+        return false;
+    }
+
+    /**
+     * Check if user can access menu
+     */
+    public function canAccessMenu(string $menu): bool
+    {
+        $menuAccess = config("permissions.menu_access.{$menu}", []);
+        
+        if (empty($menuAccess)) {
+            return true; // No restriction defined
+        }
+        
+        foreach ($menuAccess as $permission) {
+            if ($this->hasPermission($permission)) {
+                return true;
+            }
+        }
+        
+        return false;
+    }
+
+    /**
+     * Get user role level (for hierarchy check)
+     */
+    public function getRoleLevel(): int
+    {
+        $userRoles = $this->roles ?? [$this->role];
+        $config = config("permissions.roles");
+        $maxLevel = 0;
+        
+        foreach ($userRoles as $role) {
+            $level = $config[$role]["level"] ?? 0;
+            if ($level > $maxLevel) {
+                $maxLevel = $level;
+            }
+        }
+        
+        return $maxLevel;
+    }
+
+    /**
+     * Check if user is admin level or above
+     */
+    public function isAdminLevel(): bool
+    {
+        return $this->getRoleLevel() >= 60;
+    }
+
+    /**
+     * Check if user is manager level or above
+     */
+    public function isManagerLevel(): bool
+    {
+        return $this->getRoleLevel() >= 80;
+    }
+
+    /**
+     * Check if user is director level or above
+     */
+    public function isDirectorLevel(): bool
+    {
+        return $this->getRoleLevel() >= 90;
+    }
+
+    /**
+     * Relasi ke Customer via pivot table (Many-to-Many)
+     * Untuk mendukung multi-user per customer
+     */
+    public function customers()
+    {
+        return $this->belongsToMany(\App\Models\Customer::class, 'customer_user')
+                    ->withPivot('is_primary')
+                    ->withTimestamps();
+    }
+
+    /**
+     * Get the customer this user belongs to (via pivot)
+     * Returns first customer (for backward compatibility)
+     */
+    public function getCustomerViaRelation()
+    {
+        return $this->customers()->first();
+    }
+
+    /**
+     * Check if user is primary PIC for any customer
+     */
+    public function isPrimaryPic()
+    {
+        return $this->customers()->wherePivot('is_primary', true)->exists();
+    }
+
 }

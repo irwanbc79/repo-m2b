@@ -366,6 +366,13 @@
             {!! nl2br("# " . e($terbilangText) . " #") !!}
         </div>
 
+        {{-- CATATAN PEMBAYARAN --}}
+        @if(!empty($invoice->payment_notes))
+        <div class="border-l-4 border-amber-500 pl-4 py-3 text-slate-700 text-xs mb-5 bg-amber-50 rounded-r-xl">
+            <span class="font-black text-amber-700 text-[10px] uppercase block mb-1 tracking-widest">📌 Catatan Pembayaran / Payment Notes:</span>
+            <div class="text-slate-600">{!! nl2br(e($invoice->payment_notes)) !!}</div>
+        </div>
+        @endif
         {{-- FOOTER & SIGNATURE LOGIC --}}
         <div class="mt-4">
             <div class="flex justify-between items-end border-t-2 border-slate-100 pt-6">

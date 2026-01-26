@@ -135,7 +135,7 @@ class AuditLogManager extends Component
 
     public function render()
     {
-        if (Auth::user()->role !== 'admin') abort(403);
+        if (!in_array(Auth::user()->role, ['super_admin', 'director', 'admin', 'manager'])) abort(403);
 
         $query = $this->getFilteredQuery();
         $logs = $query->paginate($this->perPage);

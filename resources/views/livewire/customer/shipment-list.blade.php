@@ -28,6 +28,7 @@
                     <tr>
                         <th class="px-6 py-4">Ref Number / Route</th>
                         <th class="px-6 py-4">Service Info</th>
+                        <th class="px-6 py-4">Cargo / HS Code</th>
                         <th class="px-6 py-4">Est. Arrival</th>
                         <th class="px-6 py-4">Status</th>
                         <th class="px-6 py-4 text-center">Action</th>
@@ -50,6 +51,14 @@
                         <td class="px-6 py-4">
                             <span class="capitalize font-medium text-gray-700">{{ $shipment->service_type }}</span>
                             <div class="text-xs text-gray-400 mt-0.5">{{ $shipment->container_mode }} • {{ $shipment->shipment_type }}</div>
+                        </td>
+
+                        {{-- Cargo / HS Code --}}
+                        <td class="px-6 py-4">
+                            <div class="text-sm text-gray-700">{{ $shipment->container_info ?: ($shipment->commodity ?: "-") }}</div>
+                            @if($shipment->hs_code)
+                                <div class="text-xs font-mono text-blue-600 mt-1">HS: {{ $shipment->hs_code }}</div>
+                            @endif
                         </td>
 
                         {{-- Est Arrival --}}

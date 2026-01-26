@@ -22,6 +22,7 @@ class FieldPhotoUpload extends Component
     public $shipmentId = null;
     public $shipment = null;
     public $photos = [];
+    public $category = '';
     public $description = '';
     public $uploadProgress = 0;
     
@@ -40,6 +41,7 @@ class FieldPhotoUpload extends Component
 
     protected $rules = [
         'shipmentId' => 'required|exists:shipments,id',
+        'category' => 'nullable|string|max:50',
         'photos.*' => 'image|max:10240',
         'description' => 'nullable|string|max:500',
     ];
@@ -249,7 +251,10 @@ class FieldPhotoUpload extends Component
                 $processed = $imageService->processUpload(
                     $photo,
                     $this->shipmentId,
-                    Auth::id()
+                    Auth::id(),
+                    $this->description,
+                    $this->latitude,
+                    $this->longitude
                 );
 
                 FieldPhoto::create([
@@ -263,6 +268,7 @@ class FieldPhotoUpload extends Component
                     'width' => $processed['width'] ?? null,
                     'height' => $processed['height'] ?? null,
                     'description' => $this->description,
+                    'category' => $this->category,
                     'upload_ip' => request()->ip(),
                     'latitude' => $this->latitude,
                     'longitude' => $this->longitude,

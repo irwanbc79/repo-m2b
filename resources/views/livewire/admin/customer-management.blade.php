@@ -452,6 +452,15 @@
                         <label class="block text-sm font-medium text-gray-700 mb-1">Alamat Gudang</label>
                         <textarea wire:model="warehouse_address" rows="2" class="w-full border-gray-300 rounded-lg"></textarea>
                     </div>
+
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-1">🌐 Bahasa Email</label>
+                        <select wire:model="preferred_language" class="w-full border-gray-300 rounded-lg">
+                            <option value="id">🇮🇩 Indonesia</option>
+                            <option value="en">🇬🇧 English</option>
+                        </select>
+                        <p class="text-xs text-gray-500 mt-1">Bahasa untuk email notifikasi</p>
+                    </div>
                 </div>
                 <div class="p-4 border-t border-gray-100 bg-gray-50 flex justify-end gap-3">
                     <button type="button" wire:click="closeModal" class="px-6 py-2 border border-gray-300 rounded-lg hover:bg-gray-50 transition font-semibold">Batal</button>

@@ -179,6 +179,47 @@ class EmailInbox extends Component
     public $replyTo = "";
     public $replySubject = "";
     public $replyBody = "";
+    public $selectedTemplate = "";
+    public $templateLang = "ID";
+
+    public function getTemplatesProperty()
+    {
+        $templates = config("email_templates.templates", []);
+        $filtered = [];
+        
+        foreach ($templates as $key => $template) {
+            if (($template["lang"] ?? "") === $this->templateLang) {
+                $category = $template["category"] ?? "Umum";
+                if (!isset($filtered[$category])) {
+                    $filtered[$category] = [];
+                }
+                $filtered[$category][$key] = $template;
+            }
+        }
+        
+        return $filtered;
+    }
+
+    public function applyTemplate()
+    {
+        if (empty($this->selectedTemplate)) return;
+        
+        $template = config("email_templates.templates.{$this->selectedTemplate}");
+        if (!$template) return;
+        
+        // Replace placeholders
+        $body = $template["body"];
+        $body = str_replace("{staff_name}", auth()->user()->name, $body);
+        $body = str_replace("{original_subject}", $this->selectedEmail["subject"] ?? "", $body);
+        
+        $this->replyBody = $body;
+        $this->selectedTemplate = "";
+    }
+
+    public function switchTemplateLang()
+    {
+        $this->templateLang = $this->templateLang === "ID" ? "EN" : "ID";
+    }
 
     public function openReplyModal()
     {
@@ -198,18 +239,57 @@ class EmailInbox extends Component
             'replyBody' => 'required|string|min:5',
         ]);
 
+        // Mapping mailbox ke email address
+        $mailboxEmails = [
+            'sales' => 'sales@m2b.co.id',
+            'import' => 'import@m2b.co.id',
+            'export' => 'export@m2b.co.id',
+            'finance' => 'finance@m2b.co.id',
+            'gmail' => 'logisolmed@gmail.com',
+        ];
+        
+        $fromEmail = $mailboxEmails[$this->activeAccount] ?? config('mail.from.address');
+        $fromName = 'M2B - ' . ucfirst($this->activeAccount);
+
         try {
-            \Mail::raw($this->replyBody, function($message) {
+            \Log::info('Sending reply email', [
+                'to' => $this->replyTo,
+                'from' => $fromEmail,
+                'subject' => $this->replySubject,
+                'mailbox' => $this->activeAccount,
+                'user' => auth()->user()->name ?? 'unknown'
+            ]);
+
+            \Mail::raw($this->replyBody, function($message) use ($fromEmail, $fromName) {
                 $message->to($this->replyTo)
                     ->subject($this->replySubject)
-                    ->from(config('mail.from.address'), config('mail.from.name'));
+                    ->from(config("mail.from.address"), $fromName)->replyTo($fromEmail, $fromName);
             });
 
+            \Log::info('Email sent successfully, saving to database');
+
+            // Simpan ke database sent_emails
+            \App\Models\SentEmail::create([
+                'mailbox' => $this->activeAccount,
+                'to_email' => $this->replyTo,
+                'subject' => $this->replySubject,
+                'body' => $this->replyBody,
+                'user_id' => auth()->id(),
+                'user_name' => auth()->user()->name,
+            ]);
+
+            \Log::info('Email saved to sent_emails');
+            
             session()->flash('message', 'Reply berhasil dikirim ke ' . $this->replyTo);
             $this->showReplyModal = false;
             $this->reset(['replyTo', 'replySubject', 'replyBody']);
             
         } catch (\Exception $e) {
+            \Log::error('Failed to send reply email', [
+                'error' => $e->getMessage(),
+                'to' => $this->replyTo,
+                'mailbox' => $this->activeAccount
+            ]);
             session()->flash('error', 'Gagal mengirim reply: ' . $e->getMessage());
         }
     }

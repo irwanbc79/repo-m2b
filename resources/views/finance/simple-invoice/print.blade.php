@@ -246,7 +246,7 @@
             <div class="detail-box">
                 <table>
                     <tr><td>Tanggal</td><td>: {{ $invoice->invoice_date->format('d/m/Y') }}</td></tr>
-                    <tr><td>Jatuh Tempo</td><td>: {{ $invoice->invoice_date->addDays(30)->format('d/m/Y') }}</td></tr>
+                    <tr><td>Jatuh Tempo</td><td>: {{ $invoice->due_date ? $invoice->due_date->format('d/m/Y') : $invoice->invoice_date->addDays(7)->format('d/m/Y') }}</td></tr>
                     <tr><td>Currency</td><td>: {{ $invoice->currency }}</td></tr>
                     @if($invoice->status === 'paid' && $invoice->paid_date)
                     <tr><td>Tgl Bayar</td><td>: {{ $invoice->paid_date->format('d/m/Y') }}</td></tr>

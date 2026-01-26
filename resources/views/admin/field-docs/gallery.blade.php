@@ -164,8 +164,87 @@
         </div>
     </div>
 
+    {{-- Filter & Actions Section --}}
+    <div class="bg-white rounded-xl shadow-sm p-4 mb-6">
+        <div class="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4">
+            {{-- Filters --}}
+            <div class="flex flex-wrap items-center gap-3">
+                {{-- Date Filter --}}
+                <div class="flex items-center gap-2">
+                    <label class="text-sm text-gray-600 whitespace-nowrap">📅 Tanggal:</label>
+                    <select id="filter-date" onchange="applyFilters()" class="text-sm border-gray-300 rounded-lg focus:ring-blue-500 focus:border-blue-500">
+                        <option value="">Semua</option>
+                        <option value="today">Hari Ini</option>
+                        <option value="week">7 Hari Terakhir</option>
+                        <option value="month">30 Hari Terakhir</option>
+                    </select>
+                </div>
+                
+                {{-- User Filter --}}
+                <div class="flex items-center gap-2">
+                    <label class="text-sm text-gray-600 whitespace-nowrap">👤 Petugas:</label>
+                    <select id="filter-user" onchange="applyFilters()" class="text-sm border-gray-300 rounded-lg focus:ring-blue-500 focus:border-blue-500">
+                        <option value="">Semua</option>
+                        @php $users = $photos->pluck('user')->unique('id')->filter(); @endphp
+                        @foreach($users as $user)
+                        <option value="{{ $user->id }}">{{ $user->name }}</option>
+                        @endforeach
+                    </select>
+                </div>
+                
+                {{-- GPS Filter --}}
+                <div class="flex items-center gap-2">
+                    <label class="text-sm text-gray-600 whitespace-nowrap">📍 GPS:</label>
+                    <select id="filter-gps" onchange="applyFilters()" class="text-sm border-gray-300 rounded-lg focus:ring-blue-500 focus:border-blue-500">
+                        <option value="">Semua</option>
+                        <option value="with">Dengan GPS</option>
+                        <option value="without">Tanpa GPS</option>
+                    </select>
+                </div>
+                
+                {{-- Category Filter --}}
+                <div class="flex items-center gap-2">
+                    <label class="text-sm text-gray-600 whitespace-nowrap">🏷️ Kategori:</label>
+                    <select id="filter-category" onchange="applyFilters()" class="text-sm border-gray-300 rounded-lg focus:ring-blue-500 focus:border-blue-500">
+                        <option value="">Semua</option>
+                        <option value="loading">Loading/Unloading</option>
+                        <option value="document">Dokumen Fisik</option>
+                        <option value="container">Kondisi Kontainer</option>
+                        <option value="damage">Kerusakan/Damage</option>
+                        <option value="handover">Serah Terima</option>
+                    </select>
+                </div>
+                
+                <button type="button" onclick="resetFilters()" class="text-sm text-blue-600 hover:text-blue-800 hover:underline">
+                    🔄 Reset
+                </button>
+            </div>
+            
+            {{-- Bulk Actions --}}
+            <div class="flex items-center gap-2">
+                <span id="selected-count" class="text-sm text-gray-500 hidden">0 dipilih</span>
+                <button type="button" id="btn-download-selected" onclick="downloadSelectedPhotos()" 
+                        class="hidden items-center gap-1 px-3 py-1.5 bg-blue-600 hover:bg-blue-700 text-white text-sm rounded-lg">
+                    📥 Download ZIP
+                </button>
+                <button type="button" onclick="downloadAllPhotos()" 
+                        class="inline-flex items-center gap-1 px-3 py-1.5 bg-gray-100 hover:bg-gray-200 text-gray-700 text-sm rounded-lg">
+                    📦 Download Semua
+                </button>
+            </div>
+        </div>
+        
+        {{-- Active Filters Display --}}
+        <div id="active-filters" class="hidden mt-3 pt-3 border-t border-gray-100">
+            <div class="flex items-center gap-2 flex-wrap">
+                <span class="text-xs text-gray-500">Filter aktif:</span>
+                <div id="filter-tags" class="flex gap-1 flex-wrap"></div>
+            </div>
+        </div>
+    </div>
+
     {{-- Gallery --}}
-    @if($shipment->fieldPhotos && $shipment->fieldPhotos->count() > 0)
+    @if($photos && $photos->count() > 0)
     <div class="bg-white rounded-xl shadow-sm p-6">
         <div class="flex items-center justify-between mb-4" style="display:none;">
             <h2 class="text-lg font-semibold text-gray-800">Galeri Foto</h2>
@@ -173,7 +252,7 @@
         </div>
         
         <div class="photo-grid-section"><div class="photo-grid" id="photo-grid">
-            @foreach($shipment->fieldPhotos as $index => $photo)
+            @foreach($photos as $index => $photo)
             @php
                 $photoUrl = asset('storage/' . $photo->file_path);
                 $thumbUrl = asset('storage/' . ($photo->thumbnail_path ?: $photo->file_path));
@@ -224,19 +303,22 @@
         <div class="overflow-x-auto">
             <table class="photo-table">
                 <thead>
-                    <tr>
+                    <tr data-category="{{ $photo->category ?? '' }}" data-user-id="{{ $photo->user_id }}">
+                        <th style="width:40px" class="select-column hidden"><input type="checkbox" id="select-all-checkbox" onclick="toggleSelectAll()" class="w-4 h-4 rounded"></th>
                         <th style="width:40px">No</th>
                         <th style="width:80px">Preview</th>
                         <th>Tanggal/Waktu</th>
                         <th>Lokasi GPS</th>
                         <th>Diambil Oleh</th>
+                        <th>Kategori</th>
                         <th>Keterangan</th>
                     <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">AKSI</th></tr>
                 </thead>
                 <tbody>
-                    @foreach($shipment->fieldPhotos as $idx => $photo)
-                    <tr>
-                        <td class="text-gray-500">{{ $idx + 1 }}</td>
+                    @foreach($photos as $idx => $photo)
+                    <tr data-category="{{ $photo->category ?? '' }}" data-user-id="{{ $photo->user_id }}">
+                        <td class="select-column hidden"><input type="checkbox" class="photo-select-checkbox w-4 h-4 rounded" value="{{ $photo->id }}" onchange="updateSelectedCount()"></td>
+                        <td class="text-gray-500">{{ $photos->firstItem() + $loop->index }}</td>
                         <td>
                             <a href="{{ asset('storage/' . $photo->file_path) }}" class="glightbox" data-gallery="table">
                                 <img src="{{ asset('storage/' . ($photo->thumbnail_path ?: $photo->file_path)) }}" 
@@ -270,6 +352,24 @@
                             </div>
                         </td>
                         <td>
+                            @php
+                                $categoryLabels = [
+                                    "loading" => ["label" => "📦 Loading/Unloading", "class" => "bg-blue-100 text-blue-700"],
+                                    "document" => ["label" => "📋 Dokumen Fisik", "class" => "bg-yellow-100 text-yellow-700"],
+                                    "container" => ["label" => "🚛 Kondisi Kontainer", "class" => "bg-purple-100 text-purple-700"],
+                                    "damage" => ["label" => "⚠️ Kerusakan", "class" => "bg-red-100 text-red-700"],
+                                    "handover" => ["label" => "✅ Serah Terima", "class" => "bg-green-100 text-green-700"],
+                                    "other" => ["label" => "📷 Lainnya", "class" => "bg-gray-100 text-gray-700"],
+                                ];
+                                $cat = $categoryLabels[$photo->category] ?? null;
+                            @endphp
+                            @if($cat)
+                                <span class="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium {{ $cat["class"] }}">{{ $cat["label"] }}</span>
+                            @else
+                                <span class="text-gray-400 italic text-sm">-</span>
+                            @endif
+                        </td>
+                        <td>
                             @if($photo->description)
                             <p class="text-gray-700">{{ $photo->description }}</p>
                             @else
@@ -299,6 +399,19 @@
                     @endforeach
                 </tbody>
             </table>
+        </div>
+        
+        {{-- Pagination --}}
+        @if($photos->hasPages())
+        <div class="mt-6 flex items-center justify-between">
+            <div class="text-sm text-gray-500">
+                Menampilkan {{ $photos->firstItem() }} - {{ $photos->lastItem() }} dari {{ $photos->total() }} foto
+            </div>
+            <div class="flex items-center gap-2">
+                {{ $photos->links() }}
+            </div>
+        </div>
+        @endif
         </div>
     </div>
     
@@ -594,6 +707,8 @@ function toggleSelectMode() {
                 selectAllCheckbox.closest('th, td')?.classList.remove('hidden');
             }
             console.log('✅ Select mode ENABLED');
+            // Show select columns in table
+            document.querySelectorAll('.select-column').forEach(col => col.classList.remove('hidden'));
         } else {
             // Nonaktifkan mode pilih
             if (btn) {
@@ -619,27 +734,50 @@ function toggleSelectMode() {
             selectedPhotos = [];
             updateBulkCount();
             console.log('✅ Select mode DISABLED');
+            // Hide select columns in table
+            document.querySelectorAll('.select-column').forEach(col => col.classList.add('hidden'));
         }
     }
 
 
-function updateSelectedCount() {
-    const selected = document.querySelectorAll('.photo-select-checkbox:checked').length;
-    const bulkBtn = document.getElementById('bulk-delete-btn');
-    document.getElementById('bulk-delete-count').textContent = `Hapus (${selected})`;
-    
-    if (selected > 0) {
-        bulkBtn.classList.remove('hidden');
-        bulkBtn.classList.add('inline-flex');
-    } else {
-        bulkBtn.classList.add('hidden');
-    }
-    
-    document.querySelectorAll('.photo-select-checkbox').forEach(cb => {
-        cb.closest('.photo-card').classList.toggle('selected', cb.checked);
+function toggleSelectAll() {
+    const selectAll = document.getElementById("select-all-checkbox");
+    const checkboxes = document.querySelectorAll(".photo-select-checkbox");
+    checkboxes.forEach(cb => {
+        cb.checked = selectAll.checked;
     });
+    updateSelectedCount();
 }
 
+function updateSelectedCount() {
+    const selected = document.querySelectorAll(".photo-select-checkbox:checked").length;
+    const bulkDeleteBtn = document.getElementById("bulk-delete-btn");
+    const bulkDownloadBtn = document.getElementById("btn-download-selected");
+    const selectedCountEl = document.getElementById("selected-count");
+    const bulkCountEl = document.getElementById("bulk-delete-count");
+    
+    // Update count displays
+    if (bulkCountEl) bulkCountEl.textContent = "Hapus (" + selected + ")";
+    if (selectedCountEl) {
+        selectedCountEl.textContent = selected + " dipilih";
+        selectedCountEl.classList.toggle("hidden", selected === 0);
+    }
+    
+    // Show/hide bulk action buttons
+    if (selected > 0) {
+        if (bulkDeleteBtn) { bulkDeleteBtn.classList.remove("hidden"); bulkDeleteBtn.classList.add("inline-flex"); }
+        if (bulkDownloadBtn) { bulkDownloadBtn.classList.remove("hidden"); bulkDownloadBtn.classList.add("inline-flex"); }
+    } else {
+        if (bulkDeleteBtn) { bulkDeleteBtn.classList.add("hidden"); bulkDeleteBtn.classList.remove("inline-flex"); }
+        if (bulkDownloadBtn) { bulkDownloadBtn.classList.add("hidden"); bulkDownloadBtn.classList.remove("inline-flex"); }
+    }
+    
+    // Highlight selected rows in table
+    document.querySelectorAll(".photo-select-checkbox").forEach(cb => {
+        const row = cb.closest("tr");
+        if (row) row.classList.toggle("bg-blue-50", cb.checked);
+    });
+}
 function bulkDeletePhotos() {
     const selectedIds = Array.from(document.querySelectorAll('.photo-select-checkbox:checked')).map(cb => cb.value);
     if (selectedIds.length === 0) return;
@@ -712,5 +850,125 @@ document.getElementById('delete-modal').addEventListener('click', e => { if (e.t
             countEl.textContent = 'Hapus (' + selectedPhotos.length + ')';
         }
     }
+
+// ========== FILTER FUNCTIONS ==========
+function applyFilters() {
+    const dateFilter = document.getElementById("filter-date")?.value || "";
+    const userFilter = document.getElementById("filter-user")?.value || "";
+    const gpsFilter = document.getElementById("filter-gps")?.value || "";
+    const categoryFilter = document.getElementById("filter-category")?.value || "";
+    
+    const rows = document.querySelectorAll(".photo-table tbody tr");
+    let visibleCount = 0;
+    
+    rows.forEach(row => {
+        let show = true;
+        const dateText = row.querySelector("td:nth-child(3)")?.textContent || "";
+        const userId = row.dataset.userId || "";
+        const hasGps = row.querySelector(".bg-green-100") !== null;
+        const category = row.dataset.category || "";
+        
+        // Date filter
+        if (dateFilter === "today" && !dateText.includes("Hari ini") && !dateText.includes("jam") && !dateText.includes("menit")) show = false;
+        if (dateFilter === "week" && dateText.includes("minggu") && !dateText.includes("1 minggu")) show = false;
+        if (dateFilter === "month" && dateText.includes("bulan") && !dateText.includes("1 bulan")) show = false;
+        
+        // User filter
+        if (userFilter && userId !== userFilter) show = false;
+        
+        // GPS filter
+        if (gpsFilter === "with" && !hasGps) show = false;
+        if (gpsFilter === "without" && hasGps) show = false;
+        
+        // Category filter
+        if (categoryFilter && category !== categoryFilter) show = false;
+        
+        row.style.display = show ? "" : "none";
+        if (show) visibleCount++;
+    });
+    
+    updateFilterTags();
+    updateVisibleCount(visibleCount, rows.length);
+}
+
+function resetFilters() {
+    document.getElementById("filter-date").value = "";
+    document.getElementById("filter-user").value = "";
+    document.getElementById("filter-gps").value = "";
+    document.getElementById("filter-category").value = "";
+    applyFilters();
+}
+
+function updateFilterTags() {
+    const container = document.getElementById("filter-tags");
+    const wrapper = document.getElementById("active-filters");
+    if (!container || !wrapper) return;
+    
+    const filters = [];
+    const dateVal = document.getElementById("filter-date")?.value;
+    const userVal = document.getElementById("filter-user");
+    const gpsVal = document.getElementById("filter-gps")?.value;
+    const catVal = document.getElementById("filter-category")?.value;
+    
+    if (dateVal) filters.push({label: "📅 " + document.getElementById("filter-date").selectedOptions[0].text, type: "date"});
+    if (userVal?.value) filters.push({label: "👤 " + userVal.selectedOptions[0].text, type: "user"});
+    if (gpsVal) filters.push({label: "📍 " + document.getElementById("filter-gps").selectedOptions[0].text, type: "gps"});
+    if (catVal) filters.push({label: "🏷️ " + document.getElementById("filter-category").selectedOptions[0].text, type: "category"});
+    
+    if (filters.length > 0) {
+        wrapper.classList.remove("hidden");
+        container.innerHTML = filters.map(f => 
+            `<span class="inline-flex items-center gap-1 px-2 py-1 bg-blue-100 text-blue-700 text-xs rounded-full">${f.label}<button onclick="clearFilter(\x27${f.type}\x27)" class="hover:text-blue-900">✕</button></span>`
+        ).join("");
+    } else {
+        wrapper.classList.add("hidden");
+        container.innerHTML = "";
+    }
+}
+
+function clearFilter(type) {
+    const el = document.getElementById("filter-" + type);
+    if (el) el.value = "";
+    applyFilters();
+}
+
+function updateVisibleCount(visible, total) {
+    const counter = document.querySelector(".text-2xl.font-bold.text-gray-800");
+    if (counter && visible !== total) {
+        counter.innerHTML = visible + `<span class="text-sm font-normal text-gray-400">/${total}</span>`;
+    } else if (counter) {
+        counter.textContent = total;
+    }
+}
+
+// ========== DOWNLOAD FUNCTIONS ==========
+function downloadAllPhotos() {
+    const shipmentId = "{{ $shipment->awb_number ?: $shipment->bl_number ?: $shipment->id }}";
+    showToast("success", "Menyiapkan download semua foto...");
+    window.location.href = "/admin/field-docs/download-zip/" + encodeURIComponent(shipmentId);
+}
+
+function downloadSelectedPhotos() {
+    const checkboxes = document.querySelectorAll(".photo-select-checkbox:checked");
+    if (checkboxes.length === 0) {
+        showToast("error", "Pilih minimal 1 foto untuk download");
+        return;
+    }
+    const ids = Array.from(checkboxes).map(cb => cb.value).join(",");
+    showToast("success", "Menyiapkan download " + checkboxes.length + " foto...");
+    window.location.href = "/admin/field-docs/download-zip?ids=" + ids;
+}
+
+// ========== INIT DATA ATTRIBUTES ==========
+document.addEventListener("DOMContentLoaded", function() {
+    document.querySelectorAll(".photo-table tbody tr").forEach(row => {
+        const userCell = row.querySelector("td:nth-child(5) .font-medium");
+        if (userCell) {
+            const userName = userCell.textContent.trim();
+            const userOption = Array.from(document.getElementById("filter-user")?.options || []).find(o => o.text === userName);
+            if (userOption) row.dataset.userId = userOption.value;
+        }
+    });
+});
 </script>
 @endpush

@@ -42,6 +42,13 @@
             <p class="text-lg font-black text-emerald-600">{{ number_format($stats["total_collected"] ?? 0, 0, ",", ".") }}</p>
             <p class="text-xs text-gray-500">Collected</p>
         </div>
+        <div class="bg-purple-50 rounded-xl p-4 shadow-sm border border-purple-100 text-center relative">
+            @if(($stats["faktur_pajak_requests"] ?? 0) > 0)
+            <span class="absolute -top-2 -right-2 bg-red-500 text-white text-xs font-bold px-2 py-1 rounded-full animate-pulse">!</span>
+            @endif
+            <p class="text-2xl font-black text-purple-600">{{ $stats["faktur_pajak_requests"] ?? 0 }}</p>
+            <p class="text-xs text-gray-500">Request F.Pajak</p>
+        </div>
     </div>
 
 
@@ -87,6 +94,8 @@
                         <th class="px-6 py-4">Total</th>
                         <th class="px-6 py-4">Status</th>
                         <th class="px-6 py-4">Related Invoice</th>
+                        <th class="px-6 py-4 text-center">Klaim</th>
+                        <th class="px-6 py-4 text-center">Faktur Pajak</th>
                         <th class="px-6 py-4 text-center">Aksi</th>
                     </tr>
                 </thead>
@@ -137,6 +146,67 @@
                                 @endif
                             @else
                                 <span class="text-gray-400 text-xs">-</span>
+                            @endif
+                        </td>
+                        <td class="px-6 py-4 text-center" x-data="{ showUpload: false }">
+                            @if($inv->status == 'paid')
+                                <span class="px-2 py-1 text-xs font-medium bg-green-100 text-green-800 rounded-full">✓ PAID</span>
+                            @elseif($inv->status == 'partial' && $inv->payment_claimed)
+                                <span class="px-2 py-1 text-xs font-medium bg-yellow-100 text-yellow-800 rounded-full">⏳ PARTIAL</span>
+                            @elseif($inv->payment_claimed)
+                                <span class="px-2 py-1 text-xs font-medium bg-orange-100 text-orange-800 rounded-full">📎 CLAIMED</span>
+                                @if($inv->claim_proof_path || $inv->payment_proof)
+                                <button @click="$dispatch('preview-proof', { url: '{{ Storage::url($inv->claim_proof_path ?: $inv->payment_proof) }}', invoice: '{{ $inv->invoice_number }}' })" class="ml-1 text-blue-500 hover:text-blue-700">👁</button>
+                                @endif
+                            @else
+                                <div class="relative inline-block">
+                                    <button @click="showUpload = !showUpload" class="px-2 py-1 text-xs bg-gray-100 hover:bg-yellow-100 rounded-full">📤 Upload</button>
+                                    <div x-show="showUpload" x-cloak @click.away="showUpload = false" class="absolute z-50 right-0 mt-2 w-72 bg-white rounded-lg shadow-xl border p-4">
+                                        <div class="font-medium text-gray-700 mb-2">📤 Upload Bukti Klaim</div>
+                                        <p class="text-xs text-gray-500 mb-3">{{ $inv->invoice_number }}</p>
+                                        <form wire:submit.prevent="submitClaimDirect({{ $inv->id }})">
+                                            <input type="file" wire:model="claimProofFile" accept="image/*,.pdf" class="w-full text-xs border rounded p-1.5 mb-2">
+                                            @error('claimProofFile') <span class="text-red-500 text-xs">{{ $message }}</span> @enderror
+                                            <div wire:loading wire:target="claimProofFile" class="text-xs text-blue-500">Uploading...</div>
+                                            <textarea wire:model="claimNotes" rows="2" placeholder="Catatan (opsional)" class="w-full text-xs border rounded p-1.5 mb-2"></textarea>
+                                            <div class="flex justify-end gap-2">
+                                                <button type="button" @click="showUpload = false" class="px-3 py-1 text-xs text-gray-600">Batal</button>
+                                                <button type="submit" class="px-3 py-1 text-xs bg-yellow-500 text-white rounded">Submit</button>
+                                            </div>
+                                        </form>
+                                    </div>
+                                </div>
+                            @endif
+                        </td>
+                        <!-- Kolom Faktur Pajak -->
+                        <td class="px-6 py-4 text-center">
+                            @if($inv->status === 'paid')
+                                @if($inv->faktur_pajak_path)
+                                    <div class="flex items-center justify-center gap-1">
+                                        <span class="text-xs text-green-600 font-medium">{{ $inv->faktur_pajak_number }}</span>
+                                        <button wire:click="openFilePreview('{{ $inv->faktur_pajak_path }}')" class="text-blue-500 hover:text-blue-700" title="View">
+                                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"/></svg>
+                                        </button>
+                                        <button wire:click="openFakturPajakModal({{ $inv->id }})" class="text-yellow-500 hover:text-yellow-700" title="Edit">
+                                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"/></svg>
+                                        </button>
+                                        <button wire:click="deleteFakturPajak({{ $inv->id }})" wire:confirm="Yakin hapus faktur pajak ini?" class="text-red-500 hover:text-red-700" title="Hapus">
+                                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/></svg>
+                                        </button>
+                                    </div>
+                                @elseif($inv->faktur_pajak_requested)
+                                    <button wire:click="openFakturPajakModal({{ $inv->id }})" class="text-xs bg-red-500 text-white hover:bg-red-600 px-2 py-1 rounded-full flex items-center justify-center gap-1 animate-pulse font-bold shadow" title="Customer Request!">
+                                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12"/></svg>
+                                        📋 Request!
+                                    </button>
+                                @else
+                                    <button wire:click="openFakturPajakModal({{ $inv->id }})" class="text-xs text-gray-400 hover:text-orange-500 flex items-center justify-center gap-1">
+                                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12"/></svg>
+                                        Upload
+                                    </button>
+                                @endif
+                            @else
+                                <span class="text-xs text-gray-400">-</span>
                             @endif
                         </td>
                         <td class="px-6 py-4 text-center">
@@ -399,6 +469,11 @@
                                 <option value="en">🇬🇧 English</option>
                                 <option value="both">🌐 Both (ID + EN)</option>
                             </select>
+                        </div>
+                        {{-- Catatan Pembayaran --}}
+                        <div class="lg:col-span-2">
+                            <label class="block text-[10px] font-black text-gray-400 uppercase tracking-widest mb-1.5 ml-1">Catatan Pembayaran / Payment Notes (Opsional)</label>
+                            <textarea wire:model="payment_notes" rows="2" class="w-full border-gray-200 rounded-xl shadow-sm text-sm py-3 px-4" placeholder="Contoh: Pembayaran dapat dicicil 2x, atau catatan khusus lainnya..."></textarea>
                         </div>
                     </div>
 
@@ -901,6 +976,38 @@
                     </div>
                 @endif
             </div>
+        </div>
+    </div>
+    @endif
+
+    <!-- Modal Faktur Pajak -->
+    @if($fakturPajakInvoiceId)
+    <div class="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm" wire:click.self="$set('fakturPajakInvoiceId', null)">
+        <div class="bg-white rounded-2xl shadow-2xl w-full max-w-md mx-4 overflow-hidden">
+            <div class="bg-gradient-to-r from-blue-600 to-blue-700 px-6 py-4 flex justify-between items-center">
+                <h3 class="text-lg font-bold text-white">Upload Faktur Pajak</h3>
+                <button wire:click="$set('fakturPajakInvoiceId', null)" class="text-white/80 hover:text-white text-2xl">&times;</button>
+            </div>
+            <form wire:submit.prevent="saveFakturPajak" class="p-6 space-y-4">
+                <div>
+                    <label class="block text-sm font-bold text-gray-700 mb-2">Nomor Faktur Pajak</label>
+                    <input type="text" wire:model="fakturPajakNumber" class="w-full border-2 border-gray-200 rounded-xl px-4 py-3 focus:border-blue-500 focus:ring-0" placeholder="000.000-00.00000000">
+                    @error('fakturPajakNumber') <span class="text-red-500 text-xs mt-1">{{ $message }}</span> @enderror
+                </div>
+                <div>
+                    <label class="block text-sm font-bold text-gray-700 mb-2">File PDF Faktur Pajak</label>
+                    <input type="file" wire:model="fakturPajakFile" accept=".pdf" class="w-full border-2 border-gray-200 rounded-xl px-4 py-3 focus:border-blue-500">
+                    <div wire:loading wire:target="fakturPajakFile" class="text-xs text-blue-500 mt-1">Uploading...</div>
+                    @error('fakturPajakFile') <span class="text-red-500 text-xs mt-1">{{ $message }}</span> @enderror
+                </div>
+                <div class="flex gap-3 pt-2">
+                    <button type="button" wire:click="$set('fakturPajakInvoiceId', null)" class="flex-1 py-3 text-sm font-bold text-gray-500 bg-gray-100 rounded-xl hover:bg-gray-200">Batal</button>
+                    <button type="submit" class="flex-1 py-3 text-sm font-bold text-white bg-blue-600 rounded-xl hover:bg-blue-700" wire:loading.attr="disabled">
+                        <span wire:loading.remove wire:target="saveFakturPajak">Simpan</span>
+                        <span wire:loading wire:target="saveFakturPajak">Menyimpan...</span>
+                    </button>
+                </div>
+            </form>
         </div>
     </div>
     @endif

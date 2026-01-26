@@ -11,12 +11,16 @@ class AdminMiddleware
 {
     public function handle(Request $request, Closure $next): Response
     {
-        if (! Auth::check()) {
+        if (!Auth::check()) {
             return redirect()->route('login');
         }
 
-        if (! in_array(Auth::user()->role, ['admin', 'staff'])) {
-            abort(403);
+        $user = Auth::user();
+        
+        // Check if user has admin level access (level >= 60)
+        // This includes: super_admin, director, manager, admin, and staff roles
+        if (!$user->isAdminLevel() && !$user->hasRole(['super_admin', 'admin', 'staff', 'director', 'manager', 'supervisor', 'staff_accounting', 'staff_operations', 'staff_sales', 'staff_ppjk', 'staff_documentation', 'cashier'])) {
+            abort(403, 'Anda tidak memiliki akses ke halaman ini.');
         }
 
         return $next($request);

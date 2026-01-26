@@ -292,9 +292,34 @@
                                 <label class="block text-[10px] font-black text-gray-400 uppercase tracking-widest mb-2 ml-1">Subject</label>
                                 <input type="text" wire:model="replySubject" class="w-full border-gray-200 rounded-xl text-sm font-bold focus:ring-blue-500 focus:border-blue-500 py-3 px-4">
                             </div>
+                            <!-- Template Selector -->
+                            <div class="bg-gradient-to-r from-blue-50 to-indigo-50 rounded-xl p-4 border border-blue-100">
+                                <div class="flex items-center justify-between mb-3">
+                                    <label class="text-[10px] font-black text-blue-600 uppercase tracking-widest">⚡ Quick Template</label>
+                                    <button type="button" wire:click="switchTemplateLang" class="px-3 py-1 text-xs font-bold rounded-lg transition-all {{ $templateLang === 'ID' ? 'bg-red-500 text-white' : 'bg-blue-500 text-white' }}">
+                                        {{ $templateLang === 'ID' ? '🇮🇩 ID' : '🇬🇧 EN' }}
+                                    </button>
+                                </div>
+                                <div class="flex gap-2">
+                                    <select wire:model="selectedTemplate" class="flex-1 border-blue-200 rounded-lg text-sm focus:ring-blue-500 focus:border-blue-500 py-2 px-3 bg-white">
+                                        <option value="">-- Pilih Template --</option>
+                                        @foreach($this->templates as $category => $templates)
+                                            <optgroup label="{{ config('email_templates.categories.' . $category, $category) }}">
+                                                @foreach($templates as $key => $template)
+                                                    <option value="{{ $key }}">{{ $template['name'] }}</option>
+                                                @endforeach
+                                            </optgroup>
+                                        @endforeach
+                                    </select>
+                                    <button type="button" wire:click="applyTemplate" class="px-4 py-2 bg-blue-600 text-white rounded-lg text-xs font-bold hover:bg-blue-700 transition-all shadow-md">
+                                        Terapkan
+                                    </button>
+                                </div>
+                            </div>
+
                             <div>
                                 <label class="block text-[10px] font-black text-gray-400 uppercase tracking-widest mb-2 ml-1">Message</label>
-                                <textarea wire:model="replyBody" rows="8" class="w-full border-gray-200 rounded-xl text-sm focus:ring-blue-500 focus:border-blue-500 py-3 px-4" placeholder="Type your reply here..."></textarea>
+                                <textarea wire:model="replyBody" rows="10" class="w-full border-gray-200 rounded-xl text-sm focus:ring-blue-500 focus:border-blue-500 py-3 px-4" placeholder="Type your reply here..."></textarea>
                                 @error('replyBody') <span class="text-xs text-red-500 mt-1">{{ $message }}</span> @enderror
                             </div>
                         </div>

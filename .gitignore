@@ -12,3 +12,7 @@
 *.log
 *.sh
 .phpunit.result.cache
+*.backup*
+*.bak*
+*.broken
+*.txt

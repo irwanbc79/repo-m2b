@@ -359,7 +359,7 @@
                 <td style="width: 50%; vertical-align: top; padding-left: 15px;">
                     <div class="detail-row">
                         <div class="detail-label">Jatuh Tempo</div>
-                        <div class="detail-value">{{ $invoice->invoice_date->addDays(30)->format('d/m/Y') }}</div>
+                        <div class="detail-value">{{ $invoice->due_date ? $invoice->due_date->format('d/m/Y') : $invoice->invoice_date->addDays(7)->format('d/m/Y') }}</div>
                     </div>
                     <div class="detail-row">
                         <div class="detail-label">Currency</div>

@@ -21,7 +21,7 @@ class DocumentUpload extends Component
     protected DocumentService $documentService;
 
     protected $rules = [
-        'files.*' => 'required|file|max:10240|mimes:pdf,jpg,jpeg,png,doc,docx,xls,xlsx',
+        'files' => 'required|file|max:10240|mimes:pdf,jpg,jpeg,png,doc,docx,xls,xlsx',
         'documentType' => 'required|in:invoice,packing_list,certificate,other',
         'description' => 'nullable|string|max:500'];
 
@@ -52,14 +52,14 @@ class DocumentUpload extends Component
         $this->uploading = true;
 
         try {
-            $uploadedDocuments = $this->documentService->uploadMultipleDocuments(
+            $uploadedDocuments = $this->documentService->uploadDocument(
                 $this->files,
                 $this->shipment,
                 $this->documentType,
                 $this->description
             );
 
-            session()->flash('message', count($uploadedDocuments) . ' document(s) uploaded successfully!');
+            session()->flash('message', 1 . ' document(s) uploaded successfully!');
             
             $this->reset(['files', 'documentType', 'description']);
             $this->uploading = false;

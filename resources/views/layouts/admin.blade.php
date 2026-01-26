@@ -25,6 +25,7 @@
     </script>
     
     <style>
+[x-cloak] { display: none !important; }
 .shipment-table { table-layout: fixed; width: 100%; }
 .shipment-table th:nth-child(1), .shipment-table td:nth-child(1) { width: 64px; }
 .shipment-table th:nth-child(2), .shipment-table td:nth-child(2) { width: 160px; }
@@ -59,17 +60,21 @@
                     🏠 Dashboard
                 </a>
 
-                @if(auth()->user()->hasRole(['admin', 'manager', 'staff']))
+                @if(auth()->user()->hasPermission('dashboard.view'))
                 <div class="px-4 py-2 mt-4 text-xs font-bold text-gray-500 uppercase tracking-wider">Communication</div>
                 
                 <a href="{{ route('inbox.index') }}" class="flex items-center px-4 py-3 text-sm font-medium rounded-lg transition-colors group {{ request()->routeIs('inbox.*') ? 'bg-m2b-accent text-white shadow-lg' : 'hover:bg-gray-800 text-gray-300' }}">
                     <span class="flex-1">📧 Email Inbox</span>
                 </a>
+                
+                <a href="{{ route('sent-emails.index') }}" class="flex items-center px-4 py-3 text-sm font-medium rounded-lg transition-colors group {{ request()->routeIs('sent-emails.*') ? 'bg-m2b-accent text-white shadow-lg' : 'hover:bg-gray-800 text-gray-300' }}">
+                    <span class="flex-1">📤 Email Terkirim</span>
+                </a>
                 @endif
 
                 <div class="px-4 py-2 mt-4 text-xs font-bold text-gray-500 uppercase tracking-wider">Operations</div>
 
-                @if(auth()->user()->hasRole(['admin', 'manager', 'staff', 'shipment']))
+                @if(auth()->user()->hasPermission('shipment.view'))
                 <a href="{{ route('admin.shipments.index') }}" class="flex items-center px-4 py-3 text-sm font-medium rounded-lg transition-colors {{ request()->routeIs('admin.shipments*') ? 'bg-m2b-accent text-white' : 'hover:bg-gray-800 text-gray-300' }}">
                     📦 Manage Shipments
                 </a>
@@ -87,7 +92,7 @@
                 </a>
                 @endif
 
-                @if(auth()->user()->hasRole(['admin', 'manager', 'staff', 'shipment', 'finance']))
+                @if(auth()->user()->hasPermission('customer.view'))
                 <a href="{{ route('admin.customers.index') }}" class="flex items-center px-4 py-3 text-sm font-medium rounded-lg transition-colors {{ request()->routeIs('admin.customers*') ? 'bg-m2b-accent text-white' : 'hover:bg-gray-800 text-gray-300' }}">
                     👥 Manage Customers
                 </a>
@@ -97,7 +102,7 @@
                 </a>
                 @endif
 
-                @if(auth()->user()->hasRole(['admin', 'manager', 'staff', 'finance']))
+                @if(auth()->user()->hasPermission('invoice.view'))
                 <div class="px-4 py-2 mt-4 text-xs font-bold text-gray-500 uppercase tracking-wider">Sales & Finance</div>
                 
                 <a href="{{ route('admin.quotations.index') }}" class="flex items-center px-4 py-3 text-sm font-medium rounded-lg transition-colors {{ request()->routeIs('admin.quotations*') ? 'bg-m2b-accent text-white' : 'hover:bg-gray-800 text-gray-300' }}">
@@ -116,7 +121,7 @@
                     💸 Simple Invoice
                 </a>
                 
-                @if(auth()->user()->hasRole(['admin', 'manager', 'finance', 'staf_accounting']))
+                @if(auth()->user()->hasPermission('job_costing.view'))
                 <a href="{{ route('admin.job-costing.index') }}" class="flex items-center px-4 py-3 text-sm font-medium rounded-lg transition-colors {{ request()->routeIs('admin.job-costing*') ? 'bg-m2b-accent text-white' : 'hover:bg-gray-800 text-gray-300' }}">
                     💼 Job Costing
                 </a>
@@ -127,7 +132,7 @@
                 @endif
                 @endif
 
-                @if(auth()->user()->hasRole(['admin', 'manager', 'staf_accounting']))
+                @if(auth()->user()->hasPermission('cashier.view'))
                 <div class="px-4 py-2 mt-4 text-xs font-bold text-gray-500 uppercase tracking-wider">Accounting</div>
 
                 <a href="{{ route('accounting.coa') }}" class="flex items-center px-4 py-3 text-sm font-medium rounded-lg transition-colors {{ request()->routeIs('accounting.coa') ? 'bg-m2b-accent text-white' : 'hover:bg-gray-800 text-gray-300' }}">
@@ -158,7 +163,7 @@
 
                 <div class="px-4 py-2 mt-4 text-xs font-bold text-gray-500 uppercase tracking-wider">Settings</div>
 
-                @if(auth()->user()->hasRole(['admin', 'manager']))
+                @if(auth()->user()->hasPermission('report.view_basic'))
                 <a href="{{ route('admin.reports') }}" class="flex items-center px-4 py-3 text-sm font-medium rounded-lg transition-colors {{ request()->routeIs('admin.reports') ? 'bg-m2b-accent text-white' : 'hover:bg-gray-800 text-gray-300' }}">
                     📑 Laporan / Reports
                 </a>
@@ -168,13 +173,20 @@
                     📋 Customer Survey
                 </a>
                 
-                @if(auth()->user()->hasRole(['admin']))
+                <a href="{{ route('admin.reports') }}" class="flex items-center px-4 py-3 text-sm font-medium rounded-lg transition-colors {{ request()->routeIs('admin.reports') ? 'bg-m2b-accent text-white' : 'hover:bg-gray-800 text-gray-300' }}">
+                    📑 Laporan / Reports
+                </a>
+                
+                @if(auth()->user()->hasPermission('user.view'))
                 <a href="{{ route('admin.users.index') }}" class="flex items-center px-4 py-3 text-sm font-medium rounded-lg transition-colors {{ request()->routeIs('admin.users*') ? 'bg-m2b-accent text-white' : 'hover:bg-gray-800 text-gray-300' }}">
                     👤 User Management
                 </a>
                 @endif
+                <a href="{{ route('admin.user-requests.index') }}" class="flex items-center px-4 py-3 text-sm font-medium rounded-lg transition-colors {{ request()->routeIs('admin.user-requests*') ? 'bg-m2b-accent text-white' : 'hover:bg-gray-800 text-gray-300' }}">
+                    📋 User Requests
+                </a>
 
-                @if(auth()->user()->hasRole(['admin', 'manager', 'staf_accounting']))
+                @if(auth()->user()->hasPermission('cashier.view'))
                 <a href="{{ route('audit-logs') }}" class="flex items-center px-4 py-3 text-sm font-medium rounded-lg transition-colors {{ request()->routeIs('audit-logs') ? 'bg-m2b-accent text-white' : 'hover:bg-gray-800 text-gray-300' }}">
                     📝 Audit Logs
                 </a>

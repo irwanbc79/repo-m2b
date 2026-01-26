@@ -73,7 +73,7 @@ class JobCostingManager extends Component
             'description' => 'required|string|max:500',
             'amount' => 'required|numeric|min:0',
             'payment_proof' => 'nullable|file|mimes:jpg,jpeg,png,pdf,webp|max:5120',
-            'status' => 'required|in:unpaid,paid',
+            'status' => 'required|in:unpaid',
             'date_paid' => 'nullable|date',
             'coa_id' => 'nullable|exists:accounts,id',
             'credit_account_id' => 'nullable|exists:accounts,id',
@@ -104,6 +104,10 @@ class JobCostingManager extends Component
         // Set default credit account ke Kas Kecil (1102)
         $kasKecil = Account::where('code', '1102')->first();
         $this->credit_account_id = $kasKecil ? $kasKecil->id : null;
+
+        // Set default coa_id ke Biaya Operasional (5101)
+        $biayaOperasional = Account::where("code", "5101")->first();
+        $this->coa_id = $biayaOperasional ? $biayaOperasional->id : null;
     }
 
     // Reset pagination when search/filter changes
@@ -340,10 +344,12 @@ class JobCostingManager extends Component
         $this->payment_proof = null;
         $this->status = 'unpaid';
         $this->date_paid = null;
-        $this->coa_id = '';
+        // Reset ke default Biaya Operasional (5101)
+        $biayaOperasional = Account::where("code", "5101")->first();
+        $this->coa_id = $biayaOperasional ? $biayaOperasional->id : null;
         
-        // Reset ke default Kas Kecil
-        $kasKecil = Account::where('code', '1102')->first();
+        // Reset ke default Kas Kecil (1102)
+        $kasKecil = Account::where("code", "1102")->first();
         $this->credit_account_id = $kasKecil ? $kasKecil->id : null;
         
         $this->editMode = false;
@@ -462,9 +468,12 @@ class JobCostingManager extends Component
                 }
 
                 // Buat journal entry otomatis jika status PAID dan ada COA
-                if ($this->status === 'paid' && $this->coa_id && $this->credit_account_id) {
-                    $this->createJournalEntry($jobCost);
-                }
+                // DISABLED: Pembayaran harus lewat Simple Cashier
+                //                 if ($this->status === 'paid' && $this->coa_id && $this->credit_account_id) {
+                // DISABLED: Pembayaran harus lewat Simple Cashier
+                //                     $this->createJournalEntry($jobCost);
+                // DISABLED: Pembayaran harus lewat Simple Cashier
+                //                 }
                 
                 session()->flash('message', $message);
             });

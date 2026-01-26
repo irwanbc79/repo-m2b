@@ -62,6 +62,7 @@ class ShipmentManagement extends Component
         'weight' => 0,
         'volume' => 0,
         'commodity' => '',
+        'hs_code' => '',
         'status' => 'pending',
         'lane_status' => '',
         'estimated_arrival' => '',
@@ -173,6 +174,8 @@ class ShipmentManagement extends Component
     public $showCancelModal = false;
     public $shipmentToCancel = null;
     public $cancellationReason = '';
+    public $showCancelReasonModal = false;
+    public $cancelReasonShipment = null;
 
     /**
      * Open cancel modal
@@ -282,7 +285,7 @@ class ShipmentManagement extends Component
                 $shipment->load('customer.user');
                 if ($shipment->customer && $shipment->customer->user) {
                     try {
-                        Mail::to($shipment->customer->user->email)->send(new ShipmentStatusUpdated($shipment));
+                        Mail::to($shipment->customer->user->email)->send(new ShipmentStatusUpdated($shipment)); \App\Models\SentEmail::create(['mailbox' => 'no_reply', 'to_email' => $shipment->customer->user->email, 'subject' => 'Status Update: ' . $shipment->awb_number, 'body' => 'Status shipment diupdate ke ' . $shipment->status, 'user_id' => auth()->id(), 'user_name' => auth()->user()->name]);
                     } catch (\Exception $e) {}
                 }
             }
@@ -364,7 +367,7 @@ class ShipmentManagement extends Component
         $this->form = $shipment->only([
             'customer_id', 'awb_number', 'origin', 'destination', 
             'service_type', 'shipment_type', 'container_mode', 'container_info',
-            'pieces', 'package_type', 'weight', 'volume', 'commodity', 'status', 'lane_status', 'estimated_arrival', 'notes'
+            'pieces', 'package_type', 'weight', 'volume', 'commodity', 'hs_code', 'status', 'lane_status', 'estimated_arrival', 'notes'
         ]);
         
         if($this->form['estimated_arrival']) {
@@ -420,7 +423,7 @@ class ShipmentManagement extends Component
                 ActivityLog::record('Shipment', 'UPDATE STATUS', $shipment->awb_number, "Status berubah ke '{$this->form['status']}'");
                 $shipment->load('customer.user');
                 if ($shipment->customer && $shipment->customer->user) {
-                    try { Mail::to($shipment->customer->user->email)->send(new ShipmentStatusUpdated($shipment)); } catch (\Exception $e) {}
+                    try { Mail::to($shipment->customer->user->email)->send(new ShipmentStatusUpdated($shipment)); \App\Models\SentEmail::create(['mailbox' => 'no_reply', 'to_email' => $shipment->customer->user->email, 'subject' => 'Status Update: ' . $shipment->awb_number, 'body' => 'Status shipment diupdate ke ' . $shipment->status, 'user_id' => auth()->id(), 'user_name' => auth()->user()->name]); } catch (\Exception $e) {}
                 }
             } else {
                 ActivityLog::record('Shipment', 'UPDATE INFO', $shipment->awb_number, "Mengubah detail data shipment.");
@@ -568,5 +571,16 @@ class ShipmentManagement extends Component
         $this->form['container_mode'] = 'LCL';
         $this->form['package_type'] = 'Colli';
         $this->form['lane_status'] = '';
+    }
+    public function viewCancelReason($id)
+    {
+        $this->cancelReasonShipment = Shipment::with("cancelledBy")->find($id);
+        $this->showCancelReasonModal = true;
+    }
+
+    public function closeCancelReasonModal()
+    {
+        $this->showCancelReasonModal = false;
+        $this->cancelReasonShipment = null;
     }
 }

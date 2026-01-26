@@ -53,6 +53,16 @@ class NotificationService
         // Send email notification
         try {
             Mail::to($user->email)->send(new ShipmentStatusUpdate($shipment));
+
+            // Log ke sent_emails
+            \App\Models\SentEmail::create([
+                'mailbox' => 'no_reply',
+                'to_email' => $user->email,
+                'subject' => 'Status Update: ' . $shipment->awb_number,
+                'body' => 'Notifikasi status shipment ' . $shipment->status,
+                'user_id' => auth()->id() ?? 1,
+                'user_name' => auth()->user()->name ?? 'System',
+            ]);
         } catch (\Exception $e) {
             \Log::error('Failed to send shipment status email: ' . $e->getMessage());
         }

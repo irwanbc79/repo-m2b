@@ -44,6 +44,7 @@ class CustomerManagement extends Component
     public $role = 'customer';
     public $customer_code, $company_name, $phone, $address, $city;
     public $npwp, $warehouse_address, $business_type, $credit_limit, $payment_terms;
+    public $preferred_language = 'id';
     public $customer_tag = '';
     public $is_active = true;
 
@@ -150,6 +151,7 @@ class CustomerManagement extends Component
         $this->business_type = '';
         $this->credit_limit = 0;
         $this->payment_terms = 30;
+        $this->preferred_language = 'id';
         $this->customer_tag = '';
         $this->is_active = true;
         $this->customer_code = $this->generateSmartCode('customer');
@@ -200,6 +202,7 @@ class CustomerManagement extends Component
                     'business_type' => $this->customer_tag ?: $this->business_type,
                     'credit_limit' => $this->credit_limit ?? 0,
                     'payment_terms' => $this->payment_terms ?? 30,
+                    'preferred_language' => $this->preferred_language ?? 'id',
                 ]);
 
                 session()->flash('message', 'Data customer berhasil diperbarui!');
@@ -225,6 +228,7 @@ class CustomerManagement extends Component
                     'business_type' => $this->customer_tag ?: 'Regular',
                     'credit_limit' => $this->credit_limit ?? 0,
                     'payment_terms' => $this->payment_terms ?? 30,
+                    'preferred_language' => $this->preferred_language ?? 'id',
                 ]);
 
                 session()->flash('message', 'Customer berhasil ditambahkan! Code: ' . $customerCode);
@@ -264,6 +268,7 @@ class CustomerManagement extends Component
             $this->customer_tag = $customer->business_type;
             $this->credit_limit = $customer->credit_limit;
             $this->payment_terms = $customer->payment_terms;
+            $this->preferred_language = $customer->preferred_language ?? 'id';
 
             $this->isEditing = true;
             $this->isModalOpen = true;
@@ -328,7 +333,14 @@ class CustomerManagement extends Component
 
             DB::transaction(function () use ($customer) {
                 $user = $customer->user;
+                
+                // Hapus activity logs terkait user terlebih dahulu
+                if ($user) {
+                    DB::table('activity_logs')->where('user_id', $user->id)->delete();
+                }
+                
                 $customer->delete();
+                
                 if ($user) {
                     $user->delete();
                 }
@@ -365,7 +377,14 @@ class CustomerManagement extends Component
 
             DB::transaction(function () use ($customer) {
                 $user = $customer->user;
+                
+                // Hapus activity logs terkait user terlebih dahulu
+                if ($user) {
+                    DB::table('activity_logs')->where('user_id', $user->id)->delete();
+                }
+                
                 $customer->delete();
+                
                 if ($user) {
                     $user->delete();
                 }

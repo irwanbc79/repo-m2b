@@ -24,6 +24,7 @@ use App\Livewire\Customer\ShipmentList;
 use App\Livewire\Customer\ShipmentDetail;
 use App\Livewire\Customer\CreateShipment;
 use App\Livewire\Customer\Profile as CustomerProfile;
+use App\Livewire\Admin\AdminProfile;
 use App\Livewire\Customer\KursPajakPage;
 use App\Livewire\Customer\CustomsCalculator as CustomerCalculator;
 
@@ -49,6 +50,7 @@ use App\Http\Controllers\Api\HsCodeApiController;
 // IMPORT CLASS INBOX (WAJIB ADA)
 use App\Livewire\Admin\EmailInbox;
 use App\Http\Controllers\Admin\EmailAttachmentController;
+use App\Livewire\Admin\UserRequestManager;
 use App\Http\Controllers\Customer\InvoiceController;
 
 use Barryvdh\DomPDF\Facade\Pdf;
@@ -92,48 +94,63 @@ Route::middleware('guest')->group(function () {
     
     // Register
     Route::get('/register', function () { return view('auth.register'); })->name('register');
+    Route::get("/register/success", function () { return view("auth.register-success"); })->name("register.success");
     Route::post('/register', function (Request $request) {
         $request->validate(['name'=>'required', 'company_name'=>'required', 'email'=>'required|email|unique:users', 'password'=>'required|confirmed']);
-        DB::transaction(function () use ($request) {
-
-    $user = User::create([
-        'name'              => $request->name,
-        'email'             => $request->email,
-        'password'          => Hash::make($request->password),
-        'role'              => 'customer',
-
-        // DEV MODE — bypass email verification
-        'email_verified_at' => now(),
-    ]);
-
-    Customer::create([
-        'user_id'        => $user->id,
-        'customer_code'  => Customer::generateCustomerCode(),
-        'company_name'   => $request->company_name,
-        'address'        => '-',
-        'city'           => 'Indonesia'
-    ]);
-
-    // EMAIL VERIFICATION DIMATIKAN SEMENTARA
-    // $user->sendEmailVerificationNotification();
-});
-
-        return redirect()->route('login')->with('status', 'Registrasi berhasil!');
+        
+        $user = null;
+        DB::transaction(function () use ($request, &$user) {
+            $user = User::create([
+                'name'     => $request->name,
+                'email'    => $request->email,
+                'password' => Hash::make($request->password),
+                'role'     => 'customer',
+            ]);
+            
+            Customer::create([
+                'user_id'       => $user->id,
+                'customer_code' => Customer::generateCustomerCode(),
+                'company_name'  => $request->company_name,
+                'address'       => '-',
+                'city'          => 'Indonesia'
+            ]);
+        });
+        
+        // Kirim email verifikasi
+        $verificationUrl = \Illuminate\Support\Facades\URL::temporarySignedRoute(
+            'verification.verify', now()->addMinutes(60),
+            ['id' => $user->id, 'hash' => sha1($user->email)]
+        );
+        \Mail::to($user->email)->send(new \App\Mail\VerifyEmailMail($user, $verificationUrl));
+        
+        return redirect()->route('register.success');
     });
+
 
     // Forgot Password
     Route::get('/forgot-password', function () { return view('auth.forgot-password'); })->name('password.request');
     Route::post('/forgot-password', function (Request $request) {
-    $request->validate(['email'=>'required|email']);
-
-    $status = Password::sendResetLink(
-        $request->only('email')
-    );
-
-    return $status === Password::RESET_LINK_SENT
-        ? back()->with('status', __($status))
-        : back()->withErrors(['email' => __($status)]);
-})->name('password.email');
+        $request->validate(['email'=>'required|email']);
+        
+        $user = \App\Models\User::where('email', $request->email)->first();
+        
+        // Hanya kirim email custom untuk CUSTOMER
+        if ($user && $user->role === 'customer') {
+            $token = \Illuminate\Support\Str::random(64);
+            \DB::table('password_reset_tokens')->updateOrInsert(
+                ['email' => $user->email],
+                ['token' => \Hash::make($token), 'created_at' => now()]
+            );
+            
+            $resetUrl = url('/reset-password/' . $token . '?email=' . urlencode($user->email));
+            \Mail::to($user->email)->send(new \App\Mail\ResetPasswordMail($user, $resetUrl));
+        } else {
+            // Untuk non-customer (staf), gunakan default Laravel
+            Password::sendResetLink($request->only('email'));
+        }
+        
+        return back()->with('status', 'Jika email terdaftar, link reset password telah dikirim.');
+    })->name('password.email');
 
     
     Route::get('/reset-password/{token}', function ($token, Request $request) { 
@@ -142,10 +159,25 @@ Route::middleware('guest')->group(function () {
     
     Route::post('/reset-password', function (Request $request) {
         $request->validate(['token'=>'required', 'email'=>'required|email', 'password'=>'required|confirmed']);
-        $status = Password::reset($request->only('email','password','password_confirmation','token'), function($user,$pass){ $user->forceFill(['password'=>Hash::make($pass)])->save(); });
-        return $status===Password::PASSWORD_RESET ? redirect()->route('login')->with('status',__($status)) : back()->withErrors(['email'=>[__($status)]]);
+        
+        $status = Password::reset(
+            $request->only('email','password','password_confirmation','token'), 
+            function($user, $pass) { 
+                $user->forceFill(['password' => \Hash::make($pass)])->save();
+                
+                // Kirim konfirmasi HANYA untuk customer
+                if ($user->role === 'customer') {
+                    \Mail::to($user->email)->send(new \App\Mail\PasswordChangedMail($user));
+                }
+            }
+        );
+        
+        return $status === Password::PASSWORD_RESET 
+            ? redirect()->route('login')->with('status', 'Password berhasil diubah! Silakan login.') 
+            : back()->withErrors(['email' => [__($status)]]);
     })->name('password.update');
 });
+
 
 // --- AUTH COMMON ---
 Route::post('/logout', function () { 
@@ -162,9 +194,38 @@ Route::get('/logout', function () {
     return redirect('/'); 
 }); // Fallback for cached links
 Route::get('/email/verify', function () { return view('auth.verify-email'); })->middleware('auth')->name('verification.notice');
-Route::get('/email/verify/{id}/{hash}', function (EmailVerificationRequest $request) { $request->fulfill(); return redirect('/')->with('status', 'Email verified!'); })->middleware(['signed'])
-    ->name('verification.verify');
+Route::get('/email/verify/{id}/{hash}', function ($id, $hash, Request $request) { 
+    // Cari user berdasarkan ID
+    $user = \App\Models\User::find($id);
+    
+    if (!$user) {
+        return redirect()->route('login')->withErrors(['email' => 'Link verifikasi tidak valid.']);
+    }
+    
+    // Validasi hash
+    if (!hash_equals(sha1($user->email), $hash)) {
+        return redirect()->route('login')->withErrors(['email' => 'Link verifikasi tidak valid.']);
+    }
+    
+    // Cek apakah sudah diverifikasi
+    if ($user->email_verified_at) {
+        return redirect()->route('login')->with('status', 'Email sudah diverifikasi sebelumnya. Silakan login.');
+    }
+    
+    // Verifikasi email
+    $user->email_verified_at = now();
+    $user->save();
+    
+    // Kirim welcome email HANYA untuk customer
+    if ($user->role === 'customer') {
+        \Mail::to($user->email)->send(new \App\Mail\WelcomeVerifiedMail($user));
+    }
+    
+    return redirect()->route('login')->with('status', 'Email berhasil diverifikasi! Silakan login.'); 
+})->middleware(['signed'])->name('verification.verify');
 Route::post('/email/verification-notification', function (Request $request) { $request->user()->sendEmailVerificationNotification(); return back()->with('status', 'Link sent!'); })->middleware(['auth', 'throttle:6,1'])->name('verification.send');
+
+
 
 // --- CUSTOMER ROUTES ---
 Route::middleware(['auth', 'customer'])->prefix('customer')->name('customer.')->group(function () {
@@ -204,8 +265,9 @@ Route::middleware(['auth', 'admin'])->prefix('admin')->name('admin.')->group(fun
 
     Route::get('/customers', CustomerManagement::class)->name('customers.index');
     Route::get('/users', UserManagement::class)->name('users.index');
+    Route::get('/user-requests', UserRequestManager::class)->name('user-requests.index');
     Route::get('/reports', Reports::class)->name('reports');
-    Route::get('/profile', CustomerProfile::class)->name('profile');
+    Route::get('/profile', AdminProfile::class)->name('profile');
     Route::get('/invoices', InvoiceManager::class)->name('invoices.index');
     Route::get('/products', \App\Livewire\Admin\ProductManager::class)->name('products');
     Route::get('/quotations', QuotationManager::class)->name('quotations.index');
@@ -256,6 +318,7 @@ Route::get('/test-inbox', \App\Livewire\Admin\EmailInbox::class)->name('test.inb
 Route::middleware(['auth', 'admin'])->group(function () {
     // Route ini bernama 'inbox.index' (tanpa prefix admin.) agar cocok dengan admin.blade.php
     Route::get('/admin/inbox', EmailInbox::class)->name('inbox.index');
+    Route::get('/admin/sent-emails', \App\Livewire\Admin\SentEmails::class)->name('sent-emails.index');
 });
 
 // --- ADMIN ACCOUNTING ---
@@ -734,6 +797,8 @@ Route::middleware(['auth'])->group(function () {
         ->name('admin.field-docs.delete-photo');
     Route::post('/admin/field-docs/photos/bulk-delete', [App\Http\Controllers\Admin\FieldDocController::class, 'bulkDeletePhotos'])
         ->name('admin.field-docs.bulk-delete-photos');
+    Route::get("/admin/field-docs/download-zip/{shipment}", [App\Http\Controllers\Admin\FieldDocController::class, "downloadZip"])
+        ->name("admin.field-docs.download-zip");
 });
 
 // Temporary route untuk fix invoice - HAPUS SETELAH SELESAI

@@ -35,6 +35,7 @@ class Invoice extends Model
         'total_paid',
         'notes',
         'terbilang_lang',
+        'payment_notes',
         'last_reminded_at',
         'reminder_count',
         
@@ -45,6 +46,19 @@ class Invoice extends Model
         'signer_sign_path',
         'use_materai',
         'materai_type',
+        
+        // Payment Claim fields
+        'payment_claimed',
+        'claim_proof_path',
+        'claimed_at',
+        'claim_notes',
+        
+        // Faktur Pajak fields
+        'faktur_pajak_number',
+        'faktur_pajak_path',
+        'faktur_pajak_uploaded_at',
+        'faktur_pajak_requested',
+        'faktur_pajak_requested_at',
     ];
 
     protected $casts = [
@@ -54,6 +68,8 @@ class Invoice extends Model
         'last_reminded_at' => 'datetime',
         'use_materai' => 'boolean',
         'total_paid' => 'decimal:2',
+        'payment_claimed' => 'boolean',
+        'claimed_at' => 'datetime',
     ];
 
     public function getIsOverdueAttribute()

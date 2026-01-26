@@ -1,5 +1,7 @@
 @php
-    // Helper function wajib ada di atas
+    use App\Models\Shipment;
+    
+    // Helper function
     if (!function_exists('hasKeyword')) {
         function hasKeyword($haystack, $needles) {
             if (empty($haystack) || empty($needles)) return false;
@@ -11,6 +13,52 @@
             return false;
         }
     }
+    
+    // Logic tracker visual
+    $serviceType = strtolower($shipment->service_type ?? 'domestic');
+    $statusFlow = Shipment::getStatusFlow($serviceType);
+    
+    // Filter hanya status non-optional
+    $mainSteps = collect($statusFlow)->filter(fn($s) => !($s['optional'] ?? false))->values();
+    $steps = $mainSteps->pluck('label')->toArray();
+    
+    // Helper: cek dokumen
+    $docs = $shipment->documents->pluck('description')->map(fn($i) => strtolower($i ?? ''))->toArray();
+    $hasDoc = function($keywords) use ($docs) {
+        foreach ($docs as $doc) {
+            foreach ((array)$keywords as $kw) {
+                if (str_contains($doc, strtolower($kw))) return true;
+            }
+        }
+        return false;
+    };
+    
+    // Tentukan current step berdasarkan DOKUMEN
+    $currentStep = 1;
+    
+    if ($serviceType === 'import') {
+        if ($hasDoc(['bill of lading', 'bl', 'invoice', 'packing list'])) $currentStep = 2;
+        if ($hasDoc(['manifest', 'bc 1.1', 'bc1.1'])) $currentStep = 3;
+        if ($hasDoc(['billing', 'ebilling', 'pungutan'])) $currentStep = 4;
+        if ($hasDoc(['sppb', 'pengeluaran', 'released'])) $currentStep = 5;
+        if ($hasDoc(['sp2', 'surat jalan', 'delivery'])) $currentStep = 6;
+        if ($shipment->status === 'completed') $currentStep = 7;
+    } elseif ($serviceType === 'export') {
+        if ($hasDoc(['invoice', 'packing list', 'si', 'shipping instruction'])) $currentStep = 2;
+        if ($hasDoc(['peb', 'bc 3.0', 'bc3.0'])) $currentStep = 3;
+        if ($hasDoc(['npe', 'persetujuan ekspor'])) $currentStep = 4;
+        if ($hasDoc(['bl final', 'on board', 'shipped']) || $shipment->status === 'on_board') $currentStep = 5;
+        if ($shipment->status === 'completed') $currentStep = 6;
+    } else {
+        if ($hasDoc(['pickup', 'tanda terima', 'penjemputan'])) $currentStep = 2;
+        if ($hasDoc(['manifest', 'resi', 'transit'])) $currentStep = 3;
+        if ($hasDoc(['surat jalan', 'delivery', 'antar'])) $currentStep = 4;
+        if ($shipment->status === 'completed') $currentStep = 5;
+    }
+    
+    // Label status deskriptif
+    $stepLabels = array_column($mainSteps->toArray(), 'label');
+    $currentStepLabel = $stepLabels[$currentStep - 1] ?? 'Booking';
 @endphp
 
 <div class="space-y-6">
@@ -42,7 +90,7 @@
             <div class="flex flex-col items-end">
                 <span class="text-xs uppercase tracking-widest text-blue-300 mb-1">Status</span>
                 <span class="bg-white/10 px-3 py-1 rounded text-sm font-bold border border-white/20 capitalize">
-                    {{ str_replace('_', ' ', $shipment->status) }}
+                        {{ $currentStepLabel ?? str_replace('_', ' ', $shipment->status) }}
                 </span>
             </div>
         </div>
@@ -50,35 +98,6 @@
         {{-- LOGIC TRACKER --}}
         <div class="p-8 border-b border-gray-100 overflow-x-auto">
             <div class="min-w-[700px]"> 
-                @php
-                    $type = strtolower($shipment->service_type);
-                    $docs = $shipment->documents->pluck('description')->map(fn($i) => strtolower($i))->toArray();
-                    $currentStep = 1;
-                    $steps = []; 
-
-                    // Logic Tracker (Sama seperti sebelumnya)
-                    if ($type == 'import') {
-                        $steps = ['Pending', 'Manifest / BC 1.1', 'Customs Billing', 'Released (SPPB)', 'Delivery', 'Completed'];
-                        if (hasKeyword($docs, ['manifest', 'bc 1.1'])) $currentStep = 2;
-                        if (hasKeyword($docs, ['billing', 'ebilling'])) $currentStep = 3;
-                        if (hasKeyword($docs, ['sppb released', 'pengeluaran barang', 'hptd'])) $currentStep = 4;
-                        if (hasKeyword($docs, ['sp2', 'surat jalan'])) $currentStep = 5;
-                        if ($shipment->status == 'completed') $currentStep = 6;
-                    } elseif ($type == 'export') {
-                        $steps = ['Booking', 'Stuffing', 'Customs (NPE)', 'On Board', 'Completed'];
-                        if (hasKeyword($docs, ['gate in', 'stuffing'])) $currentStep = 2;
-                        if (hasKeyword($docs, ['npe', 'pib'])) $currentStep = 3;
-                        if (hasKeyword($docs, ['bl final', 'on board'])) $currentStep = 4;
-                        if ($shipment->status == 'completed') $currentStep = 5;
-                    } else {
-                        $steps = ['Booking', 'Cargo In', 'Sailing', 'Arrived', 'Delivered'];
-                        if (hasKeyword($docs, ['tanda terima'])) $currentStep = 2;
-                        if (hasKeyword($docs, ['manifest', 'resi'])) $currentStep = 3;
-                        if ($shipment->estimated_arrival && now() >= \Carbon\Carbon::parse($shipment->estimated_arrival)) $currentStep = 4;
-                        if ($shipment->status == 'completed') $currentStep = 5;
-                    }
-                @endphp
-
                 <div class="relative mt-6 mb-2">
                     <div class="absolute top-1/2 left-0 w-full h-1 bg-gray-200 -translate-y-1/2 rounded-full z-0"></div>
                     <div class="absolute top-1/2 left-0 h-1 bg-m2b-accent -translate-y-1/2 rounded-full z-0 transition-all duration-1000 ease-out" style="width: {{ ($currentStep - 1) / (count($steps) - 1) * 100 }}%"></div>
@@ -102,7 +121,7 @@
 
     <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
         
-        {{-- KOLOM KIRI: LIST DOKUMEN --}}
+        {{-- KOLOM KIRI: LIST DOKUMEN (UPDATED - dengan tombol preview & download) --}}
         <div class="lg:col-span-2 space-y-6">
             <div class="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
                 <h3 class="font-bold text-gray-800 mb-4 flex items-center gap-2">
@@ -113,17 +132,34 @@
                 @if($shipment->documents->where('is_internal', false)->count() > 0)
                     <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
                         @foreach($shipment->documents->where('is_internal', false) as $doc)
-                        <a href="{{ route('document.view', $doc->id) }}" target="_blank" class="flex items-center p-3 border border-gray-200 rounded-lg hover:bg-blue-50 hover:border-blue-200 transition group bg-white">
-                            <div class="bg-red-50 text-red-600 p-2.5 rounded mr-3 group-hover:bg-red-100 transition">
-                                <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 21h10a2 2 0 00-2 2v9.414a1 1 0 00-.293-.707l-5.414-5.414A1 1 0 0012.586 3H7a2 2 0 00-2 2v14a2 2 0 002 2z"></path></svg>
+                        {{-- UPDATED: Tidak lagi sebagai <a> link, tapi <div> dengan tombol aksi --}}
+                        <div class="flex items-center p-3 border border-gray-200 rounded-lg hover:bg-slate-50 transition group relative">
+                            <div class="bg-red-50 text-red-600 p-2.5 rounded mr-3">
+                                <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 21h10a2 2 0 002-2V9.414a1 1 0 00-.293-.707l-5.414-5.414A1 1 0 0012.586 3H7a2 2 0 00-2 2v14a2 2 0 002 2z"></path></svg>
                             </div>
-                            <div class="overflow-hidden">
+                            <div class="overflow-hidden flex-1">
                                 <p class="text-sm font-bold text-gray-700 truncate group-hover:text-blue-800">{{ $doc->description }}</p>
                                 <p class="text-[10px] text-gray-400 uppercase mt-0.5">
                                     {{ strtoupper(pathinfo($doc->filename, PATHINFO_EXTENSION)) }} • {{ \Carbon\Carbon::parse($doc->created_at)->format('d M Y') }}
                                 </p>
                             </div>
-                        </a>
+                            {{-- TOMBOL PREVIEW & DOWNLOAD (BARU - adopsi dari admin) --}}
+                            <div class="flex gap-1">
+                                {{-- Tombol Preview (Mata) --}}
+                                <button wire:click="viewDocument({{ $doc->id }})" class="p-1.5 text-blue-500 hover:bg-blue-100 rounded transition" title="Preview">
+                                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"></path>
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"></path>
+                                    </svg>
+                                </button>
+                                {{-- Tombol Download --}}
+                                <a href="{{ route('document.download', $doc->id) }}" download class="p-1.5 text-green-500 hover:bg-green-100 rounded transition" title="Download">
+                                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"></path>
+                                    </svg>
+                                </a>
+                            </div>
+                        </div>
                         @endforeach
                     </div>
                 @else
@@ -195,4 +231,154 @@
         </div>
 
     </div>
+
+    {{-- ============================================ --}}
+    {{-- MODAL PREVIEW DOCUMENT (BARU - adopsi dari admin) --}}
+    {{-- ============================================ --}}
+    <div 
+        x-data="{ 
+            show: @entangle('showDocPreview'), 
+            zoom: 100, 
+            rotation: 0,
+            zoomIn() { this.zoom = Math.min(this.zoom + 25, 300); },
+            zoomOut() { this.zoom = Math.max(this.zoom - 25, 50); },
+            rotate() { this.rotation = (this.rotation + 90) % 360; },
+            reset() { this.zoom = 100; this.rotation = 0; }
+        }" 
+        x-show="show" 
+        x-cloak
+        @keydown.escape.window="show = false; $wire.closeDocPreview()"
+        class="fixed inset-0 z-50 flex items-center justify-center bg-black/90 backdrop-blur-sm"
+        style="display: none;">
+        
+        {{-- Modal Container --}}
+        <div class="relative w-full h-full max-w-7xl mx-auto p-4 flex flex-col">
+            
+            {{-- Header --}}
+            <div class="flex items-center justify-between mb-4 bg-gray-900/50 rounded-lg px-6 py-4 backdrop-blur-md">
+                <div class="flex items-center gap-4">
+                    <button @click="show = false; $wire.closeDocPreview()" class="text-white hover:text-red-400 transition">
+                        <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
+                        </svg>
+                    </button>
+                    @if($previewDoc)
+                        <div>
+                            <h3 class="text-white font-bold text-lg">{{ $previewDoc->description }}</h3>
+                            <p class="text-gray-400 text-sm">{{ $previewDoc->filename }} • {{ number_format($previewDoc->file_size / 1024, 1) }} KB</p>
+                        </div>
+                    @endif
+                </div>
+                
+                <div class="flex items-center gap-3">
+                    {{-- Zoom Controls --}}
+                    <div class="flex items-center gap-2 bg-gray-800 rounded-lg px-3 py-2">
+                        <button @click="zoomOut" class="text-white hover:text-blue-400 transition" title="Zoom Out">
+                            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0zM13 10H7"></path>
+                            </svg>
+                        </button>
+                        <span class="text-white text-sm font-bold min-w-[3rem] text-center" x-text="zoom + '%'"></span>
+                        <button @click="zoomIn" class="text-white hover:text-blue-400 transition" title="Zoom In">
+                            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0zM10 7v6m3-3H7"></path>
+                            </svg>
+                        </button>
+                    </div>
+                    
+                    {{-- Rotate --}}
+                    <button @click="rotate" class="bg-gray-800 hover:bg-gray-700 text-white rounded-lg px-4 py-2 transition" title="Rotate">
+                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"></path>
+                        </svg>
+                    </button>
+                    
+                    {{-- Reset --}}
+                    <button @click="reset" class="bg-gray-800 hover:bg-gray-700 text-white rounded-lg px-4 py-2 text-sm font-bold transition" title="Reset View">
+                        Reset
+                    </button>
+                    
+                    {{-- Download --}}
+                    @if($previewDoc)
+                        <a href="{{ route('document.download', $previewDoc->id) }}" download class="bg-green-600 hover:bg-green-700 text-white rounded-lg px-4 py-2 font-bold text-sm flex items-center gap-2 transition">
+                            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"></path>
+                            </svg>
+                            Download
+                        </a>
+                    @endif
+                </div>
+            </div>
+            
+            {{-- Preview Content --}}
+            <div class="flex-1 bg-gray-900/30 rounded-lg overflow-hidden flex items-center justify-center">
+                @if($previewDoc)
+                    @php
+                        $ext = strtolower(pathinfo($previewDoc->filename, PATHINFO_EXTENSION));
+                        $isImage = in_array($ext, ['jpg', 'jpeg', 'png', 'gif', 'webp', 'svg']);
+                        $isPdf = $ext === 'pdf';
+                    @endphp
+                    
+                    @if($isImage)
+                        {{-- Image Preview --}}
+                        <div class="overflow-auto max-h-full max-w-full p-8">
+                            <img 
+                                src="{{ route('document.view', $previewDoc->id) }}" 
+                                alt="{{ $previewDoc->filename }}"
+                                :style="`transform: scale(${zoom/100}) rotate(${rotation}deg); transition: transform 0.3s ease;`"
+                                class="max-w-none"
+                            >
+                        </div>
+                    @elseif($isPdf)
+                        {{-- PDF Preview --}}
+                        <iframe 
+                            src="{{ route('document.view', $previewDoc->id) }}#toolbar=1&navpanes=0&scrollbar=1&view=FitH" 
+                            class="w-full h-full border-0"
+                            :style="`transform: scale(${zoom/100}); transform-origin: top center;`"
+                        ></iframe>
+                    @else
+                        {{-- Other File Types --}}
+                        <div class="text-center text-white p-8">
+                            <svg class="w-24 h-24 mx-auto mb-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 21h10a2 2 0 002-2V9.414a1 1 0 00-.293-.707l-5.414-5.414A1 1 0 0012.586 3H7a2 2 0 00-2 2v14a2 2 0 002 2z"></path>
+                            </svg>
+                            <h3 class="text-xl font-bold mb-2">Preview tidak tersedia</h3>
+                            <p class="text-gray-400 mb-6">File tipe .{{ $ext }} tidak dapat di-preview di browser</p>
+                            <a href="{{ route('document.download', $previewDoc->id) }}" download class="inline-flex items-center gap-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg px-6 py-3 font-bold transition">
+                                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"></path>
+                                </svg>
+                                Download File
+                            </a>
+                        </div>
+                    @endif
+                @endif
+            </div>
+            
+            {{-- Navigation Footer (jika lebih dari 1 dokumen) --}}
+            @if($previewDoc && $allPublicDocs && $allPublicDocs->count() > 1)
+                <div class="mt-4 bg-gray-900/50 rounded-lg px-6 py-4 backdrop-blur-md flex items-center justify-between">
+                    <button wire:click="previousDocument" class="text-white hover:text-blue-400 flex items-center gap-2 font-bold transition disabled:opacity-50 disabled:cursor-not-allowed" {{ $currentDocIndex <= 0 ? 'disabled' : '' }}>
+                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"></path>
+                        </svg>
+                        Sebelumnya
+                    </button>
+                    
+                    <span class="text-white font-bold">
+                        {{ $currentDocIndex + 1 }} / {{ $allPublicDocs->count() }}
+                    </span>
+                    
+                    <button wire:click="nextDocument" class="text-white hover:text-blue-400 flex items-center gap-2 font-bold transition disabled:opacity-50 disabled:cursor-not-allowed" {{ $currentDocIndex >= $allPublicDocs->count() - 1 ? 'disabled' : '' }}>
+                        Berikutnya
+                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"></path>
+                        </svg>
+                    </button>
+                </div>
+            @endif
+        </div>
+    </div>
+    {{-- END MODAL PREVIEW --}}
+
 </div>

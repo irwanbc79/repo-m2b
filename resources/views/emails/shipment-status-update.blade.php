@@ -3,146 +3,87 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Pembaruan Status Pengiriman</title>
+    <title>{{ __('email.shipment_status_title', [], $lang ?? 'id') }}</title>
     <style>
-        body {
-            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-            line-height: 1.6;
-            color: #333;
-            max-width: 600px;
-            margin: 0 auto;
-            padding: 20px;
-            background-color: #f5f5f5;
-        }
-        .container {
-            background-color: #ffffff;
-            border-radius: 10px;
-            padding: 30px;
-            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
-        }
-        .header {
-            text-align: center;
-            border-bottom: 3px solid #1a56db;
-            padding-bottom: 20px;
-            margin-bottom: 25px;
-        }
-        .header h1 {
-            color: #1a56db;
-            margin: 0;
-            font-size: 24px;
-        }
-        .header .logo {
-            font-size: 32px;
-            font-weight: bold;
-            color: #1a56db;
-            margin-bottom: 10px;
-        }
-        .status-badge {
-            display: inline-block;
-            background-color: #1a56db;
-            color: white;
-            padding: 8px 20px;
-            border-radius: 20px;
-            font-weight: bold;
-            font-size: 14px;
-            text-transform: uppercase;
-        }
-        .info-table {
-            width: 100%;
-            border-collapse: collapse;
-            margin: 20px 0;
-        }
-        .info-table td {
-            padding: 12px;
-            border-bottom: 1px solid #eee;
-        }
-        .info-table td:first-child {
-            font-weight: 600;
-            color: #555;
-            width: 40%;
-        }
-        .info-table td:last-child {
-            color: #333;
-        }
-        .btn {
-            display: inline-block;
-            background-color: #1a56db;
-            color: white;
-            padding: 12px 30px;
-            text-decoration: none;
-            border-radius: 5px;
-            font-weight: bold;
-            margin-top: 20px;
-        }
-        .btn:hover {
-            background-color: #1e40af;
-        }
-        .footer {
-            text-align: center;
-            margin-top: 30px;
-            padding-top: 20px;
-            border-top: 1px solid #eee;
-            color: #888;
-            font-size: 12px;
-        }
-        .notes {
-            background-color: #f8f9fa;
-            padding: 15px;
-            border-radius: 5px;
-            margin-top: 15px;
-            border-left: 4px solid #1a56db;
-        }
+        body { font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif; background-color: #f3f4f6; margin: 0; padding: 0; }
+        .container { max-width: 600px; margin: 40px auto; background-color: #ffffff; border-radius: 8px; overflow: hidden; box-shadow: 0 4px 6px rgba(0,0,0,0.05); }
+        .header { background-color: #1e3a8a; padding: 30px; text-align: center; border-bottom: 4px solid #172554; }
+        .header h2 { margin: 0; font-size: 22px; font-weight: 800; letter-spacing: 1px; text-transform: uppercase; color: #ffffff; }
+        .header .subtitle { margin: 8px 0 0; font-size: 11px; letter-spacing: 3px; color: #dc2626; font-weight: 600; }
+        .content { padding: 40px 30px; color: #374151; line-height: 1.6; }
+        .status-box { background-color: #f0f9ff; border-left: 4px solid #1e3a8a; padding: 15px; margin: 20px 0; border-radius: 4px; text-align: center; }
+        .status-label { font-size: 11px; text-transform: uppercase; color: #6b7280; font-weight: bold; letter-spacing: 1px; }
+        .status-value { font-size: 22px; font-weight: bold; color: #1e3a8a; margin-top: 5px; text-transform: uppercase; }
+        .details-table { width: 100%; border-collapse: collapse; margin-top: 20px; font-size: 14px; }
+        .details-table td { padding: 12px 0; border-bottom: 1px solid #e5e7eb; }
+        .details-label { color: #6b7280; width: 140px; font-weight: 600; }
+        .details-value { color: #111827; font-weight: 700; }
+        .notes-box { background-color: #fef3c7; border-left: 4px solid #f59e0b; padding: 15px; margin: 20px 0; border-radius: 4px; }
+        .notes-title { font-size: 12px; font-weight: 700; color: #92400e; margin-bottom: 5px; }
+        .notes-text { font-size: 14px; color: #78350f; margin: 0; }
+        .button { display: inline-block; padding: 14px 35px; background-color: #1e3a8a; color: #ffffff; text-decoration: none; border-radius: 6px; font-weight: bold; margin-top: 25px; font-size: 14px; }
+        .footer { background-color: #f9fafb; padding: 25px; text-align: center; font-size: 12px; color: #9ca3af; border-top: 1px solid #e5e7eb; line-height: 1.6; }
+        .footer-brand { font-weight: bold; color: #64748b; }
     </style>
 </head>
 <body>
     <div class="container">
+        <!-- HEADER CORPORATE -->
         <div class="header">
-            <div class="logo">📦 M2B Portal</div>
-            <h1>Pembaruan Status Pengiriman</h1>
+            <h2>PT. MORA MULTI BERKAH</h2>
+            <div class="subtitle">LOGISTIC | SOLUTION | PARTNER</div>
         </div>
-        
-        <p>Yth. <strong>{{ $customerName }}</strong>,</p>
-        
-        <p>Berikut adalah pembaruan status pengiriman Anda:</p>
-        
-        <div style="text-align: center; margin: 25px 0;">
-            <span class="status-badge">{{ $status }}</span>
+
+        <!-- CONTENT -->
+        <div class="content">
+            <p>{{ __('email.greeting', [], $lang ?? 'id') }} <strong>{{ $customerName }}</strong>,</p>
+            <p>{{ __('email.shipment_status_intro', [], $lang ?? 'id') }}</p>
+
+            <!-- STATUS BOX -->
+            <div class="status-box">
+                <div class="status-label">{{ __('email.current_status', [], $lang ?? 'id') }}</div>
+                <div class="status-value">{{ strtoupper($status) }}</div>
+            </div>
+
+            <!-- DETAIL SHIPMENT -->
+            <table class="details-table">
+                <tr>
+                    <td class="details-label">📋 {{ __('email.awb_number', [], $lang ?? 'id') }}</td>
+                    <td class="details-value">{{ $awbNumber }}</td>
+                </tr>
+                <tr>
+                    <td class="details-label">📍 {{ __('email.origin', [], $lang ?? 'id') }}</td>
+                    <td class="details-value">{{ $origin }}</td>
+                </tr>
+                <tr>
+                    <td class="details-label">🎯 {{ __('email.destination', [], $lang ?? 'id') }}</td>
+                    <td class="details-value">{{ $destination }}</td>
+                </tr>
+                <tr>
+                    <td class="details-label">📌 {{ __('email.current_location', [], $lang ?? 'id') }}</td>
+                    <td class="details-value">{{ $location }}</td>
+                </tr>
+            </table>
+
+            @if($notes)
+            <!-- CATATAN -->
+            <div class="notes-box">
+                <div class="notes-title">📝 {{ __('email.notes', [], $lang ?? 'id') }}:</div>
+                <p class="notes-text">{{ $notes }}</p>
+            </div>
+            @endif
+
+            <!-- CTA BUTTON -->
+            <center>
+                <a href="{{ $trackingUrl }}" class="button">🔍 {{ __('email.track_shipment', [], $lang ?? 'id') }}</a>
+            </center>
         </div>
-        
-        <table class="info-table">
-            <tr>
-                <td>📋 No. AWB</td>
-                <td><strong>{{ $awbNumber }}</strong></td>
-            </tr>
-            <tr>
-                <td>📍 Asal</td>
-                <td>{{ $origin }}</td>
-            </tr>
-            <tr>
-                <td>🎯 Tujuan</td>
-                <td>{{ $destination }}</td>
-            </tr>
-            <tr>
-                <td>📌 Lokasi Saat Ini</td>
-                <td>{{ $location }}</td>
-            </tr>
-        </table>
-        
-        @if($notes)
-        <div class="notes">
-            <strong>📝 Catatan:</strong><br>
-            {{ $notes }}
-        </div>
-        @endif
-        
-        <div style="text-align: center;">
-            <a href="{{ $trackingUrl }}" class="btn">🔍 Lacak Pengiriman</a>
-        </div>
-        
+
+        <!-- FOOTER -->
         <div class="footer">
-            <p>Email ini dikirim secara otomatis dari <strong>M2B Portal</strong></p>
-            <p>PT. Mora Multi Berkah | Jasa Pengurusan Kepabeanan</p>
-            <p>📧 info@m2b.co.id | 🌐 portal.m2b.co.id</p>
+            <span class="footer-brand">{{ __('email.footer_company', [], $lang ?? 'id') }}</span><br>
+            {{ __('email.footer_tagline', [], $lang ?? 'id') }}<br>
+            📧 sales@m2b.co.id | 🌐 portal.m2b.co.id
         </div>
     </div>
 </body>

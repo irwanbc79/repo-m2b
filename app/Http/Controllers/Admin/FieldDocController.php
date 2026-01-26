@@ -79,25 +79,31 @@ class FieldDocController extends Controller
     /**
      * Gallery
      */
-    public function gallery($shipmentNumber)
+    public function gallery(Request $request, $shipmentNumber)
     {
-        $shipment = Shipment::with(['customer', 'fieldPhotos' => function($q) {
-                $q->with('user')->orderBy('created_at', 'desc');
-            }])
+        $shipment = Shipment::with('customer')
             ->where('awb_number', $shipmentNumber)
             ->orWhere('bl_number', $shipmentNumber)
             ->orWhere('id', $shipmentNumber)
             ->firstOrFail();
 
+        // Paginated photos
+        $photos = FieldPhoto::where('shipment_id', $shipment->id)
+            ->with('user')
+            ->orderBy('created_at', 'desc')
+            ->paginate(20)
+            ->withQueryString();
+
+        // Stats (from all photos, not paginated)
         $stats = [
-            'total' => $shipment->fieldPhotos->count(),
-            'with_location' => $shipment->fieldPhotos->whereNotNull('latitude')->count(),
-            'today' => $shipment->fieldPhotos->where('created_at', '>=', today())->count(),
+            'total' => FieldPhoto::where('shipment_id', $shipment->id)->count(),
+            'with_location' => FieldPhoto::where('shipment_id', $shipment->id)->whereNotNull('latitude')->count(),
+            'today' => FieldPhoto::where('shipment_id', $shipment->id)->where('created_at', '>=', today())->count(),
         ];
 
         $canDelete = $this->canDeletePhotos();
 
-        return view('admin.field-docs.gallery', compact('shipment', 'stats', 'canDelete'));
+        return view('admin.field-docs.gallery', compact('shipment', 'photos', 'stats', 'canDelete'));
     }
 
     /**
@@ -310,5 +316,58 @@ class FieldDocController extends Controller
                 'customer_name' => $s->customer->company_name ?? 'N/A',
             ];
         }));
+    }
+
+    /**
+     * Download photos as ZIP
+     */
+    public function downloadZip(Request $request, $shipment)
+    {
+        // Find shipment
+        $shipmentModel = \App\Models\Shipment::where("awb_number", $shipment)
+            ->orWhere("bl_number", $shipment)
+            ->orWhere("id", $shipment)
+            ->firstOrFail();
+        
+        // Get photos - either selected IDs or all
+        $query = $shipmentModel->fieldPhotos();
+        
+        if ($request->has("ids")) {
+            $ids = explode(",", $request->ids);
+            $query->whereIn("id", $ids);
+        }
+        
+        $photos = $query->get();
+        
+        if ($photos->isEmpty()) {
+            return back()->with("error", "Tidak ada foto untuk didownload");
+        }
+        
+        // Create ZIP
+        $zipFileName = "dokumentasi_" . ($shipmentModel->awb_number ?: $shipmentModel->bl_number ?: $shipmentModel->id) . "_" . date("Ymd_His") . ".zip";
+        $zipPath = storage_path("app/temp/" . $zipFileName);
+        
+        // Ensure temp directory exists
+        if (!file_exists(storage_path("app/temp"))) {
+            mkdir(storage_path("app/temp"), 0755, true);
+        }
+        
+        $zip = new \ZipArchive();
+        if ($zip->open($zipPath, \ZipArchive::CREATE | \ZipArchive::OVERWRITE) !== true) {
+            return back()->with("error", "Gagal membuat file ZIP");
+        }
+        
+        foreach ($photos as $index => $photo) {
+            $filePath = storage_path("app/public/" . $photo->file_path);
+            if (file_exists($filePath)) {
+                $fileName = ($index + 1) . "_" . ($photo->original_filename ?: basename($photo->file_path));
+                $zip->addFile($filePath, $fileName);
+            }
+        }
+        
+        $zip->close();
+        
+        // Download and delete temp file
+        return response()->download($zipPath, $zipFileName)->deleteFileAfterSend(true);
     }
 }

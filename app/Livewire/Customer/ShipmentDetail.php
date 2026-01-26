@@ -20,6 +20,12 @@ class ShipmentDetail extends Component
     public $doc_type = '';
     public $custom_note = '';
 
+    // Modal Preview Properties (BARU - adopsi dari admin)
+    public $showDocPreview = false;
+    public $previewDoc = null;
+    public $allPublicDocs;
+    public $currentDocIndex = 0;
+
     public function mount($id)
     {
         // LOGIC KEAMANAN PINTAR:
@@ -35,6 +41,40 @@ class ShipmentDetail extends Component
 
         $this->shipment = $query->firstOrFail();
     }
+
+    // === METHOD PREVIEW DOCUMENT (BARU - adopsi dari admin) ===
+    public function viewDocument($docId)
+    {
+        $this->previewDoc = Document::find($docId);
+        $this->allPublicDocs = $this->shipment->documents()->where('is_internal', false)->get();
+        $this->currentDocIndex = $this->allPublicDocs->search(function($doc) use ($docId) {
+            return $doc->id == $docId;
+        });
+        $this->showDocPreview = true;
+    }
+
+    public function nextDocument()
+    {
+        if ($this->currentDocIndex < $this->allPublicDocs->count() - 1) {
+            $this->currentDocIndex++;
+            $this->previewDoc = $this->allPublicDocs[$this->currentDocIndex];
+        }
+    }
+
+    public function previousDocument()
+    {
+        if ($this->currentDocIndex > 0) {
+            $this->currentDocIndex--;
+            $this->previewDoc = $this->allPublicDocs[$this->currentDocIndex];
+        }
+    }
+
+    public function closeDocPreview()
+    {
+        $this->showDocPreview = false;
+        $this->previewDoc = null;
+    }
+    // === END METHOD PREVIEW ===
 
     public function uploadDoc()
     {

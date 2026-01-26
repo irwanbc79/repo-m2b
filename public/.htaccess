@@ -23,4 +23,14 @@
     RewriteCond %{REQUEST_FILENAME} !-f
     RewriteRule ^ index.php [L]
 </IfModule>
-# Clear cache Thu Jan  1 04:54:13 AM UTC 2026
+
+# Disable ModSecurity for Livewire uploads
+<IfModule mod_security.c>
+    SecFilterEngine Off
+    SecFilterScanPOST Off
+</IfModule>
+
+<IfModule LiteSpeed>
+    RewriteRule .* - [E=noabort:1]
+    RewriteRule .* - [E=noconntimeout:1]
+</IfModule>

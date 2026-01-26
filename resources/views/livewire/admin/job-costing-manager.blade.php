@@ -260,45 +260,27 @@
                                 @error('amount') <span class="text-xs text-red-500">{{ $message }}</span> @enderror
                             </div>
 
-                            {{-- NEW: Dropdown Akun Biaya (DEBIT) --}}
-                            <div>
-                                <label class="block text-xs font-bold text-gray-600 mb-1">
-                                    Akun Biaya (Debit)
-                                    <span class="font-normal text-gray-400">- untuk jurnal</span>
-                                </label>
-                                <select wire:model="coa_id" class="w-full border-gray-300 rounded-lg text-sm focus:border-blue-500">
-                                    <option value="">-- Pilih Akun Biaya --</option>
-                                    @foreach($expenseAccounts as $account)
-                                        <option value="{{ $account->id }}">{{ $account->code }} - {{ $account->name }}</option>
-                                    @endforeach
-                                </select>
-                                @error('coa_id') <span class="text-xs text-red-500">{{ $message }}</span> @enderror
-                            </div>
-
-                            {{-- NEW: Dropdown Sumber Dana (KREDIT) --}}
-                            <div>
-                                <label class="block text-xs font-bold text-gray-600 mb-1">
-                                    Sumber Dana (Kredit)
-                                    <span class="font-normal text-gray-400">- default: Kas Kecil</span>
-                                </label>
-                                <select wire:model="credit_account_id" class="w-full border-gray-300 rounded-lg text-sm focus:border-blue-500">
-                                    <option value="">-- Pilih Kas/Bank --</option>
-                                    @foreach($cashAccounts as $account)
-                                        <option value="{{ $account->id }}">{{ $account->code }} - {{ $account->name }}</option>
-                                    @endforeach
-                                </select>
-                                @error('credit_account_id') <span class="text-xs text-red-500">{{ $message }}</span> @enderror
+                            {{-- HIDDEN: Auto-select Akun (Staf tidak perlu pilih) --}}
+                            <input type="hidden" wire:model="coa_id">
+                            <input type="hidden" wire:model="credit_account_id">
+                            
+                            {{-- Info untuk staf --}}
+                            <div class="bg-gray-50 border border-gray-200 rounded-lg p-3">
+                                <p class="text-[10px] text-gray-500 flex items-center gap-1">
+                                    <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
+                                    Akun biaya akan otomatis dipilih oleh sistem
+                                </p>
                             </div>
 
                             <div>
                                 <label class="block text-xs font-bold text-gray-600 mb-1">Status Pembayaran</label>
-                                <select wire:model="status" class="w-full border-gray-300 rounded-lg text-sm">
-                                    <option value="unpaid">Unpaid (Hutang)</option>
-                                    <option value="paid">Paid (Lunas)</option>
-                                </select>
-                                <p class="text-[10px] text-gray-500 mt-1 flex items-center gap-1">
+                                <input type="hidden" wire:model="status" value="unpaid">
+                                <div class="w-full px-3 py-2 bg-yellow-50 border border-yellow-200 rounded-lg text-sm">
+                                    <span class="font-semibold text-yellow-700">📋 Unpaid (Hutang)</span>
+                                </div>
+                                <p class="text-[10px] text-blue-600 mt-1 flex items-center gap-1 bg-blue-50 p-2 rounded">
                                     <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
-                                    Jika PAID + Akun terisi, jurnal otomatis dibuat
+                                    💡 Untuk bayar vendor, gunakan menu <strong>Kasir (Simple)</strong>. Biaya ini akan otomatis lunas setelah dicatat di kasir.
                                 </p>
                             </div>
 
@@ -381,18 +363,18 @@
                                                     </a>
                                                 @endif
                                                 
-                                                {{-- Toggle Status Button --}}
-                                                <button wire:click="toggleStatus({{ $cost->id }})" 
-                                                    wire:confirm="Ubah status pembayaran biaya ini?"
-                                                    class="{{ $cost->status === 'paid' ? 'text-yellow-500 hover:text-yellow-700 hover:bg-yellow-50' : 'text-green-500 hover:text-green-700 hover:bg-green-50' }} transition p-1 rounded" 
-                                                    title="{{ $cost->status === 'paid' ? 'Mark as Unpaid' : 'Mark as Paid' }}">
-                                                    @if($cost->status === 'paid')
-                                                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
-                                                    @else
+                                                {{-- Status Info (Read Only) --}}
+                                                @if($cost->status === 'unpaid')
+                                                    <a href="{{ route('simple-cashier') }}" 
+                                                        class="text-blue-500 hover:text-blue-700 hover:bg-blue-50 transition p-1 rounded flex items-center gap-1" 
+                                                        title="Bayar via Kasir">
+                                                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 9V7a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2m2 4h10a2 2 0 002-2v-6a2 2 0 00-2-2H9a2 2 0 00-2 2v6a2 2 0 002 2zm7-5a2 2 0 11-4 0 2 2 0 014 0z"></path></svg>
+                                                    </a>
+                                                @else
+                                                    <span class="text-green-500 p-1" title="Sudah Lunas">
                                                         <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
-                                                    @endif
-                                                </button>
-                                                
+                                                    </span>
+                                                @endif
                                                 {{-- Delete Button --}}
                                                 <button wire:click="deleteCost({{ $cost->id }})" 
                                                     wire:confirm="Hapus biaya ini? Tindakan tidak dapat dibatalkan!" 

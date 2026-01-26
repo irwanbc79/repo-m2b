@@ -22,7 +22,7 @@ class ImageProcessingService
     /**
      * Process upload dengan watermark profesional + Logo M2B
      */
-    public function processUpload($file, $shipmentId, $userId, ?string $description = null): array
+    public function processUpload($file, $shipmentId, $userId, ?string $description = null, ?float $latitude = null, ?float $longitude = null): array
     {
         $shipment = Shipment::find($shipmentId);
         $shipmentNumber = $shipment?->awb_number ?? $shipment?->bl_number ?? 'SHP-' . $shipmentId;
@@ -79,7 +79,7 @@ class ImageProcessingService
             $finalHeight = imagesy($sourceImage);
             
             // WATERMARK DENGAN LOGO M2B
-            $this->addWatermarkWithLogo($sourceImage, $shipmentNumber, $uploaderName, $description);
+            $this->addWatermarkWithLogo($sourceImage, $shipmentNumber, $uploaderName, $description, $latitude, $longitude);
             
             // Save main image
             $mainPath = $directory . '/' . $filename;
@@ -138,7 +138,7 @@ class ImageProcessingService
     /**
      * Watermark dengan Logo M2B - Design Profesional
      */
-    protected function addWatermarkWithLogo($image, string $shipmentNumber, string $uploaderName, ?string $description = null): void
+    protected function addWatermarkWithLogo($image, string $shipmentNumber, string $uploaderName, ?string $description = null, ?float $latitude = null, ?float $longitude = null): void
     {
         $imgWidth = imagesx($image);
         $imgHeight = imagesy($image);
@@ -148,12 +148,14 @@ class ImageProcessingService
         // ============================================
         $stampW = max(420, min(550, (int)($imgWidth * 0.32)));
         $hasDescription = !empty($description) && strlen(trim($description)) > 0;
+        $hasGps = !empty($latitude) && !empty($longitude);
         
         // Hitung tinggi berdasarkan konten
-        $headerH = 45;
+        $headerH = 50;
         $contentH = 75;
+        $gpsH = $hasGps ? 18 : 0;
         $descH = $hasDescription ? 35 : 0;
-        $stampH = $headerH + $contentH + $descH + 15;
+        $stampH = $headerH + $contentH + $gpsH + $descH + 15;
         
         $margin = max(20, (int)($imgWidth * 0.018));
         
@@ -205,7 +207,7 @@ class ImageProcessingService
         
         if ($useTTF) {
             imagettftext($image, $fontLarge, 0, $headerTextX, $headerTextY + $fontLarge, $textWhite, $fontBold, "M2B PORTAL");
-            imagettftext($image, $fontSmall - 1, 0, $headerTextX, $headerTextY + $fontLarge + 15, $textLight, $fontRegular, "DOKUMEN PERUSAHAAN");
+            imagettftext($image, $fontSmall - 1, 0, $headerTextX, $headerTextY + $fontLarge + 12, $textLight, $fontRegular, "DOKUMEN PERUSAHAAN");
         } else {
             imagestring($image, 5, $headerTextX, $headerTextY, "M2B PORTAL", $textWhite);
             imagestring($image, 2, $headerTextX, $headerTextY + 18, "DOKUMEN PERUSAHAAN", $textLight);
@@ -243,6 +245,17 @@ class ImageProcessingService
             imagettftext($image, $fontSmall, 0, $contentX, $contentY + $fontSmall, $textLight, $fontRegular, $uploaderText);
         } else {
             imagestring($image, 2, $contentX, $contentY, $uploaderText, $textLight);
+        }
+        
+        // ===== GPS KOORDINAT (jika ada) =====
+        if ($hasGps) {
+            $contentY += $fontSmall + 8;
+            $gpsText = "📍 " . number_format($latitude, 6) . ", " . number_format($longitude, 6);
+            if ($useTTF) {
+                imagettftext($image, $fontSmall - 1, 0, $contentX, $contentY + $fontSmall, $accentYellow, $fontRegular, $gpsText);
+            } else {
+                imagestring($image, 2, $contentX, $contentY, $gpsText, $accentYellow);
+            }
         }
         
         // ===== 9. KETERANGAN (jika ada) =====
