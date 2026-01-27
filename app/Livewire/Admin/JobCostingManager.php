@@ -70,7 +70,7 @@ class JobCostingManager extends Component
     protected function rules()
     {
         return [
-            'vendor_id' => 'required|exists:vendors,id',
+            'vendor_id' => 'nullable|exists:vendors,id',
             'description' => 'required|string|max:500',
             'amount' => 'required|numeric|min:0',
             'payment_proof' => 'nullable|file|mimes:jpg,jpeg,png,pdf,webp|max:5120',
@@ -203,7 +203,7 @@ class JobCostingManager extends Component
                       ->orWhere('bl_number', 'like', "%{$this->search}%")
                       ->orWhereHas('customer', fn($c) => 
                           $c->where('company_name', 'like', "%{$this->search}%")
-                            ->orWhere('name', 'like', "%{$this->search}%")
+                            ->orWhere('company_name', 'like', "%{$this->search}%")
                       );
                 });
             }
@@ -424,6 +424,11 @@ class JobCostingManager extends Component
     
     public function saveCost()
     {
+        // Convert empty vendor_id to null before validation
+        if (empty($this->vendor_id)) {
+            $this->vendor_id = null;
+        }
+
         $this->validate();
 
         try {
@@ -439,7 +444,7 @@ class JobCostingManager extends Component
 
                 $data = [
                     'shipment_id' => $this->shipmentIdForCost,
-                    'vendor_id' => $this->vendor_id,
+                    'vendor_id' => $this->vendor_id ?: null,
                     'description' => $this->description,
                     'amount' => $this->amount,
                     'status' => $this->status,
@@ -611,8 +616,13 @@ class JobCostingManager extends Component
         $this->showDeleteConfirm = false;
     }
 
-    public function deleteCost()
+    public function deleteCost($costId = null)
     {
+        
+        // Support direct call with ID or via confirmDelete
+        if ($costId) {
+            $this->costToDelete = $costId;
+        }
         if (!$this->costToDelete) {
             return;
         }
