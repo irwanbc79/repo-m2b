@@ -135,6 +135,20 @@
                             <span class="ml-2 font-medium">{{ $selectedCode->parent_code ?? 'None' }}</span>
                         </div>
                     </div>
+                    
+                    {{-- Import/Export Duty untuk 8 digit --}}
+                    @if($selectedCode->hs_level == 8 && ($selectedCode->import_duty || $selectedCode->export_duty))
+                        <div class="mt-4 grid grid-cols-2 gap-4">
+                            <div class="p-3 bg-green-50 rounded-lg border border-green-200">
+                                <span class="text-xs text-green-600 font-medium">BEA MASUK (Import Duty)</span>
+                                <p class="text-lg font-bold text-green-700">{{ $selectedCode->import_duty ?: '-' }}{{ is_numeric($selectedCode->import_duty) ? '%' : '' }}</p>
+                            </div>
+                            <div class="p-3 bg-orange-50 rounded-lg border border-orange-200">
+                                <span class="text-xs text-orange-600 font-medium">BEA KELUAR (Export Duty)</span>
+                                <p class="text-lg font-bold text-orange-700">{{ $selectedCode->export_duty ?: '-' }}{{ is_numeric($selectedCode->export_duty) ? '%' : '' }}</p>
+                            </div>
+                        </div>
+                    @endif
                 </div>
 
                 {{-- Children --}}
@@ -188,6 +202,18 @@
                                         </span>
                                     </div>
                                     <p class="mt-2 text-gray-700">{{ $code->description_id }}</p>
+                                    
+                                    {{-- Import/Export Duty untuk 8 digit --}}
+                                    @if($code->hs_level == 8 && ($code->import_duty || $code->export_duty))
+                                        <div class="mt-2 flex gap-4 text-xs">
+                                            <span class="px-2 py-1 bg-green-100 text-green-700 rounded">
+                                                <strong>Bea Masuk:</strong> {{ $code->import_duty ?: '-' }}{{ is_numeric($code->import_duty) ? '%' : '' }}
+                                            </span>
+                                            <span class="px-2 py-1 bg-orange-100 text-orange-700 rounded">
+                                                <strong>Bea Keluar:</strong> {{ $code->export_duty ?: '-' }}{{ is_numeric($code->export_duty) ? '%' : '' }}
+                                            </span>
+                                        </div>
+                                    @endif
                                 </div>
                                 <svg class="w-5 h-5 text-gray-400 group-hover:text-blue-600 flex-shrink-0 ml-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/>

@@ -32,8 +32,8 @@
         .siblings-section { margin-top: 1rem; padding-top: 1rem; border-top: 1px dashed #d1d5db; }
         .sibling-item { display: inline-block; background: #f3f4f6; padding: 4px 10px; border-radius: 4px; margin: 4px; font-size: 13px; cursor: pointer; }
         .sibling-item:hover { background: #e5e7eb; }
-        .table-header { display: grid; grid-template-columns: 130px 1fr 1fr 180px; gap: 1rem; font-size: 11px; font-weight: 600; color: #6b7280; padding: 10px 16px; background: #f1f5f9; border-radius: 8px; margin-bottom: 8px; text-transform: uppercase; }
-        .table-row { display: grid; grid-template-columns: 130px 1fr 1fr 180px; gap: 1rem; align-items: center; }
+        .table-header { display: grid; grid-template-columns: 130px 1fr 1fr 80px 80px 140px; gap: 1rem; font-size: 11px; font-weight: 600; color: #6b7280; padding: 10px 16px; background: #f1f5f9; border-radius: 8px; margin-bottom: 8px; text-transform: uppercase; }
+        .table-row { display: grid; grid-template-columns: 130px 1fr 1fr 80px 80px 140px; gap: 1rem; align-items: center; }
     </style>
     <div class="search-container">
         <div class="header-section">
@@ -74,13 +74,15 @@
         <div wire:loading.remove>
             @if($results->count() > 0)
             <div style="margin-bottom:1rem;"><h2 style="font-size:18px;color:#374151;margin:0;">📊 Hasil Pencarian ({{ $results->total() }} kode)</h2></div>
-            <div class="table-header"><span>KODE</span><span>URAIAN (INDONESIA)</span><span>DESCRIPTION (ENGLISH)</span><span>INFO</span></div>
+            <div class="table-header"><span>KODE</span><span>URAIAN (INDONESIA)</span><span>DESCRIPTION (ENGLISH)</span><span>BEA MASUK</span><span>BEA KELUAR</span><span>INFO</span></div>
             @foreach($results as $code)
             <div class="result-card {{ $selectedCode == $code->hs_code ? 'selected' : '' }}">
                 <div class="table-row">
                     <div class="hs-code">{{ $code->hs_code }}</div>
                     <div style="color:#374151;font-size:14px;">{{ $code->description_id ?: '-' }}</div>
                     <div style="color:#6b7280;font-size:14px;font-style:italic;">{{ $code->description_en ?: '-' }}</div>
+                    <div style="text-align:center;font-size:13px;">@if($code->hs_level == 8 && $code->import_duty)<span style="background:#dcfce7;color:#166534;padding:2px 8px;border-radius:4px;font-weight:600;">{{ $code->import_duty }}{{ is_numeric($code->import_duty) ? '%' : '' }}</span>@else<span style="color:#9ca3af;">-</span>@endif</div>
+                    <div style="text-align:center;font-size:13px;">@if($code->hs_level == 8 && $code->export_duty && $code->export_duty != '-')<span style="background:#ffedd5;color:#9a3412;padding:2px 8px;border-radius:4px;font-weight:600;">{{ $code->export_duty }}{{ is_numeric($code->export_duty) ? '%' : '' }}</span>@else<span style="color:#9ca3af;">-</span>@endif</div>
                     <div style="display:flex;align-items:center;flex-wrap:wrap;gap:4px;">
                         <span class="badge badge-level">{{ $code->hs_level }} Digit</span>
                         @if($code->chapter_number)<span class="badge badge-chapter">Bab {{ $code->chapter_number }}</span>@endif

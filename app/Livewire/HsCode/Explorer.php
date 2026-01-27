@@ -116,7 +116,7 @@ class Explorer extends Component
         $chapters = DB::table('hs_chapters')->orderBy('chapter_number')->get();
         
         $query = DB::table('hs_codes')
-            ->select('hs_code', 'description_id', 'description_en', 'hs_level', 'chapter_number', 'parent_code');
+            ->select('hs_code', 'description_id', 'description_en', 'hs_level', 'chapter_number', 'parent_code', 'import_duty', 'export_duty');
             
         if (!empty(trim($this->search))) {
             $searchTerm = '%' . trim($this->search) . '%';
