@@ -111,6 +111,51 @@ class Explorer extends Component
         return $result;
     }
     
+    
+    
+    public function getKumHs()
+    {
+        return DB::table('hs_kum')->orderBy('rule_number')->get();
+    }
+
+    public function getExplanatoryNote($hsCode)
+    {
+        // Bersihkan kode dari titik
+        $cleanCode = str_replace('.', '', $hsCode);
+        
+        // Coba cari dari yang paling spesifik ke umum
+        $patterns = [];
+        
+        // 8 digit: 8215.10.00 -> cari "82151000" atau "8215.10.00"
+        if (strlen($cleanCode) >= 8) {
+            $patterns[] = substr($cleanCode, 0, 4) . '.' . substr($cleanCode, 4, 2) . '.' . substr($cleanCode, 6, 2);
+            $patterns[] = substr($cleanCode, 0, 8);
+        }
+        
+        // 6 digit: 8215.10 -> cari "821510" atau "8215.10"  
+        if (strlen($cleanCode) >= 6) {
+            $patterns[] = substr($cleanCode, 0, 4) . '.' . substr($cleanCode, 4, 2);
+            $patterns[] = substr($cleanCode, 0, 6);
+        }
+        
+        // 4 digit (heading): 8215 -> cari "8215" atau "82.15"
+        if (strlen($cleanCode) >= 4) {
+            $patterns[] = substr($cleanCode, 0, 4);
+            $patterns[] = substr($cleanCode, 0, 2) . '.' . substr($cleanCode, 2, 2);
+        }
+        
+        foreach ($patterns as $pattern) {
+            $note = DB::table('hs_explanatory_notes')
+                ->where('hs_code', $pattern)
+                ->first();
+            if ($note) {
+                return $note;
+            }
+        }
+        
+        return null;
+    }
+
     public function render()
     {
         $chapters = DB::table('hs_chapters')->orderBy('chapter_number')->get();
