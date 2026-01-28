@@ -34,6 +34,21 @@ class ShipmentService
                 $shipment
             );
 
+
+            // Auto-activate customer dan update last_shipment_at
+            if ($shipment->customer) {
+                $updateData = ['last_shipment_at' => now()];
+                if (!$shipment->customer->is_active) {
+                    $updateData['is_active'] = true;
+                    ActivityLog::log(
+                        'updated',
+                        'Customer ' . $shipment->customer->email . ' auto-activated due to new shipment',
+                        $shipment->customer
+                    );
+                }
+                $shipment->customer->update($updateData);
+            }
+
             return $shipment->load('customer', 'statusHistory');
         });
     }

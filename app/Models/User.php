@@ -17,6 +17,8 @@ class User extends Authenticatable
         'password',
         'roles', // <--- Kita pakai 'roles' (jamak)
         'role',  // Tetap simpan ini untuk kompatibilitas kode lama sementara
+        'is_active',
+        'last_shipment_at',
     ];
 
     protected $hidden = [
@@ -30,6 +32,8 @@ class User extends Authenticatable
             'email_verified_at' => 'datetime',
             'password' => 'hashed',
             'roles' => 'array', // <--- PENTING: Agar otomatis jadi Array saat diambil
+            'last_shipment_at' => 'datetime',
+            'is_active' => 'boolean',
         ];
     }
     

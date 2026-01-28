@@ -141,7 +141,25 @@
                     <div style="color:#374151;font-size:14px;">{{ $code->description_id ?: '-' }}</div>
                     <div style="color:#6b7280;font-size:14px;font-style:italic;">{{ $code->description_en ?: '-' }}</div>
                     <div style="text-align:center;font-size:13px;">@if($code->hs_level == 8 && $code->import_duty)<span style="background:#dcfce7;color:#166534;padding:2px 8px;border-radius:4px;font-weight:600;">{{ $code->import_duty }}{{ is_numeric($code->import_duty) ? '%' : '' }}</span>@else<span style="color:#9ca3af;">-</span>@endif</div>
-                    <div style="text-align:center;font-size:13px;">@if($code->hs_level == 8 && $code->export_duty && $code->export_duty != '-')<span style="background:#ffedd5;color:#9a3412;padding:2px 8px;border-radius:4px;font-weight:600;">{{ $code->export_duty }}{{ is_numeric($code->export_duty) ? '%' : '' }}</span>@else<span style="color:#9ca3af;">-</span>@endif</div>
+                    <div style="text-align:center;font-size:13px;" x-data="{ showTooltip: false }">
+    @if($code->hs_level == 8 && $code->export_duty && $code->export_duty != '-')
+        @if($code->export_duty == '*)' || str_contains($code->export_duty, '*'))
+            <span @mouseenter="showTooltip = true" @mouseleave="showTooltip = false" style="background:#fef3c7;color:#92400e;padding:2px 8px;border-radius:4px;font-weight:600;cursor:help;position:relative;">
+                {{ $code->export_duty }}
+                <div x-show="showTooltip" x-cloak style="position:absolute;bottom:100%;left:50%;transform:translateX(-50%);background:#1f2937;color:white;padding:12px;border-radius:8px;width:280px;font-size:11px;font-weight:normal;text-align:left;z-index:1000;margin-bottom:8px;box-shadow:0 4px 12px rgba(0,0,0,0.3);">
+                    <div style="font-weight:600;margin-bottom:6px;">📋 Tarif Bea Keluar Khusus</div>
+                    <div style="line-height:1.5;">Tarif bersifat <b>progresif</b> atau mengikuti ketentuan PMK. Dapat berubah sesuai Harga Patokan Ekspor (HPE).</div>
+                    <a href="https://insw.go.id/intr" target="_blank" style="display:block;margin-top:8px;color:#60a5fa;text-decoration:underline;">🔗 Cek tarif resmi di INSW</a>
+                    <div style="position:absolute;bottom:-6px;left:50%;transform:translateX(-50%);border-left:6px solid transparent;border-right:6px solid transparent;border-top:6px solid #1f2937;"></div>
+                </div>
+            </span>
+        @else
+            <span style="background:#ffedd5;color:#9a3412;padding:2px 8px;border-radius:4px;font-weight:600;">{{ $code->export_duty }}{{ is_numeric($code->export_duty) ? '%' : '' }}</span>
+        @endif
+    @else
+        <span style="color:#9ca3af;">-</span>
+    @endif
+</div>
                     <div style="display:flex;align-items:center;flex-wrap:wrap;gap:4px;">
                         <span class="badge badge-level">{{ $code->hs_level }} Digit</span>
                         @if($code->chapter_number)<span class="badge badge-chapter">Bab {{ $code->chapter_number }}</span>@endif
@@ -156,4 +174,28 @@
             @endif
         </div>
     </div>
+
+<!-- Disclaimer Section -->
+<div style="margin-top:30px;padding:20px;background:linear-gradient(135deg,#f8fafc,#f1f5f9);border-radius:12px;border:1px solid #e2e8f0;">
+    <div style="display:flex;align-items:flex-start;gap:12px;">
+        <div style="font-size:24px;">⚠️</div>
+        <div>
+            <div style="font-weight:700;color:#334155;font-size:14px;margin-bottom:8px;">Disclaimer - Penyangkalan</div>
+            <div style="color:#64748b;font-size:12px;line-height:1.7;">
+                <p style="margin-bottom:8px;">Data tarif Bea Masuk (BM) dan Bea Keluar (BK) yang ditampilkan bersumber dari <b>BTKI 2022 (Buku Tarif Kepabeanan Indonesia)</b> dan bersifat <b>informatif</b>. Tarif dapat berubah sewaktu-waktu sesuai dengan peraturan pemerintah yang berlaku.</p>
+                <p style="margin-bottom:8px;"><b>Keterangan Simbol:</b></p>
+                <ul style="margin:0 0 8px 16px;padding:0;">
+                    <li><b>-</b> : Tidak dikenakan bea</li>
+                    <li><b>*)</b> : Tarif progresif/khusus, mengikuti ketentuan PMK dan Harga Patokan Ekspor (HPE)</li>
+                    <li><b>0%, 5%, dst</b> : Tarif bea sesuai persentase</li>
+                </ul>
+                <p style="margin-bottom:0;">Untuk informasi tarif resmi, ketentuan lartas (larangan/pembatasan), dan regulasi terkini, silakan kunjungi: 
+                    <a href="https://insw.go.id/intr" target="_blank" style="color:#2563eb;font-weight:600;text-decoration:underline;">Indonesia National Single Window (INSW)</a> | 
+                    <a href="https://www.beacukai.go.id" target="_blank" style="color:#2563eb;font-weight:600;text-decoration:underline;">Bea Cukai</a>
+                </p>
+            </div>
+        </div>
+    </div>
+</div>
+
 </div>

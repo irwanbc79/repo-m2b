@@ -14,6 +14,9 @@ class Kernel extends ConsoleKernel
     {
         // 🔑 AUTO SYNC EMAIL IMAP (SETIAP 1 MENIT)
         $schedule->command('email:sync')->everyMinute();
+
+        // 🔒 AUTO DEACTIVATE CUSTOMER INACTIVE (SETIAP HARI JAM 00:00)
+        $schedule->command('customers:deactivate-inactive')->daily();
     }
 
     /**

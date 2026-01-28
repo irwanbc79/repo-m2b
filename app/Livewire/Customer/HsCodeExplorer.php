@@ -134,4 +134,36 @@ class HsCodeExplorer extends Component
             'results' => $results,
         ]);
     }
+
+    public function getKumHs()
+    {
+        return DB::table('hs_kum')->orderBy('rule_number')->get();
+    }
+    
+    public function getExplanatoryNote($hsCode)
+    {
+        $cleanCode = str_replace('.', '', $hsCode);
+        
+        $patterns = [];
+        if (strlen($cleanCode) >= 8) {
+            $patterns[] = substr($cleanCode, 0, 4) . '.' . substr($cleanCode, 4, 2) . '.' . substr($cleanCode, 6, 2);
+            $patterns[] = substr($cleanCode, 0, 8);
+        }
+        if (strlen($cleanCode) >= 6) {
+            $patterns[] = substr($cleanCode, 0, 4) . '.' . substr($cleanCode, 4, 2);
+            $patterns[] = substr($cleanCode, 0, 6);
+        }
+        if (strlen($cleanCode) >= 4) {
+            $patterns[] = substr($cleanCode, 0, 4);
+            $patterns[] = substr($cleanCode, 0, 2) . '.' . substr($cleanCode, 2, 2);
+        }
+        
+        foreach ($patterns as $pattern) {
+            $note = DB::table('hs_explanatory_notes')->where('hs_code', $pattern)->first();
+            if ($note) return $note;
+        }
+        
+        return null;
+    }
+
 }
