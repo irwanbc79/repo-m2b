@@ -57,7 +57,48 @@
                         <td class="px-6 py-4">
                             <div class="text-sm text-gray-700">{{ $shipment->container_info ?: ($shipment->commodity ?: "-") }}</div>
                             @if($shipment->hs_code)
-                                <div class="text-xs font-mono text-blue-600 mt-1">HS: {{ $shipment->hs_code }}</div>
+                                @php
+                                    $hsInfo = \DB::table('hs_codes')->where('hs_code', $shipment->hs_code)->first();
+                                @endphp
+                                <div x-data="{ showTip: false }" class="relative inline-block">
+                                    <div @mouseenter="showTip = true" @mouseleave="showTip = false" 
+                                         class="text-xs font-mono text-blue-600 mt-1 cursor-help inline-flex items-center gap-1">
+                                        <span>HS: {{ $shipment->hs_code }}</span>
+                                        @if($hsInfo)
+                                        <svg class="w-3 h-3 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/>
+                                        </svg>
+                                        @endif
+                                    </div>
+                                    @if($hsInfo)
+                                    <div x-show="showTip" x-cloak 
+                                         x-transition:enter="transition ease-out duration-200"
+                                         x-transition:enter-start="opacity-0 transform scale-95"
+                                         x-transition:enter-end="opacity-100 transform scale-100"
+                                         class="absolute z-50 bottom-full left-0 mb-2 w-72 p-3 bg-gray-900 text-white text-xs rounded-lg shadow-xl">
+                                        <div class="font-bold text-yellow-300 mb-1">{{ $shipment->hs_code }}</div>
+                                        <div class="mb-2">
+                                            <div class="text-gray-300 text-[10px] uppercase tracking-wide">Indonesia:</div>
+                                            <div class="text-white">{{ $hsInfo->description_id ?: '-' }}</div>
+                                        </div>
+                                        <div>
+                                            <div class="text-gray-300 text-[10px] uppercase tracking-wide">English:</div>
+                                            <div class="text-gray-200 italic">{{ $hsInfo->description_en ?: '-' }}</div>
+                                        </div>
+                                        @if($hsInfo->import_duty)
+                                        <div class="mt-2 pt-2 border-t border-gray-700 flex gap-3">
+                                            <span class="text-green-400">BM: {{ $hsInfo->import_duty }}{{ is_numeric($hsInfo->import_duty) ? '%' : '' }}</span>
+                                            @if($hsInfo->export_duty && $hsInfo->export_duty != '-')
+                                            <span class="text-orange-400">BK: {{ $hsInfo->export_duty }}</span>
+                                            @endif
+                                        </div>
+                                        @endif
+                                        <div class="absolute bottom-0 left-4 transform translate-y-full">
+                                            <div class="border-8 border-transparent border-t-gray-900"></div>
+                                        </div>
+                                    </div>
+                                    @endif
+                                </div>
                             @endif
                         </td>
 

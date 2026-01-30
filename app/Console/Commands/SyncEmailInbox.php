@@ -58,7 +58,7 @@ class SyncEmailInbox extends Command
             $this->info("   📂 Scan Folder: {$targetFolder->name}");
 
             // Ambil email lebih banyak (200) tanpa filter status seen/unseen agar email hari ini tidak terlewat
-            $messages = $targetFolder->messages()->all()->limit(50)->setFetchOrder('desc')->get();
+            $messages = $targetFolder->messages()->all()->limit(20)->setFetchOrder('desc')->get();
             $this->info("   🔍 Memeriksa " . $messages->count() . " email terbaru di server...");
 
             $syncedCount = 0;

@@ -39,7 +39,7 @@
                         </div>
                         <div>
                             <label class="block text-xs font-bold text-gray-500 uppercase tracking-wide mb-1">NPWP Perusahaan</label>
-                            <p class="text-gray-800 font-mono">{{ $npwp ?? '-' }}</p>
+                            <input type="text" wire:model="npwp" class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 font-mono" placeholder="XX.XXX.XXX.X-XXX.XXX">
                         </div>
                         <div class="md:col-span-2">
                             <label class="block text-xs font-bold text-gray-500 uppercase tracking-wide mb-1">Alamat Lengkap (Kantor)</label>

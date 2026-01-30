@@ -75,6 +75,7 @@ class Profile extends Component
         $this->validate([
             'name' => 'required|min:3',
             'phone' => 'nullable|string|max:20',
+            'npwp' => 'nullable|string|max:30',
             'address' => 'nullable|string|max:500',
             'city' => 'nullable|string|max:100',
             'warehouse_address' => 'nullable|string|max:500',
@@ -87,6 +88,7 @@ class Profile extends Component
         $customer = Customer::where('user_id', $user->id)->first();
         if ($customer) {
             $customer->phone = $this->phone;
+        $customer->npwp = $this->npwp;
             $customer->address = $this->address;
             $customer->city = $this->city;
             $customer->warehouse_address = $this->warehouse_address;
