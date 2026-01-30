@@ -688,7 +688,7 @@ class InvoiceManager extends Component
         if ($invoice) {
             $totalPaid = \App\Models\InvoicePayment::where("invoice_id", $invoiceId)->sum("amount");
             $invoice->total_paid = $totalPaid;
-            if ($totalPaid >= $invoice->grand_total) {
+            if ($totalPaid >= $invoice->grand_total || abs($invoice->grand_total - $totalPaid) < 1) {
                 $invoice->status = "paid";
             } elseif ($totalPaid > 0) {
                 $invoice->status = "partial";

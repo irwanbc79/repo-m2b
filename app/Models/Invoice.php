@@ -150,7 +150,7 @@ class Invoice extends Model
         if ($this->total_paid <= 0) {
             $this->status = 'unpaid';
             $this->payment_date = null;
-        } elseif ($this->total_paid >= $this->grand_total) {
+        } elseif ($this->total_paid >= $this->grand_total || abs($this->grand_total - $this->total_paid) < 1) {
             $this->status = 'paid';
             $this->payment_date = $this->payment_date ?? now();
         } else {
