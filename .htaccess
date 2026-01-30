@@ -1,1 +1,8 @@
+# Exclude Livewire from LiteSpeed Cache
+<IfModule LiteSpeed>
+RewriteEngine On
+RewriteRule ^livewire/update - [E=Cache-Control:no-cache]
+RewriteRule ^livewire/ - [E=Cache-Control:no-cache]
+</IfModule>
+
 # Force reload 1768620427
