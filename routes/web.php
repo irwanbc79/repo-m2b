@@ -947,3 +947,8 @@ Route::get('/api/customers/search', function (Illuminate\Http\Request $request) 
         ->get(['id', 'company_name', 'address', 'phone', 'city']);
     return response()->json($customers);
 })->name('api.customers.search')->middleware('auth');
+
+// ========== KAS KECIL ==========
+Route::middleware(['auth', 'admin'])->group(function () {
+    Route::get('/admin/kas-kecil', \App\Livewire\Admin\PettyCashManager::class)->name('admin.petty-cash');
+});

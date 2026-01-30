@@ -125,6 +125,9 @@
                 <a href="{{ route('admin.job-costing.index') }}" class="flex items-center px-4 py-3 text-sm font-medium rounded-lg transition-colors {{ request()->routeIs('admin.job-costing*') ? 'bg-m2b-accent text-white' : 'hover:bg-gray-800 text-gray-300' }}">
                     💼 Job Costing
                 </a>
+                <a href="{{ route('admin.petty-cash') }}" class="flex items-center px-4 py-3 text-sm font-medium rounded-lg transition-colors {{ request()->routeIs('admin.petty-cash*') ? 'bg-m2b-accent text-white' : 'hover:bg-gray-800 text-gray-300' }}">
+                    💰 Kas Kecil
+                </a>
 
                 <a href="{{ route('admin.products') }}" class="flex items-center px-4 py-3 text-sm font-medium rounded-lg transition-colors {{ request()->routeIs('admin.products*') ? 'bg-m2b-accent text-white' : 'hover:bg-gray-800 text-gray-300' }}">
                     🛍️ Master Product/Service
