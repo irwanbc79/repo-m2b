@@ -67,6 +67,7 @@
                     <option value="">Semua Status</option>
                     <option value="unpaid">Unpaid</option>
                     <option value="paid">Paid</option>
+                    <option value="partial">Partial</option>
                     <option value="overdue">Overdue</option>
                 </select>
                 
