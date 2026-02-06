@@ -144,9 +144,9 @@
                             <td class="px-4 py-3 text-sm text-right font-semibold text-red-600">-Rp {{ number_format($t->amount, 0, ',', '.') }}</td>
                             <td class="px-4 py-3 text-center">
                                 @if($t->proof_file)
-                                <button wire:click="previewProof('{{ $t->proof_file }}')" class="text-blue-500 hover:text-blue-700 transition" title="Lihat Bukti">
+                                <a href="{{ Storage::disk('public')->url($t->proof_file) }}" target="_blank" class="text-blue-500 hover:text-blue-700 transition" title="Lihat Bukti">
                                     <svg class="w-5 h-5 inline" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"/></svg>
-                                </button>
+                                </a>
                                 @endif
                             </td>
                         </tr>
@@ -441,22 +441,4 @@
     </div>
     @endif
 
-    {{-- MODAL: Preview Bukti --}}
-    @if($showPreviewModal)
-    <div class="fixed inset-0 bg-black bg-opacity-75 flex items-center justify-center z-50 p-4" wire:click.self="$set('showPreviewModal', false)">
-        <div class="bg-white rounded-xl max-w-4xl max-h-[90vh] overflow-auto shadow-2xl">
-            <div class="px-6 py-4 border-b flex justify-between items-center sticky top-0 bg-white">
-                <h3 class="font-bold text-gray-800">Preview Bukti</h3>
-                <button wire:click="$set('showPreviewModal', false)" class="text-gray-400 hover:text-gray-600 text-2xl">&times;</button>
-            </div>
-            <div class="p-4">
-                @if($previewType === 'image')
-                    <img src="{{ $previewFile }}" alt="Bukti Transaksi" class="max-w-full rounded-lg">
-                @else
-                    <iframe src="{{ $previewFile }}" class="w-full h-[70vh] rounded-lg border"></iframe>
-                @endif
-            </div>
-        </div>
     </div>
-    @endif
-</div>

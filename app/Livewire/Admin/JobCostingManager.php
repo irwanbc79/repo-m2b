@@ -11,6 +11,7 @@ use App\Models\Vendor;
 use App\Models\Account;
 use App\Models\Journal;
 use App\Models\JournalItem;
+use App\Models\VendorRating;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
@@ -62,6 +63,14 @@ class JobCostingManager extends Component
     // Edit Mode
     public $editMode = false;
     public $editingCostId = null;
+    
+    // Vendor Rating
+    public $showRatingModal = false;
+    public $ratingVendorId = null;
+    public $ratingVendorName = "";
+    public $ratingJobCostId = null;
+    public $vendorRating = 5;
+    public $ratingNotes = "";
 
     // =========================================
     // VALIDATION RULES
@@ -753,5 +762,75 @@ class JobCostingManager extends Component
     public function formatCurrency($amount)
     {
         return 'Rp ' . number_format($amount, 0, ',', '.');
+    }
+
+    // =========================================
+    // VENDOR RATING METHODS
+    // =========================================
+    
+    public function openRatingModal($vendorId, $jobCostId = null)
+    {
+        $vendor = Vendor::find($vendorId);
+        if (!$vendor) {
+            session()->flash('error', 'Vendor tidak ditemukan');
+            return;
+        }
+        
+        $this->ratingVendorId = $vendorId;
+        $this->ratingVendorName = $vendor->name;
+        $this->ratingJobCostId = $jobCostId;
+        $this->vendorRating = 5;
+        $this->ratingNotes = "";
+        $this->showRatingModal = true;
+    }
+    
+    public function closeRatingModal()
+    {
+        $this->showRatingModal = false;
+        $this->ratingVendorId = null;
+        $this->ratingVendorName = "";
+        $this->ratingJobCostId = null;
+        $this->vendorRating = 5;
+        $this->ratingNotes = "";
+    }
+    
+    public function submitRating()
+    {
+        if (!$this->ratingVendorId) {
+            session()->flash('error', 'Vendor tidak valid');
+            return;
+        }
+        
+        try {
+            // Simpan rating
+            VendorRating::create([
+                'vendor_id' => $this->ratingVendorId,
+                'shipment_id' => $this->shipmentIdForCost,
+                'job_cost_id' => $this->ratingJobCostId,
+                'rating' => $this->vendorRating,
+                'criteria' => 'overall',
+                'notes' => $this->ratingNotes,
+                'rated_by' => auth()->id(),
+            ]);
+            
+            // Recalculate vendor score
+            $vendor = Vendor::find($this->ratingVendorId);
+            if ($vendor) {
+                $vendor->calculateScore();
+            }
+            
+            session()->flash('message', 'Rating vendor berhasil disimpan! ⭐');
+            $this->closeRatingModal();
+            
+        } catch (Exception $e) {
+            Log::error('Error saving vendor rating: ' . $e->getMessage());
+            session()->flash('error', 'Gagal menyimpan rating: ' . $e->getMessage());
+        }
+    }
+    
+    public function skipRating()
+    {
+        $this->closeRatingModal();
+        session()->flash('message', 'Rating dilewati.');
     }
 }

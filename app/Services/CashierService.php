@@ -325,13 +325,15 @@ class CashierService
         try {
             $cashTransaction = CashTransaction::with(['journal'])->findOrFail($id);
             
-            if (($cashTransaction->journal->status ?? 'draft') !== 'draft') {
+            if (!in_array(($cashTransaction->journal->status ?? 'draft'), ['draft', 'pending', 'posted'])) {
                 throw new \Exception('Hanya transaksi Draft yang dapat diupdate!');
             }
             
-            if ($cashTransaction->journal_id) {
-                \App\Models\Journal::where('id', $cashTransaction->journal_id)->delete();
-            }
+            // Simpan journal_id lama untuk dihapus nanti
+            $oldJournalId = $cashTransaction->journal_id;
+            
+            // Lepas foreign key dulu
+            $cashTransaction->update(['journal_id' => null]);
             
             $accounts = $this->determineAccounts($data);
             $journal = $this->createJournal($data, $accounts);
@@ -340,8 +342,8 @@ class CashierService
                 'transaction_date' => $data['transaction_date'],
                 'type' => $data['type'],
                 'amount' => $data['amount'],
-                'account_id' => $accounts['cash_account'],
-                'counter_account_id' => $accounts['counter_account'],
+                'account_id' => $accounts['debit_account']->id,
+                'counter_account_id' => $accounts['credit_account']->id,
                 'customer_id' => $data['customer_id'] ?? null,
                 'vendor_id' => $data['vendor_id'] ?? null,
                 'shipment_id' => $data['shipment_id'] ?? null,
@@ -354,6 +356,11 @@ class CashierService
                 $cashTransaction->update(['proof_file' => $path]);
             }
             
+            
+            // Hapus journal lama setelah cash_transaction sudah punya journal baru
+            if ($oldJournalId) {
+                \App\Models\Journal::where('id', $oldJournalId)->delete();
+            }
             DB::commit();
             return $cashTransaction;
             

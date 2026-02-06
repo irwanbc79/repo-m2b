@@ -176,9 +176,6 @@
                     📋 Customer Survey
                 </a>
                 
-                <a href="{{ route('admin.reports') }}" class="flex items-center px-4 py-3 text-sm font-medium rounded-lg transition-colors {{ request()->routeIs('admin.reports') ? 'bg-m2b-accent text-white' : 'hover:bg-gray-800 text-gray-300' }}">
-                    📑 Laporan / Reports
-                </a>
                 
                 @if(auth()->user()->hasPermission('user.view'))
                 <a href="{{ route('admin.users.index') }}" class="flex items-center px-4 py-3 text-sm font-medium rounded-lg transition-colors {{ request()->routeIs('admin.users*') ? 'bg-m2b-accent text-white' : 'hover:bg-gray-800 text-gray-300' }}">

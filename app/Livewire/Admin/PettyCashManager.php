@@ -150,7 +150,23 @@ class PettyCashManager extends Component
         $this->validate();
 
         try {
-            $path = $this->proof_file->store('petty-cash/proofs', 'public');
+            // Upload dan resize image untuk hemat space
+            $file = $this->proof_file;
+            $extension = strtolower($file->getClientOriginalExtension());
+
+            if (in_array($extension, ['jpg', 'jpeg', 'png'])) {
+                // Resize image max 1200px, quality 80%
+                $manager = new \Intervention\Image\ImageManager(new \Intervention\Image\Drivers\Gd\Driver());
+                $image = $manager->read($file->getRealPath());
+                if ($image->width() > 1200) {
+                    $image->scale(width: 1200);
+                }
+                $filename = uniqid() . '.' . $extension;
+                $path = 'petty-cash/proofs/' . $filename;
+                Storage::disk('public')->put($path, $image->toJpeg(80));
+            } else {
+                $path = $file->store('petty-cash/proofs', 'public');
+            }
             
             app(PettyCashService::class)->createTransaction($this->fund, [
                 'transaction_date' => $this->transaction_date,
@@ -375,10 +391,12 @@ class PettyCashManager extends Component
 
     public function previewProof($path)
     {
+        \Log::info('previewProof called', ['path' => $path]);
         $this->previewFile = Storage::disk('public')->url($path);
         $ext = strtolower(pathinfo($path, PATHINFO_EXTENSION));
         $this->previewType = in_array($ext, ['jpg', 'jpeg', 'png', 'webp']) ? 'image' : 'pdf';
         $this->showPreviewModal = true;
+        \Log::info('Preview modal state', ['file' => $this->previewFile, 'type' => $this->previewType, 'show' => $this->showPreviewModal]);
     }
 
     // ==================== RENDER ====================

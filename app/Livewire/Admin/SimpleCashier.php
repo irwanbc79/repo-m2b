@@ -280,13 +280,13 @@ class SimpleCashier extends Component
         \Log::info("🔵 EditTransaction", ["id" => $id, "user" => auth()->id()]);
         $transaction = CashTransaction::with(['journal'])->findOrFail($id);
         
-        if (($transaction->journal->status ?? 'draft') !== 'draft') {
+        if (!in_array(($transaction->journal->status ?? 'draft'), ['draft', 'pending', 'posted'])) {
             session()->flash('error', 'Hanya transaksi Draft yang dapat diedit!');
             return;
         }
         
         $this->editingId = $id;
-        $this->transaction_date = $transaction->transaction_date;
+        $this->transaction_date = $transaction->transaction_date->format('Y-m-d');
         $this->transaction_type = $transaction->type === 'in' ? 'cash_in' : 'cash_out';
         $this->counterpart_id = $transaction->customer_id ?? $transaction->vendor_id;
         $this->counterpart_type = $transaction->customer_id ? 'customer' : 'vendor';
@@ -301,12 +301,17 @@ class SimpleCashier extends Component
         session()->flash('info', 'Mode Edit - Ubah data dan klik Simpan untuk update');
     }
     
+    public function removeTransaction($id)
+    {
+        return $this->confirmDelete($id);
+    }
+    
     public function confirmDelete($id)
     {
         \Log::info("🟠 ConfirmDelete", ["id" => $id, "user" => auth()->id()]);
         $transaction = CashTransaction::with(['journal'])->findOrFail($id);
         
-        if (($transaction->journal->status ?? 'draft') !== 'draft') {
+        if (!in_array(($transaction->journal->status ?? 'draft'), ['draft', 'pending', 'posted'])) {
             session()->flash('error', 'Hanya transaksi Draft yang dapat dihapus!');
             return;
         }
@@ -323,7 +328,7 @@ class SimpleCashier extends Component
             
             $transaction = CashTransaction::with(['journal'])->findOrFail($this->deleteId);
             
-            if (($transaction->journal->status ?? 'draft') !== 'draft') {
+            if (!in_array(($transaction->journal->status ?? 'draft'), ['draft', 'pending', 'posted'])) {
                 throw new \Exception('Hanya transaksi Draft yang dapat dihapus!');
             }
             

@@ -127,58 +127,111 @@
                     </div>
                     @endif
 
-                    {{-- Customer/Vendor Selection --}}
+                    {{-- Customer/Vendor Selection with Search --}}
                     @if($counterpart_type)
-                    <div>
+                    <div x-data="{
+                        open: false,
+                        search: '',
+                        selected: $wire.counterpart_id,
+                        items: @js($counterpart_type === 'customer' ? $customers : $vendors),
+                        get filteredItems() {
+                            if (!this.search) return this.items;
+                            return this.items.filter(item => 
+                                (item.code + ' ' + item.name).toLowerCase().includes(this.search.toLowerCase())
+                            );
+                        },
+                        get selectedLabel() {
+                            const item = this.items.find(i => i.id == this.selected);
+                            return item ? item.code + ' - ' + item.name : '';
+                        },
+                        selectItem(id) {
+                            this.selected = id;
+                            $wire.set('counterpart_id', id);
+                            this.open = false;
+                            this.search = '';
+                        }
+                    }" class="relative">
                         <label class="block text-sm font-medium text-gray-700 mb-1">
                             Pilih {{ $counterpart_type === 'customer' ? 'Customer' : 'Vendor' }} <span class="text-red-500">*</span>
                         </label>
-                        <select 
-                            wire:model.live="counterpart_id"
-                            class="w-full border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500"
-                            required
-                        >
-                            <option value="">-- Pilih {{ $counterpart_type === 'customer' ? 'Customer' : 'Vendor' }} --</option>
-                            @if($counterpart_type === 'customer')
-                                @foreach($customers as $customer)
-                                    <option value="{{ $customer['id'] }}">
-                                        {{ $customer['code'] }} - {{ $customer['name'] }}
-                                    </option>
-                                @endforeach
-                            @else
-                                @foreach($vendors as $vendor)
-                                    <option value="{{ $vendor['id'] }}">
-                                        {{ $vendor['code'] }} - {{ $vendor['name'] }}
-                                    </option>
-                                @endforeach
-                            @endif
-                        </select>
+                        <div class="relative">
+                            <button type="button" @click="open = !open" class="w-full bg-white border border-gray-300 rounded-md shadow-sm pl-3 pr-10 py-2 text-left cursor-pointer focus:outline-none focus:ring-1 focus:ring-blue-500 focus:border-blue-500">
+                                <span x-text="selectedLabel || '-- Pilih {{ $counterpart_type === 'customer' ? 'Customer' : 'Vendor' }} --'" class="block truncate" :class="{'text-gray-400': !selected}"></span>
+                                <span class="absolute inset-y-0 right-0 flex items-center pr-2 pointer-events-none">
+                                    <svg class="h-5 w-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/></svg>
+                                </span>
+                            </button>
+                            <div x-show="open" @click.away="open = false" x-transition class="absolute z-50 mt-1 w-full bg-white shadow-lg max-h-60 rounded-md overflow-hidden border border-gray-200">
+                                <div class="p-2 border-b sticky top-0 bg-white">
+                                    <input type="text" x-model="search" placeholder="Ketik untuk mencari..." class="w-full border-gray-300 rounded-md text-sm focus:ring-blue-500 focus:border-blue-500" @click.stop>
+                                </div>
+                                <ul class="max-h-48 overflow-y-auto">
+                                    <template x-for="item in filteredItems" :key="item.id">
+                                        <li @click="selectItem(item.id)" class="cursor-pointer select-none relative py-2 pl-3 pr-9 hover:bg-blue-50" :class="{'bg-blue-100': selected == item.id}">
+                                            <span x-text="item.code + ' - ' + item.name" class="block truncate text-sm"></span>
+                                        </li>
+                                    </template>
+                                    <li x-show="filteredItems.length === 0" class="py-2 pl-3 text-gray-500 text-sm">Tidak ditemukan</li>
+                                </ul>
+                            </div>
+                        </div>
                     </div>
                     @endif
 
-                    {{-- Shipment Selection (if counterpart selected) --}}
+                    {{-- Shipment Selection with Search --}}
                     @if($counterpart_id && count($shipments) > 0)
-                    <div>
+                    <div x-data="{
+                        open: false,
+                        search: '',
+                        selected: $wire.shipment_id,
+                        items: @js($shipments),
+                        get filteredItems() {
+                            if (!this.search) return this.items;
+                            return this.items.filter(item => {
+                                const text = (item.awb_number || '') + ' ' + (item.origin || '') + ' ' + (item.destination || '') + ' ' + (item.status || '');
+                                return text.toLowerCase().includes(this.search.toLowerCase());
+                            });
+                        },
+                        get selectedLabel() {
+                            const item = this.items.find(i => i.id == this.selected);
+                            if (!item) return '';
+                            return (item.awb_number || '-') + ' - ' + (item.origin || '-') + ' → ' + (item.destination || '-') + ' (' + (item.status || '-').toUpperCase() + ')';
+                        },
+                        selectItem(id) {
+                            this.selected = id;
+                            $wire.set('shipment_id', id);
+                            this.open = false;
+                            this.search = '';
+                        }
+                    }" class="relative">
                         <label class="block text-sm font-medium text-gray-700 mb-1">
                             Untuk Shipment (Opsional)
                         </label>
-                        <select 
-                            wire:model.live="shipment_id"
-                            class="w-full border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500"
-                        >
-                            <option value="">-- Pilih Shipment --</option>
-                            @foreach($shipments as $shipment)
-                                <option value="{{ $shipment['id'] }}">
-                                    {{ $shipment['awb_number'] ?? '-' }}
-                                    - {{ ($shipment['origin'] ?? '-') }} → {{ ($shipment['destination'] ?? '-') }}
-                                    ({{ strtoupper($shipment['status'] ?? '-') }})
-                                </option>
-                            @endforeach
-                        </select>
+                        <div class="relative">
+                            <button type="button" @click="open = !open" class="w-full bg-white border border-gray-300 rounded-md shadow-sm pl-3 pr-10 py-2 text-left cursor-pointer focus:outline-none focus:ring-1 focus:ring-blue-500 focus:border-blue-500">
+                                <span x-text="selectedLabel || '-- Pilih Shipment --'" class="block truncate" :class="{'text-gray-400': !selected}"></span>
+                                <span class="absolute inset-y-0 right-0 flex items-center pr-2 pointer-events-none">
+                                    <svg class="h-5 w-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/></svg>
+                                </span>
+                            </button>
+                            <div x-show="open" @click.away="open = false" x-transition class="absolute z-50 mt-1 w-full bg-white shadow-lg max-h-60 rounded-md overflow-hidden border border-gray-200">
+                                <div class="p-2 border-b sticky top-0 bg-white">
+                                    <input type="text" x-model="search" placeholder="Cari AWB, origin, destination..." class="w-full border-gray-300 rounded-md text-sm focus:ring-blue-500 focus:border-blue-500" @click.stop>
+                                </div>
+                                <ul class="max-h-48 overflow-y-auto">
+                                    <li @click="selectItem('')" class="cursor-pointer select-none relative py-2 pl-3 pr-9 hover:bg-gray-50 text-gray-500 text-sm">-- Tanpa Shipment --</li>
+                                    <template x-for="item in filteredItems" :key="item.id">
+                                        <li @click="selectItem(item.id)" class="cursor-pointer select-none relative py-2 pl-3 pr-9 hover:bg-blue-50" :class="{'bg-blue-100': selected == item.id}">
+                                            <span class="block truncate text-sm" x-text="(item.awb_number || '-') + ' - ' + (item.origin || '-') + ' → ' + (item.destination || '-') + ' (' + (item.status || '-').toUpperCase() + ')'"></span>
+                                        </li>
+                                    </template>
+                                    <li x-show="filteredItems.length === 0" class="py-2 pl-3 text-gray-500 text-sm">Tidak ditemukan</li>
+                                </ul>
+                            </div>
+                        </div>
                         <p class="mt-1 text-xs text-gray-500">Pilih shipment jika transaksi terkait dengan pengiriman tertentu</p>
                     </div>
                     @endif
-
                     {{-- Cost Category (if cash out) --}}
                     @if($transaction_type === 'cash_out')
                     <div>
@@ -386,22 +439,6 @@
                                     <span class="text-gray-300">-</span>
                                     @endif
                                 </td>
-                            {{-- Kolom Aksi - Hanya untuk Admin & Director --}}
-                        <td class="px-4 py-3 text-center">
-                            @if(auth()->user()->hasRole(["admin", "director"]))
-                            <div class="flex items-center justify-center gap-1">
-                                <button wire:click="editTransaction({{ $trx['id'] }})" class="p-1.5 text-blue-600 hover:bg-blue-100 rounded-lg transition" title="Edit">
-                                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"/></svg>
-                                </button>
-                                <button wire:click="removeTransaction({{ $trx['id'] }})" class="p-1.5 text-red-600 hover:bg-red-100 rounded-lg transition" title="Hapus">
-                                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/></svg>
-                                </button>
-                            </div>
-                            @else
-                            <span class="text-gray-400">-</span>
-                            @endif
-                        </td>
-                    </tr>
                     @endforeach
                             <tr class="bg-slate-100 font-bold">
                                 <td class="px-3 py-2">TOTAL</td>

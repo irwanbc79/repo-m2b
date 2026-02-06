@@ -420,6 +420,7 @@ class ShipmentManagement extends Component
         if ($this->isEditing) {
             $shipment = Shipment::find($this->editingId);
             $oldStatus = $shipment->status;
+            $this->form['volume'] = $this->form['volume'] !== '' ? $this->form['volume'] : null;
             $shipment->update($this->form);
 
             if ($oldStatus !== $this->form['status']) {
@@ -433,6 +434,7 @@ class ShipmentManagement extends Component
             }
             $message = 'Shipment Updated Successfully.';
         } else {
+            $this->form['volume'] = $this->form['volume'] !== '' ? $this->form['volume'] : null;
             $shipment = Shipment::create($this->form);
             ActivityLog::record('Shipment', 'CREATE', $shipment->awb_number, "Membuat shipment baru.");
             $message = 'Shipment Created Successfully.';
