@@ -12,8 +12,8 @@ use Illuminate\Support\Str;
 
 class SyncEmailInbox extends Command
 {
-    protected $signature = 'email:sync {mailbox?} {--force}';
-    protected $description = 'Deep Sync IMAP for Outlook/O365 - Focused on Today Emails';
+    protected $signature = 'email:sync {mailbox?} {--force} {--backfill} {--days=7}';
+    protected $description = 'Sync IMAP email inbox — fetches recent emails using date-based query';
 
     protected array $mailboxes = ['sales', 'import', 'export', 'finance', 'gmail'];
 
@@ -57,11 +57,44 @@ class SyncEmailInbox extends Command
 
             $this->info("   📂 Scan Folder: {$targetFolder->name}");
 
-            // Ambil email lebih banyak (200) tanpa filter status seen/unseen agar email hari ini tidak terlewat
-            $messages = $targetFolder->messages()->all()->limit(20)->setFetchOrder('desc')->get();
-            $this->info("   🔍 Memeriksa " . $messages->count() . " email terbaru di server...");
+            // Tentukan jumlah hari untuk fetch
+            $days = (int) $this->option('days');
+            $isBackfill = $this->option('backfill');
+
+            if ($isBackfill) {
+                // Mode backfill: ambil email 30 hari terakhir, limit 500
+                $sinceDate = Carbon::now()->subDays(30);
+                $limit = 500;
+                $this->info("   ⏪ MODE BACKFILL: Mengambil email 30 hari terakhir (max {$limit})");
+            } else {
+                // Mode normal: ambil email N hari terakhir (default 7), limit 200
+                $sinceDate = Carbon::now()->subDays($days);
+                $limit = 200;
+            }
+
+            // Gunakan query SINCE untuk mengambil email berdasarkan tanggal
+            // Ini jauh lebih andal daripada limit(20) yang bisa "kehabisan slot"
+            try {
+                $messages = $targetFolder->messages()
+                    ->since($sinceDate)
+                    ->limit($limit)
+                    ->setFetchOrder('desc')
+                    ->get();
+            } catch (\Throwable $e) {
+                // Fallback: jika SINCE tidak didukung server, gunakan all() dengan limit lebih besar
+                Log::warning("IMAP SINCE query gagal untuk {$mailbox}, fallback ke all(): " . $e->getMessage());
+                $this->warn("   ⚠️ Filter tanggal tidak didukung server, menggunakan fallback...");
+                $messages = $targetFolder->messages()
+                    ->all()
+                    ->limit($limit)
+                    ->setFetchOrder('desc')
+                    ->get();
+            }
+
+            $this->info("   🔍 Memeriksa " . $messages->count() . " email (sejak " . $sinceDate->format('d M Y') . ")...");
 
             $syncedCount = 0;
+            $skippedCount = 0;
 
             foreach ($messages as $message) {
                 $uid = (int) $message->getUid();
@@ -74,7 +107,10 @@ class SyncEmailInbox extends Command
                         $q->where('uid', $uid)->orWhere('message_id', $msgId);
                     })->exists();
 
-                if ($exists) continue;
+                if ($exists) {
+                    $skippedCount++;
+                    continue;
+                }
 
                 DB::beginTransaction();
                 try {
@@ -115,20 +151,22 @@ class SyncEmailInbox extends Command
 
                     DB::commit();
                     $syncedCount++;
-                    $this->line("   ✅ SYNCED: {$subject}");
+                    $this->line("   ✅ SYNCED: [{$date->format('d M')}] {$subject}");
 
                 } catch (\Throwable $e) {
                     DB::rollBack();
-                    Log::error("Error syncing UID {$uid}: " . $e->getMessage());
+                    Log::error("Error syncing UID {$uid} [{$mailbox}]: " . $e->getMessage());
+                    $this->warn("   ⚠️ Gagal sync UID {$uid}: " . Str::limit($e->getMessage(), 80));
                 }
             }
 
-            $this->info("   📊 Hasil: {$syncedCount} email baru masuk ke portal.");
+            $this->info("   📊 Hasil: {$syncedCount} email baru, {$skippedCount} sudah ada.");
 
         } catch (\Throwable $e) {
-            $this->error("   ❌ Koneksi Error: " . $e->getMessage());
-            $this->error("   📍 File: " . $e->getFile() . ":" . $e->getLine());
-            $this->error("   🔍 Trace: " . $e->getTraceAsString());
+            $this->error("   ❌ Koneksi Error [{$mailbox}]: " . $e->getMessage());
+            Log::error("IMAP sync failed for {$mailbox}: " . $e->getMessage(), [
+                'file' => $e->getFile() . ':' . $e->getLine(),
+            ]);
         }
     }
 }
