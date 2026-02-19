@@ -401,7 +401,8 @@ class SimpleCashier extends Component
             : (Vendor::find($value)->name ?? '');
         
         if ($this->counterpart_type === 'customer') {
-            $this->shipments = Shipment::where('customer_id', $value)
+            $this->shipments = Shipment::with('customer')
+                ->where('customer_id', $value)
                 ->orderBy('created_at', 'desc')
                 ->get()
                 ->map(fn($s) => [
@@ -409,12 +410,14 @@ class SimpleCashier extends Component
                     'awb_number' => $s->awb_number,
                     'origin' => $s->origin ?? '',
                     'destination' => $s->destination ?? '',
-                'status' => $s->status,
+                    'status' => $s->status,
+                    'customer_name' => $s->customer->company_name ?? '-',
                 ])
                 ->toArray();
         } else {
             // Vendor: show ALL shipments (vendor can pay costs for any shipment)
-            $this->shipments = Shipment::orderBy('created_at', 'desc')
+            $this->shipments = Shipment::with('customer')
+                ->orderBy('created_at', 'desc')
                 ->limit(50)
                 ->get()
                 ->map(fn($s) => [
@@ -423,6 +426,7 @@ class SimpleCashier extends Component
                     'origin' => $s->origin ?? '',
                     'destination' => $s->destination ?? '',
                     'status' => $s->status,
+                    'customer_name' => $s->customer->company_name ?? '-',
                 ])
                 ->toArray();
         }

@@ -133,7 +133,17 @@
                         open: false,
                         search: '',
                         selected: $wire.counterpart_id,
-                        items: @js($counterpart_type === 'customer' ? $customers : $vendors),
+                        items: [],
+                        init() {
+                            this.items = this.$wire.counterpart_type === 'customer' 
+                                ? @js($customers) 
+                                : @js($vendors);
+                            this.$watch('$wire.counterpart_type', (value) => {
+                                this.items = value === 'customer' ? @js($customers) : @js($vendors);
+                                this.selected = '';
+                                this.search = '';
+                            });
+                        },
                         get filteredItems() {
                             if (!this.search) return this.items;
                             return this.items.filter(item => 
@@ -195,7 +205,7 @@
                         get selectedLabel() {
                             const item = this.items.find(i => i.id == this.selected);
                             if (!item) return '';
-                            return (item.awb_number || '-') + ' - ' + (item.origin || '-') + ' → ' + (item.destination || '-') + ' (' + (item.status || '-').toUpperCase() + ')';
+                            return (item.awb_number || '-') + ' | ' + (item.customer_name || '-') + ' | ' + (item.origin || '-') + ' → ' + (item.destination || '-') + ' (' + (item.status || '-').toUpperCase() + ')';
                         },
                         selectItem(id) {
                             this.selected = id;
@@ -222,7 +232,7 @@
                                     <li @click="selectItem('')" class="cursor-pointer select-none relative py-2 pl-3 pr-9 hover:bg-gray-50 text-gray-500 text-sm">-- Tanpa Shipment --</li>
                                     <template x-for="item in filteredItems" :key="item.id">
                                         <li @click="selectItem(item.id)" class="cursor-pointer select-none relative py-2 pl-3 pr-9 hover:bg-blue-50" :class="{'bg-blue-100': selected == item.id}">
-                                            <span class="block truncate text-sm" x-text="(item.awb_number || '-') + ' - ' + (item.origin || '-') + ' → ' + (item.destination || '-') + ' (' + (item.status || '-').toUpperCase() + ')'"></span>
+                                            <span class="block truncate text-sm" x-text="(item.awb_number || '-') + ' | ' + (item.customer_name || '-') + ' | ' + (item.origin || '-') + ' → ' + (item.destination || '-') + ' (' + (item.status || '-').toUpperCase() + ')'"></span>
                                         </li>
                                     </template>
                                     <li x-show="filteredItems.length === 0" class="py-2 pl-3 text-gray-500 text-sm">Tidak ditemukan</li>

@@ -249,7 +249,19 @@ class BankStatementImportService
         // Remove any non-numeric characters except . and -
         $amount = preg_replace('/[^0-9.\-]/', '', $amount);
 
-        return (float) $amount;
+        // Safety: jika digit terlalu panjang (>13 digit), kemungkinan reference number bukan amount
+        if (strlen(str_replace(['.', '-'], '', $amount)) > 13) {
+            return 0;
+        }
+
+        $result = (float) $amount;
+
+        // Max reasonable: 10 triliun IDR
+        if (abs($result) > 10000000000000) {
+            return 0;
+        }
+
+        return $result;
     }
 
     /**

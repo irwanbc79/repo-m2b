@@ -389,14 +389,17 @@ class PettyCashManager extends Component
 
     // ==================== UTILITIES ====================
 
-    public function previewProof($path)
+    public function previewProof($transactionId)
     {
-        \Log::info('previewProof called', ['path' => $path]);
-        $this->previewFile = Storage::disk('public')->url($path);
-        $ext = strtolower(pathinfo($path, PATHINFO_EXTENSION));
-        $this->previewType = in_array($ext, ['jpg', 'jpeg', 'png', 'webp']) ? 'image' : 'pdf';
+        $t = \App\Models\PettyCashTransaction::find($transactionId);
+        if (!$t || !$t->proof_file) {
+            session()->flash("error", "Bukti tidak ditemukan.");
+            return;
+        }
+        $this->previewFile = Storage::disk("public")->url($t->proof_file);
+        $ext = strtolower(pathinfo($t->proof_file, PATHINFO_EXTENSION));
+        $this->previewType = in_array($ext, ["jpg", "jpeg", "png", "webp"]) ? "image" : "pdf";
         $this->showPreviewModal = true;
-        \Log::info('Preview modal state', ['file' => $this->previewFile, 'type' => $this->previewType, 'show' => $this->showPreviewModal]);
     }
 
     // ==================== RENDER ====================

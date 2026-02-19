@@ -144,9 +144,9 @@
                             <td class="px-4 py-3 text-sm text-right font-semibold text-red-600">-Rp {{ number_format($t->amount, 0, ',', '.') }}</td>
                             <td class="px-4 py-3 text-center">
                                 @if($t->proof_file)
-                                <a href="{{ Storage::disk('public')->url($t->proof_file) }}" target="_blank" class="text-blue-500 hover:text-blue-700 transition" title="Lihat Bukti">
+                                <button onclick="openProof('{{ Storage::disk('public')->url($t->proof_file) }}', '{{ pathinfo($t->proof_file, PATHINFO_EXTENSION) }}')" class="text-blue-500 hover:text-blue-700 transition" title="Lihat Bukti">
                                     <svg class="w-5 h-5 inline" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"/></svg>
-                                </a>
+                                </button>
                                 @endif
                             </td>
                         </tr>
@@ -441,4 +441,38 @@
     </div>
     @endif
 
+    
+    <div id="proofOverlay" onclick="if(event.target===this)closeProof()" style="display:none;position:fixed;inset:0;z-index:9999;background:rgba(0,0,0,.75);justify-content:center;align-items:center;padding:1rem">
+        <div style="background:#fff;border-radius:12px;max-width:900px;width:100%;max-height:90vh;overflow:hidden;box-shadow:0 25px 50px rgba(0,0,0,.25)">
+            <div style="background:#334155;padding:12px 16px;display:flex;justify-content:space-between;align-items:center;border-radius:12px 12px 0 0">
+                <span style="color:#fff;font-weight:600">Preview Bukti Transfer</span>
+                <div style="display:flex;gap:8px;align-items:center">
+                    <a id="proofDownload" href="#" download style="padding:4px 12px;background:#0d9488;color:#fff;border-radius:6px;font-size:12px;font-weight:700;text-decoration:none">Download</a>
+                    <a id="proofNewTab" href="#" target="_blank" style="padding:4px 12px;background:#2563eb;color:#fff;border-radius:6px;font-size:12px;font-weight:700;text-decoration:none">Tab Baru</a>
+                    <button onclick="closeProof()" style="color:#fff;font-size:24px;background:none;border:none;cursor:pointer;margin-left:8px">&times;</button>
+                </div>
+            </div>
+            <div id="proofBody" style="padding:16px;background:#f3f4f6;display:flex;justify-content:center;align-items:center;max-height:calc(90vh - 60px);overflow:auto"></div>
+        </div>
     </div>
+    <script>
+    function openProof(url, ext) {
+        document.getElementById("proofDownload").href = url;
+        document.getElementById("proofNewTab").href = url;
+        var body = document.getElementById("proofBody");
+        if (ext === "pdf") {
+            body.innerHTML = "<iframe src=\"" + url + "\" style=\"width:100%;height:75vh;border:none;border-radius:8px\"></iframe>";
+        } else {
+            body.innerHTML = "<img src=\"" + url + "\" style=\"max-width:100%;max-height:75vh;object-fit:contain;border-radius:8px;box-shadow:0 4px 6px rgba(0,0,0,.1)\">";
+        }
+        var o = document.getElementById("proofOverlay");
+        o.style.display = "flex";
+    }
+    function closeProof() {
+        document.getElementById("proofOverlay").style.display = "none";
+        document.getElementById("proofBody").innerHTML = "";
+    }
+    document.addEventListener("keydown", function(e) { if (e.key === "Escape") closeProof(); });
+    </script>
+
+</div>

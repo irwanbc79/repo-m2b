@@ -345,204 +345,204 @@ Route::middleware(['auth', 'admin'])->prefix('admin')->group(function () {
 // ... (pastikan route admin.inbox.download IMAP tetap ada untuk tombol di Inbox)
 
 // Route pembersih cache
-Route::get('/bersih-bersih', function () {
-    Artisan::call('route:clear'); 
-    Artisan::call('cache:clear');
-    Artisan::call('view:clear');
-    Artisan::call('config:clear'); // Tambahan
-    return "Semua Cache Bersih! Silakan coba akses /admin/inbox lagi.";
-});
-// ... (Kode route lain tetap sama)
+// Route::get('/bersih-bersih', function () {
+//     Artisan::call('route:clear'); 
+//     Artisan::call('cache:clear');
+//     Artisan::call('view:clear');
+//     Artisan::call('config:clear'); // Tambahan
+//     return "Semua Cache Bersih! Silakan coba akses /admin/inbox lagi.";
+// });
+// // ... (Kode route lain tetap sama)
 
 // --- ALAT DIAGNOSTIK EMAIL M2B ---
-Route::get('/debug-email', function () {
-    $accounts = ['sales', 'import', 'export', 'domestic'];
-    $target = request('akun', 'sales'); // Default cek sales
-
-    echo "<h1>🔍 Diagnostik Email M2B</h1>";
-    echo "<p>Sedang memeriksa akun: <strong>".strtoupper($target)."</strong></p>";
-    
-    // 1. Cek Config Laravel
-    $config = config("imap.accounts.$target");
-    echo "<h3>1. Cek Konfigurasi (config/imap.php)</h3>";
-    if (!$config) {
-        echo "<span style='color:red'>[FAIL] Konfigurasi tidak ditemukan! Cek file config/imap.php</span>";
-        return;
-    }
-    echo "Host: " . $config['host'] . "<br>";
-    echo "Port: " . $config['port'] . "<br>";
-    echo "User: " . $config['username'] . "<br>";
-    echo "Encryption: " . $config['encryption'] . "<br>";
-    echo "Validate Cert: " . ($config['validate_cert'] ? 'YES' : 'NO') . "<br>";
-
-    // 2. Cek Koneksi Server (Socket)
-    echo "<h3>2. Cek Koneksi Server (Socket)</h3>";
-    $fp = @fsockopen($config['host'], $config['port'], $errno, $errstr, 5);
-    if (!$fp) {
-        echo "<span style='color:red'>[FAIL] Tidak bisa terhubung ke server! ($errno - $errstr)</span><br>";
-        echo "Kemungkinan: Firewall memblokir port ".$config['port']." atau Hostname salah.";
-        return;
-    }
-    echo "<span style='color:green'>[OK] Server bisa dihubungi lewat Port ".$config['port'].".</span><br>";
-    fclose($fp);
-
-    // 3. Cek Login IMAP (Real Login) - SAFE QUERY (hindari SEARCH kosong)
-    echo "<h3>3. Cek Login IMAP</h3>";
-    try {
-        $client = \Webklex\IMAP\Facades\Client::account($target);
-        $client->connect();
-        echo "<span style='color:green; font-weight:bold; font-size:16px;'>[SUCCESS] LOGIN BERHASIL! 🎉</span><br>";
-
-        // Ambil folder INBOX dengan pendekatan yang lebih aman:
-        $folder = $client->getFolder('INBOX');
-        
-        // Route download attachment (IMAP streaming)
-Route::middleware(['auth','admin'])->get('/admin/inbox/attachment/{account}/{uid}/{idx}', function($account, $uid, $idx) {
-    try {
-        $client = \Webklex\IMAP\Facades\Client::account($account);
-        $client->connect();
-        $folder = $client->getFolder('INBOX');
-
-        // cari message by UID (coba where UID, fallback)
-        $msg = null;
-        try {
-            $msg = $folder->messages()->where('UID', (int)$uid)->limit(1)->get()->first();
-        } catch (\Throwable $ex) {
-            $all = $folder->messages()->all()->limit(100)->get();
-            foreach ($all as $m) {
-                if ((string)$m->getUid() == (string)$uid) { $msg = $m; break; }
-            }
-        }
-
-        if (!$msg) abort(404, 'Message not found');
-
-        $atts = $msg->getAttachments();
-        $idx = (int)$idx;
-        if (!isset($atts[$idx])) abort(404, 'Attachment not found');
-
-        $att = $atts[$idx];
-
-        // Ambil nama, tipe dan konten
-        $filename = 'attachment';
-        try { $filename = $att->getName(); } catch (\Throwable $e) { if (property_exists($att,'name')) $filename = $att->name; }
-        $mime = 'application/octet-stream';
-        try { $mime = $att->getMimeType(); } catch (\Throwable $e) { if(property_exists($att,'mime')) $mime = $att->mime; }
-
-        // baca konten (coba beberapa method)
-        $content = null;
-        try { $content = $att->getContent(); } catch (\Throwable $e) {}
-        try { if (is_null($content) && method_exists($att,'getDecodedContent')) $content = $att->getDecodedContent(); } catch (\Throwable $e) {}
-        try { if (is_null($content) && method_exists($att,'getBytes')) $content = $att->getBytes(); } catch (\Throwable $e) {}
-        try { if (is_null($content) && method_exists($att,'content')) $content = $att->content; } catch (\Throwable $e) {}
-
-        if (is_null($content)) abort(500, 'Tidak bisa membaca konten attachment');
-
-        // Jika $content objekt stream, ambil string
-        if (is_object($content) && method_exists($content,'getContents')) {
-            $bin = $content->getContents();
-        } else {
-            $bin = (string)$content;
-        }
-
-        return response($bin, 200)
-                ->header('Content-Type', $mime)
-                ->header('Content-Disposition', 'attachment; filename="'.basename($filename).'"');
-
-    } catch (\Throwable $e) {
-        abort(500, 'Download gagal: ' . $e->getMessage());
-    }
-});
-
-
-        // Langkah 1: coba messages()->all()
-        $count = null;
-        try {
-            $messages = $folder->messages()->all()->get();
-            $count = is_countable($messages) ? $messages->count() : 'N/A';
-        } catch (\Exception $e1) {
-            // Jika gagal (mis. server menolak SEARCH kosong), coba query() dengan kriteria jelas (UNSEEN)
-            Log::warning("IMAP messages()->all() gagal untuk akun {$target}: " . $e1->getMessage());
-            try {
-                $messages = $folder->query()->unseen()->get();
-                $count = is_countable($messages) ? $messages->count() : 'N/A';
-            } catch (\Exception $e2) {
-                // Fallback terakhir: tangkap error dan tampilkan pesan
-                Log::error("IMAP fallback (unseen) juga gagal untuk akun {$target}: " . $e2->getMessage(), ['trace' => $e2->getTraceAsString()]);
-                $count = 'ERROR COUNT: ' . $e2->getMessage();
-            }
-        }
-
-        echo "Jumlah Email di Inbox: <strong>{$count}</strong>";
-
-    } catch (\Exception $e) {
-        // Login gagal atau error IMAP lainnya
-        Log::error("IMAP connect/login error for account {$target}: " . $e->getMessage(), ['trace' => $e->getTraceAsString()]);
-        echo "<span style='color:red; font-weight:bold; font-size:16px;'>[FAIL] LOGIN GAGAL! ❌</span><br>";
-        echo "Pesan Error: " . $e->getMessage() . "<br><br>";
-        echo "<strong>Saran Perbaikan:</strong><br>";
-        echo "1. Pastikan password di file .env sudah benar (tidak ada spasi di awal/akhir).<br>";
-        echo "2. Coba ganti 'IMAP_ENCRYPTION' di .env menjadi 'ssl' atau 'tls'.<br>";
-        echo "3. Coba set 'IMAP_VALIDATE_CERT=false' di .env jika sertifikat SSL server self-signed.<br>";
-        echo "4. Jika masih gagal, jalankan tes openssl di server hosting (openssl s_client -connect {$config['host']}:{$config['port']}).<br>";
-    }
-
-    echo "<hr><p>Cek akun lain: ";
-    foreach($accounts as $acc) {
-        echo "<a href='/debug-email?akun=$acc'>".ucfirst($acc)."</a> | ";
-    }
-    echo "</p>";
-});
+// Route::get('/debug-email', function () {
+//     $accounts = ['sales', 'import', 'export', 'domestic'];
+//     $target = request('akun', 'sales'); // Default cek sales
+// 
+//     echo "<h1>🔍 Diagnostik Email M2B</h1>";
+//     echo "<p>Sedang memeriksa akun: <strong>".strtoupper($target)."</strong></p>";
+//     
+//     // 1. Cek Config Laravel
+//     $config = config("imap.accounts.$target");
+//     echo "<h3>1. Cek Konfigurasi (config/imap.php)</h3>";
+//     if (!$config) {
+//         echo "<span style='color:red'>[FAIL] Konfigurasi tidak ditemukan! Cek file config/imap.php</span>";
+//         return;
+//     }
+//     echo "Host: " . $config['host'] . "<br>";
+//     echo "Port: " . $config['port'] . "<br>";
+//     echo "User: " . $config['username'] . "<br>";
+//     echo "Encryption: " . $config['encryption'] . "<br>";
+//     echo "Validate Cert: " . ($config['validate_cert'] ? 'YES' : 'NO') . "<br>";
+// 
+//     // 2. Cek Koneksi Server (Socket)
+//     echo "<h3>2. Cek Koneksi Server (Socket)</h3>";
+//     $fp = @fsockopen($config['host'], $config['port'], $errno, $errstr, 5);
+//     if (!$fp) {
+//         echo "<span style='color:red'>[FAIL] Tidak bisa terhubung ke server! ($errno - $errstr)</span><br>";
+//         echo "Kemungkinan: Firewall memblokir port ".$config['port']." atau Hostname salah.";
+//         return;
+//     }
+//     echo "<span style='color:green'>[OK] Server bisa dihubungi lewat Port ".$config['port'].".</span><br>";
+//     fclose($fp);
+// 
+//     // 3. Cek Login IMAP (Real Login) - SAFE QUERY (hindari SEARCH kosong)
+//     echo "<h3>3. Cek Login IMAP</h3>";
+//     try {
+//         $client = \Webklex\IMAP\Facades\Client::account($target);
+//         $client->connect();
+//         echo "<span style='color:green; font-weight:bold; font-size:16px;'>[SUCCESS] LOGIN BERHASIL! 🎉</span><br>";
+// 
+//         // Ambil folder INBOX dengan pendekatan yang lebih aman:
+//         $folder = $client->getFolder('INBOX');
+//         
+//         // Route download attachment (IMAP streaming)
+// Route::middleware(['auth','admin'])->get('/admin/inbox/attachment/{account}/{uid}/{idx}', function($account, $uid, $idx) {
+//     try {
+//         $client = \Webklex\IMAP\Facades\Client::account($account);
+//         $client->connect();
+//         $folder = $client->getFolder('INBOX');
+// 
+//         // cari message by UID (coba where UID, fallback)
+//         $msg = null;
+//         try {
+//             $msg = $folder->messages()->where('UID', (int)$uid)->limit(1)->get()->first();
+//         } catch (\Throwable $ex) {
+//             $all = $folder->messages()->all()->limit(100)->get();
+//             foreach ($all as $m) {
+//                 if ((string)$m->getUid() == (string)$uid) { $msg = $m; break; }
+//             }
+//         }
+// 
+//         if (!$msg) abort(404, 'Message not found');
+// 
+//         $atts = $msg->getAttachments();
+//         $idx = (int)$idx;
+//         if (!isset($atts[$idx])) abort(404, 'Attachment not found');
+// 
+//         $att = $atts[$idx];
+// 
+//         // Ambil nama, tipe dan konten
+//         $filename = 'attachment';
+//         try { $filename = $att->getName(); } catch (\Throwable $e) { if (property_exists($att,'name')) $filename = $att->name; }
+//         $mime = 'application/octet-stream';
+//         try { $mime = $att->getMimeType(); } catch (\Throwable $e) { if(property_exists($att,'mime')) $mime = $att->mime; }
+// 
+//         // baca konten (coba beberapa method)
+//         $content = null;
+//         try { $content = $att->getContent(); } catch (\Throwable $e) {}
+//         try { if (is_null($content) && method_exists($att,'getDecodedContent')) $content = $att->getDecodedContent(); } catch (\Throwable $e) {}
+//         try { if (is_null($content) && method_exists($att,'getBytes')) $content = $att->getBytes(); } catch (\Throwable $e) {}
+//         try { if (is_null($content) && method_exists($att,'content')) $content = $att->content; } catch (\Throwable $e) {}
+// 
+//         if (is_null($content)) abort(500, 'Tidak bisa membaca konten attachment');
+// 
+//         // Jika $content objekt stream, ambil string
+//         if (is_object($content) && method_exists($content,'getContents')) {
+//             $bin = $content->getContents();
+//         } else {
+//             $bin = (string)$content;
+//         }
+// 
+//         return response($bin, 200)
+//                 ->header('Content-Type', $mime)
+//                 ->header('Content-Disposition', 'attachment; filename="'.basename($filename).'"');
+// 
+//     } catch (\Throwable $e) {
+//         abort(500, 'Download gagal: ' . $e->getMessage());
+//     }
+// });
+// 
+// 
+//         // Langkah 1: coba messages()->all()
+//         $count = null;
+//         try {
+//             $messages = $folder->messages()->all()->get();
+//             $count = is_countable($messages) ? $messages->count() : 'N/A';
+//         } catch (\Exception $e1) {
+//             // Jika gagal (mis. server menolak SEARCH kosong), coba query() dengan kriteria jelas (UNSEEN)
+//             Log::warning("IMAP messages()->all() gagal untuk akun {$target}: " . $e1->getMessage());
+//             try {
+//                 $messages = $folder->query()->unseen()->get();
+//                 $count = is_countable($messages) ? $messages->count() : 'N/A';
+//             } catch (\Exception $e2) {
+//                 // Fallback terakhir: tangkap error dan tampilkan pesan
+//                 Log::error("IMAP fallback (unseen) juga gagal untuk akun {$target}: " . $e2->getMessage(), ['trace' => $e2->getTraceAsString()]);
+//                 $count = 'ERROR COUNT: ' . $e2->getMessage();
+//             }
+//         }
+// 
+//         echo "Jumlah Email di Inbox: <strong>{$count}</strong>";
+// 
+//     } catch (\Exception $e) {
+//         // Login gagal atau error IMAP lainnya
+//         Log::error("IMAP connect/login error for account {$target}: " . $e->getMessage(), ['trace' => $e->getTraceAsString()]);
+//         echo "<span style='color:red; font-weight:bold; font-size:16px;'>[FAIL] LOGIN GAGAL! ❌</span><br>";
+//         echo "Pesan Error: " . $e->getMessage() . "<br><br>";
+//         echo "<strong>Saran Perbaikan:</strong><br>";
+//         echo "1. Pastikan password di file .env sudah benar (tidak ada spasi di awal/akhir).<br>";
+//         echo "2. Coba ganti 'IMAP_ENCRYPTION' di .env menjadi 'ssl' atau 'tls'.<br>";
+//         echo "3. Coba set 'IMAP_VALIDATE_CERT=false' di .env jika sertifikat SSL server self-signed.<br>";
+//         echo "4. Jika masih gagal, jalankan tes openssl di server hosting (openssl s_client -connect {$config['host']}:{$config['port']}).<br>";
+//     }
+// 
+//     echo "<hr><p>Cek akun lain: ";
+//     foreach($accounts as $acc) {
+//         echo "<a href='/debug-email?akun=$acc'>".ucfirst($acc)."</a> | ";
+//     }
+//     echo "</p>";
+// });
 // ... (Kode route lainnya tetap sama)
 
 // --- ALAT PERBAIKAN & TES KONEKSI EMAIL ---
-Route::get('/fix-imap', function () {
-    // 1. BERSIHKAN SEMUA CACHE KONFIGURASI (CRUCIAL)
-    try {
-        Artisan::call('config:clear');
-        Artisan::call('cache:clear');
-    } catch (\Exception $e) {
-        // Abaikan jika gagal di hosting tertentu
-    }
-
-    echo "<h2 style='font-family:sans-serif'>🛠️ M2B Email Connection Fixer</h2>";
-    echo "<p style='color:green'>✅ Cache Konfigurasi Berhasil Direset!</p>";
-
-    // 2. TES KONEKSI AKUN SALES
-    $account = 'sales';
-    echo "<hr><h3>Mencoba koneksi akun: " . strtoupper($account) . "...</h3>";
-    
-    // Debug: Lihat apakah config terbaca benar dari .env
-    $configHost = config("imap.accounts.$account.host");
-    $configUser = config("imap.accounts.$account.username");
-    
-    echo "<ul>";
-    echo "<li>Host: <strong>$configHost</strong> (Harus: bandung01.emailkerja.id)</li>";
-    echo "<li>User: <strong>$configUser</strong> (Harus: sales@m2b.co.id)</li>";
-    echo "</ul>";
-
-    try {
-        $client = \Webklex\IMAP\Facades\Client::account($account);
-        $client->connect();
-        
-        $folder = $client->getFolder('INBOX');
-        $count = $folder->query()->count();
-        
-        echo "<div style='background:#dcfce7; color:#166534; padding:15px; border-radius:8px; border:1px solid #bbf7d0;'>";
-        echo "<strong>🎉 KONEKSI SUKSES!</strong><br>";
-        echo "Berhasil terhubung ke Inbox Sales.<br>";
-        echo "Jumlah Email: <strong>$count</strong>";
-        echo "</div>";
-        
-        echo "<p><a href='/admin/inbox' style='display:inline-block; margin-top:20px; padding:10px 20px; background:#1e3a8a; color:white; text-decoration:none; border-radius:5px;'>Buka Inbox Sekarang &rarr;</a></p>";
-
-    } catch (\Exception $e) {
-        echo "<div style='background:#fee2e2; color:#991b1b; padding:15px; border-radius:8px; border:1px solid #fecaca;'>";
-        echo "<strong>❌ KONEKSI GAGAL</strong><br>";
-        echo "Error: " . $e->getMessage();
-        echo "</div>";
-        echo "<p><strong>Saran:</strong> Cek kembali password di file .env. Pastikan diapit tanda kutip dua. Contoh: <code>IMAP_SALES_PASS=\"Password123\"</code></p>";
-    }
-});
+// Route::get('/fix-imap', function () {
+//     // 1. BERSIHKAN SEMUA CACHE KONFIGURASI (CRUCIAL)
+//     try {
+//         Artisan::call('config:clear');
+//         Artisan::call('cache:clear');
+//     } catch (\Exception $e) {
+//         // Abaikan jika gagal di hosting tertentu
+//     }
+// 
+//     echo "<h2 style='font-family:sans-serif'>🛠️ M2B Email Connection Fixer</h2>";
+//     echo "<p style='color:green'>✅ Cache Konfigurasi Berhasil Direset!</p>";
+// 
+//     // 2. TES KONEKSI AKUN SALES
+//     $account = 'sales';
+//     echo "<hr><h3>Mencoba koneksi akun: " . strtoupper($account) . "...</h3>";
+//     
+//     // Debug: Lihat apakah config terbaca benar dari .env
+//     $configHost = config("imap.accounts.$account.host");
+//     $configUser = config("imap.accounts.$account.username");
+//     
+//     echo "<ul>";
+//     echo "<li>Host: <strong>$configHost</strong> (Harus: bandung01.emailkerja.id)</li>";
+//     echo "<li>User: <strong>$configUser</strong> (Harus: sales@m2b.co.id)</li>";
+//     echo "</ul>";
+// 
+//     try {
+//         $client = \Webklex\IMAP\Facades\Client::account($account);
+//         $client->connect();
+//         
+//         $folder = $client->getFolder('INBOX');
+//         $count = $folder->query()->count();
+//         
+//         echo "<div style='background:#dcfce7; color:#166534; padding:15px; border-radius:8px; border:1px solid #bbf7d0;'>";
+//         echo "<strong>🎉 KONEKSI SUKSES!</strong><br>";
+//         echo "Berhasil terhubung ke Inbox Sales.<br>";
+//         echo "Jumlah Email: <strong>$count</strong>";
+//         echo "</div>";
+//         
+//         echo "<p><a href='/admin/inbox' style='display:inline-block; margin-top:20px; padding:10px 20px; background:#1e3a8a; color:white; text-decoration:none; border-radius:5px;'>Buka Inbox Sekarang &rarr;</a></p>";
+// 
+//     } catch (\Exception $e) {
+//         echo "<div style='background:#fee2e2; color:#991b1b; padding:15px; border-radius:8px; border:1px solid #fecaca;'>";
+//         echo "<strong>❌ KONEKSI GAGAL</strong><br>";
+//         echo "Error: " . $e->getMessage();
+//         echo "</div>";
+//         echo "<p><strong>Saran:</strong> Cek kembali password di file .env. Pastikan diapit tanda kutip dua. Contoh: <code>IMAP_SALES_PASS=\"Password123\"</code></p>";
+//     }
+// });
 // ...
 
 // ... (Kode route lain tetap ada)
@@ -580,38 +580,38 @@ Route::middleware(['auth', 'admin'])->get('/admin/inbox/download/{account}/{uid}
 })->name('admin.inbox.download');
 
 // =======================================================
-// DEV ONLY — ACCOUNTING WORKFLOW TEST (SAFE VERSION)
-// =======================================================
-
-Route::get('/__dev/test-proforma', function () {
-    $invoice = \App\Models\Invoice::where('type', 'proforma')->firstOrFail();
-
-    if (!$invoice->payment_date) {
-        $invoice->payment_date = now();
-        $invoice->save();
-    }
-
-    app(\App\Services\Business\AccountingWorkflowService::class)
-        ->handleProformaPaid($invoice);
-
-    return 'TEST PROFORMA OK : '.$invoice->invoice_number;
-});
-
-Route::get('/__dev/test-commercial', function () {
-    $invoice = \App\Models\Invoice::where('type', 'commercial')
-        ->where('down_payment', '>', 0)
-        ->firstOrFail();
-
-    if (!$invoice->payment_date) {
-        $invoice->payment_date = now();
-        $invoice->save();
-    }
-
-    app(\App\Services\Business\AccountingWorkflowService::class)
-        ->handleCommercialPaid($invoice);
-
-    return 'TEST COMMERCIAL OK : '.$invoice->invoice_number;
-});
+// // DEV ONLY — ACCOUNTING WORKFLOW TEST (SAFE VERSION)
+// // =======================================================
+// 
+// Route::get('/__dev/test-proforma', function () {
+//     $invoice = \App\Models\Invoice::where('type', 'proforma')->firstOrFail();
+// 
+//     if (!$invoice->payment_date) {
+//         $invoice->payment_date = now();
+//         $invoice->save();
+//     }
+// 
+//     app(\App\Services\Business\AccountingWorkflowService::class)
+//         ->handleProformaPaid($invoice);
+// 
+//     return 'TEST PROFORMA OK : '.$invoice->invoice_number;
+// });
+// 
+// Route::get('/__dev/test-commercial', function () {
+//     $invoice = \App\Models\Invoice::where('type', 'commercial')
+//         ->where('down_payment', '>', 0)
+//         ->firstOrFail();
+// 
+//     if (!$invoice->payment_date) {
+//         $invoice->payment_date = now();
+//         $invoice->save();
+//     }
+// 
+//     app(\App\Services\Business\AccountingWorkflowService::class)
+//         ->handleCommercialPaid($invoice);
+// 
+//     return 'TEST COMMERCIAL OK : '.$invoice->invoice_number;
+// });
 
 // ...
 // Print receipt route
@@ -664,16 +664,6 @@ Route::get('/survey/qr-code', function() {
     return view('survey.qr-code');
 })->name('survey.qr-code');
 
-Route::prefix('finance/simple-invoice')->name('finance.simple-invoice.')->group(function () {
-    Route::get('/', [App\Http\Controllers\Finance\SimpleInvoiceController::class, 'index'])->name('index');
-    Route::get('/create', [App\Http\Controllers\Finance\SimpleInvoiceController::class, 'create'])->name('create');
-    Route::get('/{id}/pdf', [App\Http\Controllers\Finance\SimpleInvoiceController::class, 'pdf'])->name('pdf');
-    Route::get('/{id}/preview', [App\Http\Controllers\Finance\SimpleInvoiceController::class, 'preview'])->name('preview');
-    Route::get('/{id}/edit', [App\Http\Controllers\Finance\SimpleInvoiceController::class, 'edit'])->name('edit');
-    Route::delete('/{id}', [App\Http\Controllers\Finance\SimpleInvoiceController::class, 'destroy'])->name('destroy');
-    Route::post('/{id}/update-payment', [App\Http\Controllers\Finance\SimpleInvoiceController::class, 'updatePayment'])->name('update-payment');
-    Route::get('/{id}/download', [App\Http\Controllers\Finance\SimpleInvoiceController::class, 'download'])->name('download');
-});
 // Simple Invoice Routes (Complete CRUD)
 Route::prefix('finance/simple-invoice')->name('finance.simple-invoice.')->middleware('auth')->group(function () {
     Route::get('/', [App\Http\Controllers\Finance\SimpleInvoiceController::class, 'index'])->name('index');
@@ -688,17 +678,6 @@ Route::prefix('finance/simple-invoice')->name('finance.simple-invoice.')->middle
 });
 
 // Simple Invoice Routes (Complete CRUD)
-Route::prefix('finance/simple-invoice')->name('finance.simple-invoice.')->middleware('auth')->group(function () {
-    Route::get('/', [App\Http\Controllers\Finance\SimpleInvoiceController::class, 'index'])->name('index');
-    Route::get('/create', [App\Http\Controllers\Finance\SimpleInvoiceController::class, 'create'])->name('create');
-    Route::post('/', [App\Http\Controllers\Finance\SimpleInvoiceController::class, 'store'])->name('store');
-    Route::get('/{id}/edit', [App\Http\Controllers\Finance\SimpleInvoiceController::class, 'edit'])->name('edit');
-    Route::put('/{id}', [App\Http\Controllers\Finance\SimpleInvoiceController::class, 'update'])->name('update');
-    Route::delete('/{id}', [App\Http\Controllers\Finance\SimpleInvoiceController::class, 'destroy'])->name('destroy');
-    Route::get('/{id}/pdf', [App\Http\Controllers\Finance\SimpleInvoiceController::class, 'pdf'])->name('pdf');
-    Route::get('/{id}/download', [App\Http\Controllers\Finance\SimpleInvoiceController::class, 'download'])->name('download');
-    Route::post('/{id}/update-payment', [App\Http\Controllers\Finance\SimpleInvoiceController::class, 'updatePayment'])->name('update-payment');
-});
 
 // Simple Invoice Detail Route (for modal view)
 Route::get('/finance/simple-invoice/{id}/detail', [App\Http\Controllers\Finance\SimpleInvoiceController::class, 'detail'])->name('finance.simple-invoice.detail')->middleware('auth');
