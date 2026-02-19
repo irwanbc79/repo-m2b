@@ -121,7 +121,12 @@ class SyncEmailInbox extends Command
                     $date = $dateObj instanceof Carbon ? $dateObj : Carbon::parse($dateObj->first());
                     
                     // Body: Utamakan HTML, bersihkan sedikit
-                    $body = $message->getHTMLBody() ?: $message->getTextBody() ?: "(Email Kosong)";
+                    $rawBody = $message->getHTMLBody() ?: $message->getTextBody() ?: "(Email Kosong)";
+                    
+                    // Sanitize UTF-8 untuk menghindari error "Incorrect string value"
+                    $body = mb_convert_encoding($rawBody, 'UTF-8', 'UTF-8');
+                    $subject = mb_convert_encoding($subject, 'UTF-8', 'UTF-8');
+                    $fromName = mb_convert_encoding($fromName, 'UTF-8', 'UTF-8');
 
                     $emailId = DB::table('emails')->insertGetId([
                         'mailbox'    => $mailbox,
