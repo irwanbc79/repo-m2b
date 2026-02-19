@@ -52,14 +52,33 @@
                 <input type="text" placeholder="Search mail..." class="w-full pl-3 pr-4 py-2 border border-gray-200 rounded-lg text-sm bg-gray-50 focus:ring-2 focus:ring-blue-500/20">
             </div>
             
-            <div class="overflow-y-auto flex-1 divide-y divide-gray-100">
+            <div class="overflow-y-auto flex-1 divide-y divide-gray-100 relative">
+                <!-- Loading Overlay -->
+                <div wire:loading wire:target="selectEmail" class="absolute inset-0 bg-white/50 z-10 flex items-center justify-center backdrop-blur-[1px]">
+                    <svg class="animate-spin h-8 w-8 text-blue-600" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                        <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                        <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                    </svg>
+                </div>
+
                 @forelse($emails as $email)
                 <button wire:click="selectEmail({{ $email['db_id'] }})" 
-                   class="w-full text-left block p-4 hover:bg-blue-50/50 transition border-l-4 {{ $selectedEmail && $selectedEmail['db_id'] == $email['db_id'] ? 'bg-blue-50 border-l-blue-600' : 'bg-white border-l-transparent' }}">
+                   wire:key="email-{{ $email['db_id'] }}"
+                   wire:loading.attr="disabled"
+                   class="w-full text-left block p-4 hover:bg-blue-50/50 transition border-l-4 group relative {{ $selectedEmail && $selectedEmail['db_id'] == $email['db_id'] ? 'bg-blue-50 border-l-blue-600' : 'bg-white border-l-transparent' }}">
+                    
+                    {{-- Loading Indicator per Item --}}
+                    <span wire:loading wire:target="selectEmail({{ $email['db_id'] }})" class="absolute right-2 top-2">
+                        <svg class="animate-spin h-4 w-4 text-blue-600" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                            <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                            <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                        </svg>
+                    </span>
+
                     <div class="flex items-start gap-3">
                         <div class="mt-1.5 shrink-0">
                             @if(!$email['is_read'])
-                            <span class="block w-2 h-2 bg-blue-600 rounded-full"></span>
+                            <span class="block w-2 h-2 bg-blue-600 rounded-full ring-2 ring-blue-100"></span>
                             @else
                             <span class="block w-2 h-2 bg-transparent border border-gray-200 rounded-full"></span>
                             @endif
@@ -71,17 +90,21 @@
                                 </h4>
                                 <div class="flex items-center gap-1.5 shrink-0 ml-2">
                                     @if(isset($email['attachments']) && $email['attachments'] > 0)
-                                        <svg class="w-3.5 h-3.5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15.172 7l-6.586 6.586a2 2 0 102.828 2.828l6.414-6.586a4 4 0 00-5.656-5.656l-6.415 6.585a6 6 0 108.486 8.486L20.5 13"></path></svg>
+                                        <svg class="w-3.5 h-3.5 text-gray-400 group-hover:text-blue-500 transition-colors" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15.172 7l-6.586 6.586a2 2 0 102.828 2.828l6.414-6.586a4 4 0 00-5.656-5.656l-6.415 6.585a6 6 0 108.486 8.486L20.5 13"></path></svg>
                                     @endif
                                     <span class="text-[9px] text-gray-400 font-bold uppercase">{{ $email['date'] }}</span>
                                 </div>
                             </div>
-                            <p class="text-xs truncate text-gray-500">{{ $email['subject'] }}</p>
+                            <p class="text-xs truncate text-gray-500 group-hover:text-gray-700 transition-colors">{{ $email['subject'] }}</p>
                         </div>
                     </div>
                 </button>
                 @empty
-                <div class="p-12 text-center text-gray-400 text-sm">Inbox Kosong</div>
+                <div class="flex flex-col items-center justify-center p-12 text-center">
+                    <svg class="w-12 h-12 text-gray-200 mb-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M20 13V6a2 2 0 00-2-2H6a2 2 0 00-2 2v7m16 0v5a2 2 0 01-2 2H6a2 2 0 01-2-2v-5m16 0h-2.586a1 1 0 00-.707.293l-2.414 2.414a1 1 0 01-.707.293h-3.172a1 1 0 01-.707-.293l-2.414-2.414A1 1 0 006.586 13H4"></path></svg>
+                    <p class="text-gray-400 text-sm font-medium">Inbox Kosong</p>
+                    <button wire:click="syncNow" class="mt-4 text-xs font-bold text-blue-600 hover:text-blue-800 uppercase tracking-wide">Sync Sekarang</button>
+                </div>
                 @endforelse
             </div>
         </div>
