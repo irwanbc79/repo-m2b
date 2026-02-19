@@ -49,6 +49,7 @@ class EmailAttachmentController extends Controller
         }
         
         // Default: download
+        return response()->download($fullPath, $filename, [
             'Content-Type' => $mimeType,
         ]);
     }
