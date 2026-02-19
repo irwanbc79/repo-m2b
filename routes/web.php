@@ -77,6 +77,10 @@ Route::get('/admin/inbox/attachment/{mailbox}/{id}', [EmailAttachmentController:
     ->name('admin.inbox.attachment')
     ->middleware(['web', 'auth', 'admin']); // sesuaikan middleware anda
 
+Route::get('/admin/inbox/body/{id}', [EmailAttachmentController::class, 'showBody'])
+    ->name('admin.inbox.body')
+    ->middleware(['web', 'auth', 'admin']);
+
 
 // --- GUEST ROUTES (LOGIN, REGISTER, FORGOT PASSWORD) ---
 Route::middleware('guest')->group(function () {

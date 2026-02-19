@@ -53,4 +53,23 @@ class EmailAttachmentController extends Controller
             'Content-Type' => $mimeType,
         ]);
     }
+    }
+
+    /**
+     * Show email body (HTML) for iframe.
+     * Bypasses Livewire JSON payload limit/WAF rules.
+     */
+    public function showBody(string $id)
+    {
+        $email = DB::table('emails')->where('id', $id)->first();
+
+        if (!$email) {
+            abort(404);
+        }
+
+        // Return raw body
+        return response($email->body ?? '(Konten kosong)')
+            ->header('Content-Type', 'text/html; charset=UTF-8')
+            ->header('X-Frame-Options', 'SAMEORIGIN');
+    }
 }

@@ -136,10 +136,14 @@
                 </div>
                 
                 <div class="flex-1 overflow-y-auto p-8 bg-gray-50/30">
-                    <div class="bg-white p-8 rounded-2xl shadow-sm border border-gray-100 min-h-full">
-                        <div class="text-sm text-gray-700 leading-relaxed prose prose-sm prose-blue max-w-none">
-                            {!! $selectedEmail['body'] !!}
-                        </div>
+                    <div class="bg-white p-4 rounded-2xl shadow-sm border border-gray-100 min-h-full">
+                        {{-- IFRAME FOR EMAIL BODY --}}
+                        <iframe 
+                            src="{{ route('admin.inbox.body', $selectedEmail['db_id']) }}" 
+                            class="w-full border-0" 
+                            onload="this.style.height = this.contentWindow.document.body.scrollHeight + 'px'; this.contentWindow.document.body.style.overflow = 'hidden';"
+                            style="min-height: 400px;">
+                        </iframe>
                     </div>
 
                     @if(count($selectedEmail['attachments'] ?? []) > 0)

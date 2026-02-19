@@ -82,7 +82,7 @@ class EmailInbox extends Component
             'from' => $email->from_email,
             'name' => $email->from_name ?: $email->from_email,
             'date' => Carbon::parse($email->email_date)->format('d M Y H:i'),
-            'body' => $email->body ?: '(Konten kosong)',
+            // 'body' => $email->body ?: '(Konten kosong)', // REMOVED FOR IFRAME OPTIMIZATION
             'attachments' => $attachments,
         ];
         
