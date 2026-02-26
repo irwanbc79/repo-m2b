@@ -37,6 +37,7 @@ class QuotationManager extends Component
     public $origin;
     public $destination;
     public $service_type = 'import';
+    public $quotation_type = 'shipment';
     public $notes = ''; 
     public $terbilang_lang = 'id';
     
@@ -49,12 +50,14 @@ class QuotationManager extends Component
     public $pph = 0;
     public $grandTotal = 0;
     public $filterStatus = "";
+    public $filterType = "";
     public $filterDateFrom = "";
     public $filterDateTo = "";
 
 
     public function updatingSearch() { $this->resetPage(); }
     public function updatingFilterStatus() { $this->resetPage(); }
+    public function updatingFilterType() { $this->resetPage(); }
 
     public function getStats()
     {
@@ -104,6 +107,7 @@ class QuotationManager extends Component
         $this->resetInput();
         $this->isEditing = false;
         $this->is_new_customer = false;
+        $this->quotation_type = 'shipment';
         $this->quotation_date = now()->format('Y-m-d');
         $this->valid_until = now()->addDays(14)->format('Y-m-d');
         $this->items = [['item_type' => 'service', 'description' => 'Jasa Freight', 'qty' => 1, 'price' => 0]];
@@ -124,6 +128,7 @@ class QuotationManager extends Component
             $this->origin = $q->origin;
             $this->destination = $q->destination;
             $this->service_type = $q->service_type;
+            $this->quotation_type = $q->quotation_type ?? 'shipment';
             
             // Pastikan Notes diambil sebagai string
             $this->notes = (string) $q->notes; 
@@ -207,6 +212,7 @@ class QuotationManager extends Component
             'origin'            => (string)$this->origin,
             'destination'       => (string)$this->destination,
             'service_type'      => (string)$this->service_type,
+            'quotation_type'    => (string)$this->quotation_type,
             
             'service_total'     => (float)$this->serviceTotal,
             'reimbursement_total' => (float)$this->reimbursementTotal,
@@ -265,7 +271,7 @@ class QuotationManager extends Component
     }
 
     // --- UTILS ---
-    public function resetInput() { $this->reset(['customer_id', 'manual_company', 'manual_pic', 'manual_email', 'manual_phone', 'items', 'origin', 'destination', 'service_type', 'notes', 'terbilang_lang', 'editingId', 'isEditing', 'isSendModalOpen']); }
+    public function resetInput() { $this->reset(['customer_id', 'manual_company', 'manual_pic', 'manual_email', 'manual_phone', 'items', 'origin', 'destination', 'service_type', 'quotation_type', 'notes', 'terbilang_lang', 'editingId', 'isEditing', 'isSendModalOpen']); }
     public function closeModal() { $this->isModalOpen = false; }
     public function addItem() { $this->items[] = ['item_type' => 'service', 'description' => '', 'qty' => 1, 'price' => 0]; }
     public function removeItem($index) { unset($this->items[$index]); $this->items = array_values($this->items); $this->calculate(); }
@@ -326,6 +332,11 @@ class QuotationManager extends Component
             } else {
                 $query->where("status", $this->filterStatus);
             }
+        }
+
+        // Filter by quotation type
+        if ($this->filterType) {
+            $query->where("quotation_type", $this->filterType);
         }
         
         $quotations = $query->latest()->paginate(10);

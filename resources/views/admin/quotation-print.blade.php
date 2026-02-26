@@ -121,6 +121,11 @@
     @endphp
 
     <div class="container">
+        @php
+            $qType = $quotation->quotation_type ?? 'shipment';
+            $isRateCard = ($qType === 'rate_card');
+        @endphp
+
         <table class="header-table">
             <tr>
                 <td width="60%">
@@ -129,7 +134,7 @@
                     <div style="font-size:10px;">Logistic | Solution | Partner</div>
                 </td>
                 <td width="40%" align="right">
-                    <h2 style="color:#0F2C59; margin-bottom:5px;">QUOTATION</h2>
+                    <h2 style="color:#0F2C59; margin-bottom:5px;">{{ $isRateCard ? 'RATE CARD' : 'QUOTATION' }}</h2>
                     <strong>No: {{ $quotation->quotation_number }}</strong><br>
                     Date: {{ $quotation->quotation_date->format('d M Y') }}<br>
                     Valid Until: {{ $quotation->valid_until->format('d M Y') }}
@@ -139,24 +144,26 @@
 
         <table class="info-table">
             <tr>
-                <td style="border:1px solid #eee; padding:10px; width:48%; vertical-align:top;">
+                <td style="border:1px solid #eee; padding:10px; width:{{ $isRateCard && empty($quotation->origin) ? '100%' : '48%' }}; vertical-align:top;">
                     <strong style="color:#666; font-size:10px;">PREPARED FOR:</strong><br>
                     @if($quotation->customer)
                         <strong>{{ $quotation->customer->company_name }}</strong><br>
                         {{ $quotation->customer->address }}
                     @else
                         <strong>{{ $quotation->manual_company }}</strong><br>
-                        UP: {{ $quotation->manual_pic }}<br>
-                        Email: {{ $quotation->manual_email }}<br>
-                        Phone: {{ $quotation->manual_phone }}
+                        @if($quotation->manual_pic) UP: {{ $quotation->manual_pic }}<br> @endif
+                        @if($quotation->manual_email) Email: {{ $quotation->manual_email }}<br> @endif
+                        @if($quotation->manual_phone) Phone: {{ $quotation->manual_phone }} @endif
                     @endif
                 </td>
+                @if(!$isRateCard || !empty(trim($quotation->origin ?? '')))
                 <td width="4%"></td>
                 <td style="border:1px solid #eee; padding:10px; width:48%; vertical-align:top;">
                     <strong style="color:#666; font-size:10px;">SERVICE DETAILS:</strong><br>
                     Route: <strong>{{ $quotation->origin }} &rarr; {{ $quotation->destination }}</strong><br>
                     Type: {{ ucfirst($quotation->service_type) }}
                 </td>
+                @endif
             </tr>
         </table>
 

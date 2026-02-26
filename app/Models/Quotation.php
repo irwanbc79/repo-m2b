@@ -35,6 +35,7 @@ class Quotation extends Model
         'origin', 
         'destination', 
         'service_type', 
+        'quotation_type',
         'notes', 'terbilang_lang'
     ];
 

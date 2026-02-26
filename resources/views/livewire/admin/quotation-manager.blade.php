@@ -71,6 +71,13 @@
                     <option value="rejected">Rejected</option>
                     <option value="expired">Expired</option>
                 </select>
+
+                {{-- Filter Tipe --}}
+                <select wire:model.live="filterType" class="border-gray-300 rounded-lg text-sm py-2 px-3 focus:ring-2 focus:ring-blue-500">
+                    <option value="">Semua Tipe</option>
+                    <option value="shipment">📦 Shipment Quote</option>
+                    <option value="rate_card">📋 Rate Card</option>
+                </select>
             </div>
             
             <button wire:click="create" class="bg-m2b-primary hover:bg-blue-900 text-white px-4 py-2 rounded-lg font-bold shadow-sm transition flex items-center gap-2">
@@ -95,7 +102,14 @@
                 <tbody class="divide-y divide-gray-100">
                     @forelse($quotations as $q)
                     <tr wire:key="q-{{ $q->id }}" class="hover:bg-gray-50 transition">
-                        <td class="px-6 py-4 font-mono font-bold text-m2b-primary">{{ $q->quotation_number }}</td>
+                        <td class="px-6 py-4">
+                            <span class="font-mono font-bold text-m2b-primary block">{{ $q->quotation_number }}</span>
+                            @if(($q->quotation_type ?? 'shipment') === 'rate_card')
+                                <span class="text-[10px] font-bold text-amber-700 bg-amber-50 px-1.5 py-0.5 rounded border border-amber-200 inline-block mt-1">📋 RATE CARD</span>
+                            @else
+                                <span class="text-[10px] font-bold text-blue-700 bg-blue-50 px-1.5 py-0.5 rounded border border-blue-200 inline-block mt-1">📦 SHIPMENT</span>
+                            @endif
+                        </td>
                         <td class="px-6 py-4">
                             @if($q->customer)
                                 <span class="font-bold block text-gray-800">{{ $q->customer->company_name }}</span>
@@ -188,6 +202,29 @@
                         </div>
                     </div>
                 @endif
+
+                {{-- Quotation Type Selector --}}
+                <div class="bg-gradient-to-r from-gray-50 to-gray-100 p-4 rounded-lg border border-gray-200 mb-4">
+                    <label class="block text-xs font-bold text-gray-500 mb-2 uppercase tracking-wider">Tipe Penawaran</label>
+                    <div class="flex gap-3">
+                        <label class="flex-1 cursor-pointer">
+                            <input type="radio" wire:model.live="quotation_type" value="shipment" class="sr-only peer">
+                            <div class="p-3 rounded-lg border-2 text-center transition-all peer-checked:border-blue-500 peer-checked:bg-blue-50 peer-checked:shadow-md border-gray-200 hover:border-blue-300">
+                                <span class="text-lg block mb-1">📦</span>
+                                <span class="text-sm font-bold block text-gray-800">Shipment Quote</span>
+                                <span class="text-[10px] text-gray-500">Penawaran spesifik per shipment</span>
+                            </div>
+                        </label>
+                        <label class="flex-1 cursor-pointer">
+                            <input type="radio" wire:model.live="quotation_type" value="rate_card" class="sr-only peer">
+                            <div class="p-3 rounded-lg border-2 text-center transition-all peer-checked:border-amber-500 peer-checked:bg-amber-50 peer-checked:shadow-md border-gray-200 hover:border-amber-300">
+                                <span class="text-lg block mb-1">📋</span>
+                                <span class="text-sm font-bold block text-gray-800">Rate Card</span>
+                                <span class="text-[10px] text-gray-500">Daftar harga jasa / layanan</span>
+                            </div>
+                        </label>
+                    </div>
+                </div>
 
                 <div class="bg-blue-50 p-4 rounded-lg border border-blue-100">
                     <div class="flex items-center gap-4 mb-4">
