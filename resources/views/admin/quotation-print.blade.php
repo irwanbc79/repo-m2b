@@ -37,7 +37,7 @@
         }
     </style>
 </head>
-<body onload="window.print()">
+<body onload="if(window.self === window.top) window.print()">
     
     @php
         $logoBase64 = '';
