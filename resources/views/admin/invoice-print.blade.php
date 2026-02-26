@@ -445,12 +445,13 @@
     
     {{-- FLOATING PRINT BUTTON --}}
     @if(empty($isPdf) && empty($isPreview))
-    <div class="fixed bottom-8 right-8 no-print z-50">
+    <div class="fixed bottom-8 right-8 no-print z-50" id="floatingPrintBtn">
         <button onclick="window.print()" class="bg-blue-900 hover:bg-blue-800 text-white p-5 rounded-3xl shadow-2xl transition transform hover:-translate-y-1 flex items-center gap-3 font-black ring-8 ring-white group">
             <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z"></path></svg>
             <span class="text-xs tracking-widest uppercase">Cetak Invoice Resmi</span>
         </button>
     </div>
+    <script>if(window.self !== window.top) document.getElementById('floatingPrintBtn').style.display='none';</script>
     @endif
 
 </body>
