@@ -80,10 +80,32 @@
                 </select>
             </div>
             
-            <button wire:click="create" class="bg-m2b-primary hover:bg-blue-900 text-white px-4 py-2 rounded-lg font-bold shadow-sm transition flex items-center gap-2">
-                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"></path></svg>
-                New Quotation
-            </button>
+            <div wire:ignore x-data="{ open: false }" class="relative">
+                <button @click="open = !open" class="bg-m2b-primary hover:bg-blue-900 text-white px-4 py-2 rounded-lg font-bold shadow-sm transition flex items-center gap-2">
+                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"></path></svg>
+                    New Quotation
+                    <svg class="w-4 h-4 ml-1" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path></svg>
+                </button>
+                <div x-show="open" @click.away="open = false" x-cloak x-transition class="absolute right-0 mt-2 w-64 bg-white border border-gray-200 rounded-xl shadow-2xl z-50 overflow-hidden">
+                    <div class="p-2 bg-gray-50 border-b border-gray-100">
+                        <span class="text-[10px] font-bold text-gray-400 uppercase tracking-widest">Pilih Tipe Penawaran</span>
+                    </div>
+                    <button @click="open = false" wire:click="create('shipment')" class="w-full px-4 py-3 text-left hover:bg-blue-50 transition flex items-center gap-3 border-b border-gray-100">
+                        <span class="text-2xl">📦</span>
+                        <div>
+                            <span class="font-bold text-sm text-gray-800 block">Shipment Quote</span>
+                            <span class="text-[10px] text-gray-500">Penawaran per shipment + rincian total</span>
+                        </div>
+                    </button>
+                    <button @click="open = false" wire:click="create('rate_card')" class="w-full px-4 py-3 text-left hover:bg-amber-50 transition flex items-center gap-3">
+                        <span class="text-2xl">📋</span>
+                        <div>
+                            <span class="font-bold text-sm text-gray-800 block">Rate Card</span>
+                            <span class="text-[10px] text-gray-500">Daftar harga jasa / layanan</span>
+                        </div>
+                    </button>
+                </div>
+            </div>
         </div>
 
 
@@ -179,7 +201,14 @@
         <div class="bg-white w-full max-w-5xl rounded-xl shadow-2xl flex flex-col max-h-[95vh]">
             
             <div class="p-5 border-b flex justify-between items-center bg-gray-50 rounded-t-xl">
-                <h3 class="font-bold text-xl text-m2b-primary">{{ $isEditing ? 'Edit Quotation' : 'Create Quotation' }}</h3>
+                <div class="flex items-center gap-3">
+                    <h3 class="font-bold text-xl text-m2b-primary">{{ $isEditing ? 'Edit Quotation' : 'Create Quotation' }}</h3>
+                    @if($quotation_type === 'rate_card')
+                        <span class="text-xs font-bold text-amber-700 bg-amber-50 px-2.5 py-1 rounded-full border border-amber-200">📋 Rate Card</span>
+                    @else
+                        <span class="text-xs font-bold text-blue-700 bg-blue-50 px-2.5 py-1 rounded-full border border-blue-200">📦 Shipment Quote</span>
+                    @endif
+                </div>
                 <button wire:click="closeModal" class="text-gray-400 hover:text-red-500 text-3xl leading-none">&times;</button>
             </div>
 
@@ -203,7 +232,8 @@
                     </div>
                 @endif
 
-                {{-- Quotation Type Selector --}}
+                {{-- Quotation Type Indicator --}}
+                @if($isEditing)
                 <div class="bg-gradient-to-r from-gray-50 to-gray-100 p-4 rounded-lg border border-gray-200 mb-4">
                     <label class="block text-xs font-bold text-gray-500 mb-2 uppercase tracking-wider">Tipe Penawaran</label>
                     <div class="flex gap-3">
@@ -225,6 +255,7 @@
                         </label>
                     </div>
                 </div>
+                @endif
 
                 <div class="bg-blue-50 p-4 rounded-lg border border-blue-100">
                     <div class="flex items-center gap-4 mb-4">

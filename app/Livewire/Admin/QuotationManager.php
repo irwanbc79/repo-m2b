@@ -102,12 +102,12 @@ class QuotationManager extends Component
         }
     }
 
-    public function create()
+    public function create($type = 'shipment')
     {
         $this->resetInput();
         $this->isEditing = false;
         $this->is_new_customer = false;
-        $this->quotation_type = 'shipment';
+        $this->quotation_type = $type;
         $this->quotation_date = now()->format('Y-m-d');
         $this->valid_until = now()->addDays(14)->format('Y-m-d');
         $this->items = [['item_type' => 'service', 'description' => 'Jasa Freight', 'qty' => 1, 'price' => 0]];
