@@ -344,7 +344,8 @@
     </div>
 
     @if(request()->has('auto'))
-    <script>window.onload = function() { window.print(); }</script>
+    <script>window.onload = function() { if(window.self === window.top) window.print(); }</script>
     @endif
+    <script>if(window.self !== window.top) { var pb = document.querySelector('.print-bar'); if(pb) pb.style.display='none'; }</script>
 </body>
 </html>
