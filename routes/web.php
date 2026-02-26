@@ -304,11 +304,25 @@ Route::middleware(['auth', 'admin'])->prefix('admin')->name('admin.')->group(fun
         return view('admin.invoice-print', compact('invoice', 'terbilangText', 'signer', 'signatureType', 'useMaterai'));
     })->name('invoices.print'); 
 
-    Route::get('/quotations/{id}/print', function ($id) {
+    Route::get('/quotations/{id}/print', function ($id, Illuminate\Http\Request $request) {
         $quotation = Quotation::with('customer', 'items')->findOrFail($id);
         $f = new NumberFormatter("id", NumberFormatter::SPELLOUT);
         $terbilangText = ucwords($f->format($quotation->grand_total)) . " Rupiah";
-        return view('admin.quotation-print', compact('quotation', 'terbilangText'));
+
+        // Ambil parameter signature dari URL
+        $signerId = $request->get('signer', 1);
+        $signatureType = $request->get('signature', 'blank'); // full, blank
+
+        // Data penandatangan
+        $signers = [
+            1 => ['name' => 'Nurul Asyikin', 'title' => 'Sales & Finance', 'sign' => 'sign_nurul.png'],
+            2 => ['name' => 'Nadila Shamimi', 'title' => 'Document & Operation', 'sign' => 'sign_dila.png'],
+            3 => ['name' => 'Tasya Indriyani', 'title' => 'Cashier & Admin', 'sign' => 'sign_tasya.png'],
+            4 => ['name' => 'Eka Mayang Sari Harahap, S. E.', 'title' => 'Director', 'sign' => 'sign_direktur.png'],
+        ];
+        $signer = $signers[$signerId] ?? $signers[1];
+
+        return view('admin.quotation-print', compact('quotation', 'terbilangText', 'signer', 'signatureType'));
     })->name('quotations.print');
 });
 

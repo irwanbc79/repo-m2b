@@ -211,9 +211,25 @@
 
                     <div style="margin-top:50px; text-align:right; padding-right:10px;">
                         <p style="font-size:11px;">Best Regards,<br><strong>PT. MORA MULTI BERKAH</strong></p>
+
+                        @php
+                            $signerData = $signer ?? ['name' => 'Nurul Asyikin', 'title' => 'Sales & Finance', 'sign' => 'sign_nurul.png'];
+                            $sigType = $signatureType ?? 'blank';
+                        @endphp
+
+                        @if($sigType == 'full')
+                        {{-- Full: Sign + Stamp --}}
+                        <div style="text-align:center; margin:10px 0;">
+                            <img src="{{ asset('images/assets/signatures/' . $signerData['sign']) }}" alt="Signature & Stamp" style="height:130px; width:auto; display:inline-block;">
+                        </div>
+                        @else
+                        {{-- Blank: Tanpa tanda tangan --}}
                         <br><br><br>
+                        @endif
+
                         <div style="border-bottom:1px solid #000; width:150px; display:inline-block;"></div><br>
-                        Sales Department
+                        <strong>{{ $signerData['name'] }}</strong><br>
+                        <span style="font-size:10px; color:#666;">{{ strtoupper($signerData['title']) }}</span>
                     </div>
                 </td>
             </tr>

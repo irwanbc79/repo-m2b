@@ -121,9 +121,21 @@
                             <div class="flex justify-center gap-2 items-center">
                                 <button wire:click="edit({{ $q->id }})" class="text-blue-600 hover:text-blue-900 font-bold text-xs border border-blue-200 px-2 py-1 rounded bg-white hover:bg-blue-50">Edit</button>
                                 
-                                <a href="{{ route('admin.quotations.print', $q->id) }}" target="_blank" class="text-gray-600 hover:text-black font-bold text-xs border border-gray-300 px-2 py-1 rounded bg-white hover:bg-gray-50 flex items-center gap-1">
-                                    <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z"></path></svg> Print
-                                </a>
+                                <div wire:ignore x-data="{ open: false }" class="relative inline-block">
+                                    <button @click="open = !open" type="button" class="text-gray-600 hover:text-black font-bold text-xs border border-gray-300 px-2 py-1 rounded bg-white hover:bg-gray-50 flex items-center gap-1" title="Print Quotation">
+                                        <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z"></path></svg> Print
+                                    </button>
+                                    <div x-show="open" @click.away="open = false" x-cloak class="absolute right-0 mt-1 w-56 bg-white border rounded-xl shadow-xl z-50 py-2">
+                                        <a href="{{ route('admin.quotations.print', $q->id) }}?signature=full&signer=1" target="_blank" class="block px-4 py-2 hover:bg-green-50 text-xs text-gray-700 transition">
+                                            <span class="font-bold text-green-700">✓ Sign + Stamp</span><br>
+                                            <span class="text-[10px] text-gray-400">Nurul Asyikin</span>
+                                        </a>
+                                        <a href="{{ route('admin.quotations.print', $q->id) }}?signature=blank&signer=1" target="_blank" class="block px-4 py-2 hover:bg-gray-50 text-xs text-gray-700 transition">
+                                            <span class="font-bold text-gray-600">☐ Kosong</span><br>
+                                            <span class="text-[10px] text-gray-400">Untuk Materai Fisik</span>
+                                        </a>
+                                    </div>
+                                </div>
                                 
                                 <button wire:click="openSendModal({{ $q->id }})" class="text-white bg-green-600 hover:bg-green-700 font-bold text-xs px-2 py-1 rounded flex items-center gap-1 shadow-sm">Send</button>
 
