@@ -185,10 +185,12 @@
 
         <table class="footer-table">
             <tr>
-                <td width="60%" vertical-align="top">
+                <td width="{{ $isRateCard ? '60%' : '60%' }}" vertical-align="top">
+                    @if(!$isRateCard)
                     <div style="background:#f3f4f6; padding:10px; border-radius:4px; font-style:italic; font-size:11px; margin-bottom: 15px;">
                         {!! nl2br("# " . e($terbilangText) . " #") !!}
                     </div>
+                    @endif
 
                     <div style="margin-top:20px;">
     <strong>-----------------------------------------------------------------</strong>
@@ -208,6 +210,7 @@
                 <td width="5%"></td>
 
                 <td width="35%" vertical-align="top">
+                    @if(!$isRateCard)
                     <table class="summary-table">
                         <tr><td>Subtotal Jasa</td><td align="right">{{ number_format($quotation->service_total) }}</td></tr>
                         <tr><td>PPN (VAT)</td><td align="right">{{ number_format($quotation->tax_amount) }}</td></tr>
@@ -215,8 +218,9 @@
                         <tr><td>Reimbursement</td><td align="right">{{ number_format($quotation->reimbursement_total) }}</td></tr>
                         <tr class="grand-total"><td style="padding:10px;">GRAND TOTAL</td><td align="right" style="padding:10px;">Rp {{ number_format($quotation->grand_total) }}</td></tr>
                     </table>
+                    @endif
 
-                    <div style="margin-top:50px; text-align:right; padding-right:10px;">
+                    <div style="margin-top:{{ $isRateCard ? '10' : '50' }}px; text-align:right; padding-right:10px;">
                         <p style="font-size:11px;">Best Regards,<br><strong>PT. MORA MULTI BERKAH</strong></p>
 
                         @php
