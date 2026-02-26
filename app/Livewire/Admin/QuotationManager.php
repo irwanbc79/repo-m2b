@@ -166,11 +166,14 @@ class QuotationManager extends Component
         // 1. Validasi Input
         $rules = [
             'quotation_date' => 'required|date',
-            'origin' => 'required|string',
-            'destination' => 'required|string',
             'items' => 'required|array|min:1',
-            // Hapus validasi array dalam item dulu agar tidak crash di sini
         ];
+
+        // Origin/Destination wajib hanya untuk Shipment Quote
+        if ($this->quotation_type !== 'rate_card') {
+            $rules['origin'] = 'required|string';
+            $rules['destination'] = 'required|string';
+        }
 
         // Logika Customer
         $cleanCustomerId = null;

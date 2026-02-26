@@ -212,7 +212,7 @@
                             <div class="p-3 rounded-lg border-2 text-center transition-all peer-checked:border-blue-500 peer-checked:bg-blue-50 peer-checked:shadow-md border-gray-200 hover:border-blue-300">
                                 <span class="text-lg block mb-1">📦</span>
                                 <span class="text-sm font-bold block text-gray-800">Shipment Quote</span>
-                                <span class="text-[10px] text-gray-500">Penawaran spesifik per shipment</span>
+                                <span class="text-[10px] text-gray-500">Penawaran per shipment + rincian total</span>
                             </div>
                         </label>
                         <label class="flex-1 cursor-pointer">
@@ -341,8 +341,10 @@
                 </div>
 
                 <div class="grid grid-cols-2 gap-4">
+                    @if($quotation_type !== 'rate_card')
                     <div><label class="block text-xs font-bold text-gray-500 mb-1">Origin</label><input type="text" wire:model="origin" class="w-full border border-gray-300 rounded-lg p-2.5 text-sm" placeholder="e.g. Shanghai"></div>
                     <div><label class="block text-xs font-bold text-gray-500 mb-1">Destination</label><input type="text" wire:model="destination" class="w-full border border-gray-300 rounded-lg p-2.5 text-sm" placeholder="e.g. Jakarta"></div>
+                    @endif
                 </div>
 
                 {{-- ========== QUICK SELECT PRODUCT PANEL ========== --}}
