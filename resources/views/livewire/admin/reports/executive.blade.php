@@ -62,7 +62,10 @@
     <div class="bg-white border border-orange-200 rounded-xl p-4">
         <p class="text-orange-600 text-xs font-bold">📑 Hutang (AP)</p>
         <p class="text-xl font-black text-gray-800 mt-1">Rp {{ number_format($kpi['ap_outstanding'] ?? 0, 0, ',', '.') }}</p>
-        <p class="text-xs text-orange-500 mt-1">Belum dibayar ke vendor</p>
+        <p class="text-xs text-orange-500 mt-1">Total belum dibayar ke vendor</p>
+        @if(($kpi['ap_period'] ?? 0) > 0)
+            <p class="text-xs text-orange-400 mt-0.5">Rp {{ number_format($kpi['ap_period'], 0, ',', '.') }} dari periode ini</p>
+        @endif
     </div>
 
     {{-- Active Customers --}}

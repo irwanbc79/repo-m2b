@@ -187,15 +187,14 @@ class CashierService
             
             if ($type === 'out') {
                 // Cash out = Cost/Expense for shipment
+                // FIX: Use correct column names matching job_costs table schema
                 JobCost::create([
                     'shipment_id' => $cashTransaction->shipment_id,
-                    'cost_type' => $data['category'] ?? $data['cost_category'] ?? 'other',
                     'description' => $data['description'] ?? 'Payment',
                     'amount' => $cashTransaction->amount,
                     'vendor_id' => $cashTransaction->vendor_id,
-                    'payment_date' => $cashTransaction->transaction_date,
-                    'payment_status' => 'paid',
-                    'cash_transaction_id' => $cashTransaction->id,
+                    'status' => 'paid',           // FIX: was 'payment_status'
+                    'date_paid' => $cashTransaction->transaction_date, // FIX: was 'payment_date'
                     'created_by' => Auth::id(),
                 ]);
             }

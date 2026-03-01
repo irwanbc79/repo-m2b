@@ -81,15 +81,16 @@
         </div>
     </div>
 
-    {{-- AP by Vendor --}}
+    {{-- AP by Vendor (Job Costs) --}}
     <div class="bg-white border rounded-xl p-6">
-        <h3 class="font-bold text-gray-800 mb-4">📑 Hutang ke Vendor (AP Unpaid)</h3>
+        <h3 class="font-bold text-gray-800 mb-4">📑 Hutang ke Vendor — Job Costs (Unpaid)</h3>
         <div class="overflow-x-auto">
             <table class="w-full text-sm">
                 <thead>
                     <tr class="border-b-2 border-gray-200">
                         <th class="text-left py-2">Vendor</th>
                         <th class="text-center py-2">Jumlah Job</th>
+                        <th class="text-center py-2">Sejak</th>
                         <th class="text-right py-2">Total Hutang</th>
                     </tr>
                 </thead>
@@ -101,13 +102,80 @@
                             <p class="text-xs text-gray-500">{{ $item->vendor->code ?? '' }}</p>
                         </td>
                         <td class="py-3 text-center">{{ $item->count }}</td>
+                        <td class="py-3 text-center text-xs text-gray-500">{{ $item->oldest_date ? \Carbon\Carbon::parse($item->oldest_date)->format('d/m/Y') : '-' }}</td>
                         <td class="py-3 text-right font-bold text-red-600">Rp {{ number_format($item->total, 0, ',', '.') }}</td>
                     </tr>
                     @empty
-                    <tr><td colspan="3" class="py-8 text-center text-gray-500">Tidak ada hutang</td></tr>
+                    <tr><td colspan="4" class="py-8 text-center text-gray-500">Tidak ada hutang</td></tr>
                     @endforelse
+                    @if($apByVendor->count() > 0)
+                    <tr class="border-t-2 border-gray-300 bg-gray-50">
+                        <td class="py-3 font-bold" colspan="3">TOTAL</td>
+                        <td class="py-3 text-right font-bold text-red-700">Rp {{ number_format($apByVendor->sum('total'), 0, ',', '.') }}</td>
+                    </tr>
+                    @endif
                 </tbody>
             </table>
         </div>
     </div>
+
+    {{-- AP from Vendor Bills (reconciliation) --}}
+    @if($apFromVendorBills->count() > 0)
+    <div class="bg-white border border-blue-200 rounded-xl p-6">
+        <h3 class="font-bold text-gray-800 mb-2">📋 Hutang ke Vendor — Vendor Bills (Cross-Check)</h3>
+        <p class="text-xs text-gray-500 mb-4">Data dari Vendor Bills untuk rekonsiliasi. Bandingkan dengan tabel Job Costs di atas.</p>
+        <div class="overflow-x-auto">
+            <table class="w-full text-sm">
+                <thead>
+                    <tr class="border-b-2 border-blue-200">
+                        <th class="text-left py-2">Vendor</th>
+                        <th class="text-center py-2">Jumlah Bill</th>
+                        <th class="text-center py-2">Jatuh Tempo Terdekat</th>
+                        <th class="text-right py-2">Sisa Hutang</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @foreach($apFromVendorBills as $item)
+                    <tr class="border-b border-blue-100 hover:bg-blue-50">
+                        <td class="py-3">
+                            <p class="font-medium">{{ $item->vendor->name ?? 'N/A' }}</p>
+                        </td>
+                        <td class="py-3 text-center">{{ $item->count }}</td>
+                        <td class="py-3 text-center text-xs {{ $item->earliest_due && \Carbon\Carbon::parse($item->earliest_due)->isPast() ? 'text-red-600 font-bold' : 'text-gray-500' }}">
+                            {{ $item->earliest_due ? \Carbon\Carbon::parse($item->earliest_due)->format('d/m/Y') : '-' }}
+                            @if($item->earliest_due && \Carbon\Carbon::parse($item->earliest_due)->isPast())
+                                <span class="text-red-500">⚠️ Overdue</span>
+                            @endif
+                        </td>
+                        <td class="py-3 text-right font-bold text-blue-700">Rp {{ number_format($item->total, 0, ',', '.') }}</td>
+                    </tr>
+                    @endforeach
+                    <tr class="border-t-2 border-blue-300 bg-blue-50">
+                        <td class="py-3 font-bold" colspan="3">TOTAL VENDOR BILLS</td>
+                        <td class="py-3 text-right font-bold text-blue-800">Rp {{ number_format($apFromVendorBills->sum('total'), 0, ',', '.') }}</td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+        
+        {{-- Reconciliation Alert --}}
+        @php
+            $jobCostTotal = $apByVendor->sum('total');
+            $vendorBillTotal = $apFromVendorBills->sum('total');
+            $difference = abs($jobCostTotal - $vendorBillTotal);
+        @endphp
+        @if($difference > 0)
+        <div class="mt-4 p-3 rounded-lg {{ $difference > 1000000 ? 'bg-red-50 border border-red-200' : 'bg-yellow-50 border border-yellow-200' }}">
+            <p class="text-sm font-bold {{ $difference > 1000000 ? 'text-red-700' : 'text-yellow-700' }}">
+                ⚠️ Selisih Rekonsiliasi: Rp {{ number_format($difference, 0, ',', '.') }}
+            </p>
+            <p class="text-xs {{ $difference > 1000000 ? 'text-red-600' : 'text-yellow-600' }} mt-1">
+                Job Costs: Rp {{ number_format($jobCostTotal, 0, ',', '.') }} vs 
+                Vendor Bills: Rp {{ number_format($vendorBillTotal, 0, ',', '.') }}. 
+                Periksa data yang belum tersinkronisasi.
+            </p>
+        </div>
+        @endif
+    </div>
+    @endif
 </div>

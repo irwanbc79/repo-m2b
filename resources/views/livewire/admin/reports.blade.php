@@ -49,6 +49,7 @@
                     'revenueByCustomer' => $revenueByCustomer ?? collect(),
                     'arAging' => $arAging ?? [],
                     'apByVendor' => $apByVendor ?? collect(),
+                    'apFromVendorBills' => $apFromVendorBills ?? collect(),
                     'invoiceStatus' => $invoiceStatus ?? collect()
                 ])
             

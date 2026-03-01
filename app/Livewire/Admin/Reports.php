@@ -47,10 +47,15 @@ class Reports extends Component
             default => $this->getExecutiveData(),
         };
 
-        return view('livewire.admin.reports', array_merge($data, [
-            'activeTab' => $this->activeTab,
-            'customers' => Customer::orderBy('company_name')->get(),
-        ]))->layout('layouts.admin');
+        // Only load customer list when needed (operations tab filter)
+        $extra = ['activeTab' => $this->activeTab];
+        if ($this->activeTab === 'operations') {
+            $extra['customers'] = Customer::orderBy('company_name')->get();
+        } else {
+            $extra['customers'] = collect();
+        }
+
+        return view('livewire.admin.reports', array_merge($data, $extra))->layout('layouts.admin');
     }
 
     // ========== EXECUTIVE SUMMARY ==========
@@ -90,13 +95,27 @@ class Reports extends Component
 
         $prevShipments = Shipment::whereBetween('created_at', [$prevStart, $prevEnd])->count();
 
-        // AR & AP
+        // AR & AP - cumulative outstanding (all periods)
         $totalAR = Invoice::where('type', 'commercial')
             ->whereIn('status', ['unpaid', 'partial'])
             ->selectRaw('SUM(grand_total - total_paid) as outstanding')
             ->value('outstanding') ?? 0;
 
-        $totalAP = JobCost::where('status', 'unpaid')->sum('amount');
+        // FIX: AP juga memperhitungkan VendorBill yang belum lunas
+        $totalAPFromJobCosts = JobCost::where('status', 'unpaid')->sum('amount');
+        $totalAPFromVendorBills = \App\Models\VendorBill::whereIn('status', ['unpaid', 'partial'])
+            ->selectRaw('SUM(amount_idr - paid_amount) as outstanding')
+            ->value('outstanding') ?? 0;
+        
+        // Gunakan yang lebih besar, atau gabungkan jika keduanya ada data
+        // Prioritas: VendorBill lebih akurat karena support partial payment
+        $totalAP = $totalAPFromVendorBills > 0 ? $totalAPFromVendorBills : $totalAPFromJobCosts;
+
+        // AP yang jatuh tempo dalam periode
+        $apPeriod = JobCost::where('status', 'unpaid')
+            ->whereHas('shipment', function($q) use ($startDate, $endDate) {
+                $q->whereBetween('created_at', [$startDate, $endDate]);
+            })->sum('amount');
 
         // Cash Position
         $cashIn = CashTransaction::whereBetween('transaction_date', [$startDate, $endDate])
@@ -123,28 +142,38 @@ class Reports extends Component
             $q->whereBetween('created_at', [$startDate, $endDate]);
         })->distinct('vendor_id')->count('vendor_id');
 
-        // Monthly Trend (6 bulan)
+        // Monthly Trend (6 bulan) - OPTIMIZED: 3 queries instead of 18
+        $sixMonthsAgo = now()->subMonths(5)->startOfMonth();
+        
+        $revenueByMonth = Invoice::where('invoice_date', '>=', $sixMonthsAgo)
+            ->where('type', 'commercial')
+            ->selectRaw("DATE_FORMAT(invoice_date, '%Y-%m') as month_key, SUM(grand_total) as total")
+            ->groupByRaw("DATE_FORMAT(invoice_date, '%Y-%m')")
+            ->pluck('total', 'month_key');
+
+        $costByMonth = JobCost::join('shipments', 'job_costs.shipment_id', '=', 'shipments.id')
+            ->where('shipments.created_at', '>=', $sixMonthsAgo)
+            ->selectRaw("DATE_FORMAT(shipments.created_at, '%Y-%m') as month_key, SUM(job_costs.amount) as total")
+            ->groupByRaw("DATE_FORMAT(shipments.created_at, '%Y-%m')")
+            ->pluck('total', 'month_key');
+
+        $shipmentsByMonth = Shipment::where('created_at', '>=', $sixMonthsAgo)
+            ->selectRaw("DATE_FORMAT(created_at, '%Y-%m') as month_key, COUNT(*) as total")
+            ->groupByRaw("DATE_FORMAT(created_at, '%Y-%m')")
+            ->pluck('total', 'month_key');
+
         $monthlyTrend = collect();
         for ($i = 5; $i >= 0; $i--) {
-            $monthStart = now()->subMonths($i)->startOfMonth();
-            $monthEnd = now()->subMonths($i)->endOfMonth();
-            
-            $revenue = Invoice::whereBetween('invoice_date', [$monthStart, $monthEnd])
-                ->where('type', 'commercial')
-                ->sum('grand_total');
-            
-            $cost = JobCost::whereHas('shipment', function($q) use ($monthStart, $monthEnd) {
-                $q->whereBetween('created_at', [$monthStart, $monthEnd]);
-            })->sum('amount');
-            
-            $shipmentCount = Shipment::whereBetween('created_at', [$monthStart, $monthEnd])->count();
-            
+            $monthDate = now()->subMonths($i)->startOfMonth();
+            $key = $monthDate->format('Y-m');
+            $revenue = $revenueByMonth[$key] ?? 0;
+            $cost = $costByMonth[$key] ?? 0;
             $monthlyTrend->push([
-                'month' => $monthStart->format('M Y'),
+                'month' => $monthDate->format('M Y'),
                 'revenue' => $revenue,
                 'cost' => $cost,
                 'profit' => $revenue - $cost,
-                'shipments' => $shipmentCount,
+                'shipments' => $shipmentsByMonth[$key] ?? 0,
             ]);
         }
 
@@ -162,6 +191,7 @@ class Reports extends Component
                 'completion_rate' => $currentShipments > 0 ? round(($completedShipments / $currentShipments) * 100, 1) : 0,
                 'ar_outstanding' => $totalAR,
                 'ap_outstanding' => $totalAP,
+                'ap_period' => $apPeriod,
                 'cash_in' => $cashIn,
                 'cash_out' => $cashOut,
                 'net_cash' => $cashIn - $cashOut,
@@ -214,9 +244,22 @@ class Reports extends Component
                 ->first(),
         ];
 
-        // AP by Vendor
+        // AP by Vendor - show all unpaid with aging info
         $apByVendor = JobCost::where('status', 'unpaid')
-            ->select('vendor_id', DB::raw('SUM(amount) as total'), DB::raw('COUNT(*) as count'))
+            ->select('vendor_id', DB::raw('SUM(amount) as total'), DB::raw('COUNT(*) as count'),
+                DB::raw('MIN(created_at) as oldest_date'))
+            ->groupBy('vendor_id')
+            ->with('vendor')
+            ->orderByDesc('total')
+            ->limit(10)
+            ->get();
+
+        // Also check VendorBill AP for reconciliation
+        $apFromVendorBills = \App\Models\VendorBill::whereIn('status', ['unpaid', 'partial'])
+            ->select('vendor_id', 
+                DB::raw('SUM(amount_idr - paid_amount) as total'), 
+                DB::raw('COUNT(*) as count'),
+                DB::raw('MIN(due_date) as earliest_due'))
             ->groupBy('vendor_id')
             ->with('vendor')
             ->orderByDesc('total')
@@ -235,6 +278,7 @@ class Reports extends Component
             'revenueByCustomer' => $revenueByCustomer,
             'arAging' => $arAging,
             'apByVendor' => $apByVendor,
+            'apFromVendorBills' => $apFromVendorBills,
             'invoiceStatus' => $invoiceStatus,
         ];
     }
@@ -366,8 +410,8 @@ class Reports extends Component
         $startDate = $this->startDate;
         $endDate = $this->endDate;
 
-        // Vendor Performance - Query langsung dari job_costs
-        $vendorPerformance = JobCost::whereBetween('created_at', [$startDate, $endDate])
+        // Vendor Performance - OPTIMIZED: eager load vendor to avoid N+1
+        $vendorPerformanceRaw = JobCost::whereBetween('job_costs.created_at', [$startDate, $endDate])
             ->whereNotNull('vendor_id')
             ->select('vendor_id', 
                 DB::raw('COUNT(*) as job_count'),
@@ -377,9 +421,14 @@ class Reports extends Component
             )
             ->groupBy('vendor_id')
             ->orderByDesc('total_cost')
-            ->get()
-            ->map(function($item) {
-                $vendor = Vendor::find($item->vendor_id);
+            ->get();
+
+        // Pre-fetch all vendors in one query
+        $vendorIds = $vendorPerformanceRaw->pluck('vendor_id')->filter()->unique();
+        $vendorsMap = Vendor::whereIn('id', $vendorIds)->get()->keyBy('id');
+
+        $vendorPerformance = $vendorPerformanceRaw->map(function($item) use ($vendorsMap) {
+                $vendor = $vendorsMap[$item->vendor_id] ?? null;
                 return [
                     'id' => $item->vendor_id,
                     'code' => $vendor->code ?? '-',
@@ -410,23 +459,30 @@ class Reports extends Component
         $startDate = $this->startDate;
         $endDate = $this->endDate;
 
-        // Service Type Performance
+        // Service Type Performance - OPTIMIZED: single query with joins
+        $shipmentIds = Shipment::whereBetween('created_at', [$startDate, $endDate])->pluck('id');
+        
+        $revenueByService = Invoice::whereIn('shipment_id', $shipmentIds)
+            ->where('type', 'commercial')
+            ->join('shipments', 'invoices.shipment_id', '=', 'shipments.id')
+            ->selectRaw('shipments.service_type, SUM(invoices.grand_total) as total')
+            ->groupBy('shipments.service_type')
+            ->pluck('total', 'service_type');
+
+        $costByService = JobCost::whereIn('shipment_id', $shipmentIds)
+            ->join('shipments', 'job_costs.shipment_id', '=', 'shipments.id')
+            ->selectRaw('shipments.service_type, SUM(job_costs.amount) as total')
+            ->groupBy('shipments.service_type')
+            ->pluck('total', 'service_type');
+
         $servicePerformance = Shipment::whereBetween('created_at', [$startDate, $endDate])
             ->select('service_type')
             ->selectRaw('COUNT(*) as shipment_count')
             ->groupBy('service_type')
             ->get()
-            ->map(function($item) use ($startDate, $endDate) {
-                $shipmentIds = Shipment::whereBetween('created_at', [$startDate, $endDate])
-                    ->where('service_type', $item->service_type)
-                    ->pluck('id');
-                
-                $revenue = Invoice::whereIn('shipment_id', $shipmentIds)
-                    ->where('type', 'commercial')
-                    ->sum('grand_total');
-                
-                $cost = JobCost::whereIn('shipment_id', $shipmentIds)->sum('amount');
-                
+            ->map(function($item) use ($revenueByService, $costByService) {
+                $revenue = $revenueByService[$item->service_type] ?? 0;
+                $cost = $costByService[$item->service_type] ?? 0;
                 return [
                     'service_type' => $item->service_type,
                     'shipment_count' => $item->shipment_count,
@@ -439,23 +495,28 @@ class Reports extends Component
             ->sortByDesc('revenue')
             ->values();
 
-        // Shipment Type Performance (Air/Sea/Land)
+        // Shipment Type Performance - OPTIMIZED: single query with joins
+        $revenueByShipType = Invoice::whereIn('shipment_id', $shipmentIds)
+            ->where('type', 'commercial')
+            ->join('shipments', 'invoices.shipment_id', '=', 'shipments.id')
+            ->selectRaw('shipments.shipment_type, SUM(invoices.grand_total) as total')
+            ->groupBy('shipments.shipment_type')
+            ->pluck('total', 'shipment_type');
+
+        $costByShipType = JobCost::whereIn('shipment_id', $shipmentIds)
+            ->join('shipments', 'job_costs.shipment_id', '=', 'shipments.id')
+            ->selectRaw('shipments.shipment_type, SUM(job_costs.amount) as total')
+            ->groupBy('shipments.shipment_type')
+            ->pluck('total', 'shipment_type');
+
         $shipmentTypePerformance = Shipment::whereBetween('created_at', [$startDate, $endDate])
             ->select('shipment_type')
             ->selectRaw('COUNT(*) as shipment_count')
             ->groupBy('shipment_type')
             ->get()
-            ->map(function($item) use ($startDate, $endDate) {
-                $shipmentIds = Shipment::whereBetween('created_at', [$startDate, $endDate])
-                    ->where('shipment_type', $item->shipment_type)
-                    ->pluck('id');
-                
-                $revenue = Invoice::whereIn('shipment_id', $shipmentIds)
-                    ->where('type', 'commercial')
-                    ->sum('grand_total');
-                
-                $cost = JobCost::whereIn('shipment_id', $shipmentIds)->sum('amount');
-                
+            ->map(function($item) use ($revenueByShipType, $costByShipType) {
+                $revenue = $revenueByShipType[$item->shipment_type] ?? 0;
+                $cost = $costByShipType[$item->shipment_type] ?? 0;
                 return [
                     'shipment_type' => $item->shipment_type,
                     'shipment_count' => $item->shipment_count,
@@ -474,23 +535,27 @@ class Reports extends Component
             ->groupBy('container_mode')
             ->pluck('count', 'container_mode');
 
-        // Top Commodities (menggunakan HS Code dengan deskripsi)
-        $topCommodities = Shipment::whereBetween('created_at', [$startDate, $endDate])
+        // Top Commodities - OPTIMIZED: pre-fetch HS codes and shipments
+        $topHsCodes = Shipment::whereBetween('created_at', [$startDate, $endDate])
             ->whereNotNull('hs_code')
             ->where('hs_code', '!=', '')
             ->select('hs_code', DB::raw('COUNT(*) as count'))
             ->groupBy('hs_code')
             ->orderByDesc('count')
             ->limit(10)
+            ->get();
+
+        $hsCodes = $topHsCodes->pluck('hs_code')->toArray();
+        $hsInfoMap = \App\Models\HsCode::whereIn('hs_code', $hsCodes)->get()->keyBy('hs_code');
+        $hsShipments = \App\Models\Shipment::whereBetween('created_at', [$startDate, $endDate])
+            ->whereIn('hs_code', $hsCodes)
+            ->with('customer')
             ->get()
-            ->map(function($item) use ($startDate, $endDate) {
-                $hsInfo = \App\Models\HsCode::where('hs_code', $item->hs_code)->first();
-                
-                // Ambil detail shipment untuk HS Code ini
-                $shipments = \App\Models\Shipment::whereBetween('created_at', [$startDate, $endDate])
-                    ->where('hs_code', $item->hs_code)
-                    ->with('customer')
-                    ->get();
+            ->groupBy('hs_code');
+
+        $topCommodities = $topHsCodes->map(function($item) use ($hsInfoMap, $hsShipments) {
+                $hsInfo = $hsInfoMap[$item->hs_code] ?? null;
+                $shipments = $hsShipments[$item->hs_code] ?? collect();
                 
                 return (object)[
                     'hs_code' => $item->hs_code,
