@@ -700,7 +700,40 @@ class JobCostingManager extends Component
                     'date_paid' => $newStatus === 'paid' ? now() : null,
                 ];
                 
+                $oldValues = ['status' => $cost->status, 'date_paid' => $cost->date_paid?->format('Y-m-d')];
                 $cost->update($updateData);
+
+                // ===== AUDIT TRAIL =====
+                \App\Models\ActivityLog::record(
+                    'JobCost',
+                    'STATUS_CHANGE',
+                    'JC-' . $cost->id . ' (Shipment #' . $cost->shipment_id . ')',
+                    'Status hutang diubah ke ' . strtoupper($newStatus) . ' | Vendor: ' . ($cost->vendor?->name ?? 'N/A') . ' | Rp ' . number_format($cost->amount, 0, ',', '.'),
+                    $oldValues,
+                    ['status' => $newStatus, 'date_paid' => $newStatus === 'paid' ? now()->format('Y-m-d') : null]
+                );
+
+                // ===== AUTO-SYNC: Update matching VendorBill =====
+                if ($cost->shipment_id && $cost->vendor_id) {
+                    $vendorBill = \App\Models\VendorBill::where('shipment_id', $cost->shipment_id)
+                        ->where('vendor_id', $cost->vendor_id)
+                        ->where('amount', $cost->amount)
+                        ->whereIn('status', $newStatus === 'paid' ? ['unpaid', 'partial'] : ['paid'])
+                        ->first();
+
+                    if ($vendorBill) {
+                        if ($newStatus === 'paid') {
+                            $vendorBill->recordPayment($cost->amount, now());
+                        } else {
+                            // Reverse: mark vendor bill unpaid
+                            $vendorBill->update([
+                                'status' => 'unpaid',
+                                'paid_amount' => max(0, $vendorBill->paid_amount - $cost->amount),
+                                'paid_date' => null,
+                            ]);
+                        }
+                    }
+                }
                 
                 // Jika berubah ke PAID dan belum ada journal, buat journal otomatis
                 if ($newStatus === 'paid' && !$cost->journal_id && $cost->coa_id) {

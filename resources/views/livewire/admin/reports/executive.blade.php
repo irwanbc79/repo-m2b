@@ -129,3 +129,78 @@
         @endforeach
     </div>
 </div>
+
+{{-- AP Aging & Cash Flow Forecast --}}
+<div class="grid md:grid-cols-2 gap-6">
+    {{-- AP Aging --}}
+    <div class="bg-white border rounded-xl p-6">
+        <h3 class="font-bold text-gray-800 mb-4">📑 Aging Hutang Vendor (AP)</h3>
+        <div class="space-y-3">
+            @php
+                $agingItems = [
+                    ['key' => 'current', 'label' => 'Belum Jatuh Tempo', 'color' => 'green', 'icon' => '✅'],
+                    ['key' => 'overdue_30', 'label' => '1-30 Hari Overdue', 'color' => 'yellow', 'icon' => '⏳'],
+                    ['key' => 'overdue_60', 'label' => '31-60 Hari Overdue', 'color' => 'orange', 'icon' => '⚠️'],
+                    ['key' => 'overdue_90', 'label' => '>60 Hari Overdue', 'color' => 'red', 'icon' => '🔴'],
+                ];
+                $maxAging = collect($apAging)->max(fn($a) => $a->total ?? 0) ?: 1;
+            @endphp
+            @foreach($agingItems as $ai)
+                @php $agingData = $apAging[$ai['key']] ?? null; @endphp
+                <div class="p-3 bg-{{ $ai['color'] }}-50 rounded-lg">
+                    <div class="flex justify-between items-center">
+                        <div>
+                            <p class="font-medium text-{{ $ai['color'] }}-800 text-sm">{{ $ai['icon'] }} {{ $ai['label'] }}</p>
+                            <p class="text-xs text-{{ $ai['color'] }}-600">{{ $agingData->count ?? 0 }} bill</p>
+                        </div>
+                        <p class="font-bold text-{{ $ai['color'] }}-700 text-sm">Rp {{ number_format($agingData->total ?? 0, 0, ',', '.') }}</p>
+                    </div>
+                    <div class="mt-2 bg-{{ $ai['color'] }}-200 rounded-full h-1.5 overflow-hidden">
+                        <div class="bg-{{ $ai['color'] }}-500 h-full rounded-full" 
+                             style="width: {{ (($agingData->total ?? 0) / $maxAging) * 100 }}%"></div>
+                    </div>
+                </div>
+            @endforeach
+            <div class="mt-2 p-2 bg-gray-100 rounded-lg flex justify-between">
+                <span class="text-xs font-bold text-gray-600">TOTAL AP</span>
+                <span class="text-sm font-black text-gray-800">Rp {{ number_format(collect($apAging)->sum(fn($a) => $a->total ?? 0), 0, ',', '.') }}</span>
+            </div>
+        </div>
+    </div>
+
+    {{-- Cash Flow Forecast --}}
+    <div class="bg-white border rounded-xl p-6">
+        <h3 class="font-bold text-gray-800 mb-4">🔮 Proyeksi Cash Flow</h3>
+        <div class="space-y-3">
+            @foreach($cashFlowForecast as $forecast)
+            <div class="p-3 border rounded-lg {{ $forecast['net'] >= 0 ? 'border-green-200 bg-green-50' : 'border-red-200 bg-red-50' }}">
+                <div class="flex justify-between items-start mb-2">
+                    <p class="font-bold text-gray-800 text-sm">{{ $forecast['label'] }} ke depan</p>
+                    <span class="text-xs px-2 py-0.5 rounded-full font-bold {{ $forecast['net'] >= 0 ? 'bg-green-200 text-green-800' : 'bg-red-200 text-red-800' }}">
+                        {{ $forecast['net'] >= 0 ? '▲ Surplus' : '▼ Defisit' }}
+                    </span>
+                </div>
+                <div class="grid grid-cols-3 gap-2 text-xs">
+                    <div>
+                        <p class="text-gray-500">Masuk</p>
+                        <p class="font-bold text-green-600">{{ number_format($forecast['cash_in']/1000000, 1) }}jt</p>
+                        <p class="text-gray-400">{{ $forecast['cash_in_count'] }} invoice</p>
+                    </div>
+                    <div>
+                        <p class="text-gray-500">Keluar</p>
+                        <p class="font-bold text-red-600">{{ number_format($forecast['cash_out']/1000000, 1) }}jt</p>
+                        <p class="text-gray-400">{{ $forecast['cash_out_count'] }} bill</p>
+                    </div>
+                    <div>
+                        <p class="text-gray-500">Net</p>
+                        <p class="font-black {{ $forecast['net'] >= 0 ? 'text-green-700' : 'text-red-700' }}">
+                            {{ number_format($forecast['net']/1000000, 1) }}jt
+                        </p>
+                    </div>
+                </div>
+            </div>
+            @endforeach
+        </div>
+        <p class="text-xs text-gray-400 mt-3">* Berdasarkan jatuh tempo invoice & vendor bill yang belum dibayar</p>
+    </div>
+</div>

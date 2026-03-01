@@ -11,9 +11,19 @@
                 <input type="date" wire:model.live="endDate" class="border-gray-300 rounded-md shadow-sm text-sm">
             </div>
             <div class="flex-1"></div>
-            <button onclick="window.print()" class="bg-gray-800 hover:bg-black text-white px-4 py-2 rounded-lg text-sm font-bold flex items-center gap-2">
-                🖨️ Cetak
-            </button>
+            <div class="flex items-center gap-2">
+                <button wire:click="exportCSV" wire:loading.attr="disabled" class="bg-green-600 hover:bg-green-700 text-white px-3 py-2 rounded-lg text-sm font-bold flex items-center gap-1">
+                    <span wire:loading.remove wire:target="exportCSV">📥 CSV</span>
+                    <span wire:loading wire:target="exportCSV">⏳...</span>
+                </button>
+                <button wire:click="exportPDF" wire:loading.attr="disabled" class="bg-red-600 hover:bg-red-700 text-white px-3 py-2 rounded-lg text-sm font-bold flex items-center gap-1">
+                    <span wire:loading.remove wire:target="exportPDF">📄 PDF</span>
+                    <span wire:loading wire:target="exportPDF">⏳...</span>
+                </button>
+                <button onclick="window.print()" class="bg-gray-800 hover:bg-black text-white px-4 py-2 rounded-lg text-sm font-bold flex items-center gap-2">
+                    🖨️ Cetak
+                </button>
+            </div>
         </div>
     </div>
 
@@ -41,7 +51,12 @@
         <div class="p-6">
             {{-- EXECUTIVE SUMMARY --}}
             @if($activeTab === 'executive')
-                @include('livewire.admin.reports.executive', ['kpi' => $kpi ?? [], 'monthlyTrend' => $monthlyTrend ?? collect()])
+                @include('livewire.admin.reports.executive', [
+                    'kpi' => $kpi ?? [], 
+                    'monthlyTrend' => $monthlyTrend ?? collect(),
+                    'apAging' => $apAging ?? [],
+                    'cashFlowForecast' => $cashFlowForecast ?? [],
+                ])
             
             {{-- FINANCIAL --}}
             @elseif($activeTab === 'financial')

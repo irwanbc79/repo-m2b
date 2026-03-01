@@ -165,7 +165,7 @@ class CashierService
     }
 
     /**
-     * Update related records (Invoice, Job Cost, etc.)
+     * Update related records (Invoice, Job Cost, VendorBill)
      */
     protected function updateRelatedRecords(CashTransaction $cashTransaction, array $data)
     {
@@ -180,23 +180,78 @@ class CashierService
                 ]);
             }
         }
+
+        // ===== AUTO-RECONCILIATION: Update VendorBill if linked =====
+        $vendorBillId = $data['vendor_bill_id'] ?? $cashTransaction->vendor_bill_id ?? null;
+        if ($vendorBillId) {
+            $vendorBill = \App\Models\VendorBill::find($vendorBillId);
+            if ($vendorBill && $vendorBill->status !== 'paid') {
+                $oldStatus = $vendorBill->status;
+                $vendorBill->recordPayment(
+                    $cashTransaction->amount,
+                    $cashTransaction->transaction_date
+                );
+
+                // Audit trail for VendorBill payment
+                \App\Models\ActivityLog::record(
+                    'VendorBill',
+                    'PAYMENT',
+                    'VB-' . $vendorBill->bill_number,
+                    'Pembayaran Rp ' . number_format($cashTransaction->amount, 0, ',', '.') . ' via Cashier | Vendor: ' . ($vendorBill->vendor->name ?? 'N/A'),
+                    ['status' => $oldStatus, 'paid_amount' => $vendorBill->paid_amount - $cashTransaction->amount],
+                    ['status' => $vendorBill->status, 'paid_amount' => $vendorBill->paid_amount]
+                );
+
+                // Also mark matching JobCost as paid if found
+                $matchingJobCost = JobCost::where('shipment_id', $vendorBill->shipment_id)
+                    ->where('vendor_id', $vendorBill->vendor_id)
+                    ->where('status', 'unpaid')
+                    ->where('amount', $vendorBill->amount)
+                    ->first();
+
+                if ($matchingJobCost) {
+                    $matchingJobCost->update([
+                        'status' => 'paid',
+                        'date_paid' => $cashTransaction->transaction_date,
+                    ]);
+                    // Don't create a new JobCost since we updated the existing one
+                    return;
+                }
+            }
+        }
         
-        // Create/Update Job Cost if shipment related
+        // Create/Update Job Cost if shipment related (only if not already handled above)
         if ($cashTransaction->shipment_id) {
             $type = $data['type'] ?? $data['transaction_type'] ?? 'in';
             
             if ($type === 'out') {
-                // Cash out = Cost/Expense for shipment
-                // FIX: Use correct column names matching job_costs table schema
-                JobCost::create([
-                    'shipment_id' => $cashTransaction->shipment_id,
-                    'description' => $data['description'] ?? 'Payment',
-                    'amount' => $cashTransaction->amount,
-                    'vendor_id' => $cashTransaction->vendor_id,
-                    'status' => 'paid',           // FIX: was 'payment_status'
-                    'date_paid' => $cashTransaction->transaction_date, // FIX: was 'payment_date'
-                    'created_by' => Auth::id(),
-                ]);
+                // Check if a matching unpaid JobCost already exists (avoid duplicates)
+                $existing = JobCost::where('shipment_id', $cashTransaction->shipment_id)
+                    ->where('amount', $cashTransaction->amount)
+                    ->where('status', 'unpaid')
+                    ->when($cashTransaction->vendor_id, function($q) use ($cashTransaction) {
+                        $q->where('vendor_id', $cashTransaction->vendor_id);
+                    })
+                    ->first();
+
+                if ($existing) {
+                    // Update existing JobCost to paid instead of creating duplicate
+                    $existing->update([
+                        'status' => 'paid',
+                        'date_paid' => $cashTransaction->transaction_date,
+                    ]);
+                } else {
+                    // No matching unpaid cost found, create new one as paid
+                    JobCost::create([
+                        'shipment_id' => $cashTransaction->shipment_id,
+                        'description' => $data['description'] ?? 'Payment',
+                        'amount' => $cashTransaction->amount,
+                        'vendor_id' => $cashTransaction->vendor_id,
+                        'status' => 'paid',
+                        'date_paid' => $cashTransaction->transaction_date,
+                        'created_by' => Auth::id(),
+                    ]);
+                }
             }
         }
     }

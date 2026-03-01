@@ -35,6 +35,66 @@ class Reports extends Component
         $this->activeTab = $tab;
     }
 
+    // ========== EXPORT FUNCTIONS ==========
+    public function exportPDF()
+    {
+        $data = $this->getExecutiveData();
+        $data['startDate'] = $this->startDate;
+        $data['endDate'] = $this->endDate;
+        $data['generatedAt'] = now()->format('d/m/Y H:i');
+
+        $pdf = \Barryvdh\DomPDF\Facade\Pdf::loadView('exports.report-executive-pdf', $data);
+        $pdf->setPaper('a4', 'landscape');
+        
+        $filename = 'Laporan_Executive_' . Carbon::parse($this->startDate)->format('Ymd') . '_' . Carbon::parse($this->endDate)->format('Ymd') . '.pdf';
+        return response()->streamDownload(fn() => print($pdf->output()), $filename);
+    }
+
+    public function exportCSV()
+    {
+        $data = $this->getExecutiveData();
+        $filename = 'Laporan_Trend_' . Carbon::parse($this->startDate)->format('Ymd') . '_' . Carbon::parse($this->endDate)->format('Ymd') . '.csv';
+
+        return response()->streamDownload(function() use ($data) {
+            $handle = fopen('php://output', 'w');
+            // BOM for Excel UTF-8 compatibility
+            fprintf($handle, chr(0xEF).chr(0xBB).chr(0xBF));
+            
+            // Header
+            fputcsv($handle, ['Laporan Executive Summary - Portal M2B']);
+            fputcsv($handle, ['Periode', $this->startDate . ' s/d ' . $this->endDate]);
+            fputcsv($handle, []);
+            
+            // KPI Summary
+            fputcsv($handle, ['KPI', 'Nilai']);
+            $kpi = $data['kpi'];
+            fputcsv($handle, ['Revenue (Dibayar)', $kpi['revenue']]);
+            fputcsv($handle, ['Gross Profit', $kpi['gross_profit']]);
+            fputcsv($handle, ['Margin (%)', $kpi['margin']]);
+            fputcsv($handle, ['Total Shipment', $kpi['shipments']]);
+            fputcsv($handle, ['Piutang (AR)', $kpi['ar_outstanding']]);
+            fputcsv($handle, ['Hutang (AP)', $kpi['ap_outstanding']]);
+            fputcsv($handle, ['Net Cash Flow', $kpi['net_cash']]);
+            fputcsv($handle, []);
+
+            // Monthly Trend
+            fputcsv($handle, ['Bulan', 'Revenue', 'Cost', 'Profit', 'Shipment']);
+            foreach ($data['monthlyTrend'] as $trend) {
+                fputcsv($handle, [$trend['month'], $trend['revenue'], $trend['cost'], $trend['profit'], $trend['shipments']]);
+            }
+            fputcsv($handle, []);
+
+            // Cash Flow Forecast
+            fputcsv($handle, ['Proyeksi Cash Flow']);
+            fputcsv($handle, ['Periode', 'Cash In', 'Cash Out', 'Net']);
+            foreach ($data['cashFlowForecast'] as $f) {
+                fputcsv($handle, [$f['label'], $f['cash_in'], $f['cash_out'], $f['net']]);
+            }
+
+            fclose($handle);
+        }, $filename, ['Content-Type' => 'text/csv']);
+    }
+
     public function render()
     {
         $data = match($this->activeTab) {
@@ -201,7 +261,110 @@ class Reports extends Component
                 'active_vendors' => $activeVendors,
             ],
             'monthlyTrend' => $monthlyTrend,
+            'apAging' => $this->getAPAging(),
+            'cashFlowForecast' => $this->getCashFlowForecast(),
         ];
+    }
+
+    // ========== AP AGING ==========
+    private function getAPAging()
+    {
+        $apAging = [
+            'current' => \App\Models\VendorBill::whereIn('status', ['unpaid', 'partial'])
+                ->where('due_date', '>=', now())
+                ->selectRaw('SUM(amount_idr - paid_amount) as total, COUNT(*) as count')
+                ->first(),
+            'overdue_30' => \App\Models\VendorBill::whereIn('status', ['unpaid', 'partial'])
+                ->whereBetween('due_date', [now()->subDays(30), now()->subDay()])
+                ->selectRaw('SUM(amount_idr - paid_amount) as total, COUNT(*) as count')
+                ->first(),
+            'overdue_60' => \App\Models\VendorBill::whereIn('status', ['unpaid', 'partial'])
+                ->whereBetween('due_date', [now()->subDays(60), now()->subDays(31)])
+                ->selectRaw('SUM(amount_idr - paid_amount) as total, COUNT(*) as count')
+                ->first(),
+            'overdue_90' => \App\Models\VendorBill::whereIn('status', ['unpaid', 'partial'])
+                ->where('due_date', '<', now()->subDays(60))
+                ->selectRaw('SUM(amount_idr - paid_amount) as total, COUNT(*) as count')
+                ->first(),
+        ];
+
+        // Fallback: if no VendorBill data, use JobCost with created_at as proxy
+        $hasVendorBillData = collect($apAging)->sum(fn($a) => $a->count ?? 0) > 0;
+        if (!$hasVendorBillData) {
+            $apAging = [
+                'current' => JobCost::where('status', 'unpaid')
+                    ->where('created_at', '>=', now()->subDays(30))
+                    ->selectRaw('SUM(amount) as total, COUNT(*) as count')
+                    ->first(),
+                'overdue_30' => JobCost::where('status', 'unpaid')
+                    ->whereBetween('created_at', [now()->subDays(60), now()->subDays(31)])
+                    ->selectRaw('SUM(amount) as total, COUNT(*) as count')
+                    ->first(),
+                'overdue_60' => JobCost::where('status', 'unpaid')
+                    ->whereBetween('created_at', [now()->subDays(90), now()->subDays(61)])
+                    ->selectRaw('SUM(amount) as total, COUNT(*) as count')
+                    ->first(),
+                'overdue_90' => JobCost::where('status', 'unpaid')
+                    ->where('created_at', '<', now()->subDays(90))
+                    ->selectRaw('SUM(amount) as total, COUNT(*) as count')
+                    ->first(),
+            ];
+        }
+
+        return $apAging;
+    }
+
+    // ========== CASH FLOW FORECAST ==========
+    private function getCashFlowForecast()
+    {
+        $forecast = [];
+        $periods = [
+            ['label' => '7 Hari', 'days' => 7],
+            ['label' => '30 Hari', 'days' => 30],
+            ['label' => '60 Hari', 'days' => 60],
+            ['label' => '90 Hari', 'days' => 90],
+        ];
+
+        foreach ($periods as $period) {
+            $endDate = now()->addDays($period['days']);
+
+            // Expected Cash In: Invoices with due dates in this period
+            $expectedIn = Invoice::where('type', 'commercial')
+                ->whereIn('status', ['unpaid', 'partial'])
+                ->whereBetween('due_date', [now(), $endDate])
+                ->selectRaw('SUM(grand_total - total_paid) as total, COUNT(*) as count')
+                ->first();
+
+            // Expected Cash Out: VendorBills with due dates in this period
+            $expectedOutBills = \App\Models\VendorBill::whereIn('status', ['unpaid', 'partial'])
+                ->whereBetween('due_date', [now(), $endDate])
+                ->selectRaw('SUM(amount_idr - paid_amount) as total, COUNT(*) as count')
+                ->first();
+
+            // Fallback to JobCost unpaid if no VendorBill data
+            $expectedOutJobs = JobCost::where('status', 'unpaid')
+                ->selectRaw('SUM(amount) as total, COUNT(*) as count')
+                ->first();
+
+            $cashIn = $expectedIn->total ?? 0;
+            $cashOut = ($expectedOutBills->total ?? 0) > 0 
+                ? ($expectedOutBills->total ?? 0) 
+                : ($expectedOutJobs->total ?? 0);
+
+            $forecast[] = [
+                'label' => $period['label'],
+                'days' => $period['days'],
+                'cash_in' => $cashIn,
+                'cash_in_count' => $expectedIn->count ?? 0,
+                'cash_out' => $cashOut,
+                'cash_out_count' => ($expectedOutBills->count ?? 0) > 0 
+                    ? ($expectedOutBills->count ?? 0) 
+                    : ($expectedOutJobs->count ?? 0),
+                'net' => $cashIn - $cashOut,
+            ];
+        }
+
+        return $forecast;
     }
 
     // ========== FINANCIAL REPORT ==========
