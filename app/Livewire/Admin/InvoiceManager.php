@@ -17,7 +17,7 @@ use Illuminate\Support\Str;
 use Illuminate\Support\Facades\Mail;
 use Barryvdh\DomPDF\Facade\Pdf;
 use App\Services\AccountingService;
-use Illuminate\Support\Facades\Cache; 
+use Illuminate\Support\Facades\Cache;
 
 class InvoiceManager extends Component
 {
@@ -25,25 +25,25 @@ class InvoiceManager extends Component
 
     public $filterStatus = '', $filterType = '';
     public $search = '';
-    
+
     // Modal State
     public $isModalOpen = false, $isEditing = false;
     public $isSendModalOpen = false;
-    public $email_type = 'invoice', $email_lang = 'id'; 
+    public $email_type = 'invoice', $email_lang = 'id';
     public $isPaymentModalOpen = false, $isPaymentPreviewOpen = false, $reminderModalOpen = false;
-    
+
     // Claim Properties
     public $isClaimModalOpen = false, $claimInvoiceId = null, $claimProofFile = null, $claimNotes = null;
-    
+
     // Revisi Payment Properties
     public $showReviseModal = false, $reviseInvoiceId = null, $reviseReason = "";
-    
+
     public $editingId = null;
 
     // Form Data Invoice
     public $customer_id, $shipment_id, $shipment_name = '', $invoice_number, $type = 'Commercial', $terbilang_lang = 'id', $payment_notes = '';
     public $invoice_date, $due_date, $status = 'unpaid';
-    public $items = []; 
+    public $items = [];
     public $products = [];
     public $payment_proof;
 
@@ -60,11 +60,11 @@ class InvoiceManager extends Component
 
     // Payment Data
     public $amount = 0, $payment_date, $payment_method = 'Transfer Bank', $payment_note = '', $quick_payment_proof, $payment_proof_url = null;
-    
+
     // Email Data
     public $email_recipient = '';
     public $email_subject = '';
-    public $email_body = ''; 
+    public $email_body = '';
     public $sendingInvoiceId = null;
 
     // Payment History Modal
@@ -85,45 +85,47 @@ class InvoiceManager extends Component
     public $previewFileModal = false;
     public $previewFilePath = null;
 
-    public function mount() { 
-        $this->invoice_date = date('Y-m-d'); 
-        $this->payment_date = date('Y-m-d'); 
-        $this->addItem(); 
+    public function mount()
+    {
+        $this->invoice_date = date('Y-m-d');
+        $this->payment_date = date('Y-m-d');
+        $this->addItem();
         $this->loadProducts();
     }
 
-        public function render()
+    public function render()
     {
         $query = Invoice::with(['customer', 'shipment']);
-        
+
         // Apply search filter
         if ($this->search) {
-            $query->where(function($q) {
+            $query->where(function ($q) {
                 $q->where('invoice_number', 'like', '%' . $this->search . '%')
-                  ->orWhereHas('customer', fn($q2) => $q2->where('company_name', 'like', '%' . $this->search . '%'));
+                    ->orWhereHas('customer', fn($q2) => $q2->where('company_name', 'like', '%' . $this->search . '%'));
             });
         }
-        
+
         // Apply status filter
         if ($this->filterStatus) {
             if ($this->filterStatus == 'overdue') {
                 $query->where('status', 'unpaid')
-                      ->where('due_date', '<', now());
-            } else {
+                    ->where('due_date', '<', now());
+            }
+            else {
                 $query->where('status', $this->filterStatus);
             }
         }
-        
+
         // Apply type filter
         if ($this->filterType) {
             $query->where('type', $this->filterType);
         }
-        
+
         $invoices = $query->latest()->paginate(10);
-        
-        $stats = Cache::remember('invoice_stats', 300, function() {
+
+        $stats = Cache::remember('invoice_stats', 300, function () {
             return [
-                'total' => Invoice::count(),
+            'total' => Invoice::count(),
             'unpaid' => Invoice::where('status', 'unpaid')->count(),
             'paid' => Invoice::where('status', 'paid')->count(),
             'overdue' => Invoice::where('status', 'unpaid')->where('due_date', '<', now())->count(),
@@ -132,30 +134,37 @@ class InvoiceManager extends Component
             'faktur_pajak_requests' => Invoice::where('status', 'paid')->where('faktur_pajak_requested', true)->whereNull('faktur_pajak_path')->count(),
             ];
         });
-        
-        $customersList = Customer::orderBy('company_name')->limit(500)->get();
-        $customerShipments = Shipment::with("customer")->where("status", "!=", "cancelled")->orderBy("created_at", "desc")->limit(200)->get();
+
+        $customersList = Cache::remember('invoice_customers_list', 300, function() {
+            return Customer::orderBy('company_name')->limit(500)->get();
+        });
+        $customerShipments = Cache::remember('invoice_customer_shipments', 300, function() {
+            return Shipment::with("customer")->where("status", "!=", "cancelled")->orderBy("created_at", "desc")->limit(200)->get();
+        });
         return view('livewire.admin.invoice-manager', compact('invoices', 'customersList', 'customerShipments', 'stats'))->layout('layouts.admin');
     }
 
     // --- FORM LOGIC & CALCULATIONS ---
 
-    public function calculateTotal($index) {
+    public function calculateTotal($index)
+    {
         $qty = (float)($this->items[$index]['qty'] ?? 0);
         $price = (float)($this->items[$index]['price'] ?? 0);
-        $this->items[$index]['total'] = $qty * $price; 
+        $this->items[$index]['total'] = $qty * $price;
         $this->calculateGrandTotal();
     }
 
-    public function calculateGrandTotal() 
+    public function calculateGrandTotal()
     {
-        $this->service_total = 0; 
+        $this->service_total = 0;
         $this->reimbursement_total = 0;
 
         foreach ($this->items as $item) {
             $val = (float)($item['qty'] ?? 0) * (float)($item['price'] ?? 0);
-            if (($item['item_type'] ?? 'service') === 'service') $this->service_total += $val;
-            else $this->reimbursement_total += $val;
+            if (($item['item_type'] ?? 'service') === 'service')
+                $this->service_total += $val;
+            else
+                $this->reimbursement_total += $val;
         }
 
         // Diskon & Pajak (Hanya dari Jasa)
@@ -163,41 +172,56 @@ class InvoiceManager extends Component
         $serviceAfterDiscount = $this->service_total - $this->discount_amount;
         $this->tax_amount = $serviceAfterDiscount * ((float)($this->tax_rate ?: 0) / 100);
         $this->pph_amount = $serviceAfterDiscount * ((float)($this->pph_rate ?: 0) / 100);
-        
+
         // Full Total SEKARANG (Jasa + Tax + Reimburse - PPh)
         // PPh dikurangkan karena ini adalah nilai "Yang Harus Dibayar Customer"
         $fullTotalCurrent = ($serviceAfterDiscount + $this->tax_amount) + $this->reimbursement_total - $this->pph_amount;
-        
+
         // Logic DP & Grand Total
         if ($this->type == 'Proforma' && (float)($this->dp_percentage ?: 0) > 0) {
             // CASE 1: PROFORMA (Invoice Uang Muka)
-            $this->down_payment = 0; 
+            $this->down_payment = 0;
             $this->grand_total = $fullTotalCurrent * ((float)($this->dp_percentage ?: 0) / 100);
-        } else {
+        }
+        else {
             // CASE 2: COMMERCIAL (Pelunasan / Invoice Akhir)
             if ($this->down_payment > 0) {
-                 $this->grand_total = $fullTotalCurrent - $this->down_payment;
-            } else {
-                 $this->grand_total = $fullTotalCurrent;
+                $this->grand_total = $fullTotalCurrent - $this->down_payment;
+            }
+            else {
+                $this->grand_total = $fullTotalCurrent;
             }
         }
 
         $this->subtotal = $this->service_total + $this->reimbursement_total;
     }
 
-    public function updatedDiscountPercentage() { $this->calculateGrandTotal(); }
-    public function updatedDpPercentage() { 
-        if($this->type == 'Proforma') $this->calculateGrandTotal();
-    } 
-    public function updatedTaxRate() { $this->calculateGrandTotal(); }
-    public function updatedPphRate() { $this->calculateGrandTotal(); }
-    public function updatedDownPayment() { 
-        $this->calculateGrandTotal(); 
+    public function updatedDiscountPercentage()
+    {
+        $this->calculateGrandTotal();
+    }
+    public function updatedDpPercentage()
+    {
+        if ($this->type == 'Proforma')
+            $this->calculateGrandTotal();
+    }
+    public function updatedTaxRate()
+    {
+        $this->calculateGrandTotal();
+    }
+    public function updatedPphRate()
+    {
+        $this->calculateGrandTotal();
+    }
+    public function updatedDownPayment()
+    {
+        $this->calculateGrandTotal();
     }
 
-    public function updatedShipmentId($value) 
+    public function updatedShipmentId($value)
     {
-        if ($value && !$this->isEditing) $this->generateNumber();
+        if ($value && !$this->isEditing)
+            $this->generateNumber();
         if ($value) {
             $shipment = Shipment::find($value);
             $this->shipment_name = $shipment ? "[" . ($shipment->customer->company_name ?? "N/A") . "] - " . $shipment->awb_number : "";
@@ -209,42 +233,41 @@ class InvoiceManager extends Component
                 ->where('status', 'paid')
                 ->latest()
                 ->first();
-                
+
             if ($proforma) {
                 $this->down_payment = $proforma->grand_total;
                 $this->related_proforma = [
-                    'id' => $proforma->id, 
-                    'number' => $proforma->invoice_number, 
+                    'id' => $proforma->id,
+                    'number' => $proforma->invoice_number,
                     'amount' => $proforma->grand_total
                 ];
                 session()->flash('message', 'DP dari Proforma ' . $proforma->invoice_number . ' otomatis diterapkan sebagai pengurang.');
-            } else {
-                $this->down_payment = 0; 
+            }
+            else {
+                $this->down_payment = 0;
                 $this->related_proforma = null;
             }
-        } else {
-            $this->down_payment = 0; 
+        }
+        else {
+            $this->down_payment = 0;
             $this->related_proforma = null;
             $this->shipment_name = "";
         }
-        $this->calculateGrandTotal(); 
+        $this->calculateGrandTotal();
     }
 
-    public function applyProformaDP() { 
-        if ($this->related_proforma) { 
-            $this->down_payment = $this->related_proforma['amount']; 
-            $this->calculateGrandTotal(); 
-        } 
+    public function applyProformaDP()
+    {
+        if ($this->related_proforma) {
+            $this->down_payment = $this->related_proforma['amount'];
+            $this->calculateGrandTotal();
+        }
     }
 
-    public function save() {
-        \Log::info("Invoice Save Debug", [
-            "customer_id" => $this->customer_id,
-            "shipment_id" => $this->shipment_id,
-            "shipment_id_type" => gettype($this->shipment_id)
-        ]);
+    public function save()
+    {
         $this->validate(['customer_id' => 'required', 'shipment_id' => 'nullable', 'type' => 'required', 'invoice_number' => 'required', 'invoice_date' => 'required|date', 'items' => 'required|array|min:1', 'items.*.description' => 'required', 'items.*.price' => 'required|numeric']);
-        
+
         DB::transaction(function () {
             $this->calculateGrandTotal();
             $data = [
@@ -252,66 +275,88 @@ class InvoiceManager extends Component
                 'subtotal' => $this->subtotal, 'service_total' => $this->service_total, 'reimbursement_total' => $this->reimbursement_total, 'discount_percentage' => $this->discount_percentage, 'discount_amount' => $this->discount_amount,
                 'tax_amount' => $this->tax_amount, 'pph_amount' => $this->pph_amount, 'dp_percentage' => (float)($this->dp_percentage ?: 0), 'down_payment' => $this->down_payment, 'grand_total' => $this->grand_total,
             ];
-            
-            if ($this->status == 'unpaid') $data['payment_date'] = null; elseif ($this->status == 'paid' && empty($data['payment_date'])) $data['payment_date'] = date('Y-m-d');
-            
-            if ($this->payment_proof) { 
-                $filename = 'PAY_' . str_replace(['/', '\\'], '-', $this->invoice_number) . '_' . time() . '.' . $this->payment_proof->getClientOriginalExtension(); 
-                $path = $this->payment_proof->storeAs('payments', $filename, 'public'); 
-                $data['payment_proof'] = $path; if($this->status == 'unpaid') $data['status'] = 'paid'; 
+
+            if ($this->status == 'unpaid')
+                $data['payment_date'] = null;
+            elseif ($this->status == 'paid' && empty($data['payment_date']))
+                $data['payment_date'] = date('Y-m-d');
+
+            if ($this->payment_proof) {
+                $filename = 'PAY_' . str_replace(['/', '\\'], '-', $this->invoice_number) . '_' . time() . '.' . $this->payment_proof->getClientOriginalExtension();
+                $path = $this->payment_proof->storeAs('payments', $filename, 'public');
+                $data['payment_proof'] = $path;
+                if ($this->status == 'unpaid')
+                    $data['status'] = 'paid';
             }
-            
-            if ($this->isEditing) { 
-                $invoice = Invoice::find($this->editingId); $invoice->update($data); $invoice->items()->delete(); 
-            } else { 
-                $invoice = Invoice::create($data); 
+
+            if ($this->isEditing) {
+                $invoice = Invoice::find($this->editingId);
+                $invoice->update($data);
+                $invoice->items()->delete();
             }
-            
-            foreach ($this->items as $item) { 
-                $invoice->items()->create(['description' => $item['description'], 'item_type' => $item['item_type'], 'qty' => $item['qty'], 'price' => $item['price'], 'total' => ((float)$item['qty'] * (float)$item['price'])]); 
+            else {
+                $invoice = Invoice::create($data);
+            }
+
+            foreach ($this->items as $item) {
+                $invoice->items()->create(['description' => $item['description'], 'item_type' => $item['item_type'], 'qty' => $item['qty'], 'price' => $item['price'], 'total' => ((float)$item['qty'] * (float)$item['price'])]);
             }
         });
-        
+
         session()->flash('message', 'Invoice berhasil disimpan.');
         $this->closeModal();
     }
 
-    public function edit($id) {
+    public function edit($id)
+    {
         $invoice = Invoice::with('items')->findOrFail($id);
-        $this->editingId = $id; 
+        $this->editingId = $id;
         $this->customer_id = $invoice->customer_id ?? ($invoice->shipment ? $invoice->shipment->customer_id : null);
         $this->shipment_id = $invoice->shipment_id;
-        if($invoice->shipment) { $this->shipment_name = "[" . ($invoice->shipment->customer->company_name ?? "N/A") . "] - " . $invoice->shipment->awb_number; } else { $this->shipment_name = ""; }
-        $this->invoice_number = $invoice->invoice_number; 
-        $this->type = $invoice->type ?? 'Commercial'; $this->terbilang_lang = $invoice->terbilang_lang ?? 'id'; $this->payment_notes = $invoice->payment_notes ?? '';
+        if ($invoice->shipment) {
+            $this->shipment_name = "[" . ($invoice->shipment->customer->company_name ?? "N/A") . "] - " . $invoice->shipment->awb_number;
+        }
+        else {
+            $this->shipment_name = "";
+        }
+        $this->invoice_number = $invoice->invoice_number;
+        $this->type = $invoice->type ?? 'Commercial';
+        $this->terbilang_lang = $invoice->terbilang_lang ?? 'id';
+        $this->payment_notes = $invoice->payment_notes ?? '';
         $this->invoice_date = $invoice->invoice_date ? $invoice->invoice_date->format('Y-m-d') : date('Y-m-d');
         $this->due_date = $invoice->due_date ? $invoice->due_date->format('Y-m-d') : date('Y-m-d');
-        $this->status = $invoice->status; 
+        $this->status = $invoice->status;
         $this->payment_date = $invoice->payment_date ? $invoice->payment_date->format('Y-m-d') : date('Y-m-d');
-        $this->service_total = $invoice->service_total; $this->reimbursement_total = $invoice->reimbursement_total;
-        $this->subtotal = $invoice->subtotal; $this->tax_amount = $invoice->tax_amount;
-        $this->pph_amount = $invoice->pph_amount; $this->grand_total = $invoice->grand_total;
+        $this->service_total = $invoice->service_total;
+        $this->reimbursement_total = $invoice->reimbursement_total;
+        $this->subtotal = $invoice->subtotal;
+        $this->tax_amount = $invoice->tax_amount;
+        $this->pph_amount = $invoice->pph_amount;
+        $this->grand_total = $invoice->grand_total;
         $this->discount_percentage = $invoice->discount_percentage ?? 0;
         $this->dp_percentage = $invoice->dp_percentage ?? 0;
         $this->down_payment = $invoice->down_payment ?? 0;
-        $this->tax_rate = $this->service_total > 0 ? ($this->tax_amount / ($this->service_total - ($invoice->discount_amount??0))) * 100 : 11;
-        $this->pph_rate = $this->service_total > 0 ? ($this->pph_amount / ($this->service_total - ($invoice->discount_amount??0))) * 100 : 0;
-        $this->items = $invoice->items->map(function($item) { 
-            return [ 'description' => $item->description, 'item_type' => $item->item_type ?? 'service', 'qty' => $item->qty, 'price' => $item->price, 'total' => $item->total ?? ($item->qty * $item->price) ]; 
+        $serviceAfterDiscount = $this->service_total - ($invoice->discount_amount ?? 0);
+        $this->tax_rate = ($serviceAfterDiscount > 0) ? ($this->tax_amount / $serviceAfterDiscount) * 100 : 11;
+        $this->pph_rate = ($serviceAfterDiscount > 0) ? ($this->pph_amount / $serviceAfterDiscount) * 100 : 0;
+        $this->items = $invoice->items->map(function ($item) {
+            return ['description' => $item->description, 'item_type' => $item->item_type ?? 'service', 'qty' => $item->qty, 'price' => $item->price, 'total' => $item->total ?? ($item->qty * $item->price)];
         })->toArray();
-        $this->isEditing = true; $this->isModalOpen = true;
+        $this->isEditing = true;
+        $this->isModalOpen = true;
         $this->calculateGrandTotal();
     }
 
     // --- LOGIC EMAIL (DENGAN TRY-CATCH YANG BENAR) ---
 
-    public function openSendModal($id) 
+    public function openSendModal($id)
     {
         $invoice = Invoice::with('customer')->find($id);
-        if (!$invoice) return;
+        if (!$invoice)
+            return;
 
         $this->sendingInvoiceId = $id;
-        
+
         $customer = $invoice->customer ?? ($invoice->shipment->customer ?? null);
         $this->email_recipient = $customer ? $customer->email : '';
 
@@ -319,22 +364,22 @@ class InvoiceManager extends Component
         $this->email_subject = "{$prefix} #{$invoice->invoice_number} - PT. MORA MULTI BERKAH";
 
         $namaCustomer = $customer ? $customer->company_name : 'Bapak/Ibu';
-        
+
         $this->email_body = "Yth. {$namaCustomer},\n\n" .
-        "Terima kasih atas kepercayaan Anda menggunakan jasa PT. Mora Multi Berkah.\n" .
-        "Bersama ini kami lampirkan dokumen tagihan digital untuk layanan logistik Anda.\n\n" .
-        "Mohon agar pembayaran dapat diproses sesuai dengan rincian yang tertera. Apabila Anda membutuhkan informasi lebih lanjut, jangan ragu untuk menghubungi kami.";
+            "Terima kasih atas kepercayaan Anda menggunakan jasa PT. Mora Multi Berkah.\n" .
+            "Bersama ini kami lampirkan dokumen tagihan digital untuk layanan logistik Anda.\n\n" .
+            "Mohon agar pembayaran dapat diproses sesuai dengan rincian yang tertera. Apabila Anda membutuhkan informasi lebih lanjut, jangan ragu untuk menghubungi kami.";
 
         $this->isSendModalOpen = true;
     }
 
-    public function closeSendModal() 
+    public function closeSendModal()
     {
         $this->isSendModalOpen = false;
         $this->reset(['email_recipient', 'email_subject', 'email_body', 'sendingInvoiceId']);
     }
 
-    public function sendEmail() 
+    public function sendEmail()
     {
         $this->validate([
             'email_recipient' => 'required|email',
@@ -357,18 +402,18 @@ class InvoiceManager extends Component
                 'invoice' => $invoice,
                 'bodyMessage' => $this->email_body
             ], function ($message) use ($invoice, $pdfContent) {
-                
-                $message->from('no_reply@m2b.co.id', 'Finance - PT. Mora Multi Berkah') 
-                        ->replyTo('finance@m2b.co.id', 'Finance Dept')
-                        ->to($this->email_recipient)
-                        ->subject($this->email_subject);
+
+                $message->from('no_reply@m2b.co.id', 'Finance - PT. Mora Multi Berkah')
+                    ->replyTo('finance@m2b.co.id', 'Finance Dept')
+                    ->to($this->email_recipient)
+                    ->subject($this->email_subject);
 
                 $cleanNumber = str_replace(['/', '\\'], '-', $invoice->invoice_number);
-                $message->attachData($pdfContent, 'Invoice-'.$cleanNumber.'.pdf', [
+                $message->attachData($pdfContent, 'Invoice-' . $cleanNumber . '.pdf', [
                     'mime' => 'application/pdf',
                 ]);
             });
-            
+
 
             // Simpan ke database sent_emails
             \App\Models\SentEmail::create([
@@ -382,82 +427,176 @@ class InvoiceManager extends Component
             session()->flash('message', 'Email tagihan & Attachment berhasil dikirim!');
             $this->closeSendModal();
 
-        } catch (\Exception $e) {
+        }
+        catch (\Exception $e) {
             session()->flash('error', 'Gagal mengirim email: ' . $e->getMessage());
         }
     }
 
     // --- UTILS ---
-    public function updatedCustomerId() { $this->shipment_id = null; }
-    public function updatedType() { if (!$this->isEditing) $this->generateNumber(); }
-    private function generateNumber() { $this->invoice_number = (($this->type == 'Proforma') ? 'PRO' : 'INV') . '/' . date('ym') . '/' . rand(1000, 9999); }
-    public function addItem() { $this->items[] = ['description' => '', 'item_type' => 'service', 'qty' => 1, 'price' => 0, 'total' => 0]; }
-    public function removeItem($index) { unset($this->items[$index]); $this->items = array_values($this->items); $this->calculateGrandTotal(); }
-    public function create() { $this->resetInputFields(); $this->isModalOpen = true; $this->isEditing = false; $this->addItem(); }
-    public function delete($id) { $inv = Invoice::find($id); if($inv){$inv->items()->delete();$inv->delete();session()->flash('message','Invoice dihapus.');}}
-    public function openPaymentModal($id) { $this->paymentHistoryModal=false; $this->editingId=$id; $this->payment_date=date('Y-m-d'); $this->quick_payment_proof=null; $this->isPaymentModalOpen=true; }
-    public function savePayment() 
-    { 
+    public function updatedCustomerId()
+    {
+        $this->shipment_id = null;
+    }
+    public function updatedType()
+    {
+        if (!$this->isEditing)
+            $this->generateNumber();
+    }
+    private function generateNumber()
+    {
+        $this->invoice_number = (($this->type == 'Proforma') ? 'PRO' : 'INV') . '/' . date('ym') . '/' . rand(1000, 9999);
+    }
+    public function addItem()
+    {
+        $this->items[] = ['description' => '', 'item_type' => 'service', 'qty' => 1, 'price' => 0, 'total' => 0];
+    }
+    public function removeItem($index)
+    {
+        unset($this->items[$index]);
+        $this->items = array_values($this->items);
+        $this->calculateGrandTotal();
+    }
+    public function create()
+    {
+        $this->resetInputFields();
+        $this->isModalOpen = true;
+        $this->isEditing = false;
+        $this->addItem();
+    }
+    public function delete($id)
+    {
+        $inv = Invoice::find($id);
+        if ($inv) {
+            $inv->items()->delete();
+            $inv->delete();
+            session()->flash('message', 'Invoice dihapus.');
+        }
+    }
+    public function openPaymentModal($id)
+    {
+        $this->paymentHistoryModal = false;
+        $this->editingId = $id;
+        $this->payment_date = date('Y-m-d');
+        $this->quick_payment_proof = null;
+        $this->isPaymentModalOpen = true;
+    }
+    public function savePayment()
+    {
         $this->validate([
-            "payment_date" => "required|date", 
-            "payment_method" => "required", 
+            "payment_date" => "required|date",
+            "payment_method" => "required",
             "quick_payment_proof" => "nullable|file|mimes:jpeg,png,jpg,pdf|max:10240"
-        ]); 
-        
-        $inv = Invoice::find($this->editingId); 
-        if($inv) { 
+        ]);
+
+        $inv = Invoice::find($this->editingId);
+        if ($inv) {
             DB::beginTransaction();
             try {
                 $data = [
-                    "status" => "paid", 
-                    "payment_date" => $this->payment_date, 
+                    "status" => "paid",
+                    "payment_date" => $this->payment_date,
                     "notes" => $inv->notes . "\n[LUNAS: " . $this->payment_method . "]"
-                ]; 
-                
-                if ($this->quick_payment_proof) { 
+                ];
+
+                if ($this->quick_payment_proof) {
                     if ($inv->payment_proof && Storage::disk("public")->exists($inv->payment_proof)) {
                         Storage::disk("public")->delete($inv->payment_proof);
                     }
-                    $filename = "PAY_" . str_replace(["/", "\\"], "-", $inv->invoice_number) . "_" . time() . "." . $this->quick_payment_proof->getClientOriginalExtension(); 
-                    $path = $this->quick_payment_proof->storeAs("payments", $filename, "public"); 
-                    $data["payment_proof"] = $path; 
-                } 
-                
-                $inv->update($data); 
-                
+                    $filename = "PAY_" . str_replace(["/", "\\"], "-", $inv->invoice_number) . "_" . time() . "." . $this->quick_payment_proof->getClientOriginalExtension();
+                    $path = $this->quick_payment_proof->storeAs("payments", $filename, "public");
+                    $data["payment_proof"] = $path;
+                }
+
+                $inv->update($data);
+
                 // AUTO JOURNAL: Buat jurnal pembayaran otomatis
                 $journal = AccountingService::createJournalFromPayment($inv, "1103");
-                
+
                 DB::commit();
-                
+
                 if ($journal) {
                     session()->flash("message", "Pembayaran dicatat! Jurnal " . $journal->journal_number . " otomatis dibuat.");
-                } else {
+                }
+                else {
                     session()->flash("message", "Pembayaran dicatat! (Jurnal tidak dibuat - cek log)");
                 }
-            } catch (\Exception $e) {
+            }
+            catch (\Exception $e) {
                 DB::rollBack();
                 session()->flash("error", "Gagal mencatat pembayaran: " . $e->getMessage());
             }
-        } 
-        $this->isPaymentModalOpen = false; 
-        $this->reset("quick_payment_proof"); 
+        }
+        $this->isPaymentModalOpen = false;
+        $this->reset("quick_payment_proof");
     }
-    public function closePaymentModal() { $this->isPaymentModalOpen=false; }
-    public function openPaymentPreview($id) { $inv=Invoice::find($id); if($inv&&$inv->payment_proof){$this->payment_proof_url=asset('storage/'.$inv->payment_proof);$this->isPaymentPreviewOpen=true;} else {session()->flash('error','Bukti bayar tidak ditemukan.');} }
-    public function closePaymentPreview() { $this->isPaymentPreviewOpen = false; $this->payment_proof_url = null; }
-    public function openReminderModal($id) { $this->reminderModalOpen=true; } public function closeReminderModal() { $this->reminderModalOpen=false; } public function sendReminder() { $this->reminderModalOpen=false; }
-    public function closeModal() { $this->isModalOpen = false; $this->resetInputFields(); }
+    public function closePaymentModal()
+    {
+        $this->isPaymentModalOpen = false;
+    }
+    public function openPaymentPreview($id)
+    {
+        $inv = Invoice::find($id);
+        if ($inv && $inv->payment_proof) {
+            $this->payment_proof_url = asset('storage/' . $inv->payment_proof);
+            $this->isPaymentPreviewOpen = true;
+        }
+        else {
+            session()->flash('error', 'Bukti bayar tidak ditemukan.');
+        }
+    }
+    public function closePaymentPreview()
+    {
+        $this->isPaymentPreviewOpen = false;
+        $this->payment_proof_url = null;
+    }
+    public function openReminderModal($id)
+    {
+        $this->reminderModalOpen = true;
+    }
+    public function closeReminderModal()
+    {
+        $this->reminderModalOpen = false;
+    }
+    public function sendReminder()
+    {
+        $this->reminderModalOpen = false;
+    }
+    public function closeModal()
+    {
+        $this->isModalOpen = false;
+        $this->resetInputFields();
+    }
 
-    private function resetInputFields() {
-        $this->customer_id = ''; $this->shipment_id = null; $this->invoice_number = ''; $this->type = 'Commercial';
-        $this->invoice_date = date('Y-m-d'); $this->due_date = date('Y-m-d', strtotime('+7 days')); $this->status = 'unpaid'; $this->items = []; 
-        $this->subtotal = 0; $this->service_total = 0; $this->reimbursement_total = 0;
-        $this->tax_amount = 0; $this->pph_amount = 0; $this->grand_total = 0; $this->tax_rate = 11; $this->pph_rate = 0;
-        $this->payment_proof = null; $this->quick_payment_proof = null; $this->payment_date = date('Y-m-d');
-        $this->discount_percentage = 0; $this->discount_amount = 0; $this->dp_percentage = 0; $this->down_payment = 0;
+    private function resetInputFields()
+    {
+        $this->customer_id = '';
+        $this->shipment_id = null;
+        $this->invoice_number = '';
+        $this->type = 'Commercial';
+        $this->invoice_date = date('Y-m-d');
+        $this->due_date = date('Y-m-d', strtotime('+7 days'));
+        $this->status = 'unpaid';
+        $this->items = [];
+        $this->subtotal = 0;
+        $this->service_total = 0;
+        $this->reimbursement_total = 0;
+        $this->tax_amount = 0;
+        $this->pph_amount = 0;
+        $this->grand_total = 0;
+        $this->tax_rate = 11;
+        $this->pph_rate = 0;
+        $this->payment_proof = null;
+        $this->quick_payment_proof = null;
+        $this->payment_date = date('Y-m-d');
+        $this->discount_percentage = 0;
+        $this->discount_amount = 0;
+        $this->dp_percentage = 0;
+        $this->down_payment = 0;
         $this->related_proforma = null;
-        $this->email_recipient = ''; $this->email_subject = ''; $this->email_body = '';
+        $this->email_recipient = '';
+        $this->email_subject = '';
+        $this->email_body = '';
     }
 
     /**
@@ -467,20 +606,21 @@ class InvoiceManager extends Component
     {
         try {
             $proforma = Invoice::findOrFail($proformaId);
-            
+
             // Validation
             if (!$proforma->canGenerateCommercial()) {
                 session()->flash('error', 'Cannot generate Commercial invoice. Proforma must be paid and not already have a Commercial invoice.');
                 return;
             }
-            
+
             // Generate Commercial using service
             $service = app(InvoiceWorkflowService::class);
             $commercial = $service->generateCommercialFromProforma($proforma);
-            
+
             session()->flash('message', "✅ Commercial invoice {$commercial->invoice_number} successfully generated from Proforma {$proforma->invoice_number}!");
-            
-        } catch (Exception $e) {
+
+        }
+        catch (Exception $e) {
             session()->flash('error', 'Failed to generate Commercial invoice: ' . $e->getMessage());
         }
     }
@@ -502,42 +642,43 @@ class InvoiceManager extends Component
      */
     public function selectProduct($index, $productId)
     {
-        if (!$productId) return;
+        if (!$productId)
+            return;
 
         $product = \App\Models\Product::find($productId);
-        
+
         if ($product) {
             $this->items[$index]['product_id'] = $product->id;
             $this->items[$index]['description'] = $product->name;
             $this->items[$index]['price'] = $product->default_price;
             $this->items[$index]['item_type'] = $product->service_type === 'reimbursement' ? 'reimbursement' : 'service';
-            
+
             // Auto calculate
             $this->calculateTotal($index);
         }
     }
 
-    public function savePaymentNew() 
-    { 
+    public function savePaymentNew()
+    {
         $this->validate([
-            "payment_date" => "required|date", 
-            "payment_method" => "required", 
+            "payment_date" => "required|date",
+            "payment_method" => "required",
             "amount" => "required|numeric|min:1",
             "quick_payment_proof" => "nullable|file|mimes:jpeg,png,jpg,pdf|max:10240"
-        ]); 
-        
-        $inv = Invoice::find($this->editingId); 
-        if($inv) { 
-            DB::transaction(function() use ($inv) {
+        ]);
+
+        $inv = Invoice::find($this->editingId);
+        if ($inv) {
+            DB::transaction(function () use ($inv) {
                 $proofPath = null;
                 $proofFilename = null;
-                if ($this->quick_payment_proof) { 
+                if ($this->quick_payment_proof) {
                     $proofFilename = $this->quick_payment_proof->getClientOriginalName();
                     $invNum = str_replace(["/", "\\"], "-", $inv->invoice_number);
-                    $filename = "PAY_" . $invNum . "_" . time() . "." . $this->quick_payment_proof->getClientOriginalExtension(); 
-                    $proofPath = $this->quick_payment_proof->storeAs("payments", $filename, "public"); 
+                    $filename = "PAY_" . $invNum . "_" . time() . "." . $this->quick_payment_proof->getClientOriginalExtension();
+                    $proofPath = $this->quick_payment_proof->storeAs("payments", $filename, "public");
                 }
-                
+
                 \App\Models\InvoicePayment::create([
                     "invoice_id" => $inv->id,
                     "amount" => $this->amount,
@@ -548,19 +689,19 @@ class InvoiceManager extends Component
                     "notes" => $this->payment_note ?? null,
                     "recorded_by" => auth()->id(),
                 ]);
-                
+
                 $inv->recalculateTotalPaid();
                 if ($proofPath) {
                     $inv->update(["payment_proof" => $proofPath]);
                 }
             });
-            
-            session()->flash("message", "Pembayaran Rp " . number_format($this->amount) . " berhasil dicatat"); 
-        } 
-        $this->isPaymentModalOpen = false; 
-        $this->reset(["quick_payment_proof", "amount", "payment_note"]); 
+
+            session()->flash("message", "Pembayaran Rp " . number_format($this->amount) . " berhasil dicatat");
+        }
+        $this->isPaymentModalOpen = false;
+        $this->reset(["quick_payment_proof", "amount", "payment_note"]);
     }
-    
+
     public function openPaymentHistory($id)
     {
         $inv = Invoice::with("payments.recorder")->find($id);
@@ -568,14 +709,14 @@ class InvoiceManager extends Component
         $this->selectedInvoicePayments = $inv ? $inv->payments->toArray() : [];
         $this->paymentHistoryModal = true;
     }
-    
+
     public function closePaymentHistory()
     {
         $this->paymentHistoryModal = false;
         $this->selectedInvoiceForPayment = null;
         $this->selectedInvoicePayments = [];
     }
-    
+
     public function openFilePreview($paymentIdOrPath)
     {
         // Cek apakah ini ID (numeric) atau path (string)
@@ -585,7 +726,8 @@ class InvoiceManager extends Component
                 $this->previewFilePath = $payment->proof_file;
                 $this->previewFileModal = true;
             }
-        } else {
+        }
+        else {
             // Ini adalah path langsung (legacy)
             $this->previewFilePath = $paymentIdOrPath;
             $this->previewFileModal = true;
@@ -621,7 +763,7 @@ class InvoiceManager extends Component
 
         $payment = \App\Models\InvoicePayment::find($this->editingPaymentId);
         if ($payment) {
-            DB::transaction(function() use ($payment) {
+            DB::transaction(function () use ($payment) {
                 $payment->update([
                     "amount" => $this->editingPaymentAmount,
                     "payment_date" => $this->editingPaymentDate,
@@ -662,7 +804,7 @@ class InvoiceManager extends Component
         $payment = \App\Models\InvoicePayment::find($paymentId);
         if ($payment) {
             $invoiceId = $payment->invoice_id;
-            DB::transaction(function() use ($payment) {
+            DB::transaction(function () use ($payment) {
                 if ($payment->proof_file && \Storage::disk("public")->exists($payment->proof_file)) {
                     \Storage::disk("public")->delete($payment->proof_file);
                 }
@@ -690,16 +832,18 @@ class InvoiceManager extends Component
             $invoice->total_paid = $totalPaid;
             if ($totalPaid >= $invoice->grand_total || abs($invoice->grand_total - $totalPaid) < 1) {
                 $invoice->status = "paid";
-            } elseif ($totalPaid > 0) {
+            }
+            elseif ($totalPaid > 0) {
                 $invoice->status = "partial";
-            } else {
+            }
+            else {
                 $invoice->status = "unpaid";
             }
             $invoice->save();
         }
     }
 
-    
+
     /**
      * Buka modal revisi pembayaran dengan panduan
      */
@@ -739,7 +883,7 @@ class InvoiceManager extends Component
         try {
             // 1. Reverse journal pembayaran jika ada
             $reversalJournal = AccountingService::reverseJournal("PAY-" . $inv->id);
-            
+
             // 2. Update invoice - kembalikan ke unpaid
             $inv->update([
                 "status" => "unpaid",
@@ -753,18 +897,19 @@ class InvoiceManager extends Component
             if ($reversalJournal) {
                 $message .= " Jurnal pembalik: " . $reversalJournal->journal_number;
             }
-            
+
             session()->flash("message", $message);
             $this->closeReviseModal();
             $this->closePaymentHistory();
 
-        } catch (\Exception $e) {
+        }
+        catch (\Exception $e) {
             DB::rollBack();
             session()->flash("error", "Gagal revisi: " . $e->getMessage());
         }
     }
 
-public function submitClaimDirect($invoiceId)
+    public function submitClaimDirect($invoiceId)
     {
         $this->validate([
             "claimProofFile" => "required|file|mimes:jpeg,png,jpg,pdf|max:10240",
@@ -818,7 +963,7 @@ public function submitClaimDirect($invoiceId)
         ]);
 
         $invoice = \App\Models\Invoice::findOrFail($this->fakturPajakInvoiceId);
-        
+
         $invoiceNumber = str_replace(['/', '\\'], '-', $invoice->invoice_number);
         $filename = 'FP_' . $invoiceNumber . '_' . time() . '.pdf';
         $path = $this->fakturPajakFile->storeAs('faktur-pajak', $filename, 'public');
@@ -833,25 +978,25 @@ public function submitClaimDirect($invoiceId)
         $this->fakturPajakFile = null;
         $this->fakturPajakNumber = '';
         session()->flash('message', 'Faktur Pajak berhasil diupload');
-        // Livewire auto-refresh via render()
+    // Livewire auto-refresh via render()
     }
 
     public function deleteFakturPajak($invoiceId)
     {
         $invoice = \App\Models\Invoice::findOrFail($invoiceId);
-        
+
         // Hapus file dari storage
         if ($invoice->faktur_pajak_path) {
             \Storage::disk('public')->delete($invoice->faktur_pajak_path);
         }
-        
+
         // Reset kolom faktur pajak
         $invoice->update([
             'faktur_pajak_number' => null,
             'faktur_pajak_path' => null,
             'faktur_pajak_uploaded_at' => null,
         ]);
-        
+
         session()->flash('message', 'Faktur Pajak berhasil dihapus');
     }
 }

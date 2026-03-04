@@ -158,54 +158,57 @@ class Dashboard extends Component
 
     public function getAlerts()
     {
-        $alerts = [];
+        return Cache::remember('dashboard_alerts', 60, function() {
+            $alerts = [];
 
-        $overdueCount = Invoice::where('status', 'unpaid')->where('due_date', '<', now())->count();
-        if ($overdueCount > 0) {
-            $alerts[] = [
-                'type' => 'danger',
-                'icon' => 'exclamation',
-                'title' => "{$overdueCount} Invoice Overdue",
-                'message' => 'Ada invoice yang sudah lewat jatuh tempo',
-                'link' => route('admin.invoices.index'),
-            ];
-        }
+            $overdueCount = Invoice::where('status', 'unpaid')->where('due_date', '<', now())->count();
+            if ($overdueCount > 0) {
+                $alerts[] = [
+                    'type' => 'danger',
+                    'icon' => 'exclamation',
+                    'title' => "{$overdueCount} Invoice Overdue",
+                    'message' => 'Ada invoice yang sudah lewat jatuh tempo',
+                    'link' => route('admin.invoices.index'),
+                ];
+            }
 
-        $pendingOld = Shipment::where('status', 'pending')->where('created_at', '<', now()->subDays(3))->count();
-        if ($pendingOld > 0) {
-            $alerts[] = [
-                'type' => 'warning',
-                'icon' => 'clock',
-                'title' => "{$pendingOld} Shipment Pending Lama",
-                'message' => 'Shipment pending lebih dari 3 hari',
-                'link' => route('admin.shipments.index'),
-            ];
-        }
+            $pendingOld = Shipment::where('status', 'pending')->where('created_at', '<', now()->subDays(3))->count();
+            if ($pendingOld > 0) {
+                $alerts[] = [
+                    'type' => 'warning',
+                    'icon' => 'clock',
+                    'title' => "{$pendingOld} Shipment Pending Lama",
+                    'message' => 'Shipment pending lebih dari 3 hari',
+                    'link' => route('admin.shipments.index'),
+                ];
+            }
 
-        $unreadEmails = Email::where('is_read', false)->count();
-        if ($unreadEmails > 0) {
-            $alerts[] = [
-                'type' => 'info',
-                'icon' => 'mail',
-                'title' => "{$unreadEmails} Email Belum Dibaca",
-                'message' => 'Ada email baru yang perlu diproses',
-                'link' => route('admin.inbox.index'),
-            ];
-        }
+            $unreadEmails = Email::where('is_read', false)->count();
+            if ($unreadEmails > 0) {
+                $alerts[] = [
+                    'type' => 'info',
+                    'icon' => 'mail',
+                    'title' => "{$unreadEmails} Email Belum Dibaca",
+                    'message' => 'Ada email baru yang perlu diproses',
+                    'link' => route('admin.inbox.index'),
+                ];
+            }
 
-        $pendingProofs = Invoice::where('status', 'unpaid')->whereNotNull('payment_proof')->count();
-        if ($pendingProofs > 0) {
-            $alerts[] = [
-                'type' => 'success',
-                'icon' => 'document',
-                'title' => "{$pendingProofs} Bukti Bayar Menunggu",
-                'message' => 'Ada bukti pembayaran yang perlu diverifikasi',
-                'link' => route('admin.invoices.index'),
-            ];
-        }
+            $pendingProofs = Invoice::where('status', 'unpaid')->whereNotNull('payment_proof')->count();
+            if ($pendingProofs > 0) {
+                $alerts[] = [
+                    'type' => 'success',
+                    'icon' => 'document',
+                    'title' => "{$pendingProofs} Bukti Bayar Menunggu",
+                    'message' => 'Ada bukti pembayaran yang perlu diverifikasi',
+                    'link' => route('admin.invoices.index'),
+                ];
+            }
 
-        return $alerts;
+            return $alerts;
+        });
     }
+
 
     public function getMonthlyChartData()
     {
