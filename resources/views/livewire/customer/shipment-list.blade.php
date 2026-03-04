@@ -128,13 +128,11 @@
                                     {{ ucfirst(str_replace('_', ' ', $shipment->status)) }}
                                 </span>
 
-                                {{-- 2. Status Jalur (Logic: Muncul jika TIDAK pending DAN data lane_status ada) --}}
+                                {{-- 2. Status Jalur (Tampil jika lane_status sudah valid di database) --}}
                                 @if($st !== 'pending' && !empty($lane))
-                                    <div class="flex items-center gap-1.5 px-2 py-1 rounded border text-[10px] font-bold uppercase tracking-wider w-fit shadow-sm animate-pulse
+                                    <div class="flex items-center gap-1.5 px-2 py-1 rounded border text-[10px] font-bold uppercase tracking-wider w-fit shadow-sm
                                         {{ $lane == 'green' ? 'bg-green-50 text-green-700 border-green-200' : 'bg-red-50 text-red-700 border-red-200' }}">
-                                        {{-- Icon --}}
                                         <span class="text-xs">{{ $lane == 'green' ? '🟩' : '🟥' }}</span>
-                                        {{-- Text --}}
                                         <span>{{ $lane == 'green' ? 'Jalur Hijau' : 'Jalur Merah' }}</span>
                                     </div>
                                 @endif
