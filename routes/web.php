@@ -84,7 +84,7 @@ Route::get('/admin/inbox/body/{id}', [EmailAttachmentController::class, 'showBod
 
 // --- GUEST ROUTES (LOGIN, REGISTER, FORGOT PASSWORD) ---
 Route::middleware('guest')->group(function () {
-    // Login
+    // Login - throttle 5 percobaan per menit untuk mencegah brute force
     Route::get('/login', function () { return view('auth.login'); })->name('login');
     Route::post('/login', function (Request $request) {
         $credentials = $request->validate(['email'=>'required','password'=>'required']);
@@ -93,7 +93,7 @@ Route::middleware('guest')->group(function () {
             return Auth::user()->role === 'customer' ? redirect()->intended(route('customer.dashboard')) : redirect()->intended(route('admin.dashboard'));
         }
         return back()->withErrors(['email'=>'Email salah.']);
-    });
+    })->middleware('throttle:5,1');
     
     // Register
     Route::get('/register', function () { return view('auth.register'); })->name('register');
@@ -329,8 +329,8 @@ Route::middleware(['auth', 'admin'])->prefix('admin')->name('admin.')->group(fun
 
 // --- ROUTE INBOX SPESIFIK (AGAR SESUAI PANGGILAN DI BLADE) ---
 
-// Test route for EmailInbox debugging - Direct Livewire component
-Route::get('/test-inbox', \App\Livewire\Admin\EmailInbox::class)->name('test.inbox');
+// Test route for EmailInbox debugging - dilindungi auth+admin
+Route::get('/test-inbox', \App\Livewire\Admin\EmailInbox::class)->name('test.inbox')->middleware(['auth', 'admin']);
 
 Route::middleware(['auth', 'admin'])->group(function () {
     // Route ini bernama 'inbox.index' (tanpa prefix admin.) agar cocok dengan admin.blade.php
@@ -632,7 +632,7 @@ Route::middleware(['auth', 'admin'])->get('/admin/inbox/download/{account}/{uid}
 // });
 
 // ...
-// Print receipt route
+// Print receipt route - admin only
 Route::get('/admin/kasir-sederhana/print/{id}', function($id) {
     $transaction = \App\Models\CashTransaction::with([
         'customer', 
@@ -644,24 +644,27 @@ Route::get('/admin/kasir-sederhana/print/{id}', function($id) {
     ])->findOrFail($id);
     
     return view('livewire.admin.print-receipt', ['transaction' => $transaction->toArray()]);
-})->name('cashier.print')->middleware('auth');
+})->name('cashier.print')->middleware(['auth', 'admin']);
 
 Route::middleware(['auth', 'customer'])->prefix('customer')->group(function () {
     Route::get('/invoices/{invoice}/preview', [InvoiceController::class, 'preview'])
         ->name('customer.invoices.preview');
 });
 
-Route::get('/_debug/invoice-pdf/{id}', function ($id) {
-    $invoice = Invoice::with(['items','customer','shipment'])->findOrFail($id);
+// Debug route - HANYA aktif saat APP_DEBUG=true, dilindungi auth+admin
+if (config('app.debug')) {
+    Route::get('/_debug/invoice-pdf/{id}', function ($id) {
+        $invoice = Invoice::with(['items','customer','shipment'])->findOrFail($id);
 
-    return Pdf::loadView('admin.invoice-pdf', [
-        'invoice' => $invoice,
-        'isPdf'   => true,
-    ])->stream('debug.pdf');
-});
+        return Pdf::loadView('admin.invoice-pdf', [
+            'invoice' => $invoice,
+            'isPdf'   => true,
+        ])->stream('debug.pdf');
+    })->middleware(['auth', 'admin']);
+}
 
-// Public survey (no auth)
-Route::prefix('survey')->name('survey.')->group(function () {
+// Public survey (no auth) - rate limit untuk mencegah spam
+Route::prefix('survey')->name('survey.')->middleware('throttle:30,1')->group(function () {
     Route::get('/', [SurveyController::class, 'index'])->name('public');
     Route::get('/thank-you', [SurveyController::class, 'thankYou'])->name('thank-you');
     Route::get('/qr-code', [SurveyController::class, 'generateQrCode'])->name('qr-code');
@@ -703,7 +706,8 @@ Route::get('/finance/simple-invoice/{id}/detail', [App\Http\Controllers\Finance\
 Route::get('/finance/simple-invoice/{id}/print', [App\Http\Controllers\Finance\SimpleInvoiceController::class, 'print'])->name('finance.simple-invoice.print')->middleware('auth');
 
 
-Route::prefix('hs-codes')->group(function () {
+// HS Codes - public API dengan rate limiting untuk mencegah abuse
+Route::prefix('hs-codes')->middleware('throttle:120,1')->group(function () {
     Route::get('/search', [HsCodeApiController::class, 'search']);
     Route::get('/validate/{code}', [HsCodeApiController::class, 'validate']);
     Route::get('/chapters', [HsCodeApiController::class, 'chapters']);
@@ -725,22 +729,24 @@ Route::prefix('hs-codes')->group(function () {
 // Route::middleware(['auth'])->group(function () {
 Route::get('/hs-codes', \App\Livewire\HsCode\Explorer::class)->name('hs-codes.explorer');
 
-// API endpoint for autocomplete (future use)
+// API endpoint for autocomplete - aman dari SQL injection (parameter binding)
 Route::get('/api/hs-codes/search', function(Request $request) {
     $query = $request->input('q', '');
+    $query = \Illuminate\Support\Str::limit($query, 100); // Batasi panjang input
     
     if (strlen($query) < 2) {
         return response()->json([]);
     }
     
+    $pattern = '%' . $query . '%';
     $results = DB::table('hs_codes')
-        ->where('hs_code', 'LIKE', "%{$query}%")
-        ->orWhere('description_id', 'LIKE', "%{$query}%")
+        ->where('hs_code', 'LIKE', $pattern)
+        ->orWhere('description_id', 'LIKE', $pattern)
         ->limit(10)
         ->get(['hs_code', 'description_id', 'hs_level']);
     
     return response()->json($results);
-})->name('api.hs-codes.search');
+})->name('api.hs-codes.search')->middleware('throttle:60,1');
 
 // ============================================
 // FIELD DOCUMENTATION ROUTES
@@ -932,18 +938,19 @@ Route::middleware(['auth'])->group(function () {
     })->name('document.download');
 });
 
-// API Search Customer untuk Simple Invoice
+// API Search Customer untuk Simple Invoice - aman dari SQL injection
 Route::get('/api/customers/search', function (Illuminate\Http\Request $request) {
-    $query = $request->get('q', '');
+    $query = \Illuminate\Support\Str::limit($request->get('q', ''), 100);
+    $pattern = '%' . $query . '%';
     $customers = \App\Models\Customer::query()
-        ->where('company_name', 'like', "%{$query}%")
-        ->orWhere('phone', 'like', "%{$query}%")
-        ->orWhere('city', 'like', "%{$query}%")
+        ->where('company_name', 'like', $pattern)
+        ->orWhere('phone', 'like', $pattern)
+        ->orWhere('city', 'like', $pattern)
         ->orderBy('company_name')
         ->limit(20)
         ->get(['id', 'company_name', 'address', 'phone', 'city']);
     return response()->json($customers);
-})->name('api.customers.search')->middleware('auth');
+})->name('api.customers.search')->middleware(['auth', 'throttle:60,1']);
 
 // ========== KAS KECIL ==========
 Route::middleware(['auth', 'admin'])->group(function () {

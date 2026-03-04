@@ -30,6 +30,11 @@ Schedule::command('backup:drive')
     ->dailyAt('02:00')
     ->timezone('Asia/Jakarta');
 
+// 2b. Backup database lokal – Setiap hari jam 02:15 WIB (tanpa ganggu flow)
+Schedule::command('backup:database')
+    ->dailyAt('02:15')
+    ->timezone('Asia/Jakarta');
+
 // 3. Clear cache – Seminggu sekali (opsional)
 Schedule::command('cache:clear')
     ->weekly()

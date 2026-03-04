@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Finance;
 use App\Http\Controllers\Controller;
 use App\Models\SimpleInvoice;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Storage;
 use Barryvdh\DomPDF\Facade\Pdf;
 
@@ -12,22 +13,22 @@ class SimpleInvoiceController extends Controller
 {
     public function index(Request $request)
     {
-        $query = SimpleInvoice::with('creator');
-        
+        $query = SimpleInvoice::with(['creator', 'items']);
+
         // Search
         if ($request->filled('search')) {
             $search = $request->search;
-            $query->where(function($q) use ($search) {
+            $query->where(function ($q) use ($search) {
                 $q->where('invoice_number', 'LIKE', "%{$search}%")
-                  ->orWhere('customer_name', 'LIKE', "%{$search}%");
+                    ->orWhere('customer_name', 'LIKE', "%{$search}%");
             });
         }
-        
-        // Filter by status
-        if ($request->filled('status')) {
+
+        // Filter by status - whitelist untuk keamanan
+        if ($request->filled('status') && in_array($request->status, ['unpaid', 'paid', 'cancelled'])) {
             $query->where('status', $request->status);
         }
-        
+
         // Filter by date range
         if ($request->filled('date_from')) {
             $query->whereDate('invoice_date', '>=', $request->date_from);
@@ -35,40 +36,53 @@ class SimpleInvoiceController extends Controller
         if ($request->filled('date_to')) {
             $query->whereDate('invoice_date', '<=', $request->date_to);
         }
-        
+
         // Filter by year
         if ($request->filled('year')) {
             $query->whereYear('invoice_date', $request->year);
         }
-        
+
         // Filter by month
         if ($request->filled('month')) {
             $query->whereMonth('invoice_date', $request->month);
         }
-        
-        // Sort
-        $sortBy = $request->get('sort_by', 'created_at');
-        $sortOrder = $request->get('sort_order', 'desc');
+
+        // Sort - whitelist untuk mencegah SQL injection
+        $allowedSort = ['created_at', 'invoice_date', 'invoice_number', 'customer_name', 'total', 'status'];
+        $sortBy = in_array($request->get('sort_by'), $allowedSort) ? $request->get('sort_by') : 'created_at';
+        $sortOrder = strtolower($request->get('sort_order', 'desc')) === 'asc' ? 'asc' : 'desc';
         $query->orderBy($sortBy, $sortOrder);
-        
+
         $invoices = $query->paginate(20)->appends($request->except('page'));
-        
-        // Statistics
-        $stats = [
-            'total' => SimpleInvoice::count(),
-            'unpaid' => SimpleInvoice::where('status', 'unpaid')->count(),
-            'paid' => SimpleInvoice::where('status', 'paid')->count(),
-            'total_amount' => SimpleInvoice::sum('total'),
-            'unpaid_amount' => SimpleInvoice::where('status', 'unpaid')->sum('total'),
-            'paid_amount' => SimpleInvoice::where('status', 'paid')->sum('total'),
-        ];
-        
-        // Available years
-        $years = SimpleInvoice::selectRaw('YEAR(invoice_date) as year')
+
+        // Statistics - di-cache 5 menit untuk mengurangi query
+        $stats = Cache::remember('simple_invoice_stats', 300, function () {
+            $aggregates = SimpleInvoice::selectRaw('
+                COUNT(*) as total,
+                SUM(CASE WHEN status = "unpaid" THEN 1 ELSE 0 END) as unpaid,
+                SUM(CASE WHEN status = "paid" THEN 1 ELSE 0 END) as paid,
+                SUM(total) as total_amount,
+                SUM(CASE WHEN status = "unpaid" THEN total ELSE 0 END) as unpaid_amount,
+                SUM(CASE WHEN status = "paid" THEN total ELSE 0 END) as paid_amount
+            ')->first();
+            return [
+            'total' => (int)($aggregates->total ?? 0),
+            'unpaid' => (int)($aggregates->unpaid ?? 0),
+            'paid' => (int)($aggregates->paid ?? 0),
+            'total_amount' => (float)($aggregates->total_amount ?? 0),
+            'unpaid_amount' => (float)($aggregates->unpaid_amount ?? 0),
+            'paid_amount' => (float)($aggregates->paid_amount ?? 0),
+            ];
+        });
+
+        // Available years - cache 1 jam
+        $years = Cache::remember('simple_invoice_years', 3600, function () {
+            return SimpleInvoice::selectRaw('YEAR(invoice_date) as year')
             ->distinct()
             ->orderBy('year', 'desc')
             ->pluck('year');
-        
+        });
+
         return view('finance.simple-invoice.index', compact('invoices', 'stats', 'years'));
     }
 
@@ -106,7 +120,7 @@ class SimpleInvoiceController extends Controller
         foreach ($validated['items'] as $index => $item) {
             $amount = $item['quantity'] * $item['unit_price'];
             $total += $amount;
-            
+
             $invoice->items()->create([
                 'description' => $item['description'],
                 'quantity' => $item['quantity'],
@@ -119,6 +133,9 @@ class SimpleInvoiceController extends Controller
         // Update total
         $invoice->update(['total' => $total]);
 
+        Cache::forget('simple_invoice_stats');
+        Cache::forget('simple_invoice_years');
+
         return redirect()->route('finance.simple-invoice.index')
             ->with('success', 'Invoice berhasil dibuat: ' . $invoice->invoice_number);
     }
@@ -128,36 +145,36 @@ class SimpleInvoiceController extends Controller
         $invoice = SimpleInvoice::with('items')->findOrFail($id);
         return view('finance.simple-invoice.pdf', compact('invoice'));
     }
-    
+
     public function download($id)
     {
         $invoice = SimpleInvoice::with('items')->findOrFail($id);
-        
+
         $pdf = Pdf::loadView('finance.simple-invoice.pdf-print', compact('invoice'));
         $pdf->setPaper('a4', 'portrait');
-        
+
         $filename = 'Invoice_' . $invoice->invoice_number . '.pdf';
         $filename = str_replace('/', '-', $filename);
-        
+
         return $pdf->download($filename);
     }
-    
+
     public function edit($id)
     {
         $invoice = SimpleInvoice::with('items')->findOrFail($id);
         return view('finance.simple-invoice.edit', compact('invoice'));
     }
-    
+
     public function detail($id)
-{
-    $invoice = SimpleInvoice::with('items')->findOrFail($id);
-    return view('finance.simple-invoice.detail', compact('invoice'));
-}
-    
+    {
+        $invoice = SimpleInvoice::with('items')->findOrFail($id);
+        return view('finance.simple-invoice.detail', compact('invoice'));
+    }
+
     public function update(Request $request, $id)
     {
         $invoice = SimpleInvoice::findOrFail($id);
-        
+
         $validated = $request->validate([
             'customer_name' => 'required|string|max:255',
             'customer_address' => 'nullable|string',
@@ -179,12 +196,12 @@ class SimpleInvoiceController extends Controller
 
         // Delete old items and create new ones
         $invoice->items()->delete();
-        
+
         $total = 0;
         foreach ($validated['items'] as $index => $item) {
             $amount = $item['quantity'] * $item['unit_price'];
             $total += $amount;
-            
+
             $invoice->items()->create([
                 'description' => $item['description'],
                 'quantity' => $item['quantity'],
@@ -197,24 +214,30 @@ class SimpleInvoiceController extends Controller
         // Update total
         $invoice->update(['total' => $total]);
 
+        Cache::forget('simple_invoice_stats');
+        Cache::forget('simple_invoice_years');
+
         return redirect()->route('finance.simple-invoice.index')
             ->with('success', 'Invoice berhasil diupdate: ' . $invoice->invoice_number);
     }
-    
+
     public function destroy($id)
     {
         if (!in_array(auth()->user()->role, ['admin', 'director'])) {
             return redirect()->back()->with('error', 'Unauthorized');
         }
-        
+
         $invoice = SimpleInvoice::findOrFail($id);
         $invoiceNumber = $invoice->invoice_number;
         $invoice->delete();
-        
+
+        Cache::forget('simple_invoice_stats');
+        Cache::forget('simple_invoice_years');
+
         return redirect()->route('finance.simple-invoice.index')
             ->with('success', 'Invoice deleted: ' . $invoiceNumber);
     }
-    
+
     public function updatePayment(Request $request, $id)
     {
         $request->validate([
@@ -223,12 +246,12 @@ class SimpleInvoiceController extends Controller
             'payment_proof' => 'nullable|file|mimes:jpg,jpeg,png,pdf|max:5120',
             'payment_notes' => 'nullable|string'
         ]);
-        
+
         $invoice = SimpleInvoice::findOrFail($id);
         $invoice->status = $request->status;
         $invoice->paid_date = $request->status === 'paid' ? $request->paid_date : null;
         $invoice->payment_notes = $request->payment_notes;
-        
+
         if ($request->hasFile('payment_proof')) {
             if ($invoice->payment_proof && Storage::disk('public')->exists($invoice->payment_proof)) {
                 Storage::disk('public')->delete($invoice->payment_proof);
@@ -238,9 +261,11 @@ class SimpleInvoiceController extends Controller
             $path = $file->storeAs('payment_proofs', $filename, 'public');
             $invoice->payment_proof = $path;
         }
-        
+
         $invoice->save();
-        
+
+        Cache::forget('simple_invoice_stats');
+
         return redirect()->back()->with('success', 'Payment status updated');
     }
 

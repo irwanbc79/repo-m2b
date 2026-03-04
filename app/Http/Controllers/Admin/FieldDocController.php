@@ -17,13 +17,23 @@ class FieldDocController extends Controller
      */
     public function index()
     {
-        $stats = [
-            'today' => FieldPhoto::whereDate('created_at', today())->count(),
-            'week' => FieldPhoto::whereBetween('created_at', [now()->startOfWeek(), now()->endOfWeek()])->count(),
-            'total' => FieldPhoto::count(),
-            'with_location' => FieldPhoto::whereNotNull('latitude')->count(),
-        ];
+        $todayStr = today()->format('Y-m-d');
+        $startOfWeekStr = now()->startOfWeek()->format('Y-m-d H:i:s');
+        $endOfWeekStr = now()->endOfWeek()->format('Y-m-d H:i:s');
+        
+        $statsQuery = FieldPhoto::selectRaw("
+            COUNT(*) as total,
+            SUM(CASE WHEN DATE(created_at) = ? THEN 1 ELSE 0 END) as today,
+            SUM(CASE WHEN created_at BETWEEN ? AND ? THEN 1 ELSE 0 END) as week,
+            SUM(CASE WHEN latitude IS NOT NULL THEN 1 ELSE 0 END) as with_location
+        ", [$todayStr, $startOfWeekStr, $endOfWeekStr])->first();
 
+        $stats = [
+            'today' => (int) ($statsQuery->today ?? 0),
+            'week' => (int) ($statsQuery->week ?? 0),
+            'total' => (int) ($statsQuery->total ?? 0),
+            'with_location' => (int) ($statsQuery->with_location ?? 0),
+        ];
         $recentShipments = Shipment::withCount('fieldPhotos')
             ->with(['customer'])
             ->whereHas('fieldPhotos')
@@ -368,6 +378,9 @@ class FieldDocController extends Controller
         $zip->close();
         
         // Download and delete temp file
+        return response()->download($zipPath, $zipFileName)->deleteFileAfterSend(true);
+    }
+}       // Download and delete temp file
         return response()->download($zipPath, $zipFileName)->deleteFileAfterSend(true);
     }
 }
