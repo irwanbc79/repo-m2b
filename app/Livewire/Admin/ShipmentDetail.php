@@ -156,8 +156,8 @@ class ShipmentDetail extends Component
                 ActivityLog::record('Shipment', 'AUTO STATUS', $this->shipment->awb_number, "Auto: Red Lane - SPJM uploaded");
             }
             elseif ($this->doc_type === 'SPPB') {
-                $this->shipment->update(['status' => 'on_board']);
-                ActivityLog::record('Shipment', 'AUTO STATUS', $this->shipment->awb_number, "Auto: On Board - SPPB uploaded");
+                $this->shipment->update(['status' => 'customs_released']);
+                ActivityLog::record('Shipment', 'AUTO STATUS', $this->shipment->awb_number, "Auto: Customs Released - SPPB uploaded");
             }
         }
         elseif (strtolower($this->shipment->service_type) == 'export') {
