@@ -146,11 +146,12 @@ class SimpleCashier extends Component
         }
         if (!empty($this->filterDateTo)) {
             $query->whereDate('transaction_date', '<=', $this->filterDateTo);
+        }
+        
         // Count total records
         $this->totalRecords = $query->count();
         
         // Get paginated data
-        }
         
         $this->recentTransactions = $query->latest()
             ->skip(($this->currentPage - 1) * $this->perPage)->take($this->perPage)

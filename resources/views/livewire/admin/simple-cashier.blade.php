@@ -1,4 +1,4 @@
-<div class="space-y-6">
+<div class="space-y-6" x-data x-on:scroll-to-form.window="document.getElementById('cashier-form').scrollIntoView({behavior: 'smooth', block: 'start'})">
     @section('header', 'Manajemen Kasir')
 
     {{-- Flash Messages --}}
@@ -43,6 +43,9 @@
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/>
                         </svg>
                         Input Transaksi Kas
+                        @if($editingId)
+                            <span class="ml-2 px-2 py-0.5 bg-orange-100 text-orange-700 text-xs rounded-full font-bold animate-pulse">✏️ Mode Edit #{{ $editingId }}</span>
+                        @endif
                     </h3>
                     <button 
                         wire:click="resetForm" 
@@ -55,7 +58,7 @@
                     </button>
                 </div>
 
-                <form wire:submit.prevent="save" class="space-y-4">
+                <form wire:submit.prevent="save" id="cashier-form" class="space-y-4">
                     
                     {{-- Tanggal & Tipe Transaksi --}}
                     <div class="grid grid-cols-2 gap-4">
@@ -383,7 +386,7 @@
                             wire:loading.attr="disabled"
                             class="px-6 py-2 bg-blue-600 text-white rounded-md text-sm font-medium hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed"
                         >
-                            <span wire:loading.remove wire:target="save">💾 Simpan Transaksi</span>
+                            <span wire:loading.remove wire:target="save">{{ $editingId ? '✏️ Update Transaksi' : '💾 Simpan Transaksi' }}</span>
                             <span wire:loading wire:target="save">
                                 <svg class="animate-spin h-5 w-5 inline" viewBox="0 0 24 24">
                                     <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4" fill="none"></circle>
