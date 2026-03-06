@@ -383,14 +383,34 @@ class CashierService
                 throw new \Exception('Hanya transaksi Draft yang dapat diupdate!');
             }
             
-            // Simpan journal_id lama untuk dihapus nanti
-            $oldJournalId = $cashTransaction->journal_id;
-            
-            // Lepas foreign key dulu
-            $cashTransaction->update(['journal_id' => null]);
-            
             $accounts = $this->determineAccounts($data);
-            $journal = $this->createJournal($data, $accounts);
+            
+            // Update journal yang existing (bukan delete & recreate)
+            $journal = $cashTransaction->journal;
+            if ($journal) {
+                $journal->update([
+                    'transaction_date' => $data['transaction_date'] ?? now(),
+                    'description' => $data['description'] ?? 'Cash Transaction',
+                ]);
+                
+                // Hapus journal entries lama dan buat baru
+                $journal->items()->delete();
+                
+                $journal->items()->create([
+                    'account_id' => $accounts['debit_account']->id,
+                    'debit' => $data['amount'] ?? 0,
+                    'credit' => 0,
+                ]);
+                
+                $journal->items()->create([
+                    'account_id' => $accounts['credit_account']->id,
+                    'debit' => 0,
+                    'credit' => $data['amount'] ?? 0,
+                ]);
+            } else {
+                // Jika tidak ada journal (edge case), buat baru
+                $journal = $this->createJournal($data, $accounts);
+            }
             
             $cashTransaction->update([
                 'transaction_date' => $data['transaction_date'],
@@ -410,11 +430,6 @@ class CashierService
                 $cashTransaction->update(['proof_file' => $path]);
             }
             
-            
-            // Hapus journal lama setelah cash_transaction sudah punya journal baru
-            if ($oldJournalId) {
-                \App\Models\Journal::where('id', $oldJournalId)->delete();
-            }
             DB::commit();
             return $cashTransaction;
             
