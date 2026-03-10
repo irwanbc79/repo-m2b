@@ -380,7 +380,4 @@ class FieldDocController extends Controller
         // Download and delete temp file
         return response()->download($zipPath, $zipFileName)->deleteFileAfterSend(true);
     }
-}       // Download and delete temp file
-        return response()->download($zipPath, $zipFileName)->deleteFileAfterSend(true);
-    }
 }
