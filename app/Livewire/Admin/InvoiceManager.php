@@ -268,6 +268,16 @@ class InvoiceManager extends Component
     {
         $this->validate(['customer_id' => 'required', 'shipment_id' => 'nullable', 'type' => 'required', 'invoice_number' => 'required', 'invoice_date' => 'required|date', 'items' => 'required|array|min:1', 'items.*.description' => 'required', 'items.*.price' => 'required|numeric']);
 
+        // Invoice baru: pastikan prefix nomor sesuai tipe (Proforma = PRO, Commercial = INV)
+        if (!$this->isEditing) {
+            $service = app(InvoiceWorkflowService::class);
+            $isProforma = strtolower($this->type ?? '') === 'proforma';
+            $prefix = $isProforma ? 'PRO/' : 'INV/';
+            if (!str_starts_with($this->invoice_number ?? '', $prefix)) {
+                $this->invoice_number = $isProforma ? $service->generateProformaNumber() : $service->generateCommercialNumber();
+            }
+        }
+
         DB::transaction(function () {
             $this->calculateGrandTotal();
             $data = [
@@ -445,7 +455,10 @@ class InvoiceManager extends Component
     }
     private function generateNumber()
     {
-        $this->invoice_number = (($this->type == 'Proforma') ? 'PRO' : 'INV') . '/' . date('ym') . '/' . rand(1000, 9999);
+        $service = app(InvoiceWorkflowService::class);
+        $this->invoice_number = strtolower($this->type ?? '') === 'proforma'
+            ? $service->generateProformaNumber()
+            : $service->generateCommercialNumber();
     }
     public function addItem()
     {
@@ -463,6 +476,7 @@ class InvoiceManager extends Component
         $this->isModalOpen = true;
         $this->isEditing = false;
         $this->addItem();
+        $this->generateNumber();
     }
     public function delete($id)
     {
