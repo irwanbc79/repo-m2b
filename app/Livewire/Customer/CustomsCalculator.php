@@ -140,7 +140,9 @@ class CustomsCalculator extends Component
     }
 
     public function toggleHistory() { $this->showHistory = !$this->showHistory; }
-    
+
+    public function toggleBreakdown() { $this->showBreakdown = !$this->showBreakdown; }
+
     public function saveToHistory()
     {
         if ($this->total_pungutan <= 0) return;
