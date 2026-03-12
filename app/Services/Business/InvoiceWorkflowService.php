@@ -89,7 +89,7 @@ class InvoiceWorkflowService
         $commercial->save();
     }
 
-    protected function generateCommercialNumber(): string
+    public function generateCommercialNumber(): string
     {
         $prefix = 'INV';
         $year = date('y');
