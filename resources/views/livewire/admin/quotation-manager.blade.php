@@ -80,6 +80,7 @@
                 </select>
             </div>
             
+            @unless(auth()->user()->hasRole('auditor'))
             <div wire:ignore x-data="{ open: false }" class="relative">
                 <button @click="open = !open" class="bg-m2b-primary hover:bg-blue-900 text-white px-4 py-2 rounded-lg font-bold shadow-sm transition flex items-center gap-2">
                     <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"></path></svg>
@@ -106,6 +107,7 @@
                     </button>
                 </div>
             </div>
+            @endunless
         </div>
 
 
@@ -155,8 +157,10 @@
                         </td>
                         <td class="px-6 py-4 text-center">
                             <div class="flex justify-center gap-2 items-center">
+                                @unless(auth()->user()->hasRole('auditor'))
                                 <button wire:click="edit({{ $q->id }})" class="text-blue-600 hover:text-blue-900 font-bold text-xs border border-blue-200 px-2 py-1 rounded bg-white hover:bg-blue-50">Edit</button>
-                                
+                                @endunless
+
                                 <div wire:ignore x-data="{ open: false }" class="relative inline-block">
                                     <button @click="open = !open" type="button" class="text-gray-600 hover:text-black font-bold text-xs border border-gray-300 px-2 py-1 rounded bg-white hover:bg-gray-50 flex items-center gap-1" title="Print Quotation">
                                         <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z"></path></svg> Print
@@ -173,6 +177,7 @@
                                     </div>
                                 </div>
                                 
+                                @unless(auth()->user()->hasRole('auditor'))
                                 <button wire:click="openSendModal({{ $q->id }})" class="text-white bg-green-600 hover:bg-green-700 font-bold text-xs px-2 py-1 rounded flex items-center gap-1 shadow-sm">Send</button>
 
                                 @if($q->status != 'accepted')
@@ -180,10 +185,11 @@
                                 @else
                                     <span class="text-[10px] bg-gray-100 text-gray-500 px-2 py-1 rounded border border-gray-200 font-bold cursor-default">Converted</span>
                                 @endif
-                                
+
                                 @if(auth()->user()->role === 'admin')
                                 <button wire:click="delete({{ $q->id }})" wire:confirm="Delete this quotation?" class="text-red-500 hover:text-red-700 font-bold text-xs border border-red-200 px-2 py-1 rounded bg-white hover:bg-red-50">&times;</button>
                                 @endif
+                                @endunless
                             </div>
                         </td>
                     </tr>

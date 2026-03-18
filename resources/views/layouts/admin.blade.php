@@ -55,7 +55,19 @@
             </div>
 
             <nav class="flex-1 px-4 space-y-2 overflow-y-auto py-6 custom-scrollbar">
-                
+
+                @if(auth()->user()->hasRole('auditor'))
+                <div class="mx-1 mb-3 px-3 py-2.5 bg-amber-900/40 border border-amber-600/50 rounded-lg">
+                    <div class="flex items-center gap-2">
+                        <span class="text-amber-400 text-base leading-none">🔍</span>
+                        <div>
+                            <div class="text-xs font-black text-amber-400 uppercase tracking-widest leading-none">Auditor Mode</div>
+                            <div class="text-[10px] text-amber-600 mt-0.5">Akses baca saja</div>
+                        </div>
+                    </div>
+                </div>
+                @endif
+
                 <a href="{{ route('admin.dashboard') }}" class="flex items-center px-4 py-3 text-sm font-medium rounded-lg transition-colors {{ request()->routeIs('admin.dashboard') ? 'bg-m2b-accent text-white shadow-lg' : 'hover:bg-gray-800 text-gray-300' }}">
                     🏠 Dashboard
                 </a>
@@ -135,21 +147,23 @@
                 @endif
                 @endif
 
-                @if(auth()->user()->hasPermission('cashier.view'))
+                @if(auth()->user()->hasPermission('cashier.view') || auth()->user()->hasPermission('accounting.view'))
                 <div class="px-4 py-2 mt-4 text-xs font-bold text-gray-500 uppercase tracking-wider">Accounting</div>
 
+                {{-- Input/transaksi: hanya staff keuangan, BUKAN auditor --}}
+                @if(auth()->user()->hasPermission('cashier.view'))
                 <a href="{{ route('accounting.coa') }}" class="flex items-center px-4 py-3 text-sm font-medium rounded-lg transition-colors {{ request()->routeIs('accounting.coa') ? 'bg-m2b-accent text-white' : 'hover:bg-gray-800 text-gray-300' }}">
                     📊 Chart of Accounts
                 </a>
-                
                 <a href="{{ route('accounting.journal') }}" class="flex items-center px-4 py-2.5 text-sm font-medium rounded-lg {{ request()->routeIs('accounting.journal') ? 'bg-m2b-accent text-white' : 'hover:bg-gray-800 text-gray-300' }}">
                     ✍️ Journal Entry
                 </a>
-                
                 <a href="{{ route('simple-cashier') }}" class="flex items-center px-4 py-2.5 text-sm font-medium rounded-lg transition-colors {{ request()->routeIs('simple-cashier') ? 'bg-green-600 text-white' : 'hover:bg-gray-800 text-gray-300' }}">
                     💰 Kasir (Simple)
                 </a>
-                
+                @endif
+
+                {{-- Laporan keuangan: bisa diakses auditor & staff keuangan --}}
                 <a href="{{ route('accounting.ledger') }}" class="flex items-center px-4 py-2.5 text-sm font-medium rounded-lg {{ request()->routeIs('accounting.ledger') ? 'bg-m2b-accent text-white' : 'hover:bg-gray-800 text-gray-300' }}">
                     📚 General Ledger
                 </a>

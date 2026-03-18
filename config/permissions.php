@@ -127,13 +127,10 @@ return [
             'level' => 55,
             'permissions' => [
                 'dashboard.view',
-                'shipment.view',
-                'invoice.view',
-                'customer.view',
-                'vendor.view',
                 'quotation.view',
+                'invoice.view',
                 'job_costing.view',
-                'cashier.view',
+                'accounting.view',  // read-only: ledger, trial balance, P&L, balance sheet
                 'report.*',
                 'audit_log.view',
             ],
@@ -190,6 +187,7 @@ return [
         'hs_code' => ['view', 'search'],
         'documentation' => ['view', 'create', 'edit', 'upload'],
         'audit_log' => ['view', 'export'],
+        'accounting' => ['view', 'input', 'approve'],
     ],
 
     /*

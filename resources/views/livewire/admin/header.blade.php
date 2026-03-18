@@ -9,6 +9,12 @@
         
         {{-- Judul Halaman --}}
         <h1 class="text-xl font-bold text-gray-800 hidden md:block">{{ $title }}</h1>
+
+        @if(auth()->user()->hasRole('auditor'))
+        <span class="ml-3 hidden md:inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-black bg-amber-100 text-amber-800 border border-amber-300 uppercase tracking-wider shadow-sm">
+            🔍 Auditor Mode
+        </span>
+        @endif
     </div>
 
     {{-- BAGIAN KANAN: WIDGETS --}}
