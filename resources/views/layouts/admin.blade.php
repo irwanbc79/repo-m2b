@@ -190,19 +190,23 @@
                 </a>
                 @endif
 
+                @unless(auth()->user()->hasRole('auditor'))
                 <a href="{{ route('admin.survey.dashboard') }}" class="flex items-center px-4 py-3 text-sm font-medium rounded-lg transition-colors {{ request()->routeIs('admin.survey*') ? 'bg-m2b-accent text-white' : 'hover:bg-gray-800 text-gray-300' }}">
                     📋 Customer Survey
                 </a>
-                
-                
+                @endunless
+
                 @if(auth()->user()->hasPermission('user.view'))
                 <a href="{{ route('admin.users.index') }}" class="flex items-center px-4 py-3 text-sm font-medium rounded-lg transition-colors {{ request()->routeIs('admin.users*') ? 'bg-m2b-accent text-white' : 'hover:bg-gray-800 text-gray-300' }}">
                     👤 User Management
                 </a>
                 @endif
+
+                @unless(auth()->user()->hasRole('auditor'))
                 <a href="{{ route('admin.user-requests.index') }}" class="flex items-center px-4 py-3 text-sm font-medium rounded-lg transition-colors {{ request()->routeIs('admin.user-requests*') ? 'bg-m2b-accent text-white' : 'hover:bg-gray-800 text-gray-300' }}">
                     📋 User Requests
                 </a>
+                @endunless
 
                 @if(auth()->user()->hasPermission('audit_log.view') || auth()->user()->hasPermission('cashier.view'))
                 <a href="{{ route('audit-logs') }}" class="flex items-center px-4 py-3 text-sm font-medium rounded-lg transition-colors {{ request()->routeIs('audit-logs') ? 'bg-m2b-accent text-white' : 'hover:bg-gray-800 text-gray-300' }}">
