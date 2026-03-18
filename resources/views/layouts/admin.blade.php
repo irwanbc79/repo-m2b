@@ -72,13 +72,13 @@
                     🏠 Dashboard
                 </a>
 
-                @if(auth()->user()->hasPermission('dashboard.view'))
+                @if(auth()->user()->hasPermission('dashboard.view') && !auth()->user()->hasRole('auditor'))
                 <div class="px-4 py-2 mt-4 text-xs font-bold text-gray-500 uppercase tracking-wider">Communication</div>
-                
+
                 <a href="{{ route('inbox.index') }}" class="flex items-center px-4 py-3 text-sm font-medium rounded-lg transition-colors group {{ request()->routeIs('inbox.*') ? 'bg-m2b-accent text-white shadow-lg' : 'hover:bg-gray-800 text-gray-300' }}">
                     <span class="flex-1">📧 Email Inbox</span>
                 </a>
-                
+
                 <a href="{{ route('sent-emails.index') }}" class="flex items-center px-4 py-3 text-sm font-medium rounded-lg transition-colors group {{ request()->routeIs('sent-emails.*') ? 'bg-m2b-accent text-white shadow-lg' : 'hover:bg-gray-800 text-gray-300' }}">
                     <span class="flex-1">📤 Email Terkirim</span>
                 </a>
@@ -125,6 +125,7 @@
                     🧾 Invoicing / Tagihan
                 </a>
 
+                @unless(auth()->user()->hasRole('auditor'))
                 <a href="{{ route('admin.bank-reconciliation') }}" class="flex items-center px-4 py-3 text-sm font-medium rounded-lg transition-colors {{ request()->routeIs('admin.bank-reconciliation') ? 'bg-m2b-accent text-white' : 'hover:bg-gray-800 text-gray-300' }}">
                     🏦 Rekonsiliasi Bank
                 </a>
@@ -132,11 +133,13 @@
                 <a href="{{ route('finance.simple-invoice.index') }}" class="flex items-center px-4 py-3 text-sm font-medium rounded-lg transition-colors {{ request()->routeIs('finance.simple-invoice*') ? 'bg-m2b-accent text-white' : 'hover:bg-gray-800 text-gray-300' }}">
                     💸 Simple Invoice
                 </a>
-                
+                @endunless
+
                 @if(auth()->user()->hasPermission('job_costing.view'))
                 <a href="{{ route('admin.job-costing.index') }}" class="flex items-center px-4 py-3 text-sm font-medium rounded-lg transition-colors {{ request()->routeIs('admin.job-costing*') ? 'bg-m2b-accent text-white' : 'hover:bg-gray-800 text-gray-300' }}">
                     💼 Job Costing
                 </a>
+                @unless(auth()->user()->hasRole('auditor'))
                 <a href="{{ route('admin.petty-cash') }}" class="flex items-center px-4 py-3 text-sm font-medium rounded-lg transition-colors {{ request()->routeIs('admin.petty-cash*') ? 'bg-m2b-accent text-white' : 'hover:bg-gray-800 text-gray-300' }}">
                     💰 Kas Kecil
                 </a>
@@ -144,6 +147,7 @@
                 <a href="{{ route('admin.products') }}" class="flex items-center px-4 py-3 text-sm font-medium rounded-lg transition-colors {{ request()->routeIs('admin.products*') ? 'bg-m2b-accent text-white' : 'hover:bg-gray-800 text-gray-300' }}">
                     🛍️ Master Product/Service
                 </a>
+                @endunless
                 @endif
                 @endif
 
