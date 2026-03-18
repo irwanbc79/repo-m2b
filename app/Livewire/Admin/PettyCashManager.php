@@ -58,7 +58,7 @@ class PettyCashManager extends Component
     {
         return [
             'transaction_date' => 'required|date',
-            'amount' => 'required|numeric|min:1000|max:' . ($this->fund->max_transaction ?? 250000),
+            'amount' => 'required|numeric|min:1000|max:' . ($this->fund->max_transaction ?? 750000),
             'category' => 'required',
             'description' => 'required|min:3',
             'proof_file' => 'required|file|mimes:jpg,jpeg,png,pdf|max:5120',

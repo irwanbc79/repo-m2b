@@ -14,7 +14,7 @@ return new class extends Migration
             $table->decimal('plafon', 15, 2)->default(1000000);
             $table->decimal('current_balance', 15, 2)->default(0);
             $table->decimal('min_balance_alert', 15, 2)->default(300000);
-            $table->decimal('max_transaction', 15, 2)->default(250000);
+            $table->decimal('max_transaction', 15, 2)->default(750000);
             $table->foreignId('holder_user_id')->constrained('users');
             $table->foreignId('approver_user_id')->nullable()->constrained('users');
             $table->string('coa_code')->default('1102'); // Kas Kecil
