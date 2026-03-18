@@ -74,10 +74,13 @@ class Invoice extends Model
 
     public function getIsOverdueAttribute()
     {
-        return $this->status !== 'paid' && 
-               $this->status !== 'cancelled' && 
-               $this->due_date && 
-               $this->due_date->endOfDay()->isPast();
+        if (is_null($this->due_date)) {
+            return false;
+        }
+
+        return $this->status !== 'paid' &&
+               $this->status !== 'cancelled' &&
+               $this->due_date->copy()->endOfDay()->isPast();
     }
 
     // Hitung sisa tagihan

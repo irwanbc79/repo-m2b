@@ -58,8 +58,23 @@ class User extends Authenticatable
 
 
 
+    /**
+     * Get the primary role for this user.
+     * Prefers the first entry in the JSON `roles` array, falls back to the legacy `role` string.
+     */
+    public function getPrimaryRole(): ?string
+    {
+        $roles = $this->roles ?? [];
+
+        if (!empty($roles)) {
+            return $roles[0];
+        }
+
+        return $this->role ?? null;
+    }
+
     // --- FUNGSI SAKTI: CEK MULTI ROLE ---
-    
+
     // Cara pakai: $user->hasRole(['admin', 'finance'])
     // Artinya: Apakah user ini Admin ATAU Finance? (Salah satu cocok = Boleh)
     public function hasRole($rolesToCheck)

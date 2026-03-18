@@ -17,5 +17,26 @@
 *.bak*
 *.broken
 *.txt
+*.beforefix
+*.v1
+*.v2
+*.v2_310lines
 _backups/
-_backups/
+_archive/
+# Backup SQL files
+btki_*.sql
+enote_*.sql
+*.sql.gz
+# Root-level temp/junk files
+/email_body,\
+/email_recipient,\
+/email_subject,\
+/contacts
+/count
+/filename,
+/from_email,
+/$this-
+/,
+/-
+/description_en
+/description_id

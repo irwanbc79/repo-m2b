@@ -156,6 +156,9 @@ Route::middleware('guest')->group(function () {
                 ['token' => \Hash::make($token), 'created_at' => now()]
                 );
 
+                // Clean up expired tokens older than 2 hours
+                \DB::table('password_reset_tokens')->where('created_at', '<', now()->subHours(2))->delete();
+
                 $resetUrl = url('/reset-password/' . $token . '?email=' . urlencode($user->email));
                 \Mail::to($user->email)->send(new \App\Mail\ResetPasswordMail($user, $resetUrl));
             }
@@ -307,12 +310,7 @@ Route::middleware(['auth', 'admin'])->prefix('admin')->name('admin.')->group(fun
             $useMaterai = $request->get('materai', 0);
 
             // Data penandatangan
-            $signers = [
-                1 => ['name' => 'Nurul Asyikin', 'title' => 'Sales & Finance', 'sign' => 'sign_nurul.png'],
-                2 => ['name' => 'Nadila Shamimi', 'title' => 'Document & Operation', 'sign' => 'sign_dila.png'],
-                3 => ['name' => 'Tasya Indriyani', 'title' => 'Cashier & Admin', 'sign' => 'sign_tasya.png'],
-                4 => ['name' => 'Eka Mayang Sari Harahap, S. E.', 'title' => 'Director', 'sign' => 'sign_direktur.png'],
-            ];
+            $signers = config('signers');
 
             $signer = $signers[$signerId] ?? $signers[1];
 
@@ -330,12 +328,7 @@ Route::middleware(['auth', 'admin'])->prefix('admin')->name('admin.')->group(fun
             $signatureType = $request->get('signature', 'blank'); // full, blank
     
             // Data penandatangan
-            $signers = [
-                1 => ['name' => 'Nurul Asyikin', 'title' => 'Sales & Finance', 'sign' => 'sign_nurul.png'],
-                2 => ['name' => 'Nadila Shamimi', 'title' => 'Document & Operation', 'sign' => 'sign_dila.png'],
-                3 => ['name' => 'Tasya Indriyani', 'title' => 'Cashier & Admin', 'sign' => 'sign_tasya.png'],
-                4 => ['name' => 'Eka Mayang Sari Harahap, S. E.', 'title' => 'Director', 'sign' => 'sign_direktur.png'],
-            ];
+            $signers = config('signers');
             $signer = $signers[$signerId] ?? $signers[1];
 
             return view('admin.quotation-print', compact('quotation', 'terbilangText', 'signer', 'signatureType'));
@@ -462,18 +455,6 @@ Route::middleware(['auth', 'customer'])->prefix('customer')->group(function () {
     Route::get('/invoices/{invoice}/preview', [InvoiceController::class , 'preview'])
         ->name('customer.invoices.preview');
 });
-
-// Debug route - HANYA aktif saat APP_DEBUG=true, dilindungi auth+admin
-if (config('app.debug')) {
-    Route::get('/_debug/invoice-pdf/{id}', function ($id) {
-        $invoice = Invoice::with(['items', 'customer', 'shipment'])->findOrFail($id);
-
-        return Pdf::loadView('admin.invoice-pdf', [
-        'invoice' => $invoice,
-        'isPdf' => true,
-        ])->stream('debug.pdf');
-    })->middleware(['auth', 'admin']);
-}
 
 // Public survey (no auth) - rate limit untuk mencegah spam
 Route::prefix('survey')->name('survey.')->middleware('throttle:30,1')->group(function () {
