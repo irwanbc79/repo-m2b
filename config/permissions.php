@@ -122,6 +122,22 @@ return [
                 'customer.view',
             ],
         ],
+        'auditor' => [
+            'label' => 'Auditor',
+            'level' => 55,
+            'permissions' => [
+                'dashboard.view',
+                'shipment.view',
+                'invoice.view',
+                'customer.view',
+                'vendor.view',
+                'quotation.view',
+                'job_costing.view',
+                'cashier.view',
+                'report.*',
+                'audit_log.view',
+            ],
+        ],
         'admin' => [
             'label' => 'Admin',
             'level' => 60,
@@ -173,6 +189,7 @@ return [
         'settings' => ['view', 'edit'],
         'hs_code' => ['view', 'search'],
         'documentation' => ['view', 'create', 'edit', 'upload'],
+        'audit_log' => ['view', 'export'],
     ],
 
     /*
@@ -195,6 +212,7 @@ return [
         'job_costing' => ['job_costing.view'],
         'journal_entries' => ['cashier.journal'],
         'reports' => ['report.view_basic'],
+        'audit_logs' => ['audit_log.view'],
         'user_management' => ['user.view'],
         'settings' => ['settings.view'],
     ],

@@ -186,7 +186,7 @@
                     📋 User Requests
                 </a>
 
-                @if(auth()->user()->hasPermission('cashier.view'))
+                @if(auth()->user()->hasPermission('audit_log.view') || auth()->user()->hasPermission('cashier.view'))
                 <a href="{{ route('audit-logs') }}" class="flex items-center px-4 py-3 text-sm font-medium rounded-lg transition-colors {{ request()->routeIs('audit-logs') ? 'bg-m2b-accent text-white' : 'hover:bg-gray-800 text-gray-300' }}">
                     📝 Audit Logs
                 </a>

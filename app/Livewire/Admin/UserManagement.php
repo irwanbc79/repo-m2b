@@ -28,6 +28,9 @@ class UserManagement extends Component
         'manager' => 'Manager',
         'supervisor' => 'Supervisor',
         
+        // === AUDITOR ===
+        'auditor' => 'Auditor',
+
         // === OPERATIONAL LEVEL ===
         'staff_accounting' => 'Staff Accounting',
         'staff_operations' => 'Staff Operations',
