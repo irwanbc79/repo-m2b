@@ -19,15 +19,12 @@ class CustomerMiddleware
 
         // Customer harus punya role 'customer' 
         // Cek di roles array atau role single
-        $isCustomer = $user->hasRole('customer') || $user->role === 'customer';
+        $primaryRole = $user->getPrimaryRole();
+        $isCustomer = $primaryRole === 'customer' || $user->hasRole('customer');
 
         if (!$isCustomer) {
-            // Staff/Admin yang coba akses customer portal -> redirect ke admin
-            if ($user->isAdminLevel() || $user->hasRole(['admin', 'staff', 'director', 'manager'])) {
-                return redirect('/admin/dashboard');
-            }
-            
-            abort(403, 'Anda tidak memiliki akses ke portal customer.');
+            // Non-customer yang coba akses customer portal -> redirect ke admin
+            return redirect('/admin/dashboard');
         }
 
         return $next($request);

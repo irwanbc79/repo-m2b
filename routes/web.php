@@ -92,7 +92,8 @@ Route::middleware('guest')->group(function () {
             $credentials = $request->validate(['email' => 'required', 'password' => 'required']);
             if (Auth::attempt($credentials)) {
                 $request->session()->regenerate();
-                return Auth::user()->role === 'customer' ? redirect()->intended(route('customer.dashboard')) : redirect()->intended(route('admin.dashboard'));
+                $primaryRole = Auth::user()->getPrimaryRole();
+                return $primaryRole === 'customer' ? redirect()->intended(route('customer.dashboard')) : redirect()->intended(route('admin.dashboard'));
             }
             return back()->withErrors(['email' => 'Email salah.']);
         }

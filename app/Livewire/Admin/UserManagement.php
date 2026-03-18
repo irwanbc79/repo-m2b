@@ -111,7 +111,8 @@ class UserManagement extends Component
         $data = [
             'name' => $this->name,
             'email' => $this->email,
-            'roles' => $this->selectedRoles, // Simpan Array ke Database
+            'roles' => $this->selectedRoles,
+            'role'  => $this->selectedRoles[0] ?? null, // sync kolom legacy
         ];
 
         if ($this->password) {
