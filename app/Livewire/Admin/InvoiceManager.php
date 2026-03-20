@@ -95,7 +95,7 @@ class InvoiceManager extends Component
 
     public function render()
     {
-        $query = Invoice::with(['customer', 'shipment']);
+        $query = Invoice::with(['customer', 'shipment.customer']);
 
         // Apply search filter
         if ($this->search) {
@@ -123,6 +123,8 @@ class InvoiceManager extends Component
 
         $invoices = $query->latest()->paginate(10);
 
+        $relatedInvoiceLinks = $this->buildRelatedInvoiceLinksForPage($invoices);
+
         $stats = Cache::remember('invoice_stats', 300, function () {
             return [
             'total' => Invoice::count(),
@@ -141,7 +143,49 @@ class InvoiceManager extends Component
         $customerShipments = Cache::remember('invoice_customer_shipments', 300, function() {
             return Shipment::with("customer")->where("status", "!=", "cancelled")->orderBy("created_at", "desc")->limit(200)->get();
         });
-        return view('livewire.admin.invoice-manager', compact('invoices', 'customersList', 'customerShipments', 'stats'))->layout('layouts.admin');
+        return view('livewire.admin.invoice-manager', compact('invoices', 'customersList', 'customerShipments', 'stats', 'relatedInvoiceLinks'))->layout('layouts.admin');
+    }
+
+    /**
+     * Satu query untuk invoice terkait per shipment (menggantikan N+1 query di Blade).
+     *
+     * @param  \Illuminate\Contracts\Pagination\LengthAwarePaginator  $invoices
+     * @return array<int, \App\Models\Invoice>
+     */
+    private function buildRelatedInvoiceLinksForPage($invoices): array
+    {
+        $pageItems = $invoices->getCollection();
+        $shipmentIds = $pageItems->pluck('shipment_id')->filter()->unique()->values()->all();
+        if ($shipmentIds === []) {
+            return [];
+        }
+
+        $grouped = Invoice::query()
+            ->whereIn('shipment_id', $shipmentIds)
+            ->select(['id', 'shipment_id', 'invoice_number', 'type'])
+            ->get()
+            ->groupBy('shipment_id');
+
+        $map = [];
+        foreach ($pageItems as $inv) {
+            if (!$inv->shipment_id) {
+                continue;
+            }
+            $related = ($grouped[$inv->shipment_id] ?? collect())
+                ->filter(fn ($row) => (int) $row->id !== (int) $inv->id)
+                ->sortBy('id')
+                ->first();
+            if ($related) {
+                $map[$inv->id] = $related;
+            }
+        }
+
+        return $map;
+    }
+
+    private function flushInvoiceDashboardCache(): void
+    {
+        Cache::forget('invoice_stats');
     }
 
     // --- FORM LOGIC & CALCULATIONS ---
@@ -312,6 +356,8 @@ class InvoiceManager extends Component
                 $invoice->items()->create(['description' => $item['description'], 'item_type' => $item['item_type'], 'qty' => $item['qty'], 'price' => $item['price'], 'total' => ((float)$item['qty'] * (float)$item['price'])]);
             }
         });
+
+        $this->flushInvoiceDashboardCache();
 
         session()->flash('message', 'Invoice berhasil disimpan.');
         $this->closeModal();
@@ -484,6 +530,7 @@ class InvoiceManager extends Component
         if ($inv) {
             $inv->items()->delete();
             $inv->delete();
+            $this->flushInvoiceDashboardCache();
             session()->flash('message', 'Invoice dihapus.');
         }
     }
@@ -528,6 +575,8 @@ class InvoiceManager extends Component
                 $journal = AccountingService::createJournalFromPayment($inv, "1103");
 
                 DB::commit();
+
+                $this->flushInvoiceDashboardCache();
 
                 if ($journal) {
                     session()->flash("message", "Pembayaran dicatat! Jurnal " . $journal->journal_number . " otomatis dibuat.");
@@ -631,6 +680,8 @@ class InvoiceManager extends Component
             $service = app(InvoiceWorkflowService::class);
             $commercial = $service->generateCommercialFromProforma($proforma);
 
+            $this->flushInvoiceDashboardCache();
+
             session()->flash('message', "✅ Commercial invoice {$commercial->invoice_number} successfully generated from Proforma {$proforma->invoice_number}!");
 
         }
@@ -709,6 +760,8 @@ class InvoiceManager extends Component
                     $inv->update(["payment_proof" => $proofPath]);
                 }
             });
+
+            $this->flushInvoiceDashboardCache();
 
             session()->flash("message", "Pembayaran Rp " . number_format($this->amount) . " berhasil dicatat");
         }
@@ -854,6 +907,7 @@ class InvoiceManager extends Component
                 $invoice->status = "unpaid";
             }
             $invoice->save();
+            $this->flushInvoiceDashboardCache();
         }
     }
 
@@ -906,6 +960,8 @@ class InvoiceManager extends Component
             ]);
 
             DB::commit();
+
+            $this->flushInvoiceDashboardCache();
 
             $message = "Pembayaran berhasil direvisi. Status kembali UNPAID.";
             if ($reversalJournal) {
@@ -991,6 +1047,7 @@ class InvoiceManager extends Component
         $this->fakturPajakInvoiceId = null;
         $this->fakturPajakFile = null;
         $this->fakturPajakNumber = '';
+        $this->flushInvoiceDashboardCache();
         session()->flash('message', 'Faktur Pajak berhasil diupload');
     // Livewire auto-refresh via render()
     }
@@ -1010,6 +1067,8 @@ class InvoiceManager extends Component
             'faktur_pajak_path' => null,
             'faktur_pajak_uploaded_at' => null,
         ]);
+
+        $this->flushInvoiceDashboardCache();
 
         session()->flash('message', 'Faktur Pajak berhasil dihapus');
     }

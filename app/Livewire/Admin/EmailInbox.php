@@ -44,21 +44,31 @@ class EmailInbox extends Component
 
     public function loadEmails()
     {
-        $this->emails = DB::table('emails')
+        $emails = DB::table('emails')
             ->where('mailbox', $this->activeAccount)
             ->orderByDesc('email_date')
             ->limit(100)
-            ->get()
-            ->map(fn($email) => [
-                'db_id' => $email->id,
-                'uid' => $email->uid,
-                'subject' => $email->subject ?: '(No Subject)',
-                'from' => $email->from_email,
-                'name' => $email->from_name ?: $email->from_email,
-                'date' => $email->email_date ? Carbon::parse($email->email_date)->format('d M H:i') : '',
-                'is_read' => (bool)$email->is_read,
-                'attachments' => DB::table('email_attachments')->where('email_id', $email->id)->count()
-            ])->toArray();
+            ->get();
+
+        $ids = $emails->pluck('id');
+        $attachmentCounts = $ids->isEmpty()
+            ? collect()
+            : DB::table('email_attachments')
+                ->whereIn('email_id', $ids)
+                ->selectRaw('email_id, COUNT(*) as c')
+                ->groupBy('email_id')
+                ->pluck('c', 'email_id');
+
+        $this->emails = $emails->map(fn ($email) => [
+            'db_id' => $email->id,
+            'uid' => $email->uid,
+            'subject' => $email->subject ?: '(No Subject)',
+            'from' => $email->from_email,
+            'name' => $email->from_name ?: $email->from_email,
+            'date' => $email->email_date ? Carbon::parse($email->email_date)->format('d M H:i') : '',
+            'is_read' => (bool) $email->is_read,
+            'attachments' => (int) ($attachmentCounts[$email->id] ?? 0),
+        ])->toArray();
     }
 
     /**

@@ -136,13 +136,12 @@
                         <td class="px-6 py-4">
                             @if($inv->shipment_id)
                                 @php
-                                    $relatedInv = \App\Models\Invoice::where('shipment_id', $inv->shipment_id)
-                                        ->where('id', '!=', $inv->id)
-                                        ->first();
+                                    $relatedInv = $relatedInvoiceLinks[$inv->id] ?? null;
+                                    $relatedIsCommercial = $relatedInv && strcasecmp((string) $relatedInv->type, 'Commercial') === 0;
                                 @endphp
                                 @if($relatedInv)
-                                    <span class="text-{{ $relatedInv->type === 'Commercial' ? 'blue' : 'purple' }}-600 text-xs font-bold">
-                                        {{ $relatedInv->type === 'Commercial' ? '→' : '←' }} {{ $relatedInv->invoice_number }}
+                                    <span class="text-{{ $relatedIsCommercial ? 'blue' : 'purple' }}-600 text-xs font-bold">
+                                        {{ $relatedIsCommercial ? '→' : '←' }} {{ $relatedInv->invoice_number }}
                                     </span>
                                 @else
                                     <span class="text-gray-400 text-xs">-</span>
