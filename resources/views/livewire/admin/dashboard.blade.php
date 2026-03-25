@@ -262,6 +262,62 @@
         </div>
     </div>
 
+    {{-- ═══════════════════════════════════════════════════════════════════
+         SECTION: Pertumbuhan Bisnis Multi-Tahun (Accurate + Portal)
+         Data: 2024–2025 bulanan (Accurate), 2026+ live (Portal)
+         * = data live dari portal M2B
+    ══════════════════════════════════════════════════════════════════════ --}}
+    <div class="bg-white rounded-xl shadow-sm border border-gray-100 p-6">
+        <div class="flex flex-col md:flex-row md:items-center md:justify-between gap-2 mb-6">
+            <div>
+                <h3 class="text-lg font-bold text-gray-800">Pertumbuhan Revenue M2B</h3>
+                <p class="text-xs text-gray-400 mt-0.5">
+                    Data historis 2024–2025 dari Accurate Accounting &bull;
+                    <span class="text-blue-500 font-medium">* data live portal M2B</span>
+                </p>
+            </div>
+            <div class="flex items-center gap-3 text-xs text-gray-500">
+                <span class="flex items-center gap-1"><span class="inline-block w-3 h-3 rounded-full bg-blue-500"></span> Revenue</span>
+                <span class="flex items-center gap-1"><span class="inline-block w-3 h-3 rounded-full bg-emerald-400"></span> Laba Kotor</span>
+            </div>
+        </div>
+
+        {{-- Annual Summary Cards --}}
+        <div class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-3 mb-6">
+            @foreach($growthData['annualSummary'] as $year => $data)
+            @php
+                $isPortal = ($year >= 2026);
+                $rev = $data['revenue'];
+                $gp  = $data['gross_profit'];
+                $np  = $data['net_profit'];
+            @endphp
+            <div class="rounded-lg p-3 text-center {{ $isPortal ? 'bg-blue-50 border border-blue-200' : 'bg-gray-50 border border-gray-100' }}">
+                <div class="text-xs font-bold {{ $isPortal ? 'text-blue-600' : 'text-gray-500' }} mb-1">
+                    {{ $year }}{{ $isPortal ? ' *' : '' }}
+                </div>
+                <div class="text-sm font-bold text-gray-800">
+                    {{ $rev >= 1000000000 ? number_format($rev/1000000000, 1) . 'M' : number_format($rev/1000000, 0) . 'jt' }}
+                </div>
+                <div class="text-xs {{ $gp >= 0 ? 'text-emerald-600' : 'text-red-500' }} mt-0.5">
+                    @if($gp != 0)
+                        GP: {{ $gp >= 0 ? '+' : '' }}{{ number_format($gp/1000000, 0) }}jt
+                    @else
+                        <span class="text-gray-400">—</span>
+                    @endif
+                </div>
+                @if($np != 0)
+                <div class="text-xs {{ $np >= 0 ? 'text-emerald-500' : 'text-red-400' }} mt-0.5">
+                    NP: {{ $np >= 0 ? '+' : '' }}{{ number_format($np/1000000, 0) }}jt
+                </div>
+                @endif
+            </div>
+            @endforeach
+        </div>
+
+        {{-- Multi-year Revenue Chart --}}
+        <canvas id="growthChart" height="100"></canvas>
+    </div>
+
     {{-- Chart.js --}}
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <script>
@@ -277,6 +333,67 @@
             Chart.getChart('shipmentChart')?.destroy();
             Chart.getChart('revenueChart')?.destroy();
             Chart.getChart('statusChart')?.destroy();
+            Chart.getChart('growthChart')?.destroy();
+
+            // ── Growth Chart (multi-year) ──────────────────────────────────
+            const growthLabels  = @json($growthData['labels']);
+            const growthRevenue = @json($growthData['revenue']);
+            const growthGross   = @json($growthData['gross']);
+
+            // Colour bars: blue for Accurate data, lighter blue for portal (labels with *)
+            const barColors = growthLabels.map(l =>
+                l.includes('*') ? 'rgba(59,130,246,0.9)' : 'rgba(156,163,175,0.6)'
+            );
+
+            new Chart(document.getElementById('growthChart'), {
+                type: 'bar',
+                data: {
+                    labels: growthLabels,
+                    datasets: [
+                        {
+                            label: 'Revenue',
+                            data: growthRevenue,
+                            backgroundColor: barColors,
+                            borderRadius: 4,
+                            order: 2,
+                        },
+                        {
+                            label: 'Laba Kotor',
+                            data: growthGross,
+                            type: 'line',
+                            borderColor: 'rgb(52,211,153)',
+                            backgroundColor: 'rgba(52,211,153,0.1)',
+                            pointRadius: 3,
+                            tension: 0.3,
+                            fill: false,
+                            order: 1,
+                        }
+                    ]
+                },
+                options: {
+                    responsive: true,
+                    interaction: { mode: 'index', intersect: false },
+                    plugins: {
+                        legend: { display: false },
+                        tooltip: {
+                            callbacks: {
+                                label: ctx => {
+                                    const v = ctx.raw;
+                                    const sign = v < 0 ? '-' : '';
+                                    return ` ${ctx.dataset.label}: ${sign}Rp ${Math.abs(v/1000000).toFixed(0)}jt`;
+                                }
+                            }
+                        }
+                    },
+                    scales: {
+                        x: { ticks: { font: { size: 10 }, maxRotation: 45 } },
+                        y: {
+                            beginAtZero: true,
+                            ticks: { callback: v => 'Rp ' + (v/1000000).toFixed(0) + 'jt' }
+                        }
+                    }
+                }
+            });
 
             new Chart(document.getElementById('shipmentChart'), {
                 type: 'bar',

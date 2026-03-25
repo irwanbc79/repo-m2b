@@ -29,6 +29,9 @@ class OldDataImportSeeder extends Seeder
         $this->command->info('[3/3] Importing Chart of Accounts...');
         $this->call(OldDataCoaSeeder::class);
 
+        $this->command->info('[4/4] Importing Historical Financial Snapshots (2021-2025)...');
+        $this->call(OldDataHistoricalSeeder::class);
+
         $this->command->info('');
         $this->command->info('=== Import selesai. Data existing tidak berubah. ===');
     }

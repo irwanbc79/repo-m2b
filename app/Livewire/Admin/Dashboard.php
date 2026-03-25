@@ -9,6 +9,7 @@ use App\Models\Invoice;
 use App\Models\CashTransaction;
 use App\Models\Vendor;
 use App\Models\Email;
+use App\Models\HistoricalSnapshot;
 use Carbon\Carbon;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Auth;
@@ -259,6 +260,101 @@ class Dashboard extends Component
             ->toArray();
     }
 
+    /**
+     * Gabungkan data historis Accurate (2024-2025) + data live portal (2026-)
+     * untuk chart pertumbuhan multi-tahun.
+     */
+    public function getGrowthChartData(): array
+    {
+        return Cache::remember('dashboard_growth_chart', 600, function () {
+            $labels   = [];
+            $revenue  = [];
+            $gross    = [];
+
+            // ── Data bulanan dari Accurate: 2024 & 2025 ──────────────────────
+            $historical = HistoricalSnapshot::where('period_type', 'monthly')
+                ->orderBy('period')
+                ->get()
+                ->keyBy('period');
+
+            $periods = [];
+            foreach (['2024', '2025'] as $year) {
+                for ($m = 1; $m <= 12; $m++) {
+                    $periods[] = $year . '-' . str_pad($m, 2, '0', STR_PAD_LEFT);
+                }
+            }
+
+            foreach ($periods as $p) {
+                $snap = $historical->get($p);
+                $labels[]  = \Carbon\Carbon::createFromFormat('Y-m', $p)->format('M Y');
+                $revenue[] = $snap ? (float) $snap->revenue      : 0;
+                $gross[]   = $snap ? (float) $snap->gross_profit : 0;
+            }
+
+            // ── Data live dari portal: 2026 s.d sekarang ─────────────────────
+            $portalRevenue = Invoice::where('invoice_date', '>=', '2026-01-01')
+                ->where('status', '!=', 'cancelled')
+                ->selectRaw("DATE_FORMAT(invoice_date, '%Y-%m') as period, SUM(grand_total) as total")
+                ->groupBy('period')
+                ->orderBy('period')
+                ->pluck('total', 'period')
+                ->toArray();
+
+            // Pastikan semua bulan 2026 s.d. bulan ini ada
+            $start = \Carbon\Carbon::create(2026, 1, 1);
+            $end   = now()->startOfMonth();
+            while ($start->lte($end)) {
+                $p = $start->format('Y-m');
+                $labels[]  = $start->format('M Y') . ' *';
+                $revenue[] = (float) ($portalRevenue[$p] ?? 0);
+                $gross[]   = 0; // portal belum punya gross profit per bulan
+                $start->addMonth();
+            }
+
+            // ── Summary tahunan untuk card ────────────────────────────────────
+            $annualHistorical = HistoricalSnapshot::where('period_type', 'annual')
+                ->orderBy('period')
+                ->get();
+
+            $annualSummary = [];
+            foreach ($annualHistorical as $snap) {
+                $annualSummary[$snap->period] = [
+                    'revenue'      => $snap->revenue,
+                    'gross_profit' => $snap->gross_profit,
+                    'net_profit'   => $snap->net_profit,
+                ];
+            }
+            // Tambah 2024, 2025 dari monthly sum
+            foreach (['2024', '2025'] as $year) {
+                $rows = HistoricalSnapshot::where('period_type', 'monthly')
+                    ->where('period', 'like', $year . '-%')
+                    ->get();
+                if ($rows->isNotEmpty()) {
+                    $annualSummary[$year] = [
+                        'revenue'      => $rows->sum('revenue'),
+                        'gross_profit' => $rows->sum('gross_profit'),
+                        'net_profit'   => $rows->sum('net_profit'),
+                    ];
+                }
+            }
+            // 2026 dari portal
+            $rev2026 = Invoice::where('invoice_date', '>=', '2026-01-01')
+                ->where('status', '!=', 'cancelled')
+                ->sum('grand_total');
+            if ($rev2026 > 0) {
+                $annualSummary['2026'] = ['revenue' => $rev2026, 'gross_profit' => 0, 'net_profit' => 0];
+            }
+            ksort($annualSummary);
+
+            return [
+                'labels'        => $labels,
+                'revenue'       => $revenue,
+                'gross'         => $gross,
+                'annualSummary' => $annualSummary,
+            ];
+        });
+    }
+
     public function getTodayStats()
     {
         return [
@@ -279,6 +375,7 @@ class Dashboard extends Component
             'recentShipments' => $this->getRecentShipments(),
             'shipmentsByStatus' => $this->getShipmentsByStatus(),
             'todayStats' => $this->getTodayStats(),
+            'growthData' => $this->getGrowthChartData(),
         ])->layout('layouts.admin');
     }
 }
