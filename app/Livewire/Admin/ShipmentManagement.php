@@ -82,6 +82,8 @@ class ShipmentManagement extends Component
     public $printDoShipment = null;
     public $printDoContainerCount = 1;
     public $printDoContainers = [];
+    public $printDoAlamatBongkar = '';
+    public $printDoNamaPenerima = '';
 
     protected $queryString = ['search', 'filterStatus', 'filterCustomer', 'filterServiceType', 'sortField', 'sortDirection'];
 
@@ -526,6 +528,22 @@ class ShipmentManagement extends Component
         $this->printDoContainers = [
             ['no_container' => '', 'no_polisi' => '', 'nama_supir' => '', 'no_seal' => '']
         ];
+
+        // Pre-fill alamat bongkar dari data customer, fallback ke destination shipment
+        $customer = $this->printDoShipment?->customer;
+        if ($customer) {
+            $parts = array_filter([
+                $customer->address,
+                $customer->city,
+                $customer->postal_code,
+                $customer->country ?? 'Indonesia',
+            ]);
+            $this->printDoAlamatBongkar = implode(', ', $parts);
+        }
+        if (empty($this->printDoAlamatBongkar)) {
+            $this->printDoAlamatBongkar = $this->printDoShipment?->destination ?? '';
+        }
+
         $this->showPrintDoModal = true;
     }
 
@@ -552,12 +570,19 @@ class ShipmentManagement extends Component
         $this->printDoShipment = null;
         $this->printDoContainers = [];
         $this->printDoContainerCount = 1;
+        $this->printDoAlamatBongkar = '';
+        $this->printDoNamaPenerima = '';
     }
 
     public function printDo()
     {
         $containers = urlencode(json_encode($this->printDoContainers));
-        $url = route('admin.shipments.print-do', ['id' => $this->printDoShipmentId]) . '?containers=' . $containers;
+        $alamatBongkar = urlencode($this->printDoAlamatBongkar);
+        $namaPenerima = urlencode($this->printDoNamaPenerima);
+        $url = route('admin.shipments.print-do', ['id' => $this->printDoShipmentId])
+            . '?containers=' . $containers
+            . '&alamat_bongkar=' . $alamatBongkar
+            . '&nama_penerima=' . $namaPenerima;
         $this->dispatch('openPrintWindow', url: $url);
     }
 

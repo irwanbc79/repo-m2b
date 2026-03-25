@@ -24,6 +24,26 @@
     if (empty($containers)) {
         $containers = [['no_container' => '', 'no_polisi' => '', 'nama_supir' => '', 'no_seal' => '']];
     }
+
+    // Alamat bongkar: dari query param, fallback ke customer address, lalu destination shipment
+    $alamatBongkar = urldecode(request('alamat_bongkar', ''));
+    if (empty($alamatBongkar) && $shipment->customer) {
+        $parts = array_filter([
+            $shipment->customer->address,
+            $shipment->customer->city,
+            $shipment->customer->postal_code,
+            $shipment->customer->country ?? 'Indonesia',
+        ]);
+        $alamatBongkar = implode(', ', $parts);
+    }
+    if (empty($alamatBongkar)) {
+        $alamatBongkar = $shipment->destination;
+    }
+
+    // Nama penerima: dari input opsional, fallback ke nama customer (importir)
+    $namaPenerima = urldecode(request('nama_penerima', ''));
+    $namaConsignee = !empty($namaPenerima) ? $namaPenerima : ($shipment->customer->company_name ?? '-');
+    $isBedasImportir = !empty($namaPenerima) && $namaPenerima !== ($shipment->customer->company_name ?? '');
 @endphp
 
 @foreach($containers as $index => $container)
@@ -58,7 +78,7 @@
     <div class="grid grid-cols-2 gap-0 border border-black mb-6">
         {{-- KOLOM PENGIRIM --}}
         <div class="p-4 border-r border-black">
-            <p class="text-xs font-bold bg-black text-white inline-block px-2 py-0.5 mb-2">DARI / PENGIRIM (SHIPPER)</p>
+            <p class="text-xs font-bold bg-black text-white inline-block px-2 py-0.5 mb-2">DARI / PENGIRIM / FOWARDER / PPJK</p>
             <p class="font-bold text-lg uppercase">PT. MORA MULTI BERKAH</p>
             <div class="text-sm mt-1 uppercase">
                 <span class="text-gray-500 text-xs block mb-0.5">Lokasi Muat / Origin:</span>
@@ -76,10 +96,13 @@
                     {{ $shipment->destination }}
                 </div>
             @else
-                <p class="font-bold text-lg uppercase">{{ $shipment->customer->company_name }}</p>
-                <div class="text-sm mt-1 uppercase">
+                <p class="font-bold text-lg uppercase">{{ $namaConsignee }}</p>
+                @if($isBedasImportir)
+                <p class="text-xs text-gray-500 mt-0.5">(Importir: {{ $shipment->customer->company_name }})</p>
+                @endif
+                <div class="text-sm mt-1">
                     <span class="text-gray-500 text-xs block mb-0.5">Alamat Bongkar:</span>
-                    {{ $shipment->destination }}
+                    <span class="uppercase">{{ $alamatBongkar }}</span>
                 </div>
             @endif
         </div>

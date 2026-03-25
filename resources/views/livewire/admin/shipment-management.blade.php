@@ -722,16 +722,44 @@
             </div>
             
             <div class="p-6 overflow-y-auto flex-1">
-                <div class="mb-6 p-4 bg-blue-50 border border-blue-200 rounded-lg">
+                <div class="mb-4 p-4 bg-blue-50 border border-blue-200 rounded-lg">
                     <label class="block text-sm font-bold text-blue-800 mb-2">Jumlah Container / Kendaraan</label>
                     <div class="flex items-center gap-3">
-                        <input type="number" wire:model.live.debounce.500ms="printDoContainerCount" 
-                               min="1" max="100" 
-                               class="w-24 border-blue-300 rounded-lg text-lg font-bold text-center focus:border-blue-500 focus:ring-blue-500" 
+                        <input type="number" wire:model.live.debounce.500ms="printDoContainerCount"
+                               min="1" max="100"
+                               class="w-24 border-blue-300 rounded-lg text-lg font-bold text-center focus:border-blue-500 focus:ring-blue-500"
                                placeholder="1">
                         <span class="text-sm text-blue-800">Surat Jalan</span>
                     </div>
                     <p class="text-xs text-blue-600 mt-2 text-center">Akan mencetak <strong>{{ $printDoContainerCount }}</strong> lembar surat jalan</p>
+                </div>
+
+                {{-- Penerima & Alamat Bongkar --}}
+                <div class="mb-6 p-4 bg-green-50 border border-green-200 rounded-lg space-y-3">
+                    <div>
+                        <label class="block text-sm font-bold text-green-800 mb-1">
+                            Nama Penerima Barang
+                            <span class="font-normal text-green-600 ml-1">(opsional — isi jika berbeda dari importir)</span>
+                        </label>
+                        @if($printDoShipment)
+                        <p class="text-xs text-green-600 mb-1">
+                            Default: <strong>{{ $printDoShipment->customer->company_name ?? '-' }}</strong>
+                        </p>
+                        @endif
+                        <input type="text" wire:model="printDoNamaPenerima"
+                               class="w-full border-green-300 rounded-lg text-sm focus:border-green-500 focus:ring-green-500"
+                               placeholder="Nama perusahaan / penerima fisik barang...">
+                    </div>
+                    <div>
+                        <label class="block text-sm font-bold text-green-800 mb-1">
+                            Alamat Bongkar
+                        </label>
+                        <p class="text-xs text-green-600 mb-1">Pre-filled dari data customer. Edit jika lokasi bongkar berbeda.</p>
+                        <textarea wire:model="printDoAlamatBongkar"
+                                  rows="2"
+                                  class="w-full border-green-300 rounded-lg text-sm focus:border-green-500 focus:ring-green-500"
+                                  placeholder="Masukkan alamat lengkap lokasi bongkar..."></textarea>
+                    </div>
                 </div>
                 
                 <div class="space-y-4">
