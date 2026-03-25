@@ -529,20 +529,34 @@ class ShipmentManagement extends Component
             ['no_container' => '', 'no_polisi' => '', 'nama_supir' => '', 'no_seal' => '']
         ];
 
-        // Pre-fill alamat bongkar dari data customer, fallback ke destination shipment
-        $customer = $this->printDoShipment?->customer;
-        if ($customer) {
-            $parts = array_filter([
-                $customer->address,
-                $customer->city,
-                $customer->postal_code,
-                $customer->country ?? 'Indonesia',
-            ]);
-            $this->printDoAlamatBongkar = implode(', ', $parts);
+        $shipment = $this->printDoShipment;
+
+        // Jika ada data DO tersimpan sebelumnya, gunakan itu
+        if (!empty($shipment->do_containers)) {
+            $this->printDoContainers = $shipment->do_containers;
+            $this->printDoContainerCount = count($shipment->do_containers);
         }
-        if (empty($this->printDoAlamatBongkar)) {
-            $this->printDoAlamatBongkar = $this->printDoShipment?->destination ?? '';
+
+        if (!empty($shipment->do_alamat_bongkar)) {
+            $this->printDoAlamatBongkar = $shipment->do_alamat_bongkar;
+        } else {
+            // Pre-fill dari data customer
+            $customer = $shipment?->customer;
+            if ($customer) {
+                $parts = array_filter([
+                    $customer->address,
+                    $customer->city,
+                    $customer->postal_code,
+                    $customer->country ?? 'Indonesia',
+                ]);
+                $this->printDoAlamatBongkar = implode(', ', $parts);
+            }
+            if (empty($this->printDoAlamatBongkar)) {
+                $this->printDoAlamatBongkar = $shipment?->destination ?? '';
+            }
         }
+
+        $this->printDoNamaPenerima = $shipment->do_nama_penerima ?? '';
 
         $this->showPrintDoModal = true;
     }
@@ -576,6 +590,13 @@ class ShipmentManagement extends Component
 
     public function printDo()
     {
+        // Simpan data DO ke shipment supaya bisa di-recall berikutnya
+        Shipment::where('id', $this->printDoShipmentId)->update([
+            'do_containers'    => $this->printDoContainers,
+            'do_alamat_bongkar' => $this->printDoAlamatBongkar,
+            'do_nama_penerima'  => $this->printDoNamaPenerima,
+        ]);
+
         $containers = urlencode(json_encode($this->printDoContainers));
         $alamatBongkar = urlencode($this->printDoAlamatBongkar);
         $namaPenerima = urlencode($this->printDoNamaPenerima);

@@ -40,9 +40,13 @@ class Shipment extends Model
         'cancelled_at',
         'cancelled_by',
         'cancellation_reason',
+        'do_containers',
+        'do_alamat_bongkar',
+        'do_nama_penerima',
     ];
 
     protected $casts = [
+        'do_containers' => 'array',
         'cancelled_at' => 'datetime',
         'estimated_departure' => 'datetime',
         'estimated_arrival' => 'datetime',
