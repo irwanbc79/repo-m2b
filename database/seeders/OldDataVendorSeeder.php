@@ -65,9 +65,7 @@ class OldDataVendorSeeder extends Seeder
                 'code'     => $newCode,
                 'name'     => $data['name'],
                 'category' => $data['category'],
-                'phone'    => $data['phone'],
-                'address'  => '',
-                'notes'    => 'Diimpor dari data Accurate (legacy). Kode Accurate: ' . $data['code'],
+                'address'  => $data['phone'] ? 'Tel: ' . $data['phone'] : '',
             ]);
 
             $existingNames[] = $normalized;
