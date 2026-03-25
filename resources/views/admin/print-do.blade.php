@@ -78,7 +78,7 @@
     <div class="grid grid-cols-2 gap-0 border border-black mb-6">
         {{-- KOLOM PENGIRIM --}}
         <div class="p-4 border-r border-black">
-            <p class="text-xs font-bold bg-black text-white inline-block px-2 py-0.5 mb-2">DARI / PENGIRIM / FOWARDER / PPJK</p>
+            <p class="text-xs font-bold bg-black text-white inline-block px-2 py-0.5 mb-2">DARI / PENGIRIM / FORWARDER / PPJK</p>
             <p class="font-bold text-lg uppercase">PT. MORA MULTI BERKAH</p>
             <div class="text-sm mt-1 uppercase">
                 <span class="text-gray-500 text-xs block mb-0.5">Lokasi Muat / Origin:</span>
