@@ -149,7 +149,13 @@
     </table>
 
     <div class="grid grid-cols-4 gap-4 text-center mt-12">
-        <div><p class="text-xs font-bold mb-16">ADMIN / PENGIRIM</p><p class="border-t border-black mx-2 pt-1 font-bold">( PT. M2B )</p></div>
+        <div>
+            <p class="text-xs font-bold mb-2">ADMIN / PENGIRIM</p>
+            <div class="flex justify-center mb-1">
+                <img src="{{ asset('images/assets/signatures/stamp_m2b.png') }}" class="h-14 w-auto object-contain">
+            </div>
+            <p class="border-t border-black mx-2 pt-1 font-bold">( PT. M2B )</p>
+        </div>
         <div><p class="text-xs font-bold mb-16">SUPIR / CARRIER</p><p class="border-t border-black mx-2 pt-1">( {{ $container['nama_supir'] ?: '.................' }} )</p></div>
         <div><p class="text-xs font-bold mb-16">SECURITY GUDANG</p><p class="border-t border-black mx-2 pt-1">( ................. )</p></div>
         <div><p class="text-xs font-bold mb-16">PENERIMA BARANG</p><p class="border-t border-black mx-2 pt-1">( ................. )</p></div>
