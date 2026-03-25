@@ -152,7 +152,7 @@
         <div>
             <p class="text-xs font-bold mb-2">ADMIN / PENGIRIM</p>
             <div class="flex justify-center mb-1">
-                <img src="{{ asset('images/assets/signatures/stamp_m2b.png') }}" class="h-14 w-auto object-contain">
+                <img src="{{ asset('images/assets/signatures/stamp_m2b.png') }}" class="h-28 w-auto object-contain">
             </div>
             <p class="border-t border-black mx-2 pt-1 font-bold">( PT. M2B )</p>
         </div>
