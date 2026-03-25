@@ -83,11 +83,10 @@ class OldDataCustomerSeeder extends Seeder
                 'user_id'       => null,
                 'customer_code' => $code,
                 'company_name'  => $data['name'],
-                'business_type' => 'Freight Forwarding',
+                'business_type' => 'Freight Forwarding [Accurate: ' . $data['code'] . ']',
                 'address'       => '',
                 'city'          => 'Medan',
                 'country'       => 'Indonesia',
-                'notes'         => 'Diimpor dari data Accurate (legacy). Kode Accurate: ' . $data['code'],
             ]);
 
             $existingNames[] = $normalized; // Prevent duplicate within this batch
