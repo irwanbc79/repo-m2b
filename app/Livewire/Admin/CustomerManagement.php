@@ -25,7 +25,7 @@ class CustomerManagement extends Component
     public $filterTag = '';
     public $sortField = 'created_at';
     public $sortDirection = 'desc';
-    public $perPage = 10;
+    public $perPage = 25;
 
     // Modal States
     public $isModalOpen = false;
