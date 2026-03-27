@@ -32,7 +32,7 @@ class ShipmentManagement extends Component
     public $filterDateTo = '';
     public $sortField = 'created_at';
     public $sortDirection = 'desc';
-    public $perPage = 10;
+    public $perPage = 25;
 
     // Modal States
     public $isModalOpen = false;

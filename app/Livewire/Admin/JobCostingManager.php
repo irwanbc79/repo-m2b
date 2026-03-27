@@ -245,7 +245,7 @@ class JobCostingManager extends Component
                 $query->doesntHave('jobCosts');
             }
             
-            $shipments = $query->orderBy('created_at', 'desc')->paginate(10);
+            $shipments = $query->orderBy('created_at', 'desc')->paginate(25);
             
             // Filter by margin percentage (setelah pagination untuk performa)
             if ($this->filterMargin === 'low' || $this->filterMargin === 'high') {

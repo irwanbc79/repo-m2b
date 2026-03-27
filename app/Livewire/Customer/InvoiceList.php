@@ -106,7 +106,7 @@ class InvoiceList extends Component
 
         if (!$user->customer) {
             return view('livewire.customer.invoice-list', [
-                'invoices' => Invoice::whereRaw('1=0')->paginate(10),
+                'invoices' => Invoice::whereRaw('1=0')->paginate(25),
                 'stats' => [
                     'total' => 0,
                     'paid' => 0,
@@ -137,7 +137,7 @@ class InvoiceList extends Component
             });
         }
 
-        $invoices = $query->latest()->paginate(10);
+        $invoices = $query->latest()->paginate(25);
 
         // Stats
         $statsQuery = Invoice::where('customer_id', $customerId);

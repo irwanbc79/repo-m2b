@@ -121,7 +121,7 @@ class InvoiceManager extends Component
             $query->where('type', $this->filterType);
         }
 
-        $invoices = $query->latest()->paginate(10);
+        $invoices = $query->latest()->paginate(25);
 
         $relatedInvoiceLinks = $this->buildRelatedInvoiceLinksForPage($invoices);
 

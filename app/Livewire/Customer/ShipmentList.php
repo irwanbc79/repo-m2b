@@ -25,7 +25,7 @@ class ShipmentList extends Component
     // Defensive guard: jika relasi customer belum siap / tidak ada
     if (!$user->customer) {
         return view('livewire.customer.shipment-list', [
-            'shipments' => Shipment::whereRaw('1=0')->paginate(10),
+            'shipments' => Shipment::whereRaw('1=0')->paginate(25),
         ])->layout('layouts.customer');
     }
 
@@ -43,7 +43,7 @@ class ShipmentList extends Component
             }
         })
         ->latest()
-        ->paginate(10);
+        ->paginate(25);
 
     return view('livewire.customer.shipment-list', [
         'shipments' => $shipments

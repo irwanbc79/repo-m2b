@@ -93,7 +93,7 @@ class VendorManagement extends Component
             $query->where('category', $this->filterCategory);
         }
         
-        $vendors = $query->orderBy('created_at', 'desc')->paginate(10);
+        $vendors = $query->orderBy('created_at', 'desc')->paginate(25);
         $stats = $this->getStats();
 
         return view('livewire.admin.vendor-management', compact('vendors', 'stats'))->layout('layouts.admin');

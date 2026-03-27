@@ -64,7 +64,7 @@ class UserManagement extends Component
                   ->orWhere('email', 'like', '%'.$this->search.'%');
             })
             ->latest()
-            ->paginate(10);
+            ->paginate(25);
 
         return view('livewire.admin.user-management', [
             'users' => $users

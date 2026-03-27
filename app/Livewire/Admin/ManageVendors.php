@@ -63,7 +63,7 @@ class ManageVendors extends Component
                   ->orWhere('code', 'like', '%' . $this->search . '%');
             })
             ->latest()
-            ->paginate(10);
+            ->paginate(25);
 
         return view('livewire.admin.vendor-form', compact('vendors'))
             ->layout('layouts.admin');

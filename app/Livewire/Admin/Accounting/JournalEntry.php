@@ -42,7 +42,7 @@ class JournalEntry extends Component
             ->orWhere('description', 'like', '%'.$this->search.'%')
             ->orWhere('reference_no', 'like', '%'.$this->search.'%')
             ->latest()
-            ->paginate(10);
+            ->paginate(25);
 
         $accounts = Account::orderBy('code')->get();
 

@@ -149,7 +149,7 @@ class ManageShipments extends Component
 
     public function render()
     {
-        $shipments = $this->getShipmentsQuery()->paginate(10);
+        $shipments = $this->getShipmentsQuery()->paginate(25);
         
         return view('livewire.manage-shipments', [
             'shipments' => $shipments,

@@ -70,7 +70,7 @@ class SurveyDashboard extends Component
             });
         }
 
-        return $query->paginate(10);
+        return $query->paginate(25);
     }
 
     public function flagResponse($id)

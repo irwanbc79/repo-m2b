@@ -342,7 +342,7 @@ class QuotationManager extends Component
             $query->where("quotation_type", $this->filterType);
         }
         
-        $quotations = $query->latest()->paginate(10);
+        $quotations = $query->latest()->paginate(25);
         $customers = Customer::orderBy("company_name")->get();
         $stats = $this->getStats();
         
