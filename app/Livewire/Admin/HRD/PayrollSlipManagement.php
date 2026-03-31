@@ -6,6 +6,7 @@ use Livewire\Component;
 use Livewire\WithPagination;
 use App\Models\PayrollPeriod;
 use App\Models\PayrollSlip;
+use App\Models\PayrollDeductionItem;
 use App\Models\Employee;
 use Illuminate\Support\Facades\Auth;
 
@@ -46,6 +47,17 @@ class PayrollSlipManagement extends Component
 
     // Bulk create confirm
     public $showBulkCreateConfirm = false;
+
+    // --- Deduction items modal ---
+    public $showDeductionModal = false;
+    public $deductionSlipId   = null;
+    public $deductionSlip     = null;      // loaded PayrollSlip with items
+    public $deductionItems    = [];        // current items for display
+
+    // New deduction item form
+    public $new_nama_potongan = '';
+    public $new_nominal       = 0;
+    public $new_catatan       = '';
 
     protected $queryString = ['search'];
 
@@ -253,14 +265,81 @@ class PayrollSlipManagement extends Component
 
     public function closeModal(): void
     {
-        $this->isModalOpen = false;
-        $this->showDeleteConfirm = false;
+        $this->isModalOpen           = false;
+        $this->showDeleteConfirm     = false;
         $this->showBulkCreateConfirm = false;
+        $this->showDeductionModal    = false;
+    }
+
+    // --- Deduction Items ---
+
+    public function openDeductionModal(int $slipId): void
+    {
+        abort_unless(Auth::user()->hasRole(['admin', 'super_admin', 'finance']), 403);
+        $this->deductionSlipId    = $slipId;
+        $this->deductionSlip      = PayrollSlip::with(['employee', 'deductionItems'])->findOrFail($slipId);
+        $this->deductionItems     = $this->deductionSlip->deductionItems->toArray();
+        $this->new_nama_potongan  = '';
+        $this->new_nominal        = 0;
+        $this->new_catatan        = '';
+        $this->showDeductionModal = true;
+    }
+
+    public function addDeductionItem(): void
+    {
+        abort_unless(Auth::user()->hasRole(['admin', 'super_admin', 'finance']), 403);
+        abort_unless($this->period?->status === 'draft', 403);
+
+        $this->validateOnly('new_nama_potongan', [
+            'new_nama_potongan' => 'required|string|max:100',
+        ]);
+        $this->validateOnly('new_nominal', [
+            'new_nominal' => 'required|numeric|min:1',
+        ]);
+
+        PayrollDeductionItem::create([
+            'payroll_slip_id' => $this->deductionSlipId,
+            'nama_potongan'   => $this->new_nama_potongan,
+            'nominal'         => $this->new_nominal,
+            'catatan'         => $this->new_catatan ?: null,
+        ]);
+
+        // Recalculate slip total
+        PayrollSlip::findOrFail($this->deductionSlipId)->syncTotal();
+
+        // Refresh displayed items
+        $this->deductionSlip  = PayrollSlip::with(['employee', 'deductionItems'])->findOrFail($this->deductionSlipId);
+        $this->deductionItems = $this->deductionSlip->deductionItems->toArray();
+
+        $this->new_nama_potongan = '';
+        $this->new_nominal       = 0;
+        $this->new_catatan       = '';
+
+        session()->flash('deduction_success', 'Potongan berhasil ditambahkan.');
+    }
+
+    public function removeDeductionItem(int $itemId): void
+    {
+        abort_unless(Auth::user()->hasRole(['admin', 'super_admin', 'finance']), 403);
+        abort_unless($this->period?->status === 'draft', 403);
+
+        $item = PayrollDeductionItem::findOrFail($itemId);
+        $slipId = $item->payroll_slip_id;
+        $item->delete();
+
+        // Recalculate slip total
+        PayrollSlip::findOrFail($slipId)->syncTotal();
+
+        // Refresh displayed items
+        $this->deductionSlip  = PayrollSlip::with(['employee', 'deductionItems'])->findOrFail($slipId);
+        $this->deductionItems = $this->deductionSlip->deductionItems->toArray();
+
+        session()->flash('deduction_success', 'Potongan berhasil dihapus.');
     }
 
     public function render()
     {
-        $slips = PayrollSlip::with('employee.jabatan')
+        $slips = PayrollSlip::with(['employee.jabatan', 'deductionItems'])
             ->where('period_id', $this->periodId)
             ->when($this->search, fn($q) => $q->whereHas('employee', fn($eq) =>
                 $eq->where('nama', 'like', "%{$this->search}%")

@@ -4,6 +4,7 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\HasMany;
 
 class PayrollSlip extends Model
 {
@@ -46,10 +47,15 @@ class PayrollSlip extends Model
         return $this->belongsTo(PayrollPeriod::class, 'period_id');
     }
 
+    public function deductionItems(): HasMany
+    {
+        return $this->hasMany(PayrollDeductionItem::class);
+    }
+
     /**
-     * Auto-calculate total_gaji from all components.
+     * Base calculation from slip-level fields (without deduction items).
      */
-    public function getTotalGajiAttribute(): float
+    public function baseTotal(): float
     {
         return (float) $this->gaji_pokok
             + (float) $this->tunjangan_transport
@@ -62,19 +68,29 @@ class PayrollSlip extends Model
     }
 
     /**
-     * Recalculate and persist total_gaji before saving.
+     * Recalculate and persist total_gaji including all deduction items.
+     * Call this after adding/removing deduction items.
+     */
+    public function syncTotal(): void
+    {
+        $itemsTotal     = $this->deductionItems()->sum('nominal');
+        $this->total_gaji = $this->baseTotal() - (float) $itemsTotal;
+        $this->saveQuietly();
+    }
+
+    /**
+     * Auto-calculate total_gaji before saving.
+     * For existing slips, includes stored deduction items.
+     * For new slips (no id yet), items sum is 0.
      */
     protected static function booted(): void
     {
         static::saving(function (PayrollSlip $slip) {
-            $slip->total_gaji = (float) $slip->gaji_pokok
-                + (float) $slip->tunjangan_transport
-                + (float) $slip->tunjangan_jabatan
-                + (float) $slip->tunjangan_lainnya
-                + (float) $slip->lembur_nominal
-                - (float) $slip->potongan_bpjs_kes
-                - (float) $slip->potongan_bpjs_tk
-                - (float) $slip->potongan_lainnya;
+            $itemsTotal = $slip->exists
+                ? (float) $slip->deductionItems()->sum('nominal')
+                : 0.0;
+
+            $slip->total_gaji = $slip->baseTotal() - $itemsTotal;
         });
     }
 }

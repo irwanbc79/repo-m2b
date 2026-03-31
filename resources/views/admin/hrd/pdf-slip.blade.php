@@ -116,10 +116,24 @@
             <td>BPJS Ketenagakerjaan</td>
             <td class="amount">Rp {{ number_format($slip->potongan_bpjs_tk, 0, ',', '.') }}</td>
         </tr>
+        @if($slip->potongan_lainnya > 0)
         <tr class="deduction">
             <td>Potongan Lainnya</td>
             <td class="amount">Rp {{ number_format($slip->potongan_lainnya, 0, ',', '.') }}</td>
         </tr>
+        @endif
+        {{-- Dynamic deduction items (kasbon, absen, dll) --}}
+        @foreach($slip->deductionItems as $item)
+        <tr class="deduction">
+            <td>
+                {{ $item->nama_potongan }}
+                @if($item->catatan)
+                <span style="font-size:9px; color:#a0aec0;"> — {{ $item->catatan }}</span>
+                @endif
+            </td>
+            <td class="amount">Rp {{ number_format($item->nominal, 0, ',', '.') }}</td>
+        </tr>
+        @endforeach
     </table>
 
     {{-- Catatan --}}

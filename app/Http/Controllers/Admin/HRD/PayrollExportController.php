@@ -168,7 +168,7 @@ class PayrollExportController extends Controller
     {
         $this->authorizeExport();
 
-        $slip = PayrollSlip::with(['employee.jabatan', 'period'])->findOrFail($slipId);
+        $slip = PayrollSlip::with(['employee.jabatan', 'period', 'deductionItems'])->findOrFail($slipId);
 
         $pdf = Pdf::loadView('admin.hrd.pdf-slip', compact('slip'))
             ->setPaper('a4', 'portrait')
