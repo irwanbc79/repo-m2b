@@ -18,6 +18,9 @@ class Employee extends Model
         'employment_type',
         'no_hp',
         'alamat',
+        'photo',
+        'ktp_image',
+        'bpjs_image',
     ];
 
     protected $casts = [

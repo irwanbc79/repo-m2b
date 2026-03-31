@@ -40,12 +40,14 @@
                 <thead>
                     <tr class="bg-gray-700 text-gray-400 uppercase text-xs tracking-wider">
                         <th class="px-4 py-3 text-left">No</th>
+                        <th class="px-4 py-3 text-left">Foto</th>
                         <th class="px-4 py-3 text-left">NIK</th>
                         <th class="px-4 py-3 text-left">Nama</th>
                         <th class="px-4 py-3 text-left">Jabatan</th>
                         <th class="px-4 py-3 text-left">Join Date</th>
                         <th class="px-4 py-3 text-left">No HP</th>
                         <th class="px-4 py-3 text-center">Jenis</th>
+                        <th class="px-4 py-3 text-center">Dok.</th>
                         <th class="px-4 py-3 text-center">Status</th>
                         <th class="px-4 py-3 text-center">Aksi</th>
                     </tr>
@@ -54,6 +56,17 @@
                     @forelse($employees as $index => $emp)
                     <tr class="hover:bg-gray-750">
                         <td class="px-4 py-3 text-gray-500">{{ $employees->firstItem() + $index }}</td>
+                        {{-- Pas Foto --}}
+                        <td class="px-4 py-3">
+                            @if($emp->photo)
+                                <button wire:click="openPreview('{{ $emp->photo }}', 'Pas Foto — {{ $emp->nama }}')" type="button">
+                                    <img src="{{ Storage::url($emp->photo) }}" alt="foto"
+                                        class="w-10 h-12 object-cover rounded border border-gray-600 hover:opacity-80 transition-opacity">
+                                </button>
+                            @else
+                                <div class="w-10 h-12 bg-gray-700 rounded border border-gray-600 flex items-center justify-center text-gray-500 text-xs">—</div>
+                            @endif
+                        </td>
                         <td class="px-4 py-3 font-mono text-xs">{{ $emp->nik }}</td>
                         <td class="px-4 py-3 font-medium text-gray-200">{{ $emp->nama }}</td>
                         <td class="px-4 py-3">{{ $emp->jabatan->nama_jabatan ?? '-' }}</td>
@@ -65,6 +78,25 @@
                             @else
                                 <span class="px-2 py-0.5 bg-amber-900 text-amber-300 text-xs rounded-full">Kontrak</span>
                             @endif
+                        </td>
+                        {{-- Dokumen indicators --}}
+                        <td class="px-4 py-3 text-center">
+                            <div class="flex items-center justify-center gap-1">
+                                @if($emp->ktp_image)
+                                    <button wire:click="openPreview('{{ $emp->ktp_image }}', 'KTP — {{ $emp->nama }}')" type="button"
+                                        title="Lihat KTP"
+                                        class="px-1.5 py-0.5 bg-green-900 text-green-300 text-xs rounded font-mono hover:bg-green-800">KTP</button>
+                                @else
+                                    <span class="px-1.5 py-0.5 bg-gray-700 text-gray-600 text-xs rounded font-mono">KTP</span>
+                                @endif
+                                @if($emp->bpjs_image)
+                                    <button wire:click="openPreview('{{ $emp->bpjs_image }}', 'BPJS — {{ $emp->nama }}')" type="button"
+                                        title="Lihat BPJS"
+                                        class="px-1.5 py-0.5 bg-blue-900 text-blue-300 text-xs rounded font-mono hover:bg-blue-800">BPJS</button>
+                                @else
+                                    <span class="px-1.5 py-0.5 bg-gray-700 text-gray-600 text-xs rounded font-mono">BPJS</span>
+                                @endif
+                            </div>
                         </td>
                         <td class="px-4 py-3 text-center">
                             @if($emp->status === 'active')
@@ -88,7 +120,7 @@
                     </tr>
                     @empty
                     <tr>
-                        <td colspan="8" class="px-4 py-8 text-center text-gray-500">Belum ada data karyawan.</td>
+                        <td colspan="11" class="px-4 py-8 text-center text-gray-500">Belum ada data karyawan.</td>
                     </tr>
                     @endforelse
                 </tbody>
@@ -101,12 +133,15 @@
 
     {{-- Create / Edit Modal --}}
     @if($isModalOpen)
-    <div class="fixed inset-0 z-50 flex items-center justify-center bg-black/60 overflow-y-auto py-6">
-        <div class="bg-gray-800 rounded-xl shadow-2xl w-full max-w-lg mx-4 p-6">
+    <div class="fixed inset-0 z-50 flex items-start justify-center bg-black/60 overflow-y-auto py-6">
+        <div class="bg-gray-800 rounded-xl shadow-2xl w-full max-w-2xl mx-4 p-6 my-auto">
             <h2 class="text-lg font-bold text-gray-100 mb-4">
                 {{ $isEditing ? 'Edit Karyawan' : 'Tambah Karyawan' }}
             </h2>
             <form wire:submit="save" class="space-y-4">
+
+                {{-- Data Diri --}}
+                <p class="text-xs font-bold text-gray-500 uppercase tracking-wider">Data Diri</p>
                 <div class="grid grid-cols-2 gap-4">
                     <div>
                         <label class="block text-sm text-gray-400 mb-1">NIK <span class="text-red-400">*</span></label>
@@ -168,11 +203,106 @@
                     <textarea wire:model="alamat" rows="2"
                         class="w-full px-3 py-2 bg-gray-700 border border-gray-600 text-gray-200 rounded-lg text-sm focus:outline-none resize-none"></textarea>
                 </div>
+
+                {{-- Dokumen & Foto --}}
+                <p class="text-xs font-bold text-gray-500 uppercase tracking-wider pt-2">Dokumen & Foto <span class="text-gray-600 normal-case font-normal">(opsional, max 5MB, JPG/PNG)</span></p>
+                <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+
+                    {{-- Pas Foto --}}
+                    <div class="bg-gray-700/50 rounded-lg p-3">
+                        <label class="block text-xs text-gray-400 mb-2 font-medium">📷 Pas Foto (ID Card)</label>
+                        @if($current_photo)
+                        <div class="mb-2 flex items-start gap-2">
+                            <button type="button" wire:click="openPreview('{{ $current_photo }}', 'Pas Foto')">
+                                <img src="{{ Storage::url($current_photo) }}" alt="foto"
+                                    class="w-16 h-20 object-cover rounded border border-gray-500 hover:opacity-80">
+                            </button>
+                            <button type="button" wire:click="removeImage('photo')"
+                                class="text-red-400 hover:text-red-300 text-xs mt-1">✕ Hapus</button>
+                        </div>
+                        @elseif($photo_upload)
+                        <div class="mb-2">
+                            <img src="{{ $photo_upload->temporaryUrl() }}" alt="preview"
+                                class="w-16 h-20 object-cover rounded border border-blue-500">
+                            <p class="text-xs text-blue-400 mt-1">Preview baru</p>
+                        </div>
+                        @endif
+                        <input wire:model="photo_upload" type="file" accept="image/jpeg,image/png"
+                            class="w-full text-xs text-gray-400 file:mr-2 file:py-1 file:px-2 file:rounded file:border-0 file:text-xs file:bg-blue-700 file:text-white hover:file:bg-blue-600 cursor-pointer">
+                        @error('photo_upload') <p class="text-red-400 text-xs mt-1">{{ $message }}</p> @enderror
+                        <p class="text-xs text-gray-600 mt-1">Portrait 400×500px, resize otomatis</p>
+                    </div>
+
+                    {{-- KTP --}}
+                    <div class="bg-gray-700/50 rounded-lg p-3">
+                        <label class="block text-xs text-gray-400 mb-2 font-medium">🪪 Scan / Foto KTP</label>
+                        @if($current_ktp)
+                        <div class="mb-2 flex items-start gap-2">
+                            <button type="button" wire:click="openPreview('{{ $current_ktp }}', 'KTP')">
+                                <img src="{{ Storage::url($current_ktp) }}" alt="ktp"
+                                    class="w-24 h-16 object-cover rounded border border-gray-500 hover:opacity-80">
+                            </button>
+                            <button type="button" wire:click="removeImage('ktp')"
+                                class="text-red-400 hover:text-red-300 text-xs mt-1">✕ Hapus</button>
+                        </div>
+                        @elseif($ktp_upload)
+                        <div class="mb-2">
+                            <img src="{{ $ktp_upload->temporaryUrl() }}" alt="preview"
+                                class="w-24 h-16 object-cover rounded border border-blue-500">
+                            <p class="text-xs text-blue-400 mt-1">Preview baru</p>
+                        </div>
+                        @endif
+                        <input wire:model="ktp_upload" type="file" accept="image/jpeg,image/png"
+                            class="w-full text-xs text-gray-400 file:mr-2 file:py-1 file:px-2 file:rounded file:border-0 file:text-xs file:bg-blue-700 file:text-white hover:file:bg-blue-600 cursor-pointer">
+                        @error('ktp_upload') <p class="text-red-400 text-xs mt-1">{{ $message }}</p> @enderror
+                        <p class="text-xs text-gray-600 mt-1">Max lebar 1200px, resize otomatis</p>
+                    </div>
+
+                    {{-- BPJS --}}
+                    <div class="bg-gray-700/50 rounded-lg p-3">
+                        <label class="block text-xs text-gray-400 mb-2 font-medium">🏥 Kartu BPJS</label>
+                        @if($current_bpjs)
+                        <div class="mb-2 flex items-start gap-2">
+                            <button type="button" wire:click="openPreview('{{ $current_bpjs }}', 'Kartu BPJS')">
+                                <img src="{{ Storage::url($current_bpjs) }}" alt="bpjs"
+                                    class="w-24 h-16 object-cover rounded border border-gray-500 hover:opacity-80">
+                            </button>
+                            <button type="button" wire:click="removeImage('bpjs')"
+                                class="text-red-400 hover:text-red-300 text-xs mt-1">✕ Hapus</button>
+                        </div>
+                        @elseif($bpjs_upload)
+                        <div class="mb-2">
+                            <img src="{{ $bpjs_upload->temporaryUrl() }}" alt="preview"
+                                class="w-24 h-16 object-cover rounded border border-blue-500">
+                            <p class="text-xs text-blue-400 mt-1">Preview baru</p>
+                        </div>
+                        @endif
+                        <input wire:model="bpjs_upload" type="file" accept="image/jpeg,image/png"
+                            class="w-full text-xs text-gray-400 file:mr-2 file:py-1 file:px-2 file:rounded file:border-0 file:text-xs file:bg-blue-700 file:text-white hover:file:bg-blue-600 cursor-pointer">
+                        @error('bpjs_upload') <p class="text-red-400 text-xs mt-1">{{ $message }}</p> @enderror
+                        <p class="text-xs text-gray-600 mt-1">Max lebar 1200px, resize otomatis</p>
+                    </div>
+
+                </div>
+
+                {{-- Upload progress indicator --}}
+                <div wire:loading wire:target="photo_upload,ktp_upload,bpjs_upload"
+                    class="text-sm text-blue-400 flex items-center gap-2">
+                    <svg class="animate-spin h-4 w-4" fill="none" viewBox="0 0 24 24">
+                        <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"/>
+                        <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8H4z"/>
+                    </svg>
+                    Mengupload gambar...
+                </div>
+
                 <div class="flex justify-end gap-3 pt-2">
                     <button type="button" wire:click="closeModal"
                         class="px-4 py-2 bg-gray-600 hover:bg-gray-700 text-white text-sm rounded-lg">Batal</button>
-                    <button type="submit"
-                        class="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white text-sm rounded-lg">Simpan</button>
+                    <button type="submit" wire:loading.attr="disabled" wire:loading.class="opacity-60"
+                        class="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white text-sm rounded-lg">
+                        <span wire:loading.remove wire:target="save">Simpan</span>
+                        <span wire:loading wire:target="save">Menyimpan...</span>
+                    </button>
                 </div>
             </form>
         </div>
@@ -183,11 +313,28 @@
     @if($showDeleteConfirm)
     <div class="fixed inset-0 z-50 flex items-center justify-center bg-black/60">
         <div class="bg-gray-800 rounded-xl shadow-2xl w-full max-w-sm mx-4 p-6 text-center">
-            <p class="text-gray-200 mb-5">Yakin ingin menghapus data karyawan ini?</p>
+            <p class="text-gray-200 mb-2 font-medium">Hapus data karyawan ini?</p>
+            <p class="text-gray-400 text-sm mb-5">Foto, KTP, dan kartu BPJS yang tersimpan juga akan ikut dihapus.</p>
             <div class="flex justify-center gap-3">
                 <button wire:click="closeModal" class="px-4 py-2 bg-gray-600 hover:bg-gray-700 text-white text-sm rounded-lg">Batal</button>
                 <button wire:click="delete" class="px-4 py-2 bg-red-700 hover:bg-red-800 text-white text-sm rounded-lg">Ya, Hapus</button>
             </div>
+        </div>
+    </div>
+    @endif
+
+    {{-- Image Preview Lightbox --}}
+    @if($previewImage)
+    <div class="fixed inset-0 z-[60] flex items-center justify-center bg-black/80"
+        wire:click.self="closePreview">
+        <div class="relative max-w-3xl w-full mx-4">
+            <div class="flex items-center justify-between mb-2 px-1">
+                <span class="text-white text-sm font-medium">{{ $previewTitle }}</span>
+                <button wire:click="closePreview"
+                    class="text-gray-400 hover:text-white text-2xl leading-none">&times;</button>
+            </div>
+            <img src="{{ Storage::url($previewImage) }}" alt="{{ $previewTitle }}"
+                class="w-full max-h-[80vh] object-contain rounded-lg shadow-2xl">
         </div>
     </div>
     @endif
