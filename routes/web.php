@@ -327,7 +327,7 @@ Route::middleware(['auth', 'admin'])->prefix('admin')->name('admin.')->group(fun
             // Ambil parameter signature dari URL
             $signerId = $request->get('signer', 1);
             $signatureType = $request->get('signature', 'blank'); // full, blank
-    
+
             // Data penandatangan
             $signers = config('signers');
             $signer = $signers[$signerId] ?? $signers[1];
@@ -335,6 +335,18 @@ Route::middleware(['auth', 'admin'])->prefix('admin')->name('admin.')->group(fun
             return view('admin.quotation-print', compact('quotation', 'terbilangText', 'signer', 'signatureType'));
         }
         )->name('quotations.print');
+
+        // --- HRD & PAYROLL ---
+        Route::prefix('hrd')->name('hrd.')->group(function () {
+            Route::get('/karyawan', \App\Livewire\Admin\HRD\EmployeeManagement::class)->name('employees');
+            Route::get('/jabatan', \App\Livewire\Admin\HRD\JabatanManagement::class)->name('jabatan');
+            Route::get('/penggajian', \App\Livewire\Admin\HRD\PayrollPeriodManagement::class)->name('payroll-periods');
+            Route::get('/penggajian/{periodId}/slip', \App\Livewire\Admin\HRD\PayrollSlipManagement::class)->name('payroll-slips');
+
+            // Export routes (controller-based)
+            Route::get('/penggajian/{periodId}/export-excel', [\App\Http\Controllers\Admin\HRD\PayrollExportController::class, 'exportExcel'])->name('export-excel');
+            Route::get('/slip/{slipId}/export-pdf', [\App\Http\Controllers\Admin\HRD\PayrollExportController::class, 'exportPdfSlip'])->name('export-pdf-slip');
+        });
     });
 
 
@@ -475,6 +487,19 @@ Route::middleware(['auth', 'admin'])->prefix('admin/survey')->name('admin.survey
     Route::get('/export/report/{format}', [SurveyAdminController::class , 'exportReport'])->name('export.report');
 });
 // QR Code Generator sudah terdaftar di grup prefix('survey') di atas (survey.qr-code)
+
+// Testimonial publik
+Route::prefix('testimoni')->name('testimonial.')->middleware('throttle:20,1')->group(function () {
+    Route::get('/', [\App\Http\Controllers\TestimonialController::class, 'index'])->name('index');
+    Route::get('/form/{token}', [\App\Http\Controllers\TestimonialController::class, 'form'])->name('form');
+    Route::post('/form/{token}', [\App\Http\Controllers\TestimonialController::class, 'submit'])->name('submit');
+    Route::get('/terima-kasih', [\App\Http\Controllers\TestimonialController::class, 'thankyou'])->name('thankyou');
+});
+
+// Admin testimoni moderasi
+Route::middleware(['auth', 'admin'])->prefix('admin/testimoni')->name('admin.testimonial.')->group(function () {
+    Route::get('/', \App\Livewire\Admin\TestimonialModeration::class)->name('index');
+});
 
 // Simple Invoice Routes (Complete CRUD)
 Route::prefix('finance/simple-invoice')->name('finance.simple-invoice.')->middleware('auth')->group(function () {

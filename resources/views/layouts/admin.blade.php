@@ -182,6 +182,23 @@
                 </a>
                 @endif
 
+                {{-- HRD & PAYROLL --}}
+                @if(auth()->user()->hasRole(['admin', 'super_admin', 'director', 'finance']))
+                <div class="px-4 py-2 mt-4 text-xs font-bold text-gray-500 uppercase tracking-wider">HRD &amp; Payroll</div>
+
+                <a href="{{ route('admin.hrd.employees') }}" class="flex items-center px-4 py-3 text-sm font-medium rounded-lg transition-colors {{ request()->routeIs('admin.hrd.employees') ? 'bg-m2b-accent text-white shadow-lg' : 'hover:bg-gray-800 text-gray-300' }}">
+                    👥 Karyawan
+                </a>
+
+                <a href="{{ route('admin.hrd.jabatan') }}" class="flex items-center px-4 py-3 text-sm font-medium rounded-lg transition-colors {{ request()->routeIs('admin.hrd.jabatan') ? 'bg-m2b-accent text-white shadow-lg' : 'hover:bg-gray-800 text-gray-300' }}">
+                    🏷️ Jabatan
+                </a>
+
+                <a href="{{ route('admin.hrd.payroll-periods') }}" class="flex items-center px-4 py-3 text-sm font-medium rounded-lg transition-colors {{ request()->routeIs('admin.hrd.payroll*') ? 'bg-m2b-accent text-white shadow-lg' : 'hover:bg-gray-800 text-gray-300' }}">
+                    💰 Penggajian
+                </a>
+                @endif
+
                 <div class="px-4 py-2 mt-4 text-xs font-bold text-gray-500 uppercase tracking-wider">Settings</div>
 
                 @if(auth()->user()->hasPermission('report.view_basic'))
@@ -193,6 +210,12 @@
                 @unless(auth()->user()->hasRole('auditor'))
                 <a href="{{ route('admin.survey.dashboard') }}" class="flex items-center px-4 py-3 text-sm font-medium rounded-lg transition-colors {{ request()->routeIs('admin.survey*') ? 'bg-m2b-accent text-white' : 'hover:bg-gray-800 text-gray-300' }}">
                     📋 Customer Survey
+                </a>
+                @endunless
+
+                @unless(auth()->user()->hasRole('auditor'))
+                <a href="{{ route('admin.testimonial.index') }}" class="flex items-center px-4 py-3 text-sm font-medium rounded-lg transition-colors {{ request()->routeIs('admin.testimonial*') ? 'bg-m2b-accent text-white' : 'hover:bg-gray-800 text-gray-300' }}">
+                    ⭐ Moderasi Testimoni
                 </a>
                 @endunless
 

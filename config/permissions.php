@@ -61,6 +61,18 @@ return [
                 'report.view_financial',
             ],
         ],
+        'finance' => [
+            'label' => 'Finance / HRD',
+            'level' => 55,
+            'permissions' => [
+                'dashboard.view',
+                'invoice.*',
+                'cashier.*',
+                'job_costing.*',
+                'report.view_financial',
+                'hrd.*',
+            ],
+        ],
         'staff_operations' => [
             'label' => 'Staff Operations',
             'level' => 50,
