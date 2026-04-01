@@ -28,6 +28,13 @@ return Application::configure(basePath: dirname(__DIR__))
     ->withMiddleware(function (Middleware $middleware) {
         /*
         |--------------------------------------------------------------------------
+        | SANCTUM API MIDDLEWARE (Laravel 11/12)
+        |--------------------------------------------------------------------------
+        */
+        $middleware->statefulApi();
+
+        /*
+        |--------------------------------------------------------------------------
         | MIDDLEWARE ALIAS (Laravel 11/12)
         |--------------------------------------------------------------------------
         | Pengganti Kernel.php (yang sudah tidak ada)
