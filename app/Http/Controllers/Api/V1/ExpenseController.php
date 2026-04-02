@@ -37,7 +37,7 @@ class ExpenseController extends Controller
 
         $receiptPath = null;
         if ($request->hasFile('receipt')) {
-            $receiptPath = $request->file('receipt')->store('expenses/receipts', 'b2');
+            $receiptPath = $request->file('receipt')->store('expenses/receipts', 'public');
         }
 
         $expense = ExpenseClaim::create([

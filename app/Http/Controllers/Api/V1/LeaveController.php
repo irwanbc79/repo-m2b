@@ -39,7 +39,7 @@ class LeaveController extends Controller
 
         $documentPath = null;
         if ($request->hasFile('document')) {
-            $documentPath = $request->file('document')->store('leaves/documents', 'b2');
+            $documentPath = $request->file('document')->store('leaves/documents', 'public');
         }
 
         $leave = LeaveRequest::create([

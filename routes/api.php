@@ -19,7 +19,7 @@ use Illuminate\Support\Facades\Route;
 Route::prefix('v1')->group(function () {
 
     // ── Public ──────────────────────────────────────────────────────────────
-    Route::post('/auth/login', [AuthController::class, 'login']);
+    Route::middleware('throttle:10,1')->post('/auth/login', [AuthController::class, 'login']);
 
     // ── Protected ───────────────────────────────────────────────────────────
     Route::middleware('auth:sanctum')->group(function () {

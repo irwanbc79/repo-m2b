@@ -64,7 +64,7 @@ class AttendanceController extends Controller
 
         $selfiePath = null;
         if ($request->hasFile('selfie')) {
-            $selfiePath = $request->file('selfie')->store('attendance/selfies', 'b2');
+            $selfiePath = $request->file('selfie')->store('attendance/selfies', 'public');
         }
 
         $attendance = Attendance::create([
@@ -118,7 +118,7 @@ class AttendanceController extends Controller
 
         $selfiePath = null;
         if ($request->hasFile('selfie')) {
-            $selfiePath = $request->file('selfie')->store('attendance/selfies', 'b2');
+            $selfiePath = $request->file('selfie')->store('attendance/selfies', 'public');
         }
 
         $attendance = Attendance::create([

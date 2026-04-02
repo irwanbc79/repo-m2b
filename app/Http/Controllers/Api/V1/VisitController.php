@@ -22,7 +22,7 @@ class VisitController extends Controller
 
         $photoPath = null;
         if ($request->hasFile('photo')) {
-            $photoPath = $request->file('photo')->store('visits/photos', 'b2');
+            $photoPath = $request->file('photo')->store('visits/photos', 'public');
         }
 
         $visit = ClientVisit::create([

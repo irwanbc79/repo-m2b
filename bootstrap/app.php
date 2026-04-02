@@ -16,6 +16,7 @@ return Application::configure(basePath: dirname(__DIR__))
         web: [
             __DIR__ . '/../routes/web.php',
             __DIR__ . '/../routes/cashier.php',
+            __DIR__ . '/../routes/mobile.php',
         ],
 
         api: __DIR__ . '/../routes/api.php',
@@ -32,6 +33,15 @@ return Application::configure(basePath: dirname(__DIR__))
         |--------------------------------------------------------------------------
         */
         $middleware->statefulApi();
+
+        /*
+        |--------------------------------------------------------------------------
+        | CORS — izinkan Flutter app dari semua origin
+        |--------------------------------------------------------------------------
+        */
+        $middleware->api(prepend: [
+            \Illuminate\Http\Middleware\HandleCors::class,
+        ]);
 
         /*
         |--------------------------------------------------------------------------
