@@ -38,6 +38,7 @@ class Invoice extends Model
         'payment_notes',
         'last_reminded_at',
         'reminder_count',
+        'follow_up_sent_at',
         
         // Signature & Materai
         'signature_type',
@@ -66,6 +67,7 @@ class Invoice extends Model
         'due_date' => 'date',
         'payment_date' => 'date',
         'last_reminded_at' => 'datetime',
+        'follow_up_sent_at' => 'datetime',
         'use_materai' => 'boolean',
         'total_paid' => 'decimal:2',
         'payment_claimed' => 'boolean',

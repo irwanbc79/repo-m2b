@@ -436,6 +436,16 @@ class CustomerManagement extends Component
         ]);
     }
 
+    public function toggleFollowupEmail($customerId)
+    {
+        $customer = Customer::find($customerId);
+        if ($customer) {
+            $customer->update(['no_followup_email' => !$customer->no_followup_email]);
+            $status = $customer->no_followup_email ? 'diblokir dari' : 'diaktifkan untuk';
+            session()->flash('message', "Email follow-up {$status} customer ini.");
+        }
+    }
+
     public function updateTag($customerId, $tag)
     {
         $customer = Customer::find($customerId);

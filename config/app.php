@@ -39,6 +39,8 @@ return [
 
     'asset_url' => env('ASSET_URL'),
 
+    'google_review_url' => env('GOOGLE_REVIEW_URL'),
+
     /*
     |--------------------------------------------------------------------------
     | Application Timezone (Wajib WIB untuk M2B)

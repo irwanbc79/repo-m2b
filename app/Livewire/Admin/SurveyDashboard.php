@@ -96,11 +96,27 @@ class SurveyDashboard extends Component
         session()->flash('message', 'Export sedang diproses...');
     }
 
+    public function getRecentFeedbackProperty()
+    {
+        return CustomerSurvey::where('survey_year', $this->selectedYear)
+            ->when($this->selectedQuarter, fn($q) => $q->where('survey_quarter', $this->selectedQuarter))
+            ->where(function ($q) {
+                $q->whereNotNull('appreciate_most')->where('appreciate_most', '!=', '')
+                  ->orWhereNotNull('needs_improvement')->where('needs_improvement', '!=', '')
+                  ->orWhereNotNull('future_features')->where('future_features', '!=', '');
+            })
+            ->orderBy('response_date', 'desc')
+            ->limit(10)
+            ->get(['id', 'company_name', 'is_anonymous', 'response_date', 'nps_score',
+                   'appreciate_most', 'needs_improvement', 'future_features', 'is_flagged']);
+    }
+
     public function render()
     {
         return view('livewire.admin.survey-dashboard', [
             'dashboardData' => $this->dashboardData,
             'responses' => $this->viewMode === 'responses' ? $this->responses : null,
+            'recentFeedback' => $this->viewMode === 'overview' ? $this->recentFeedback : collect(),
             'years' => range(date('Y'), date('Y') - 5),
             'quarters' => ['Q1', 'Q2', 'Q3', 'Q4'],
         ])->layout('layouts.admin');

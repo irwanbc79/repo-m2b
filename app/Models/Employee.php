@@ -21,6 +21,10 @@ class Employee extends Model
         'photo',
         'ktp_image',
         'bpjs_image',
+        'surat_lamaran',
+        'kartu_keluarga',
+        'ijazah',
+        'npwp_image',
     ];
 
     protected $casts = [

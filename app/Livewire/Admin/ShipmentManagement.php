@@ -462,7 +462,7 @@ class ShipmentManagement extends Component
     {
         $targetId = $id ?? $this->deleteId;
         
-        if (Auth::user()->role !== 'admin' && Auth::user()->role !== 'director') {
+        if (!in_array(Auth::user()->role, ['admin', 'superadmin', 'director'])) {
             session()->flash('error', 'Access Denied');
             return;
         }

@@ -3,13 +3,12 @@
 namespace App\Console\Commands;
 
 use Illuminate\Console\Command;
-use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\File;
 
 class BackupDatabase extends Command
 {
-    protected $signature = 'backup:database 
-                            {--env : Sertakan salinan .env (aman di server, jangan commit)}
+    protected $signature = 'backup:database
+                            {--with-env : Sertakan salinan .env (aman di server, jangan commit)}
                             {--keep=7 : Jumlah backup yang disimpan (lama dihapus otomatis)}';
     protected $description = 'Backup database + opsional .env ke storage/app/backups (tanpa mengganggu flow)';
 
@@ -42,7 +41,7 @@ class BackupDatabase extends Command
                 return self::FAILURE;
             }
 
-            if ($this->option('env')) {
+            if ($this->option('with-env')) {
                 $envPath = base_path('.env');
                 if (File::exists($envPath)) {
                     $target = $backupDir . '/.env.' . $date;
@@ -72,33 +71,43 @@ class BackupDatabase extends Command
         $name = $db['database'] ?? '';
 
         $sqlPath = $backupDir . "/db_mysql_{$date}.sql";
+
+        $pdo = new \PDO("mysql:host={$host};port={$port};dbname={$name};charset=utf8mb4", $user, $pass, [
+            \PDO::ATTR_ERRMODE => \PDO::ERRMODE_EXCEPTION,
+        ]);
+
+        $output = "-- Portal M2B Database Backup\n";
+        $output .= "-- Date: {$date}\n";
+        $output .= "SET FOREIGN_KEY_CHECKS=0;\n\n";
+
+        $tables = $pdo->query("SHOW TABLES")->fetchAll(\PDO::FETCH_COLUMN);
+
+        foreach ($tables as $table) {
+            $createStmt = $pdo->query("SHOW CREATE TABLE `{$table}`")->fetch(\PDO::FETCH_ASSOC);
+            $output .= "DROP TABLE IF EXISTS `{$table}`;\n";
+            $output .= $createStmt['Create Table'] . ";\n\n";
+
+            $rows = $pdo->query("SELECT * FROM `{$table}`")->fetchAll(\PDO::FETCH_ASSOC);
+            if (!empty($rows)) {
+                $columns = '`' . implode('`, `', array_keys($rows[0])) . '`';
+                $output .= "INSERT INTO `{$table}` ({$columns}) VALUES\n";
+                $vals = [];
+                foreach ($rows as $row) {
+                    $escaped = array_map(fn($v) => $v === null ? 'NULL' : $pdo->quote((string)$v), $row);
+                    $vals[] = '(' . implode(', ', $escaped) . ')';
+                }
+                $output .= implode(",\n", $vals) . ";\n\n";
+            }
+        }
+
+        $output .= "SET FOREIGN_KEY_CHECKS=1;\n";
+
         $path = $sqlPath;
-
-        $cmd = sprintf(
-            'mysqldump -h %s -P %s -u %s %s 2>/dev/null',
-            escapeshellarg($host),
-            escapeshellarg($port),
-            escapeshellarg($user),
-            escapeshellarg($name)
-        );
-
-        $prev = getenv('MYSQL_PWD');
-        if ($pass !== '') {
-            putenv('MYSQL_PWD=' . $pass);
-        }
-        $content = @shell_exec($cmd);
-        putenv($prev !== false ? 'MYSQL_PWD=' . $prev : 'MYSQL_PWD');
-        $content = $content ?? '';
-
-        if (trim($content) === '') {
-            throw new \RuntimeException('mysqldump gagal atau kosong. Cek kredensial DB dan pastikan mysqldump tersedia di server.');
-        }
-
         if (function_exists('gzencode')) {
-            $path = $sqlPath . '.gz';
-            File::put($path, gzencode($content, 9));
+            $path .= '.gz';
+            File::put($path, gzencode($output, 9));
         } else {
-            File::put($sqlPath, $content);
+            File::put($sqlPath, $output);
         }
 
         return $path;

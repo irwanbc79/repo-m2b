@@ -1,10 +1,4 @@
 <div class="p-6">
-    <!-- Header -->
-    <div class="mb-6">
-        <h1 class="text-3xl font-bold text-gray-800">📊 Survey Dashboard</h1>
-        <p class="text-gray-600">Analisis Kepuasan Pelanggan M2B</p>
-    </div>
-
     <!-- Filter Controls -->
     <div class="bg-white rounded-lg shadow p-4 mb-6">
         <div class="grid grid-cols-1 md:grid-cols-4 gap-4">
@@ -235,6 +229,63 @@
             </div>
         </div>
 
+        <!-- Masukan & Kritik Responden -->
+        @if($recentFeedback->isNotEmpty())
+        <div class="bg-white rounded-lg shadow p-6 mb-6">
+            <h2 class="text-xl font-bold text-gray-800 mb-4">💬 Masukan & Kritik Responden</h2>
+            <div class="space-y-4">
+                @foreach($recentFeedback as $fb)
+                    @if($fb->appreciate_most || $fb->needs_improvement || $fb->future_features)
+                    <div class="border border-gray-200 rounded-lg p-4 {{ $fb->is_flagged ? 'border-l-4 border-l-red-400' : '' }}">
+                        <div class="flex items-center justify-between mb-3">
+                            <div class="flex items-center space-x-2">
+                                <span class="font-semibold text-gray-800 text-sm">{{ $fb->display_name }}</span>
+                                @if($fb->is_flagged)
+                                    <span class="text-xs bg-red-100 text-red-700 px-2 py-0.5 rounded-full">🚩 Flagged</span>
+                                @endif
+                            </div>
+                            <div class="flex items-center space-x-3 text-xs text-gray-400">
+                                @if($fb->nps_score !== null)
+                                    <span class="px-2 py-0.5 rounded-full font-medium
+                                        {{ $fb->nps_score >= 9 ? 'bg-green-100 text-green-700' : ($fb->nps_score >= 7 ? 'bg-yellow-100 text-yellow-700' : 'bg-red-100 text-red-700') }}">
+                                        NPS {{ $fb->nps_score }}
+                                    </span>
+                                @endif
+                                <span>{{ $fb->response_date->format('d M Y') }}</span>
+                            </div>
+                        </div>
+                        <div class="grid grid-cols-1 md:grid-cols-3 gap-3 text-sm">
+                            @if($fb->appreciate_most)
+                            <div class="bg-green-50 rounded p-3">
+                                <p class="text-xs font-semibold text-green-700 mb-1">✅ Yang Diapresiasi</p>
+                                <p class="text-gray-700">{{ $fb->appreciate_most }}</p>
+                            </div>
+                            @endif
+                            @if($fb->needs_improvement)
+                            <div class="bg-red-50 rounded p-3">
+                                <p class="text-xs font-semibold text-red-700 mb-1">⚠️ Perlu Diperbaiki</p>
+                                <p class="text-gray-700">{{ $fb->needs_improvement }}</p>
+                            </div>
+                            @endif
+                            @if($fb->future_features)
+                            <div class="bg-blue-50 rounded p-3">
+                                <p class="text-xs font-semibold text-blue-700 mb-1">💡 Saran Fitur</p>
+                                <p class="text-gray-700">{{ $fb->future_features }}</p>
+                            </div>
+                            @endif
+                        </div>
+                    </div>
+                    @endif
+                @endforeach
+            </div>
+            <div class="mt-4 text-center">
+                <button wire:click="$set('viewMode', 'responses')" class="text-sm text-blue-600 hover:text-blue-800">
+                    Lihat semua respons →
+                </button>
+            </div>
+        </div>
+        @endif
+
         <!-- Service Usage -->
         <div class="bg-white rounded-lg shadow p-6">
             <h2 class="text-xl font-bold text-gray-800 mb-4">Service Usage Distribution</h2>
@@ -278,6 +329,7 @@
                             <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Perusahaan</th>
                             <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Satisfaction</th>
                             <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">NPS</th>
+                            <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Masukan</th>
                             <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Status</th>
                             <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Actions</th>
                         </tr>
@@ -304,6 +356,21 @@
                                            ($response->nps_category === 'Passive' ? 'bg-yellow-100 text-yellow-800' : 'bg-red-100 text-red-800') }}">
                                         {{ $response->nps_score }} - {{ $response->nps_category }}
                                     </span>
+                                </td>
+                                <td class="px-4 py-3 text-sm max-w-xs">
+                                    @if($response->needs_improvement)
+                                        <p class="text-red-700 text-xs truncate" title="{{ $response->needs_improvement }}">
+                                            ⚠️ {{ Str::limit($response->needs_improvement, 60) }}
+                                        </p>
+                                    @endif
+                                    @if($response->appreciate_most)
+                                        <p class="text-green-700 text-xs truncate mt-1" title="{{ $response->appreciate_most }}">
+                                            ✅ {{ Str::limit($response->appreciate_most, 60) }}
+                                        </p>
+                                    @endif
+                                    @if(!$response->needs_improvement && !$response->appreciate_most)
+                                        <span class="text-gray-400">-</span>
+                                    @endif
                                 </td>
                                 <td class="px-4 py-3 text-sm">
                                     @if($response->is_flagged)

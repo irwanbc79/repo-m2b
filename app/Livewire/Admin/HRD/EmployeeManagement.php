@@ -40,10 +40,20 @@ class EmployeeManagement extends Component
     public $ktp_upload = null;
     public $bpjs_upload = null;
 
+    // Extra document uploads (PDF or image)
+    public $surat_lamaran_upload = null;
+    public $kartu_keluarga_upload = null;
+    public $ijazah_upload = null;
+    public $npwp_upload = null;
+
     // Current saved paths (for display while editing)
     public $current_photo = null;
     public $current_ktp = null;
     public $current_bpjs = null;
+    public $current_surat_lamaran = null;
+    public $current_kartu_keluarga = null;
+    public $current_ijazah = null;
+    public $current_npwp = null;
 
     // Delete confirm
     public $showDeleteConfirm = false;
@@ -62,16 +72,20 @@ class EmployeeManagement extends Component
             : 'required|string|max:50|unique:employees,nik';
 
         return [
-            'nik'           => $nikRule,
-            'nama'          => 'required|string|max:150',
-            'jabatan_id'    => 'required|exists:jabatan,id',
-            'join_date'     => 'required|date',
-            'status'        => 'required|in:active,inactive',
-            'no_hp'         => 'nullable|string|max:20',
-            'alamat'        => 'nullable|string',
-            'photo_upload'  => 'nullable|image|mimes:jpg,jpeg,png|max:5120',
-            'ktp_upload'    => 'nullable|image|mimes:jpg,jpeg,png|max:5120',
-            'bpjs_upload'   => 'nullable|image|mimes:jpg,jpeg,png|max:5120',
+            'nik'                    => $nikRule,
+            'nama'                   => 'required|string|max:150',
+            'jabatan_id'             => 'required|exists:jabatan,id',
+            'join_date'              => 'required|date',
+            'status'                 => 'required|in:active,inactive',
+            'no_hp'                  => 'nullable|string|max:20',
+            'alamat'                 => 'nullable|string',
+            'photo_upload'           => 'nullable|image|mimes:jpg,jpeg,png|max:5120',
+            'ktp_upload'             => 'nullable|image|mimes:jpg,jpeg,png|max:5120',
+            'bpjs_upload'            => 'nullable|image|mimes:jpg,jpeg,png|max:5120',
+            'surat_lamaran_upload'   => 'nullable|mimes:jpg,jpeg,png,pdf|max:10240',
+            'kartu_keluarga_upload'  => 'nullable|mimes:jpg,jpeg,png,pdf|max:10240',
+            'ijazah_upload'          => 'nullable|mimes:jpg,jpeg,png,pdf|max:10240',
+            'npwp_upload'            => 'nullable|image|mimes:jpg,jpeg,png|max:5120',
         ];
     }
 
@@ -102,7 +116,9 @@ class EmployeeManagement extends Component
             'employeeId', 'nik', 'nama', 'jabatan_id', 'join_date',
             'status', 'employment_type', 'no_hp', 'alamat', 'user_id',
             'photo_upload', 'ktp_upload', 'bpjs_upload',
+            'surat_lamaran_upload', 'kartu_keluarga_upload', 'ijazah_upload', 'npwp_upload',
             'current_photo', 'current_ktp', 'current_bpjs',
+            'current_surat_lamaran', 'current_kartu_keluarga', 'current_ijazah', 'current_npwp',
         ]);
         $this->status      = 'active';
         $this->join_date   = now()->format('Y-m-d');
@@ -126,15 +142,23 @@ class EmployeeManagement extends Component
         $this->alamat          = $emp->alamat;
         $this->user_id         = $emp->user_id;
 
-        // Show current images
-        $this->current_photo = $emp->photo;
-        $this->current_ktp   = $emp->ktp_image;
-        $this->current_bpjs  = $emp->bpjs_image;
+        // Show current files
+        $this->current_photo          = $emp->photo;
+        $this->current_ktp            = $emp->ktp_image;
+        $this->current_bpjs           = $emp->bpjs_image;
+        $this->current_surat_lamaran  = $emp->surat_lamaran;
+        $this->current_kartu_keluarga = $emp->kartu_keluarga;
+        $this->current_ijazah         = $emp->ijazah;
+        $this->current_npwp           = $emp->npwp_image;
 
         // Reset new upload slots
-        $this->photo_upload = null;
-        $this->ktp_upload   = null;
-        $this->bpjs_upload  = null;
+        $this->photo_upload           = null;
+        $this->ktp_upload             = null;
+        $this->bpjs_upload            = null;
+        $this->surat_lamaran_upload   = null;
+        $this->kartu_keluarga_upload  = null;
+        $this->ijazah_upload          = null;
+        $this->npwp_upload            = null;
 
         $this->isEditing   = true;
         $this->isModalOpen = true;
@@ -156,29 +180,38 @@ class EmployeeManagement extends Component
             'user_id'         => $this->user_id ?: null,
         ];
 
-        // Retrieve existing paths when editing (so we can delete old files)
         $existing = $this->isEditing ? Employee::find($this->employeeId) : null;
 
-        // Process each image upload
+        // Process image uploads (resized JPEG)
         if ($this->photo_upload) {
-            if ($existing?->photo) {
-                Storage::disk('public')->delete($existing->photo);
-            }
+            if ($existing?->photo) Storage::disk('public')->delete($existing->photo);
             $data['photo'] = $this->processImage($this->photo_upload, 'employees/photo', 400, 500);
         }
-
         if ($this->ktp_upload) {
-            if ($existing?->ktp_image) {
-                Storage::disk('public')->delete($existing->ktp_image);
-            }
+            if ($existing?->ktp_image) Storage::disk('public')->delete($existing->ktp_image);
             $data['ktp_image'] = $this->processImage($this->ktp_upload, 'employees/ktp', 1200, null);
         }
-
         if ($this->bpjs_upload) {
-            if ($existing?->bpjs_image) {
-                Storage::disk('public')->delete($existing->bpjs_image);
-            }
+            if ($existing?->bpjs_image) Storage::disk('public')->delete($existing->bpjs_image);
             $data['bpjs_image'] = $this->processImage($this->bpjs_upload, 'employees/bpjs', 1200, null);
+        }
+
+        // Process extra documents (PDF or image)
+        if ($this->surat_lamaran_upload) {
+            if ($existing?->surat_lamaran) Storage::disk('public')->delete($existing->surat_lamaran);
+            $data['surat_lamaran'] = $this->processDocument($this->surat_lamaran_upload, 'employees/lamaran');
+        }
+        if ($this->kartu_keluarga_upload) {
+            if ($existing?->kartu_keluarga) Storage::disk('public')->delete($existing->kartu_keluarga);
+            $data['kartu_keluarga'] = $this->processDocument($this->kartu_keluarga_upload, 'employees/kk');
+        }
+        if ($this->ijazah_upload) {
+            if ($existing?->ijazah) Storage::disk('public')->delete($existing->ijazah);
+            $data['ijazah'] = $this->processDocument($this->ijazah_upload, 'employees/ijazah');
+        }
+        if ($this->npwp_upload) {
+            if ($existing?->npwp_image) Storage::disk('public')->delete($existing->npwp_image);
+            $data['npwp_image'] = $this->processImage($this->npwp_upload, 'employees/npwp', 1200, null);
         }
 
         if ($this->isEditing) {
@@ -196,12 +229,6 @@ class EmployeeManagement extends Component
 
     /**
      * Resize & save uploaded image, return relative storage path.
-     *
-     * @param  \Livewire\Features\SupportFileUploads\TemporaryUploadedFile  $file
-     * @param  string  $folder       Storage subfolder under public disk
-     * @param  int     $maxWidth     Max width in pixels
-     * @param  int|null $maxHeight   Max height in pixels (null = proportional)
-     * @return string  Path relative to storage/app/public
      */
     private function processImage($file, string $folder, int $maxWidth, ?int $maxHeight): string
     {
@@ -213,10 +240,8 @@ class EmployeeManagement extends Component
         $image = Image::read($file->getRealPath());
 
         if ($maxHeight) {
-            // Portrait resize (pas photo): fit within box, keeping aspect ratio
             $image->scaleDown(width: $maxWidth, height: $maxHeight);
         } else {
-            // Landscape resize (KTP/BPJS): limit width only
             $image->scaleDown(width: $maxWidth);
         }
 
@@ -225,32 +250,63 @@ class EmployeeManagement extends Component
         return "{$folder}/{$filename}";
     }
 
-    public function removeImage(string $type): void
+    /**
+     * Save uploaded document (PDF stored as-is, image resized). Returns relative storage path.
+     */
+    private function processDocument($file, string $folder, int $maxWidth = 1200): string
+    {
+        Storage::disk('public')->makeDirectory($folder);
+
+        $ext = strtolower($file->getClientOriginalExtension());
+
+        if ($ext === 'pdf') {
+            $filename = uniqid() . '_' . time() . '.pdf';
+            Storage::disk('public')->put("{$folder}/{$filename}", file_get_contents($file->getRealPath()));
+            return "{$folder}/{$filename}";
+        }
+
+        return $this->processImage($file, $folder, $maxWidth, null);
+    }
+
+    public function removeFile(string $type): void
     {
         abort_unless($this->canEdit(), 403);
 
         if (!$this->employeeId) return;
 
-        $emp   = Employee::findOrFail($this->employeeId);
-        $field = match ($type) {
-            'photo' => 'photo',
-            'ktp'   => 'ktp_image',
-            'bpjs'  => 'bpjs_image',
-            default => null,
-        };
+        $emp = Employee::findOrFail($this->employeeId);
 
-        if ($field && $emp->$field) {
-            Storage::disk('public')->delete($emp->$field);
-            $emp->update([$field => null]);
+        $fieldMap = [
+            'photo'          => 'photo',
+            'ktp'            => 'ktp_image',
+            'bpjs'           => 'bpjs_image',
+            'surat_lamaran'  => 'surat_lamaran',
+            'kartu_keluarga' => 'kartu_keluarga',
+            'ijazah'         => 'ijazah',
+            'npwp'           => 'npwp_image',
+        ];
 
-            // Sync current_ properties
-            $this->{'current_' . ($type === 'photo' ? 'photo' : $type)} = null;
-            if ($type === 'ktp')  $this->current_ktp  = null;
-            if ($type === 'bpjs') $this->current_bpjs = null;
-            if ($type === 'photo') $this->current_photo = null;
+        $propMap = [
+            'photo'          => 'current_photo',
+            'ktp'            => 'current_ktp',
+            'bpjs'           => 'current_bpjs',
+            'surat_lamaran'  => 'current_surat_lamaran',
+            'kartu_keluarga' => 'current_kartu_keluarga',
+            'ijazah'         => 'current_ijazah',
+            'npwp'           => 'current_npwp',
+        ];
 
-            session()->flash('success', 'Gambar berhasil dihapus.');
+        $field = $fieldMap[$type] ?? null;
+        if (!$field || !$emp->$field) return;
+
+        Storage::disk('public')->delete($emp->$field);
+        $emp->update([$field => null]);
+
+        if (isset($propMap[$type])) {
+            $this->{$propMap[$type]} = null;
         }
+
+        session()->flash('success', 'File berhasil dihapus.');
     }
 
     public function openPreview(string $path, string $title): void
@@ -276,8 +332,7 @@ class EmployeeManagement extends Component
         abort_unless($this->canDelete(), 403);
         $emp = Employee::findOrFail($this->deleteId);
 
-        // Delete associated images from storage
-        foreach (['photo', 'ktp_image', 'bpjs_image'] as $field) {
+        foreach (['photo', 'ktp_image', 'bpjs_image', 'surat_lamaran', 'kartu_keluarga', 'ijazah', 'npwp_image'] as $field) {
             if ($emp->$field) {
                 Storage::disk('public')->delete($emp->$field);
             }

@@ -17,6 +17,9 @@ class Kernel extends ConsoleKernel
 
         // 🔒 AUTO DEACTIVATE CUSTOMER INACTIVE (SETIAP HARI JAM 00:00)
         $schedule->command('customers:deactivate-inactive')->daily();
+
+        // 💌 FOLLOW-UP EMAIL 3 HARI SETELAH PAID (SETIAP HARI JAM 09:00)
+        $schedule->command('emails:send-followup')->dailyAt('09:00');
     }
 
     /**

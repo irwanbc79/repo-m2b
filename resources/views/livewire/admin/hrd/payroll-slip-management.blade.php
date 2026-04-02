@@ -174,7 +174,7 @@
                     @foreach([['gaji_pokok','Gaji Pokok'],['tunjangan_transport','T. Transport'],['tunjangan_jabatan','T. Jabatan'],['tunjangan_lainnya','T. Lainnya'],['lembur_jam','Lembur (Jam)'],['lembur_nominal','Lembur (Rp)']] as [$field, $label])
                     <div>
                         <label class="block text-xs text-gray-400 mb-1">{{ $label }}</label>
-                        <input wire:model.live="{{$field}}" type="number" min="0" step="1000"
+                        <input wire:model.live="{{$field}}" type="number" min="0" step="1"
                             class="w-full px-3 py-2 bg-gray-700 border border-gray-600 text-gray-200 rounded-lg text-sm focus:outline-none focus:ring-1 focus:ring-blue-500">
                         @error($field) <p class="text-red-400 text-xs mt-1">{{ $message }}</p> @enderror
                     </div>
@@ -187,7 +187,7 @@
                     @foreach([['potongan_bpjs_kes','BPJS Kesehatan'],['potongan_bpjs_tk','BPJS TK'],['potongan_lainnya','Potongan Lainnya']] as [$field, $label])
                     <div>
                         <label class="block text-xs text-gray-400 mb-1">{{ $label }}</label>
-                        <input wire:model.live="{{$field}}" type="number" min="0" step="1000"
+                        <input wire:model.live="{{$field}}" type="number" min="0" step="1"
                             class="w-full px-3 py-2 bg-gray-700 border border-gray-600 text-gray-200 rounded-lg text-sm focus:outline-none focus:ring-1 focus:ring-blue-500">
                         @error($field) <p class="text-red-400 text-xs mt-1">{{ $message }}</p> @enderror
                     </div>
@@ -350,7 +350,7 @@
                     </div>
                     <div>
                         <label class="block text-xs text-gray-400 mb-1">Nominal (Rp) <span class="text-red-400">*</span></label>
-                        <input wire:model="new_nominal" type="number" min="1" step="1000" placeholder="0"
+                        <input wire:model="new_nominal" type="number" min="1" step="1" placeholder="0"
                             class="w-full px-3 py-2 bg-gray-700 border border-gray-600 text-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-orange-500">
                         @error('new_nominal') <p class="text-red-400 text-xs mt-1">{{ $message }}</p> @enderror
                     </div>
