@@ -198,7 +198,7 @@
                     💰 Penggajian
                 </a>
 
-                <a href="{{ route('admin.attendance') }}" class="flex items-center px-4 py-3 text-sm font-medium rounded-lg transition-colors {{ request()->routeIs('admin.attendance') ? 'bg-m2b-accent text-white shadow-lg' : 'hover:bg-gray-800 text-gray-300' }}">
+                <a href="{{ route('admin.attendance.index') }}" class="flex items-center px-4 py-3 text-sm font-medium rounded-lg transition-colors {{ request()->routeIs('admin.attendance*') ? 'bg-m2b-accent text-white shadow-lg' : 'hover:bg-gray-800 text-gray-300' }}">
                     📍 Absensi Mobile
                 </a>
 
