@@ -197,6 +197,14 @@
                 <a href="{{ route('admin.hrd.payroll-periods') }}" class="flex items-center px-4 py-3 text-sm font-medium rounded-lg transition-colors {{ request()->routeIs('admin.hrd.payroll*') ? 'bg-m2b-accent text-white shadow-lg' : 'hover:bg-gray-800 text-gray-300' }}">
                     💰 Penggajian
                 </a>
+
+                <a href="{{ route('admin.attendance') }}" class="flex items-center px-4 py-3 text-sm font-medium rounded-lg transition-colors {{ request()->routeIs('admin.attendance') ? 'bg-m2b-accent text-white shadow-lg' : 'hover:bg-gray-800 text-gray-300' }}">
+                    📍 Absensi Mobile
+                </a>
+
+                <a href="{{ route('admin.visits') }}" class="flex items-center px-4 py-3 text-sm font-medium rounded-lg transition-colors {{ request()->routeIs('admin.visits') ? 'bg-m2b-accent text-white shadow-lg' : 'hover:bg-gray-800 text-gray-300' }}">
+                    🚗 Kunjungan Karyawan
+                </a>
                 @endif
 
                 <div class="px-4 py-2 mt-4 text-xs font-bold text-gray-500 uppercase tracking-wider">Settings</div>

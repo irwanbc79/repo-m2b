@@ -738,4 +738,6 @@ Route::get('/api/customers/search', function (Illuminate\Http\Request $request) 
 // ========== KAS KECIL ==========
 Route::middleware(['auth', 'admin'])->group(function () {
     Route::get('/admin/kas-kecil', \App\Livewire\Admin\PettyCashManager::class)->name('admin.petty-cash');
+    Route::get('/admin/attendance', \App\Livewire\Admin\AttendanceManagement::class)->name('admin.attendance');
+    Route::get('/admin/visits', \App\Livewire\Admin\VisitManagement::class)->name('admin.visits');
 });

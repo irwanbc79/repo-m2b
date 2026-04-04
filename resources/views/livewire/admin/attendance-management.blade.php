@@ -14,6 +14,13 @@
             <h1 class="text-2xl font-bold text-gray-100">📍 Manajemen Absensi</h1>
             <p class="text-sm text-gray-400 mt-1">Rekap absensi karyawan dari aplikasi mobile</p>
         </div>
+        @if($filterDate && ($summary['unverified'] ?? 0) > 0)
+        <button wire:click="verifyAll"
+            wire:confirm="Verifikasi semua {{ $summary['unverified'] }} absensi yang belum terverifikasi?"
+            class="px-4 py-2 bg-emerald-600 hover:bg-emerald-500 text-white text-sm font-medium rounded-lg flex items-center gap-2">
+            ✔ Verifikasi Semua ({{ $summary['unverified'] }})
+        </button>
+        @endif
     </div>
 
     {{-- Summary Cards --}}
@@ -119,9 +126,16 @@
                         </td>
                         <td class="px-4 py-3 text-center">
                             @if($rec->verified_at)
-                                <span class="px-2 py-1 bg-emerald-900 text-emerald-300 rounded-full text-xs">✔ Terverifikasi</span>
+                                <button wire:click="verify({{ $rec->id }})" title="Klik untuk batalkan verifikasi"
+                                    class="px-2 py-1 bg-emerald-900 text-emerald-300 rounded-full text-xs hover:bg-emerald-800 transition-colors">
+                                    ✔ Terverifikasi
+                                </button>
+                                <div class="text-xs text-gray-600 mt-1">{{ $rec->verified_at->format('H:i') }}</div>
                             @else
-                                <span class="px-2 py-1 bg-yellow-900 text-yellow-300 rounded-full text-xs">⚠ Belum Verif</span>
+                                <button wire:click="verify({{ $rec->id }})"
+                                    class="px-2 py-1 bg-yellow-900 text-yellow-300 rounded-full text-xs hover:bg-yellow-700 transition-colors">
+                                    ⚠ Verifikasi
+                                </button>
                             @endif
                         </td>
                         <td class="px-4 py-3 text-center">

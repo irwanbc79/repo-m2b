@@ -28,6 +28,27 @@ class AttendanceManagement extends Component
     public function updatingFilterType(): void  { $this->resetPage(); }
     public function updatingFilterUser(): void  { $this->resetPage(); }
 
+    public function verify(int $id): void
+    {
+        $rec = Attendance::findOrFail($id);
+        $rec->update(['verified_at' => $rec->verified_at ? null : now()]);
+        $this->dispatch('notify', [
+            'message' => $rec->verified_at ? 'Absensi diverifikasi.' : 'Verifikasi dibatalkan.',
+            'type'    => 'success',
+        ]);
+    }
+
+    public function verifyAll(): void
+    {
+        $query = Attendance::whereDate('created_at', $this->filterDate)->whereNull('verified_at');
+        $count = $query->count();
+        $query->update(['verified_at' => now()]);
+        $this->dispatch('notify', [
+            'message' => "$count absensi berhasil diverifikasi.",
+            'type'    => 'success',
+        ]);
+    }
+
     public function render()
     {
         $query = Attendance::with(['user', 'location'])
