@@ -6,6 +6,7 @@ use App\Http\Controllers\Api\V1\DashboardController;
 use App\Http\Controllers\Api\V1\ExpenseController;
 use App\Http\Controllers\Api\V1\LeaveController;
 use App\Http\Controllers\Api\V1\VisitController;
+use App\Http\Controllers\Api\V1\PayrollController;
 use Illuminate\Support\Facades\Route;
 
 /*
@@ -56,6 +57,12 @@ Route::prefix('v1')->group(function () {
         Route::prefix('visits')->group(function () {
             Route::post('/checkin',  [VisitController::class, 'store']);
             Route::get('/history',   [VisitController::class, 'history']);
+        });
+
+        // Payroll / Slip Gaji
+        Route::prefix('payroll')->group(function () {
+            Route::get('/',      [PayrollController::class, 'index']);
+            Route::get('/{id}',  [PayrollController::class, 'show'])->where('id', '[0-9]+');
         });
 
         // Dashboard
