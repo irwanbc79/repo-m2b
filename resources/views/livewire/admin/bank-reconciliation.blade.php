@@ -265,7 +265,11 @@
                                             ⛓️‍💥
                                         </button>
                                     @endif
-                                    <button wire:click="deleteTransaction({{ $trx->id }})" 
+                                    <button onclick="openVoucherModal({{ $trx->id }}, {{ $trx->debit_amount > 0 ? 'true' : 'false' }})"
+                                            class="p-1 text-gray-600 hover:text-gray-900" title="Cetak Voucher">
+                                        🖨️
+                                    </button>
+                                    <button wire:click="deleteTransaction({{ $trx->id }})"
                                             wire:confirm="Hapus transaksi ini?"
                                             class="p-1 text-red-600 hover:text-red-800" title="Hapus">
                                         🗑️
@@ -577,4 +581,127 @@
             </div>
         </div>
     @endif
+
+    {{-- ── Voucher Print Modal (vanilla JS — tidak terpengaruh Livewire re-render) ── --}}
+    <div id="voucherPrintModal" style="display:none; position:fixed; inset:0; z-index:9999; background:rgba(0,0,0,0.55);"
+         onclick="if(event.target===this) closeVoucherModal()">
+        <div style="background:#fff; border-radius:12px; width:480px; max-width:95vw;
+                    position:absolute; top:50%; left:50%; transform:translate(-50%,-50%);
+                    box-shadow:0 20px 60px rgba(0,0,0,0.3); overflow:hidden;">
+            {{-- Header --}}
+            <div style="background:#0F2C59; color:#fff; padding:14px 20px; display:flex; justify-content:space-between; align-items:center;">
+                <span id="vModalTitle" style="font-weight:bold; font-size:15px;">🖨️ Cetak Voucher</span>
+                <button onclick="closeVoucherModal()" style="background:none;border:none;color:#fff;font-size:20px;cursor:pointer;line-height:1;">&times;</button>
+            </div>
+            {{-- Body --}}
+            <div style="padding:20px;">
+                <p style="font-size:12px; color:#666; margin-bottom:14px;">Isi nama pejabat yang menandatangani (opsional):</p>
+
+                {{-- Fields Penerimaan (3 kolom) --}}
+                <div id="vFieldsPenerimaan">
+                    <div style="display:grid; grid-template-columns:1fr 1fr 1fr; gap:10px;">
+                        <div>
+                            <label style="font-size:11px; font-weight:600; color:#0F2C59; display:block; margin-bottom:4px;">Diperiksa Oleh</label>
+                            <input id="v_diperiksa_nama" type="text" placeholder="Nama..." style="width:100%; border:1px solid #d1d5db; border-radius:6px; padding:6px 8px; font-size:12px;">
+                        </div>
+                        <div>
+                            <label style="font-size:11px; font-weight:600; color:#0F2C59; display:block; margin-bottom:4px;">Diketahui Oleh</label>
+                            <input id="v_diketahui_nama_p" type="text" placeholder="Nama..." style="width:100%; border:1px solid #d1d5db; border-radius:6px; padding:6px 8px; font-size:12px;">
+                        </div>
+                        <div>
+                            <label style="font-size:11px; font-weight:600; color:#0F2C59; display:block; margin-bottom:4px;">Kasir</label>
+                            <input id="v_kasir_nama" type="text" placeholder="Nama..." style="width:100%; border:1px solid #d1d5db; border-radius:6px; padding:6px 8px; font-size:12px;">
+                        </div>
+                    </div>
+                </div>
+
+                {{-- Fields Pengeluaran (5 kolom, 2 baris) --}}
+                <div id="vFieldsPengeluaran" style="display:none;">
+                    <div style="display:grid; grid-template-columns:1fr 1fr; gap:10px; margin-bottom:10px;">
+                        <div>
+                            <label style="font-size:11px; font-weight:600; color:#0F2C59; display:block; margin-bottom:4px;">Disetujui Oleh</label>
+                            <input id="v_disetujui_nama" type="text" placeholder="Nama..." style="width:100%; border:1px solid #d1d5db; border-radius:6px; padding:6px 8px; font-size:12px;">
+                        </div>
+                        <div>
+                            <label style="font-size:11px; font-weight:600; color:#0F2C59; display:block; margin-bottom:4px;">Diketahui Oleh</label>
+                            <input id="v_diketahui_nama_k" type="text" placeholder="Nama..." style="width:100%; border:1px solid #d1d5db; border-radius:6px; padding:6px 8px; font-size:12px;">
+                        </div>
+                    </div>
+                    <div style="display:grid; grid-template-columns:1fr 1fr 1fr; gap:10px;">
+                        <div>
+                            <label style="font-size:11px; font-weight:600; color:#0F2C59; display:block; margin-bottom:4px;">Diperiksa Oleh</label>
+                            <input id="v_diperiksa2_nama" type="text" placeholder="Nama..." style="width:100%; border:1px solid #d1d5db; border-radius:6px; padding:6px 8px; font-size:12px;">
+                        </div>
+                        <div>
+                            <label style="font-size:11px; font-weight:600; color:#0F2C59; display:block; margin-bottom:4px;">Dibayar Oleh</label>
+                            <input id="v_dibayar_nama" type="text" placeholder="Nama..." style="width:100%; border:1px solid #d1d5db; border-radius:6px; padding:6px 8px; font-size:12px;">
+                        </div>
+                        <div>
+                            <label style="font-size:11px; font-weight:600; color:#0F2C59; display:block; margin-bottom:4px;">Yang Menerima</label>
+                            <input id="v_penerima_nama" type="text" placeholder="Nama..." style="width:100%; border:1px solid #d1d5db; border-radius:6px; padding:6px 8px; font-size:12px;">
+                        </div>
+                    </div>
+                </div>
+            </div>
+            {{-- Footer --}}
+            <div style="background:#f9fafb; padding:12px 20px; display:flex; justify-content:flex-end; gap:8px; border-top:1px solid #e5e7eb;">
+                <button onclick="closeVoucherModal()"
+                        style="padding:8px 18px; border:1px solid #d1d5db; border-radius:6px; background:#fff; color:#374151; font-size:13px; cursor:pointer;">
+                    Batal
+                </button>
+                <button onclick="submitVoucherPrint()"
+                        style="padding:8px 20px; border:none; border-radius:6px; background:#0F2C59; color:#fff; font-size:13px; font-weight:600; cursor:pointer;">
+                    🖨️ Cetak PDF
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+    var _voucherId   = null;
+    var _voucherDebit = false;
+    var _voucherBase  = '{{ rtrim(url("/admin/bank-reconciliation/voucher"), "/") }}';
+
+    function openVoucherModal(id, isDebit) {
+        _voucherId    = id;
+        _voucherDebit = isDebit;
+        document.getElementById('vModalTitle').textContent = isDebit
+            ? '🖨️ Cetak Bukti Pengeluaran'
+            : '🖨️ Cetak Bukti Penerimaan';
+        document.getElementById('vFieldsPenerimaan').style.display  = isDebit ? 'none'  : 'block';
+        document.getElementById('vFieldsPengeluaran').style.display = isDebit ? 'block' : 'none';
+        // reset semua input
+        ['v_diperiksa_nama','v_diketahui_nama_p','v_kasir_nama',
+         'v_disetujui_nama','v_diketahui_nama_k','v_diperiksa2_nama',
+         'v_dibayar_nama','v_penerima_nama'].forEach(function(id){ var el=document.getElementById(id); if(el) el.value=''; });
+        document.getElementById('voucherPrintModal').style.display = 'block';
+    }
+
+    function closeVoucherModal() {
+        document.getElementById('voucherPrintModal').style.display = 'none';
+    }
+
+    function submitVoucherPrint() {
+        if (!_voucherId) return;
+        var params = new URLSearchParams();
+        if (_voucherDebit) {
+            var n;
+            n = document.getElementById('v_disetujui_nama').value.trim();  if(n) params.set('disetujui_nama', n);
+            n = document.getElementById('v_diketahui_nama_k').value.trim(); if(n) params.set('diketahui_nama', n);
+            n = document.getElementById('v_diperiksa2_nama').value.trim(); if(n) params.set('diperiksa_nama', n);
+            n = document.getElementById('v_dibayar_nama').value.trim();    if(n) params.set('dibayar_nama', n);
+            n = document.getElementById('v_penerima_nama').value.trim();   if(n) params.set('penerima_nama', n);
+        } else {
+            var n;
+            n = document.getElementById('v_diperiksa_nama').value.trim();    if(n) params.set('diperiksa_nama', n);
+            n = document.getElementById('v_diketahui_nama_p').value.trim();  if(n) params.set('diketahui_nama', n);
+            n = document.getElementById('v_kasir_nama').value.trim();        if(n) params.set('kasir_nama', n);
+        }
+        var url = _voucherBase + '/' + _voucherId;
+        var qs  = params.toString();
+        if (qs) url += '?' + qs;
+        window.open(url, '_blank');
+        closeVoucherModal();
+    }
+    </script>
 </div>

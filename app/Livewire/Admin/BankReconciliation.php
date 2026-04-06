@@ -49,8 +49,8 @@ class BankReconciliation extends Component
 
     public function mount()
     {
-        // Set default filter ke bulan ini
-        $this->filterDateFrom = now()->startOfMonth()->format('Y-m-d');
+        // Set default filter ke 3 bulan terakhir
+        $this->filterDateFrom = now()->subMonths(3)->startOfMonth()->format('Y-m-d');
         $this->filterDateTo = now()->endOfMonth()->format('Y-m-d');
         
         $this->loadStatistics();
@@ -74,11 +74,13 @@ class BankReconciliation extends Component
 
     public function updatedFilterDateFrom()
     {
+        $this->resetPage();
         $this->loadStatistics();
     }
 
     public function updatedFilterDateTo()
     {
+        $this->resetPage();
         $this->loadStatistics();
     }
 
