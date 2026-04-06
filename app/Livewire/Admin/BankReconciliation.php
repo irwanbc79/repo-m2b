@@ -334,31 +334,11 @@ class BankReconciliation extends Component
     }
 
     /**
-     * Build URL export dengan filter aktif, lalu dispatch ke browser.
+     * Stub — export ditangani langsung oleh JS (tidak perlu Livewire method call).
+     * Dipertahankan agar session lama tidak error 500.
      */
-    public function openExport(string $type): void
-    {
-        $routeMap = [
-            'pdf'   => 'admin.bank-reconciliation.export.pdf',
-            'excel' => 'admin.bank-reconciliation.export.excel',
-            'csv'   => 'admin.bank-reconciliation.export.csv',
-        ];
-
-        if (!isset($routeMap[$type])) return;
-
-        $params = array_filter([
-            'search'         => $this->search,
-            'filterBank'     => $this->filterBank,
-            'filterStatus'   => $this->filterStatus,
-            'filterCategory' => $this->filterCategory,
-            'filterDateFrom' => $this->filterDateFrom,
-            'filterDateTo'   => $this->filterDateTo,
-        ]);
-
-        $url = route($routeMap[$type]) . ($params ? '?' . http_build_query($params) : '');
-
-        $this->dispatch('do-export', url: $url);
-    }
+    public function exportExcel(): void {}
+    public function openExport(string $type = ''): void {}
 
     public function render()
     {

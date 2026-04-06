@@ -126,10 +126,18 @@
                 </div>
             </div>
 
+            {{-- Hidden inputs untuk export JS (diupdate otomatis saat Livewire re-render) --}}
+            <input type="hidden" id="exp_search"         value="{{ $search }}">
+            <input type="hidden" id="exp_filterBank"     value="{{ $filterBank }}">
+            <input type="hidden" id="exp_filterStatus"   value="{{ $filterStatus }}">
+            <input type="hidden" id="exp_filterCategory" value="{{ $filterCategory }}">
+            <input type="hidden" id="exp_filterDateFrom" value="{{ $filterDateFrom }}">
+            <input type="hidden" id="exp_filterDateTo"   value="{{ $filterDateTo }}">
+
             {{-- Right: Search --}}
             <div class="flex-1 max-w-md">
-                <input type="text" wire:model.live.debounce.300ms="search" 
-                       placeholder="Cari deskripsi, referensi..." 
+                <input type="text" wire:model.live.debounce.300ms="search"
+                       placeholder="Cari deskripsi, referensi..."
                        class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
             </div>
         </div>
@@ -730,22 +738,33 @@
 
     <script>
     // ── Export Dropdown ─────────────────────────────────────────────────────────
+    var _exportRoutes = {
+        pdf:   '{{ route("admin.bank-reconciliation.export.pdf") }}',
+        excel: '{{ route("admin.bank-reconciliation.export.excel") }}',
+        csv:   '{{ route("admin.bank-reconciliation.export.csv") }}',
+    };
     function toggleExportDropdown() {
         var dd = document.getElementById('exportDropdown');
         dd.style.display = dd.style.display === 'none' ? 'block' : 'none';
     }
     function doExport(type) {
         document.getElementById('exportDropdown').style.display = 'none';
-        @this.call('openExport', type);
+        var params = new URLSearchParams();
+        var g = function(id){ return document.getElementById(id) ? document.getElementById(id).value : ''; };
+        if (g('exp_search'))         params.set('search',         g('exp_search'));
+        if (g('exp_filterBank'))     params.set('filterBank',     g('exp_filterBank'));
+        if (g('exp_filterStatus'))   params.set('filterStatus',   g('exp_filterStatus'));
+        if (g('exp_filterCategory')) params.set('filterCategory', g('exp_filterCategory'));
+        if (g('exp_filterDateFrom')) params.set('filterDateFrom', g('exp_filterDateFrom'));
+        if (g('exp_filterDateTo'))   params.set('filterDateTo',   g('exp_filterDateTo'));
+        var url = _exportRoutes[type] + (params.toString() ? '?' + params.toString() : '');
+        window.location.href = url;
     }
     document.addEventListener('click', function(e) {
         var wrap = document.getElementById('exportDropdownWrap');
         if (wrap && !wrap.contains(e.target)) {
             document.getElementById('exportDropdown').style.display = 'none';
         }
-    });
-    document.addEventListener('do-export', function(e) {
-        window.location.href = e.detail.url;
     });
 
     // ── Voucher Print Modal ──────────────────────────────────────────────────────
