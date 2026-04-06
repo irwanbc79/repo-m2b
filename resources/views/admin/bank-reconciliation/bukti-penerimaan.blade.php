@@ -176,7 +176,7 @@
       <tr>
         <td class="col-nama">
           <span style="font-weight:bold;">{{ \App\Models\BankTransaction::CATEGORIES[$transaction->category] ?? 'Lainnya' }}</span>
-          <br><span style="font-size:7pt; color:#555;">{{ $transaction->description }}</span>
+          <br><span style="font-size:7pt; color:#555;">{{ $keterangan ?? $transaction->description }}</span>
         </td>
         <td class="col-kode"></td>
         <td class="col-jml">{{ number_format($transaction->credit_amount, 0, ',', '.') }}</td>

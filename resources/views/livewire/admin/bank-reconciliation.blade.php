@@ -95,10 +95,35 @@
                         class="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition flex items-center gap-2">
                     <span>🔄</span> Auto-Match
                 </button>
-                <button wire:click="exportExcel" 
-                        class="px-4 py-2 bg-gray-600 text-white rounded-lg hover:bg-gray-700 transition flex items-center gap-2">
-                    <span>📥</span> Export
-                </button>
+                {{-- Export Dropdown --}}
+                <div class="relative" id="exportDropdownWrap">
+                    <button onclick="toggleExportDropdown()"
+                            class="px-4 py-2 bg-gray-600 text-white rounded-lg hover:bg-gray-700 transition flex items-center gap-2">
+                        <span>📥</span> Export <span style="font-size:10px;">▼</span>
+                    </button>
+                    <div id="exportDropdown" style="display:none; position:absolute; top:100%; left:0; z-index:200; margin-top:4px;
+                                                    background:#fff; border:1px solid #e5e7eb; border-radius:8px;
+                                                    box-shadow:0 8px 24px rgba(0,0,0,0.12); min-width:160px; overflow:hidden;">
+                        <button onclick="doExport('pdf')"
+                                style="display:flex; align-items:center; gap:8px; width:100%; padding:10px 16px; border:none;
+                                       background:none; text-align:left; font-size:13px; color:#374151; cursor:pointer;"
+                                onmouseover="this.style.background='#f3f4f6'" onmouseout="this.style.background='none'">
+                            📄 Export PDF
+                        </button>
+                        <button onclick="doExport('excel')"
+                                style="display:flex; align-items:center; gap:8px; width:100%; padding:10px 16px; border:none;
+                                       background:none; text-align:left; font-size:13px; color:#374151; cursor:pointer;"
+                                onmouseover="this.style.background='#f3f4f6'" onmouseout="this.style.background='none'">
+                            📊 Export Excel (.xlsx)
+                        </button>
+                        <button onclick="doExport('csv')"
+                                style="display:flex; align-items:center; gap:8px; width:100%; padding:10px 16px; border:none;
+                                       background:none; text-align:left; font-size:13px; color:#374151; cursor:pointer;"
+                                onmouseover="this.style.background='#f3f4f6'" onmouseout="this.style.background='none'">
+                            📋 Export CSV
+                        </button>
+                    </div>
+                </div>
             </div>
 
             {{-- Right: Search --}}
@@ -265,7 +290,7 @@
                                             ⛓️‍💥
                                         </button>
                                     @endif
-                                    <button onclick="openVoucherModal({{ $trx->id }}, {{ $trx->debit_amount > 0 ? 'true' : 'false' }})"
+                                    <button onclick="openVoucherModal({{ $trx->id }}, {{ $trx->debit_amount > 0 ? 'true' : 'false' }}, {{ json_encode(Str::limit($trx->description, 80)) }}, '')"
                                             class="p-1 text-gray-600 hover:text-gray-900" title="Cetak Voucher">
                                         🖨️
                                     </button>
@@ -598,7 +623,20 @@
             {{-- STEP 1: Form isi nama --}}
             <div id="vStepForm">
                 <div style="padding:20px;">
-                    <p style="font-size:12px; color:#666; margin-bottom:14px;">Isi nama pejabat yang menandatangani (opsional):</p>
+
+                    {{-- Kolom custom: Nama pihak & Keterangan --}}
+                    <div style="margin-bottom:16px; padding-bottom:16px; border-bottom:1px solid #e5e7eb;">
+                        <div style="margin-bottom:10px;">
+                            <label id="v_pihak_label" style="font-size:11px; font-weight:600; color:#0F2C59; display:block; margin-bottom:4px;">Dibayar Kepada</label>
+                            <input id="v_pihak_nama" type="text" placeholder="Nama pihak..." style="width:100%; border:1px solid #d1d5db; border-radius:6px; padding:7px 10px; font-size:13px;">
+                        </div>
+                        <div>
+                            <label style="font-size:11px; font-weight:600; color:#0F2C59; display:block; margin-bottom:4px;">Keterangan / Uraian</label>
+                            <textarea id="v_keterangan" rows="2" placeholder="Keterangan transaksi..." style="width:100%; border:1px solid #d1d5db; border-radius:6px; padding:7px 10px; font-size:13px; resize:vertical;"></textarea>
+                        </div>
+                    </div>
+
+                    <p style="font-size:12px; color:#666; margin-bottom:14px;">Nama pejabat penandatangan (opsional):</p>
 
                     {{-- Fields Penerimaan (3 kolom) --}}
                     <div id="vFieldsPenerimaan">
@@ -691,19 +729,43 @@
     </div>
 
     <script>
+    // ── Export Dropdown ─────────────────────────────────────────────────────────
+    function toggleExportDropdown() {
+        var dd = document.getElementById('exportDropdown');
+        dd.style.display = dd.style.display === 'none' ? 'block' : 'none';
+    }
+    function doExport(type) {
+        document.getElementById('exportDropdown').style.display = 'none';
+        @this.call('openExport', type);
+    }
+    document.addEventListener('click', function(e) {
+        var wrap = document.getElementById('exportDropdownWrap');
+        if (wrap && !wrap.contains(e.target)) {
+            document.getElementById('exportDropdown').style.display = 'none';
+        }
+    });
+    document.addEventListener('do-export', function(e) {
+        window.location.href = e.detail.url;
+    });
+
+    // ── Voucher Print Modal ──────────────────────────────────────────────────────
     var _voucherId    = null;
     var _voucherDebit = false;
     var _voucherBase  = '{{ rtrim(url("/admin/bank-reconciliation/voucher"), "/") }}';
 
-    function openVoucherModal(id, isDebit) {
+    function openVoucherModal(id, isDebit, defaultPihak, defaultKet) {
         _voucherId    = id;
         _voucherDebit = isDebit;
         document.getElementById('vModalTitle').textContent = isDebit
             ? '🖨️ Cetak Bukti Pengeluaran'
             : '🖨️ Cetak Bukti Penerimaan';
+        document.getElementById('v_pihak_label').textContent = isDebit ? 'Dibayar Kepada' : 'Diterima Dari';
+        document.getElementById('v_pihak_nama').placeholder  = isDebit ? 'Nama penerima...' : 'Nama pengirim...';
+        document.getElementById('v_pihak_nama').value        = defaultPihak || '';
+        document.getElementById('v_keterangan').value        = defaultKet   || '';
         document.getElementById('vFieldsPenerimaan').style.display  = isDebit ? 'none'  : 'block';
         document.getElementById('vFieldsPengeluaran').style.display = isDebit ? 'block' : 'none';
-        // reset input & kembali ke step form
+        // reset input tanda tangan
         ['v_diperiksa_nama','v_diketahui_nama_p','v_kasir_nama',
          'v_disetujui_nama','v_diketahui_nama_k','v_diperiksa2_nama',
          'v_dibayar_nama','v_penerima_nama'].forEach(function(fid){ var el=document.getElementById(fid); if(el) el.value=''; });
@@ -724,6 +786,12 @@
 
     function buildVoucherUrl() {
         var params = new URLSearchParams();
+        // Kolom custom (selalu dikirim)
+        var pihak = document.getElementById('v_pihak_nama').value.trim();
+        var ket   = document.getElementById('v_keterangan').value.trim();
+        if (pihak) params.set('custom_pihak', pihak);
+        if (ket)   params.set('custom_keterangan', ket);
+        // Tanda tangan
         if (_voucherDebit) {
             var n;
             n = document.getElementById('v_disetujui_nama').value.trim();   if(n) params.set('disetujui_nama', n);

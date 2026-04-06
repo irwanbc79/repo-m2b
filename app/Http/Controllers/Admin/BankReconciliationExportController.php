@@ -290,6 +290,47 @@ class BankReconciliationExportController extends Controller
     }
 
     /**
+     * Export CSV — data mentah rekonsiliasi bank.
+     */
+    public function exportCsv(Request $request)
+    {
+        $transactions = $this->buildQuery($request)->get();
+        $filename     = 'rekonsiliasi-bank-' . now()->format('Ymd-His') . '.csv';
+
+        $headers = [
+            'Content-Type'        => 'text/csv; charset=UTF-8',
+            'Content-Disposition' => 'attachment; filename="' . $filename . '"',
+            'Cache-Control'       => 'max-age=0',
+        ];
+
+        $callback = function () use ($transactions) {
+            $out = fopen('php://output', 'w');
+            // BOM untuk Excel agar UTF-8 terbaca dengan benar
+            fwrite($out, "\xEF\xBB\xBF");
+
+            fputcsv($out, ['Tanggal', 'Deskripsi', 'Referensi', 'Kategori', 'Debit', 'Kredit', 'Saldo', 'Bank', 'Status']);
+
+            foreach ($transactions as $trx) {
+                fputcsv($out, [
+                    $trx->transaction_date->format('d/m/Y'),
+                    $trx->description,
+                    $trx->reference_number ?? '',
+                    BankTransaction::CATEGORIES[$trx->category] ?? $trx->category,
+                    $trx->debit_amount  > 0 ? (float) $trx->debit_amount  : '',
+                    $trx->credit_amount > 0 ? (float) $trx->credit_amount : '',
+                    (float) $trx->balance,
+                    strtoupper($trx->bank_name ?? ''),
+                    $trx->is_reconciled ? 'Rekonsiliasi' : 'Pending',
+                ]);
+            }
+
+            fclose($out);
+        };
+
+        return response()->stream($callback, 200, $headers);
+    }
+
+    /**
      * Print voucher Bukti Penerimaan atau Bukti Pengeluaran per transaksi.
      */
     public function printVoucher(Request $request, int $id)
@@ -317,22 +358,26 @@ class BankReconciliationExportController extends Controller
             ? 'data:image/jpeg;base64,' . base64_encode(file_get_contents($logoPath))
             : null;
 
-        // Extract payer/beneficiary name from description
+        // Nama pihak: gunakan custom jika diisi, fallback ke ekstrak dari deskripsi
         $desc        = $transaction->description;
-        $beneficiary = $this->extractNameFromDescription($desc, $isDebit);
-        $sender      = $beneficiary; // alias untuk penerimaan
+        $autoName    = $this->extractNameFromDescription($desc, $isDebit);
+        $beneficiary = $request->input('custom_pihak') ?: $autoName;
+        $sender      = $beneficiary;
+
+        // Keterangan custom (jika diisi staf, override deskripsi bank)
+        $keterangan  = $request->input('custom_keterangan') ?: $desc;
 
         if ($isDebit) {
             $terbilang = $this->terbilang((float) $transaction->debit_amount) . ' Rupiah';
             $pdf = Pdf::loadView('admin.bank-reconciliation.bukti-pengeluaran',
-                compact('transaction', 'isKas', 'noVoucher', 'signers', 'terbilang', 'logoBase64', 'beneficiary'))
+                compact('transaction', 'isKas', 'noVoucher', 'signers', 'terbilang', 'logoBase64', 'beneficiary', 'keterangan'))
                 ->setPaper('a5', 'portrait')
                 ->setOptions(['defaultFont' => 'Arial', 'isRemoteEnabled' => false, 'dpi' => 150]);
             $filename = 'bukti-pengeluaran-' . $id . '.pdf';
         } else {
             $terbilang = $this->terbilang((float) $transaction->credit_amount) . ' Rupiah';
             $pdf = Pdf::loadView('admin.bank-reconciliation.bukti-penerimaan',
-                compact('transaction', 'isKas', 'noVoucher', 'signers', 'logoBase64', 'sender', 'terbilang'))
+                compact('transaction', 'isKas', 'noVoucher', 'signers', 'logoBase64', 'sender', 'terbilang', 'keterangan'))
                 ->setPaper('a5', 'portrait')
                 ->setOptions(['defaultFont' => 'Arial', 'isRemoteEnabled' => false, 'dpi' => 150]);
             $filename = 'bukti-penerimaan-' . $id . '.pdf';

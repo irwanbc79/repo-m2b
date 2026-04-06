@@ -181,7 +181,7 @@
         <td class="col-kode" style="color:#888; font-size:7pt;"></td>
         <td class="col-ket">
           <span style="font-weight:bold;">{{ \App\Models\BankTransaction::CATEGORIES[$transaction->category] ?? 'Lainnya' }}</span>
-          <br><span style="font-size:7pt; color:#555;">{{ $transaction->description }}</span>
+          <br><span style="font-size:7pt; color:#555;">{{ $keterangan ?? $transaction->description }}</span>
         </td>
         <td class="col-jml">{{ number_format($transaction->debit_amount, 0, ',', '.') }}</td>
       </tr>

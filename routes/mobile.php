@@ -28,6 +28,7 @@ Route::middleware(['auth', 'admin'])->prefix('admin')->name('admin.')->group(fun
     // Bank Reconciliation Export
     Route::get('/bank-reconciliation/export/pdf',   [BankReconciliationExportController::class, 'exportPdf'])  ->name('bank-reconciliation.export.pdf');
     Route::get('/bank-reconciliation/export/excel', [BankReconciliationExportController::class, 'exportExcel'])->name('bank-reconciliation.export.excel');
+    Route::get('/bank-reconciliation/export/csv',   [BankReconciliationExportController::class, 'exportCsv'])  ->name('bank-reconciliation.export.csv');
 
     // Print Voucher per transaksi
     Route::get('/bank-reconciliation/voucher/{id}', [BankReconciliationExportController::class, 'printVoucher'])->name('bank-reconciliation.voucher');
