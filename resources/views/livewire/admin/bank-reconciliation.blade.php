@@ -692,15 +692,32 @@
                         </div>
                     </div>
                 </div>
-                <div style="background:#f9fafb; padding:12px 20px; display:flex; justify-content:flex-end; gap:8px; border-top:1px solid #e5e7eb;">
-                    <button onclick="closeVoucherModal()"
-                            style="padding:8px 18px; border:1px solid #d1d5db; border-radius:6px; background:#fff; color:#374151; font-size:13px; cursor:pointer;">
-                        Batal
-                    </button>
-                    <button onclick="showVoucherPreview()"
-                            style="padding:8px 20px; border:none; border-radius:6px; background:#0F2C59; color:#fff; font-size:13px; font-weight:600; cursor:pointer;">
-                        👁️ Preview
-                    </button>
+                <div style="background:#f9fafb; padding:10px 20px; border-top:1px solid #e5e7eb;">
+                    {{-- Pilihan ukuran kertas --}}
+                    <div style="margin-bottom:10px;">
+                        <p style="font-size:11px; font-weight:600; color:#0F2C59; margin-bottom:6px;">Ukuran Kertas:</p>
+                        <div style="display:flex; gap:16px; flex-wrap:wrap;">
+                            <label style="display:flex; align-items:center; gap:5px; font-size:12px; color:#374151; cursor:pointer;">
+                                <input type="radio" name="v_layout" value="" checked style="cursor:pointer;"> A5 (1 lembar)
+                            </label>
+                            <label style="display:flex; align-items:center; gap:5px; font-size:12px; color:#374151; cursor:pointer;">
+                                <input type="radio" name="v_layout" value="half" style="cursor:pointer;"> Setengah A4 <span style="color:#aaa; font-size:11px;">(sisa kosong)</span>
+                            </label>
+                            <label style="display:flex; align-items:center; gap:5px; font-size:12px; color:#374151; cursor:pointer;">
+                                <input type="radio" name="v_layout" value="2up" style="cursor:pointer;"> 2 voucher dalam 1 A4 <span style="color:#aaa; font-size:11px;">(hemat kertas)</span>
+                            </label>
+                        </div>
+                    </div>
+                    <div style="display:flex; justify-content:flex-end; gap:8px;">
+                        <button onclick="closeVoucherModal()"
+                                style="padding:8px 18px; border:1px solid #d1d5db; border-radius:6px; background:#fff; color:#374151; font-size:13px; cursor:pointer;">
+                            Batal
+                        </button>
+                        <button onclick="showVoucherPreview()"
+                                style="padding:8px 20px; border:none; border-radius:6px; background:#0F2C59; color:#fff; font-size:13px; font-weight:600; cursor:pointer;">
+                            👁️ Preview
+                        </button>
+                    </div>
                 </div>
             </div>
 
@@ -805,7 +822,11 @@
 
     function buildVoucherUrl() {
         var params = new URLSearchParams();
-        // Kolom custom (selalu dikirim)
+        // Layout kertas
+        var layoutEl = document.querySelector('input[name="v_layout"]:checked');
+        var layout = layoutEl ? layoutEl.value : '';
+        if (layout) params.set('layout', layout);
+        // Kolom custom
         var pihak = document.getElementById('v_pihak_nama').value.trim();
         var ket   = document.getElementById('v_keterangan').value.trim();
         if (pihak) params.set('custom_pihak', pihak);

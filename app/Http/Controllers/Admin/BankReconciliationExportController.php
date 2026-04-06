@@ -365,20 +365,26 @@ class BankReconciliationExportController extends Controller
         $sender      = $beneficiary;
 
         // Keterangan custom (jika diisi staf, override deskripsi bank)
-        $keterangan  = $request->input('custom_keterangan') ?: $desc;
+        $keterangan = $request->input('custom_keterangan') ?: $desc;
+
+        // Layout: 'half' = 1 voucher di setengah A4 | '2up' = 2 voucher dalam 1 A4
+        $layout    = $request->input('layout', '');
+        $half      = $layout === 'half';
+        $twoUp     = $layout === '2up';
+        $paperSize = ($half || $twoUp) ? 'a4' : 'a5';
 
         if ($isDebit) {
             $terbilang = $this->terbilang((float) $transaction->debit_amount) . ' Rupiah';
             $pdf = Pdf::loadView('admin.bank-reconciliation.bukti-pengeluaran',
-                compact('transaction', 'isKas', 'noVoucher', 'signers', 'terbilang', 'logoBase64', 'beneficiary', 'keterangan'))
-                ->setPaper('a5', 'portrait')
+                compact('transaction', 'isKas', 'noVoucher', 'signers', 'terbilang', 'logoBase64', 'beneficiary', 'keterangan', 'half', 'twoUp'))
+                ->setPaper($paperSize, 'portrait')
                 ->setOptions(['defaultFont' => 'Arial', 'isRemoteEnabled' => false, 'dpi' => 150]);
             $filename = 'bukti-pengeluaran-' . $id . '.pdf';
         } else {
             $terbilang = $this->terbilang((float) $transaction->credit_amount) . ' Rupiah';
             $pdf = Pdf::loadView('admin.bank-reconciliation.bukti-penerimaan',
-                compact('transaction', 'isKas', 'noVoucher', 'signers', 'logoBase64', 'sender', 'terbilang', 'keterangan'))
-                ->setPaper('a5', 'portrait')
+                compact('transaction', 'isKas', 'noVoucher', 'signers', 'logoBase64', 'sender', 'terbilang', 'keterangan', 'half', 'twoUp'))
+                ->setPaper($paperSize, 'portrait')
                 ->setOptions(['defaultFont' => 'Arial', 'isRemoteEnabled' => false, 'dpi' => 150]);
             $filename = 'bukti-penerimaan-' . $id . '.pdf';
         }

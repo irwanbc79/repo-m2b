@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <style>
-  @page { size: A5 portrait; margin: 8mm 10mm 8mm 10mm; }
+  @page { size: {{ ($half ?? false) ? 'A4' : 'A5' }} portrait; margin: {{ ($half ?? false) ? '6mm' : '8mm' }} 10mm; }
   * { margin: 0; padding: 0; box-sizing: border-box; }
   body { font-family: Arial, sans-serif; font-size: 8.5pt; color: #1a1a1a; }
 
@@ -232,5 +232,98 @@
   <div class="footer-strip">PT. MORA MULTI BERKAH · Dokumen Internal · Dicetak {{ now()->format('d/m/Y H:i') }}</div>
 
 </div>
+
+@if(($half ?? false) || ($twoUp ?? false))
+<div style="margin-top:8mm; border-top:1.5px dashed #aaa; text-align:center; padding-top:3px;">
+  <span style="font-size:7pt; color:#bbb; letter-spacing:1px;">✂ &nbsp; POTONG DI SINI &nbsp; ✂</span>
+</div>
+@endif
+
+@if($twoUp ?? false)
+<div style="margin-top:6mm;">
+<div class="voucher">
+  <div class="banner">BUKTI PENERIMAAN</div>
+  <table class="hdr-table">
+    <tr>
+      <td style="width:58px; padding:5px 5px 5px 7px;">
+        @if($logoBase64)
+          <img src="{{ $logoBase64 }}" style="width:50px; height:auto;" alt="M2B">
+        @endif
+      </td>
+      <td style="padding:5px 6px;">
+        <div class="company-name">PT. MORA MULTI BERKAH</div>
+        <div class="company-sub">Jl. Kapten Sumarsono, Komplek Graha Metropolitan Blok G No. 14 Medan Helvetia</div>
+        <div class="kas-bank-row">
+          <span class="cb {{ $isKas ? 'cb-on' : '' }}"></span> KAS &nbsp;
+          <span class="cb {{ !$isKas ? 'cb-on' : '' }}"></span> BANK
+        </div>
+      </td>
+      <td style="text-align:right; padding:5px 7px; vertical-align:top;">
+        <table class="meta-tbl" style="margin-left:auto;">
+          <tr><td class="meta-label">No. Voucher</td><td style="padding:1px 3px;">:</td><td class="meta-val">{{ $noVoucher }}</td></tr>
+          <tr><td class="meta-label">Giro/cek No.</td><td style="padding:1px 3px;">:</td><td class="meta-val">{{ $transaction->reference_number ?? '—' }}</td></tr>
+          <tr><td class="meta-label">Tanggal</td><td style="padding:1px 3px;">:</td><td class="meta-val" style="color:#0F2C59;">{{ $transaction->transaction_date->format('d/m/Y') }}</td></tr>
+        </table>
+      </td>
+    </tr>
+  </table>
+  <table class="from-table">
+    <tr>
+      <td class="from-label">Diterima dari</td>
+      <td style="width:6px; color:#0F2C59; font-weight:bold; padding:4px 2px;">:</td>
+      <td style="font-weight:bold;">{{ $sender }}</td>
+    </tr>
+    <tr>
+      <td class="from-label">Alamat</td>
+      <td style="width:6px; color:#0F2C59; font-weight:bold; padding:2px 2px;">:</td>
+      <td style="border-bottom:1px solid #b8ccdf; padding:2px 4px;">&nbsp;</td>
+    </tr>
+  </table>
+  <div class="blue-line"></div>
+  <table class="data-tbl">
+    <thead>
+      <tr>
+        <th class="col-nama">NAMA REKENING DAN IURAN</th>
+        <th class="col-kode">KODE REKENING</th>
+        <th class="col-jml">JUMLAH (Rp)</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td class="col-nama">
+          <span style="font-weight:bold;">{{ \App\Models\BankTransaction::CATEGORIES[$transaction->category] ?? 'Lainnya' }}</span>
+          <br><span style="font-size:7pt; color:#555;">{{ $keterangan ?? $transaction->description }}</span>
+        </td>
+        <td class="col-kode"></td>
+        <td class="col-jml">{{ number_format($transaction->credit_amount, 0, ',', '.') }}</td>
+      </tr>
+      @for($i = 0; $i < 2; $i++)
+      <tr style="height:18px;"><td class="col-nama">&nbsp;</td><td class="col-kode">&nbsp;</td><td class="col-jml">&nbsp;</td></tr>
+      @endfor
+      <tr class="total-row">
+        <td colspan="2" style="text-align:right; padding-right:8px; font-size:8.5pt;">TOTAL</td>
+        <td class="col-jml" style="font-size:9pt;">{{ number_format($transaction->credit_amount, 0, ',', '.') }}</td>
+      </tr>
+    </tbody>
+  </table>
+  <div class="terbilang-box"><span class="terbilang-label">Terbilang : </span>{{ $terbilang }}</div>
+  <div class="blue-line"></div>
+  <table style="width:100%; border-collapse:collapse;">
+    <tr>
+      <td class="sign-header-cell" style="width:33%;">Diperiksa Oleh</td>
+      <td class="sign-header-cell" style="width:34%;">Diketahui Oleh</td>
+      <td class="sign-header-cell" style="width:33%;">Kasir</td>
+    </tr>
+    <tr>
+      <td class="sign-body-cell">@if(!empty($signers['diperiksa_nama']))<span class="sign-name">{{ $signers['diperiksa_nama'] }}</span>@else &nbsp; @endif</td>
+      <td class="sign-body-cell"><span class="sign-name">{{ !empty($signers['diketahui_nama']) ? $signers['diketahui_nama'] : 'Ir. BENNY TARIGAN' }}</span></td>
+      <td class="sign-body-cell">@if(!empty($signers['kasir_nama']))<span class="sign-name">{{ $signers['kasir_nama'] }}</span>@else &nbsp; @endif</td>
+    </tr>
+  </table>
+  <div class="footer-strip">PT. MORA MULTI BERKAH · Dokumen Internal · Dicetak {{ now()->format('d/m/Y H:i') }}</div>
+</div>
+</div>
+@endif
+
 </body>
 </html>
