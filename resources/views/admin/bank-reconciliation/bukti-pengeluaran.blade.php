@@ -3,12 +3,16 @@
 <head>
 <meta charset="UTF-8">
 <style>
-  @page { size: {{ ($half ?? false) ? 'A4' : 'A5' }} portrait; margin: {{ ($half ?? false) ? '6mm' : '8mm' }} 10mm; }
+  /* NOTE: Tambahkan top/side margin agar tidak kepotong di printer 9.5"x11" dan posisinya turun sedikit. */
+  @page {
+    size: {{ ($half ?? false) ? 'A4' : 'A5' }} portrait;
+    margin: {{ ($half ?? false) ? '10mm' : '12mm' }} 12mm 10mm 12mm;
+  }
   * { margin: 0; padding: 0; box-sizing: border-box; }
   body { font-family: Arial, sans-serif; font-size: 8.5pt; color: #1a1a1a; }
 
   /* ── Outer wrapper ── */
-  .voucher { border: 1.5px solid #0F2C59; width: 100%; }
+  .voucher { border: 1.5px solid #0F2C59; width: calc(100% - 2mm); margin: 0 auto; }
 
   /* ── Top red banner ── */
   .banner {
