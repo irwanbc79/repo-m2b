@@ -17,9 +17,10 @@ class PayrollController extends Controller
 
         if (!$employee) {
             return response()->json([
-                'success' => false,
-                'message' => 'Data karyawan tidak ditemukan.',
+                    'success' => true,
+                    'message' => 'Data karyawan tidak ditemukan. Rekap gaji belum tersedia untuk akun ini.',
                 'data'    => [],
+                    'employee_missing' => true,
             ]);
         }
 
