@@ -28,6 +28,11 @@ class EmailInbox extends Component
     public $shipment_type = 'sea';
     public $selectedAttachments = [];
 
+    // Mode: 'new' = buat shipment baru, 'existing' = masukkan ke shipment existing
+    public $convertMode = 'new';
+    public $existingShipmentId = null;
+    public $existingShipmentSearch = '';
+
     public function mount()
     {
         $this->activeAccount = request()->query('mailbox', 'sales');
@@ -141,54 +146,70 @@ class EmailInbox extends Component
         $this->selectedAttachments = [];
     }
 
+    public function getExistingShipmentsProperty()
+    {
+        if (strlen($this->existingShipmentSearch) < 2) return collect();
+        $q = $this->existingShipmentSearch;
+        return Shipment::with('customer')
+            ->where(function($query) use ($q) {
+                $query->where('awb_number', 'like', "%{$q}%")
+                      ->orWhereHas('customer', fn($c) => $c->where('company_name', 'like', "%{$q}%"));
+            })
+            ->whereNotIn('status', ['completed', 'cancelled'])
+            ->orderByDesc('created_at')
+            ->limit(10)
+            ->get();
+    }
+
     public function convertToShipment()
     {
-        $this->validate([
-            'customer_id' => 'required',
-            'service_type' => 'required',
-            'shipment_type' => 'required',
-        ]);
-
-        DB::transaction(function () {
-            $prefix = strtoupper(substr($this->service_type, 0, 3));
-            $awb = $prefix . '-' . date('ymd') . '-' . rand(100, 999);
-
-            $shipment = Shipment::create([
-                'customer_id' => $this->customer_id,
-                'awb_number' => $awb,
-                'origin' => 'Email Conversion',
-                'destination' => 'Indonesia',
-                'service_type' => $this->service_type,
-                'shipment_type' => $this->shipment_type,
-                'status' => 'pending',
-                'notes' => "Converted from email: " . $this->selectedEmail['subject']
+        if ($this->convertMode === 'existing') {
+            $this->validate(['existingShipmentId' => 'required']);
+            $shipment = Shipment::findOrFail($this->existingShipmentId);
+        } else {
+            $this->validate([
+                'customer_id'   => 'required',
+                'service_type'  => 'required',
+                'shipment_type' => 'required',
             ]);
+        }
+
+        DB::transaction(function () use (&$shipment) {
+            if ($this->convertMode === 'new') {
+                $prefix   = strtoupper(substr($this->service_type, 0, 3));
+                $awb      = $prefix . '-' . date('ymd') . '-' . rand(100, 999);
+                $shipment = Shipment::create([
+                    'customer_id'   => $this->customer_id,
+                    'awb_number'    => $awb,
+                    'origin'        => 'Email Conversion',
+                    'destination'   => 'Indonesia',
+                    'service_type'  => $this->service_type,
+                    'shipment_type' => $this->shipment_type,
+                    'status'        => 'pending',
+                    'notes'         => "Converted from email: " . $this->selectedEmail['subject'],
+                ]);
+            }
 
             $uploader = Auth::id() ?? 1;
 
             foreach ($this->selectedEmail['attachments'] as $idx => $att) {
                 if (!in_array($idx, $this->selectedAttachments)) continue;
 
-                // Support both object and array (Livewire serialisasi ke array antar request)
-                $attArr      = is_array($att) ? $att : (array) $att;
-                $sourcePath  = $attArr['file_path'] ?? null;
-                $filename    = $attArr['filename'] ?? 'attachment';
-                $mimeType    = $attArr['mime_type'] ?? null;
-                $fileSize    = $attArr['size'] ?? null;
+                $attArr     = is_array($att) ? $att : (array) $att;
+                $sourcePath = $attArr['file_path'] ?? null;
+                $filename   = $attArr['filename'] ?? 'attachment';
+                $mimeType   = $attArr['mime_type'] ?? null;
+                $fileSize   = $attArr['size'] ?? null;
 
-                // Salin file ke documents/public/ agar tidak terhapus oleh cleanup job
-                $ext         = pathinfo($filename, PATHINFO_EXTENSION) ?: 'bin';
-                $safeName    = pathinfo($filename, PATHINFO_FILENAME);
-                $destPath    = 'documents/public/' . $safeName . '_' . uniqid() . '.' . $ext;
+                $ext      = pathinfo($filename, PATHINFO_EXTENSION) ?: 'bin';
+                $safeName = pathinfo($filename, PATHINFO_FILENAME);
+                $destPath = 'documents/public/' . $safeName . '_' . uniqid() . '.' . $ext;
 
                 if ($sourcePath && Storage::disk('public')->exists($sourcePath)) {
-                    // File sudah di public disk (hasil sync baru)
                     Storage::disk('public')->copy($sourcePath, $destPath);
                 } elseif ($sourcePath && Storage::disk('local')->exists($sourcePath)) {
-                    // File di local disk (hasil sync lama)
                     Storage::disk('public')->put($destPath, Storage::disk('local')->get($sourcePath));
                 } else {
-                    // File tidak ditemukan, tetap simpan path asli agar info tersedia
                     $destPath = $sourcePath;
                 }
 
@@ -206,8 +227,11 @@ class EmailInbox extends Component
             }
         });
 
-        session()->flash('message', 'Email berhasil dikonversi ke Shipment');
-        return redirect()->route('admin.shipments.index');
+        $msg = $this->convertMode === 'existing'
+            ? 'Dokumen berhasil ditambahkan ke Shipment #' . ($shipment->awb_number ?? '')
+            : 'Email berhasil dikonversi ke Shipment baru';
+        session()->flash('message', $msg);
+        return redirect()->route('admin.shipments.show', $shipment->id);
     }
 
     public $showReplyModal = false;

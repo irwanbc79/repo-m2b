@@ -233,7 +233,24 @@
                         <button onclick="document.getElementById('convertModal').classList.add('hidden')" class="text-gray-400 hover:text-red-500 transition-colors text-2xl leading-none">&times;</button>
                     </div>
                     <form wire:submit.prevent="convertToShipment">
-                        <div class="p-8 space-y-6">
+                        <div class="p-8 space-y-5">
+
+                            {{-- TOGGLE MODE --}}
+                            <div class="grid grid-cols-2 gap-2 p-1 bg-gray-100 rounded-xl">
+                                <button type="button" wire:click="$set('convertMode', 'new')"
+                                    class="py-2 rounded-lg text-xs font-black uppercase tracking-wider transition
+                                        {{ $convertMode === 'new' ? 'bg-white text-blue-700 shadow' : 'text-gray-400 hover:text-gray-600' }}">
+                                    ✨ Shipment Baru
+                                </button>
+                                <button type="button" wire:click="$set('convertMode', 'existing')"
+                                    class="py-2 rounded-lg text-xs font-black uppercase tracking-wider transition
+                                        {{ $convertMode === 'existing' ? 'bg-white text-indigo-700 shadow' : 'text-gray-400 hover:text-gray-600' }}">
+                                    📦 Shipment Berjalan
+                                </button>
+                            </div>
+
+                            {{-- MODE: BUAT BARU --}}
+                            @if($convertMode === 'new')
                             <div>
                                 <label class="block text-[10px] font-black text-gray-400 uppercase tracking-widest mb-2 ml-1">Customer Profile</label>
                                 <select wire:model="customer_id" class="w-full border-gray-200 rounded-xl text-sm font-bold focus:ring-blue-500 focus:border-blue-500 py-3 shadow-sm">
@@ -258,9 +275,57 @@
                                         <option value="sea">SEA FREIGHT</option>
                                         <option value="air">AIR FREIGHT</option>
                                     </select>
+                                </div>
+                            </div>
+                            @endif
+
+                            {{-- MODE: SHIPMENT BERJALAN --}}
+                            @if($convertMode === 'existing')
+                            <div x-data="{ open: false }">
+                                <label class="block text-[10px] font-black text-gray-400 uppercase tracking-widest mb-2 ml-1">Cari Shipment</label>
+                                <input type="text"
+                                    wire:model.live.debounce.300ms="existingShipmentSearch"
+                                    @focus="open = true" @click.away="open = false"
+                                    placeholder="Ketik No. AWB atau nama customer..."
+                                    class="w-full border-gray-200 rounded-xl text-sm font-bold focus:ring-indigo-500 py-3 shadow-sm">
+
+                                @if($existingShipmentId)
+                                    @php $sel = \App\Models\Shipment::with('customer')->find($existingShipmentId); @endphp
+                                    @if($sel)
+                                    <div class="mt-2 flex items-center gap-3 bg-indigo-50 border border-indigo-200 rounded-xl px-4 py-3">
+                                        <svg class="w-5 h-5 text-indigo-500 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path></svg>
+                                        <div class="min-w-0">
+                                            <p class="text-sm font-black text-indigo-800">{{ $sel->awb_number }}</p>
+                                            <p class="text-xs text-indigo-500">{{ $sel->customer->company_name ?? '-' }} · {{ strtoupper($sel->service_type) }} · {{ strtoupper($sel->status) }}</p>
+                                        </div>
+                                        <button type="button" wire:click="$set('existingShipmentId', null)" class="ml-auto text-indigo-300 hover:text-red-500 text-xl">&times;</button>
+                                    </div>
+                                    @endif
+                                @endif
+
+                                @if(strlen($existingShipmentSearch) >= 2 && !$existingShipmentId)
+                                <div class="mt-1 border border-gray-200 rounded-xl overflow-hidden shadow-lg bg-white">
+                                    @forelse($this->existingShipments as $s)
+                                    <button type="button" wire:click="$set('existingShipmentId', {{ $s->id }}); $set('existingShipmentSearch', '')"
+                                        class="w-full flex items-center gap-3 px-4 py-3 hover:bg-indigo-50 border-b border-gray-100 last:border-0 text-left transition">
+                                        <div class="shrink-0 w-8 h-8 rounded-lg bg-indigo-100 flex items-center justify-center">
+                                            <svg class="w-4 h-4 text-indigo-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10"></path></svg>
+                                        </div>
+                                        <div class="min-w-0">
+                                            <p class="text-sm font-bold text-gray-800">{{ $s->awb_number }}</p>
+                                            <p class="text-xs text-gray-400">{{ $s->customer->company_name ?? '-' }} · {{ strtoupper($s->service_type) }} · <span class="font-bold text-amber-500">{{ strtoupper($s->status) }}</span></p>
+                                        </div>
+                                    </button>
+                                    @empty
+                                    <p class="px-4 py-3 text-sm text-gray-400 text-center">Tidak ada shipment ditemukan</p>
+                                    @endforelse
+                                </div>
+                                @endif
+                            </div>
+                            @endif
 
                             {{-- PILIH DOKUMEN ATTACHMENT --}}
-                            <div class="mt-6">
+                            <div>
                                 <div class="flex items-center justify-between mb-3">
                                     <label class="block text-[10px] font-black text-gray-400 uppercase tracking-widest">📎 Pilih Dokumen Attachment</label>
                                     <div class="flex gap-2">
@@ -269,39 +334,29 @@
                                         <button type="button" wire:click="deselectAllAttachments" class="text-[10px] font-bold text-gray-500 hover:text-gray-700 uppercase tracking-wide">Deselect All</button>
                                     </div>
                                 </div>
-                                
                                 @if($selectedEmail && isset($selectedEmail['attachments']) && count($selectedEmail['attachments']) > 0)
                                     <div class="border border-gray-200 rounded-xl overflow-hidden bg-white">
-                                        <div class="max-h-64 overflow-y-auto">
+                                        <div class="max-h-48 overflow-y-auto">
                                             @foreach($selectedEmail['attachments'] as $index => $attachment)
-                                                <label class="flex items-center px-4 py-3 hover:bg-blue-50 cursor-pointer border-b border-gray-100 last:border-b-0 transition-colors group">
-                                                    <input 
-                                                        type="checkbox" 
-                                                        wire:model="selectedAttachments" 
-                                                        value="{{ $index }}"
-                                                        class="w-4 h-4 text-blue-600 border-gray-300 rounded focus:ring-blue-500 focus:ring-2"
-                                                    >
+                                                <label class="flex items-center px-4 py-2.5 hover:bg-blue-50 cursor-pointer border-b border-gray-100 last:border-b-0 transition-colors group">
+                                                    <input type="checkbox" wire:model="selectedAttachments" value="{{ $index }}"
+                                                        class="w-4 h-4 text-blue-600 border-gray-300 rounded focus:ring-blue-500 focus:ring-2">
                                                     <div class="ml-3 flex-1">
                                                         <div class="flex items-center justify-between">
-                                                            <span class="text-sm font-bold text-gray-800 group-hover:text-blue-600 transition-colors">
+                                                            <span class="text-sm font-bold text-gray-800 group-hover:text-blue-600 transition-colors truncate">
                                                                 {{ $attachment['filename'] ?? '-' }}
                                                             </span>
-                                                            <span class="text-xs font-semibold text-gray-400 ml-2">
+                                                            <span class="text-xs text-gray-400 ml-2 shrink-0">
                                                                 {{ number_format(($attachment['size'] ?? 0) / 1024, 1) }} KB
                                                             </span>
                                                         </div>
-                                                        @if($attachment['mime_type'] ?? null)
-                                                            <span class="text-[10px] font-medium text-gray-400 uppercase tracking-wide">
-                                                                {{ $attachment['mime_type'] }}
-                                                            </span>
-                                                        @endif
                                                     </div>
                                                 </label>
                                             @endforeach
                                         </div>
                                     </div>
                                     <p class="text-xs text-gray-500 mt-2 ml-1">
-                                        <span class="font-bold text-blue-600">{{ count($selectedAttachments) }}</span> dari 
+                                        <span class="font-bold text-blue-600">{{ count($selectedAttachments) }}</span> dari
                                         <span class="font-bold">{{ count($selectedEmail['attachments']) }}</span> dokumen dipilih
                                     </p>
                                 @else
@@ -310,12 +365,14 @@
                                     </div>
                                 @endif
                             </div>
-                                </div>
-                            </div>
                         </div>
                         <div class="px-8 py-5 bg-gray-50 flex justify-end gap-3 border-t border-gray-100">
                             <button type="button" onclick="document.getElementById('convertModal').classList.add('hidden')" class="px-6 py-2.5 text-xs font-black text-gray-400 uppercase tracking-widest hover:text-gray-600 transition-all">Batal</button>
-                            <button type="submit" class="px-8 py-2.5 bg-blue-600 text-white rounded-xl font-black text-xs uppercase tracking-widest shadow-lg shadow-blue-100 hover:bg-blue-700 transition-all">Create Shipment</button>
+                            <button type="submit"
+                                class="px-8 py-2.5 text-white rounded-xl font-black text-xs uppercase tracking-widest shadow-lg transition-all
+                                    {{ $convertMode === 'existing' ? 'bg-indigo-600 hover:bg-indigo-700 shadow-indigo-100' : 'bg-blue-600 hover:bg-blue-700 shadow-blue-100' }}">
+                                {{ $convertMode === 'existing' ? '+ Tambah ke Shipment' : 'Create Shipment' }}
+                            </button>
                         </div>
                     </form>
                 </div>
