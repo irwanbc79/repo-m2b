@@ -154,13 +154,34 @@ class EmailInbox extends Component
                 return;
             }
 
-            $messages = $targetFolder->messages()->getMessageByUid($email->uid);
-            if (!$messages || $messages->isEmpty()) {
+            // Cari message by UID — coba beberapa cara karena API berbeda per versi
+            $message = null;
+            try {
+                $result = $targetFolder->messages()->getMessageByUid($email->uid);
+                // getMessageByUid bisa return single Message atau MessageCollection
+                if ($result && is_object($result)) {
+                    $message = method_exists($result, 'first') ? $result->first() : $result;
+                }
+            } catch (\Throwable $e) {
+                // Fallback: cari lewat query UID manual
+            }
+
+            if (!$message) {
+                // Fallback: fetch dengan filter UID
+                try {
+                    $col = $targetFolder->messages()
+                        ->whereUid($email->uid)
+                        ->get();
+                    $message = $col->first();
+                } catch (\Throwable $e2) {
+                    // ignore
+                }
+            }
+
+            if (!$message) {
                 session()->flash('error', 'Email tidak ditemukan di server IMAP (mungkin sudah dihapus dari kotak masuk).');
                 return;
             }
-
-            $message  = $messages->first();
             $mailbox  = $email->mailbox;
             $uid      = $email->uid;
             $restored = 0;
