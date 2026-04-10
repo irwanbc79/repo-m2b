@@ -649,9 +649,16 @@ Route::middleware(['auth'])->group(function () {
             ]);
 
             $existingPath = null;
+            $diskName = 'public';
             foreach ($possiblePaths as $path) {
                 if ($path && \Illuminate\Support\Facades\Storage::disk('public')->exists($path)) {
                     $existingPath = $path;
+                    $diskName = 'public';
+                    break;
+                }
+                if ($path && \Illuminate\Support\Facades\Storage::disk('local')->exists($path)) {
+                    $existingPath = $path;
+                    $diskName = 'local';
                     break;
                 }
             }
@@ -665,7 +672,9 @@ Route::middleware(['auth'])->group(function () {
                 return response()->view('errors.document-not-found', ['document' => $doc], 404);
             }
 
-            $fullPath = storage_path('app/public/' . $existingPath);
+            $fullPath = $diskName === 'local'
+                ? storage_path('app/' . $existingPath)
+                : storage_path('app/public/' . $existingPath);
             $mimeType = $doc->mime_type ?? (function_exists('mime_content_type') ? mime_content_type($fullPath) : 'application/octet-stream');
 
             $inlineTypes = ['application/pdf', 'image/jpeg', 'image/jpg', 'image/png', 'image/gif', 'image/webp'];
@@ -703,9 +712,16 @@ Route::middleware(['auth'])->group(function () {
             ]);
 
             $existingPath = null;
+            $diskName = 'public';
             foreach ($possiblePaths as $path) {
                 if ($path && \Illuminate\Support\Facades\Storage::disk('public')->exists($path)) {
                     $existingPath = $path;
+                    $diskName = 'public';
+                    break;
+                }
+                if ($path && \Illuminate\Support\Facades\Storage::disk('local')->exists($path)) {
+                    $existingPath = $path;
+                    $diskName = 'local';
                     break;
                 }
             }
@@ -714,7 +730,9 @@ Route::middleware(['auth'])->group(function () {
                 return response()->view('errors.document-not-found', ['document' => $doc], 404);
             }
 
-            $fullPath = storage_path('app/public/' . $existingPath);
+            $fullPath = $diskName === 'local'
+                ? storage_path('app/' . $existingPath)
+                : storage_path('app/public/' . $existingPath);
             return response()->download($fullPath, $doc->filename ?? basename($existingPath));
 
         }

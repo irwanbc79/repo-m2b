@@ -430,7 +430,7 @@
                             </div>
                         </div>
                         @empty
-                        <p class="text-gray-500 text-sm text-center py-4">Belum ada produk di master. <a href="{{ route('master.products.index') }}" class="text-blue-600 hover:underline">Tambah produk</a></p>
+                        <p class="text-gray-500 text-sm text-center py-4">Belum ada produk di master. <a href="{{ route('products') }}" class="text-blue-600 hover:underline">Tambah produk</a></p>
                         @endforelse
                     </div>
                     @endif

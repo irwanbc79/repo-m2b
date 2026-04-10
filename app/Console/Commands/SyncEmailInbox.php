@@ -146,7 +146,7 @@ class SyncEmailInbox extends Command
                         $filename = $att->getName();
                         $path = "email_attachments/{$mailbox}/{$uid}";
                         $fullPath = "{$path}/" . Str::slug(pathinfo($filename, PATHINFO_FILENAME)) . "_" . uniqid() . "." . (pathinfo($filename, PATHINFO_EXTENSION) ?: 'bin');
-                        Storage::put($fullPath, $att->getContent());
+                        Storage::disk('public')->put($fullPath, $att->getContent());
 
                         DB::table('email_attachments')->insert([
                             'email_id' => $emailId, 'filename' => $filename, 'file_path'=> $fullPath,
