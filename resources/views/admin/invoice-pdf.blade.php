@@ -165,23 +165,6 @@
     </tr>
 </table>
 
-<!-- PRODUCT CATEGORY SUMMARY -->
-@php
-    $pdfCategoryLabels = ['import'=>'Import','export'=>'Export','domestic'=>'Domestic','consultation'=>'Consultation','reimbursement'=>'Reimbursement'];
-    $pdfCategoryColors = ['import'=>'#1d4ed8','export'=>'#065f46','domestic'=>'#9a3412','consultation'=>'#5b21b6','reimbursement'=>'#475569'];
-    $pdfCategoryBg    = ['import'=>'#dbeafe','export'=>'#d1fae5','domestic'=>'#ffedd5','consultation'=>'#ede9fe','reimbursement'=>'#f1f5f9'];
-    $pdfCategories = $invoice->items->whereNotNull('product_id')->map(fn($it)=>$it->product?->category)->filter()->unique()->values();
-@endphp
-@if($pdfCategories->isNotEmpty())
-<div style="margin-bottom:8px;padding:5px 8px;background:#f8fafc;border:1px solid #e2e8f0;border-radius:6px;display:flex;align-items:center;gap:6px;">
-    <span style="font-size:8px;font-weight:800;color:#94a3b8;text-transform:uppercase;letter-spacing:0.05em;">Kategori Layanan:</span>
-    @foreach($pdfCategories as $pdfCat)
-        @php $bg=$pdfCategoryBg[$pdfCat]??'#f1f5f9'; $tc=$pdfCategoryColors[$pdfCat]??'#475569'; $lbl=$pdfCategoryLabels[$pdfCat]??ucfirst($pdfCat); @endphp
-        <span style="background-color:{{ $bg }};color:{{ $tc }};font-size:8px;font-weight:800;padding:2px 7px;border-radius:9999px;text-transform:uppercase;letter-spacing:0.04em;">{{ $lbl }}</span>
-    @endforeach
-</div>
-@endif
-
 <!-- I. SERVICES -->
 @if($invoice->items->where('item_type', 'service')->count() > 0)
 <div class="section-title section-service">I. Jasa Pengurusan (Services)</div>
