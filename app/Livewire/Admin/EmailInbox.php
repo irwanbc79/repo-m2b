@@ -174,7 +174,9 @@ class EmailInbox extends Component
             ]);
         }
 
-        DB::transaction(function () use (&$shipment) {
+        $skippedFiles = [];
+
+        DB::transaction(function () use (&$shipment, &$skippedFiles) {
             if ($this->convertMode === 'new') {
                 $prefix   = strtoupper(substr($this->service_type, 0, 3));
                 $awb      = $prefix . '-' . date('ymd') . '-' . rand(100, 999);
@@ -191,6 +193,15 @@ class EmailInbox extends Component
             }
 
             $uploader = Auth::id() ?? 1;
+            $extMap   = [
+                'pdf'  => 'application/pdf',
+                'jpg'  => 'image/jpeg', 'jpeg' => 'image/jpeg',
+                'png'  => 'image/png',  'gif'  => 'image/gif', 'webp' => 'image/webp',
+                'xlsx' => 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+                'xls'  => 'application/vnd.ms-excel',
+                'docx' => 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+                'doc'  => 'application/msword',
+            ];
 
             foreach ($this->selectedEmail['attachments'] as $idx => $att) {
                 if (!in_array($idx, $this->selectedAttachments)) continue;
@@ -199,27 +210,9 @@ class EmailInbox extends Component
                 $sourcePath = $attArr['file_path'] ?? null;
                 $filename   = $attArr['filename'] ?? 'attachment';
                 $fileSize   = $attArr['size'] ?? null;
+                $ext        = strtolower(pathinfo($filename, PATHINFO_EXTENSION)) ?: 'bin';
+                $mimeType   = $attArr['mime_type'] ?? $extMap[$ext] ?? 'application/octet-stream';
 
-                // Pastikan mime_type benar — fallback dari ekstensi jika null/kosong
-                $mimeType   = $attArr['mime_type'] ?? null;
-                if (!$mimeType) {
-                    $extMap = [
-                        'pdf'  => 'application/pdf',
-                        'jpg'  => 'image/jpeg',
-                        'jpeg' => 'image/jpeg',
-                        'png'  => 'image/png',
-                        'gif'  => 'image/gif',
-                        'webp' => 'image/webp',
-                        'xlsx' => 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
-                        'xls'  => 'application/vnd.ms-excel',
-                        'docx' => 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
-                        'doc'  => 'application/msword',
-                    ];
-                    $ext      = strtolower(pathinfo($filename, PATHINFO_EXTENSION));
-                    $mimeType = $extMap[$ext] ?? 'application/octet-stream';
-                }
-
-                $ext      = pathinfo($filename, PATHINFO_EXTENSION) ?: 'bin';
                 $safeName = pathinfo($filename, PATHINFO_FILENAME);
                 $destPath = 'documents/public/' . $safeName . '_' . uniqid() . '.' . $ext;
 
@@ -228,7 +221,9 @@ class EmailInbox extends Component
                 } elseif ($sourcePath && Storage::disk('local')->exists($sourcePath)) {
                     Storage::disk('public')->put($destPath, Storage::disk('local')->get($sourcePath));
                 } else {
-                    $destPath = $sourcePath;
+                    // File sudah terhapus dari temporary storage — skip, jangan buat dokumen rusak
+                    $skippedFiles[] = $filename;
+                    continue;
                 }
 
                 Document::create([
@@ -244,6 +239,11 @@ class EmailInbox extends Component
                 ]);
             }
         });
+
+        if (!empty($skippedFiles)) {
+            $skippedList = implode(', ', $skippedFiles);
+            session()->flash('warning', count($skippedFiles) . ' file tidak dapat disalin karena sudah terhapus dari temporary storage (>30 hari): ' . $skippedList);
+        }
 
         $msg = $this->convertMode === 'existing'
             ? 'Dokumen berhasil ditambahkan ke Shipment #' . ($shipment->awb_number ?? '')

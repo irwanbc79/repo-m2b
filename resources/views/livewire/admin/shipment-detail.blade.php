@@ -88,6 +88,9 @@
         @if (session()->has('message'))
             <span class="text-xs font-bold text-green-600 bg-green-100 px-3 py-1 rounded-full animate-pulse">{{ session('message') }}</span>
         @endif
+        @if (session()->has('warning'))
+            <span class="text-xs font-bold text-amber-700 bg-amber-100 border border-amber-300 px-3 py-1 rounded-full">⚠️ {{ session('warning') }}</span>
+        @endif
     </div>
 
     {{-- KARTU UTAMA --}}

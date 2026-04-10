@@ -14,7 +14,7 @@ class CleanupEmailAttachments extends Command
     public function handle()
     {
         $basePath = 'email_attachments';
-        $ttlDays = 7;
+        $ttlDays = 30;
         $now = Carbon::now();
 
         if (!Storage::exists($basePath)) {
