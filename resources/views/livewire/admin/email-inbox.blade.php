@@ -148,41 +148,66 @@
 
                     @if(count($selectedEmail['attachments'] ?? []) > 0)
                     <div class="mt-8 pt-6 border-t border-gray-100">
-                        <h4 class="text-xs font-bold text-gray-500 uppercase mb-4 flex items-center gap-2">Lampiran ({{ count($selectedEmail['attachments']) }})</h4>
-                        <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                            @foreach($selectedEmail['attachments'] as $att)
+                        <div class="flex items-center justify-between mb-4">
+                            <h4 class="text-xs font-bold text-gray-500 uppercase flex items-center gap-2">
+                                Lampiran ({{ count($selectedEmail['attachments']) }})
+                            </h4>
+                            <div class="flex items-center gap-3">
+                                <span class="text-xs text-gray-400">
+                                    <span class="font-bold text-blue-600">{{ count($selectedAttachments) }}</span>/{{ count($selectedEmail['attachments']) }} dipilih untuk Convert
+                                </span>
+                                <button wire:click="selectAllAttachments" class="text-[10px] font-bold text-blue-600 hover:underline">Pilih Semua</button>
+                                <button wire:click="deselectAllAttachments" class="text-[10px] font-bold text-gray-400 hover:underline">Batal Semua</button>
+                            </div>
+                        </div>
+                        <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                            @foreach($selectedEmail['attachments'] as $index => $att)
                                 @php
-                                    // FIX: Menggunakan data_get agar aman membaca Object stdClass maupun Array
                                     $attName = data_get($att, 'name') ?? data_get($att, 'filename', 'Unknown');
-                                    $attId = data_get($att, 'id', 0);
+                                    $attId   = data_get($att, 'id', 0);
                                     $attSize = data_get($att, 'size', 0);
-                                    $ext = strtolower(pathinfo($attName, PATHINFO_EXTENSION));
-                                    
+                                    $ext     = strtolower(pathinfo($attName, PATHINFO_EXTENSION));
                                     $isImage = in_array($ext, ['jpg', 'jpeg', 'png', 'gif', 'webp']);
-                                    $isPdf = $ext === 'pdf';
-                                    $iconBg = $isImage ? 'bg-emerald-50 text-emerald-600' : ($isPdf ? 'bg-rose-50 text-rose-600' : 'bg-blue-50 text-blue-600');
+                                    $isPdf   = $ext === 'pdf';
+                                    $iconBg  = $isImage ? 'bg-emerald-50 text-emerald-600' : ($isPdf ? 'bg-rose-50 text-rose-600' : 'bg-blue-50 text-blue-600');
+                                    $isChecked = in_array($index, $selectedAttachments);
                                 @endphp
-                                <div class="flex items-center justify-between bg-white p-3 rounded-xl border border-gray-200 hover:shadow-md transition group">
-                                    <div class="flex items-center gap-3 min-w-0">
-                                        <div class="{{ $iconBg }} p-2.5 rounded-lg shrink-0"><svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 21h10a2 2 0 002-2V9.414a1 1 0 00-.293-.707l-5.414-5.414A1 1 0 0012.586 3H7a2 2 0 00-2 2v14a2 2 0 002 2z"></path></svg></div>
-                                        <div class="min-w-0">
-                                            <p class="text-xs font-bold text-gray-800 truncate">{{ $attName }}</p>
-                                            <p class="text-[10px] text-gray-400 font-bold uppercase tracking-tight">
-                                                {{ is_numeric($attSize) ? number_format($attSize / 1024, 1) . ' KB' : $attSize }}
-                                            </p>
-                                        </div>
+                                <label class="flex items-center gap-3 bg-white p-3 rounded-xl border-2 cursor-pointer transition group
+                                    {{ $isChecked ? 'border-blue-400 bg-blue-50/30 shadow-sm' : 'border-gray-200 hover:border-blue-200 hover:shadow-md' }}">
+                                    {{-- Checkbox --}}
+                                    <input type="checkbox"
+                                        wire:model.live="selectedAttachments"
+                                        value="{{ $index }}"
+                                        class="w-4 h-4 rounded text-blue-600 border-gray-300 focus:ring-blue-500 shrink-0 cursor-pointer">
+
+                                    {{-- Icon --}}
+                                    <div class="{{ $iconBg }} p-2 rounded-lg shrink-0">
+                                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 21h10a2 2 0 002-2V9.414a1 1 0 00-.293-.707l-5.414-5.414A1 1 0 0012.586 3H7a2 2 0 00-2 2v14a2 2 0 002 2z"></path></svg>
                                     </div>
-                                    <div class="flex items-center gap-2">
+
+                                    {{-- Info --}}
+                                    <div class="min-w-0 flex-1">
+                                        <p class="text-xs font-bold text-gray-800 truncate">{{ $attName }}</p>
+                                        <p class="text-[10px] text-gray-400 font-bold uppercase tracking-tight">
+                                            {{ is_numeric($attSize) ? number_format($attSize / 1024, 1) . ' KB' : $attSize }}
+                                        </p>
+                                    </div>
+
+                                    {{-- Actions --}}
+                                    <div class="flex items-center gap-1 shrink-0" onclick="event.preventDefault()">
                                         @if($isImage || $isPdf)
-                                            <button type="button" 
+                                            <button type="button"
                                                     onclick="openPreviewModal('{{ route('admin.inbox.attachment', ['mailbox' => $activeAccount, 'id' => $attId]) . '?mode=inline' }}', '{{ addslashes($attName) }}', '{{ $isImage ? 'image' : 'pdf' }}')"
-                                                    class="p-2 bg-emerald-50 text-emerald-600 rounded-lg hover:bg-emerald-100 transition shadow-sm" title="Preview Lampiran">
+                                                    class="p-1.5 bg-emerald-50 text-emerald-600 rounded-lg hover:bg-emerald-100 transition" title="Preview">
                                                 <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"></path><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"></path></svg>
                                             </button>
                                         @endif
-                                        <a href="{{ route('admin.inbox.attachment', ['mailbox' => $activeAccount, 'id' => $attId]) }}" class="p-2 text-slate-300 hover:text-blue-600 transition"><svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"></path></svg></a>
+                                        <a href="{{ route('admin.inbox.attachment', ['mailbox' => $activeAccount, 'id' => $attId]) }}"
+                                           class="p-1.5 text-gray-300 hover:text-blue-600 transition" title="Download">
+                                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"></path></svg>
+                                        </a>
                                     </div>
-                                </div>
+                                </label>
                             @endforeach
                         </div>
                     </div>
