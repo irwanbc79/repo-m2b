@@ -198,8 +198,26 @@ class EmailInbox extends Component
                 $attArr     = is_array($att) ? $att : (array) $att;
                 $sourcePath = $attArr['file_path'] ?? null;
                 $filename   = $attArr['filename'] ?? 'attachment';
-                $mimeType   = $attArr['mime_type'] ?? null;
                 $fileSize   = $attArr['size'] ?? null;
+
+                // Pastikan mime_type benar — fallback dari ekstensi jika null/kosong
+                $mimeType   = $attArr['mime_type'] ?? null;
+                if (!$mimeType) {
+                    $extMap = [
+                        'pdf'  => 'application/pdf',
+                        'jpg'  => 'image/jpeg',
+                        'jpeg' => 'image/jpeg',
+                        'png'  => 'image/png',
+                        'gif'  => 'image/gif',
+                        'webp' => 'image/webp',
+                        'xlsx' => 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+                        'xls'  => 'application/vnd.ms-excel',
+                        'docx' => 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+                        'doc'  => 'application/msword',
+                    ];
+                    $ext      = strtolower(pathinfo($filename, PATHINFO_EXTENSION));
+                    $mimeType = $extMap[$ext] ?? 'application/octet-stream';
+                }
 
                 $ext      = pathinfo($filename, PATHINFO_EXTENSION) ?: 'bin';
                 $safeName = pathinfo($filename, PATHINFO_FILENAME);

@@ -129,7 +129,7 @@
                         <button wire:click="openReplyModal" class="bg-green-600 text-white px-5 py-3 rounded-xl font-black text-xs uppercase tracking-widest hover:bg-green-700 transition shadow-xl shadow-green-100 flex items-center gap-2">
                             ✉️ Reply
                         </button>
-                        <button onclick="document.getElementById('convertModal').classList.remove('hidden')" class="bg-blue-600 text-white px-5 py-3 rounded-xl font-black text-xs uppercase tracking-widest hover:bg-blue-700 transition shadow-xl shadow-blue-100 flex items-center gap-2">
+                        <button wire:click="$set('showConvertModal', true)" class="bg-blue-600 text-white px-5 py-3 rounded-xl font-black text-xs uppercase tracking-widest hover:bg-blue-700 transition shadow-xl shadow-blue-100 flex items-center gap-2">
                             📦 Convert to Shipment
                         </button>
                     </div>
@@ -223,14 +223,15 @@
     </div>
 
     {{-- MODAL CONVERT --}}
-    <div id="convertModal" class="hidden fixed inset-0 z-[9999] overflow-y-auto" aria-labelledby="modal-title" role="dialog" aria-modal="true">
+    @if($showConvertModal)
+    <div class="fixed inset-0 z-[9999] overflow-y-auto" aria-labelledby="modal-title" role="dialog" aria-modal="true">
         <div class="flex items-center justify-center min-h-screen p-4 text-center">
-            <div class="fixed inset-0 bg-slate-900/60 backdrop-blur-sm transition-opacity" onclick="document.getElementById('convertModal').classList.add('hidden')"></div>
+            <div class="fixed inset-0 bg-slate-900/60 backdrop-blur-sm transition-opacity" wire:click="$set('showConvertModal', false)"></div>
             <div class="inline-block align-bottom bg-white rounded-3xl text-left overflow-hidden shadow-2xl transform transition-all sm:max-w-lg sm:w-full relative z-[10000]">
                 <div class="bg-white">
                     <div class="px-8 py-6 border-b border-gray-50 flex justify-between items-center bg-gray-50/50">
                         <h3 class="font-black text-gray-800 uppercase text-sm tracking-widest">Konversi ke Shipment</h3>
-                        <button onclick="document.getElementById('convertModal').classList.add('hidden')" class="text-gray-400 hover:text-red-500 transition-colors text-2xl leading-none">&times;</button>
+                        <button wire:click="$set('showConvertModal', false)" class="text-gray-400 hover:text-red-500 transition-colors text-2xl leading-none">&times;</button>
                     </div>
                     <form wire:submit.prevent="convertToShipment">
                         <div class="p-8 space-y-5">
@@ -367,7 +368,7 @@
                             </div>
                         </div>
                         <div class="px-8 py-5 bg-gray-50 flex justify-end gap-3 border-t border-gray-100">
-                            <button type="button" onclick="document.getElementById('convertModal').classList.add('hidden')" class="px-6 py-2.5 text-xs font-black text-gray-400 uppercase tracking-widest hover:text-gray-600 transition-all">Batal</button>
+                            <button type="button" wire:click="$set('showConvertModal', false)" class="px-6 py-2.5 text-xs font-black text-gray-400 uppercase tracking-widest hover:text-gray-600 transition-all">Batal</button>
                             <button type="submit"
                                 class="px-8 py-2.5 text-white rounded-xl font-black text-xs uppercase tracking-widest shadow-lg transition-all
                                     {{ $convertMode === 'existing' ? 'bg-indigo-600 hover:bg-indigo-700 shadow-indigo-100' : 'bg-blue-600 hover:bg-blue-700 shadow-blue-100' }}">
@@ -379,6 +380,7 @@
             </div>
         </div>
     </div>
+    @endif
 
     {{-- REPLY MODAL --}}
     @if($showReplyModal)
