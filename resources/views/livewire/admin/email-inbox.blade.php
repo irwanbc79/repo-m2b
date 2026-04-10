@@ -259,15 +259,15 @@
                                                     <div class="ml-3 flex-1">
                                                         <div class="flex items-center justify-between">
                                                             <span class="text-sm font-bold text-gray-800 group-hover:text-blue-600 transition-colors">
-                                                                {{ $attachment->filename }}
+                                                                {{ $attachment['filename'] ?? '-' }}
                                                             </span>
                                                             <span class="text-xs font-semibold text-gray-400 ml-2">
-                                                                {{ number_format($attachment->size / 1024, 1) }} KB
+                                                                {{ number_format(($attachment['size'] ?? 0) / 1024, 1) }} KB
                                                             </span>
                                                         </div>
-                                                        @if($attachment->mime_type)
+                                                        @if($attachment['mime_type'] ?? null)
                                                             <span class="text-[10px] font-medium text-gray-400 uppercase tracking-wide">
-                                                                {{ $attachment->mime_type }}
+                                                                {{ $attachment['mime_type'] }}
                                                             </span>
                                                         @endif
                                                     </div>
