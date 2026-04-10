@@ -8,6 +8,22 @@ if (!hash_equals('sha256=' . hash_hmac('sha256', $payload, $secret), $signature)
     die('Forbidden');
 }
 
-$output = shell_exec('cd /home/u301249154/domains/m2b.co.id/public_html/portal && git pull origin main 2>&1');
+$base = '/home/u301249154/domains/m2b.co.id/public_html/portal';
+$php  = PHP_BINARY ?: 'php';
+
+$commands = [
+    "cd {$base} && git pull origin main",
+    "{$php} {$base}/artisan route:clear",
+    "{$php} {$base}/artisan config:clear",
+    "{$php} {$base}/artisan view:clear",
+    "{$php} {$base}/artisan cache:clear",
+    "{$php} {$base}/artisan optimize",
+];
+
+$output = '';
+foreach ($commands as $cmd) {
+    $output .= "$ {$cmd}\n" . shell_exec("{$cmd} 2>&1") . "\n";
+}
+
 file_put_contents('deploy.log', date('Y-m-d H:i:s') . "\n" . $output . "\n\n", FILE_APPEND);
 echo "OK: " . date('Y-m-d H:i:s');

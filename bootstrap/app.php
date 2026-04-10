@@ -82,7 +82,15 @@ return Application::configure(basePath: dirname(__DIR__))
     })
 
     ->withExceptions(function (Exceptions $exceptions) {
-        // Custom exception handling (optional)
+        // Tangani GET /livewire/update yang di-cache oleh LiteSpeed — redirect daripada error 405
+        $exceptions->render(function (
+            \Symfony\Component\HttpKernel\Exception\MethodNotAllowedHttpException $e,
+            \Illuminate\Http\Request $request
+        ) {
+            if ($request->is('livewire/*') && $request->isMethod('get')) {
+                return redirect('/admin/dashboard');
+            }
+        });
     })
 
     ->create();
