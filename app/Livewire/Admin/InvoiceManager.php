@@ -23,7 +23,7 @@ class InvoiceManager extends Component
 {
     use WithPagination, WithFileUploads;
 
-    public $filterStatus = '', $filterType = '';
+    public $filterStatus = '', $filterType = '', $filterCategory = '';
     public $search = '';
 
     // Modal State
@@ -95,7 +95,7 @@ class InvoiceManager extends Component
 
     public function render()
     {
-        $query = Invoice::with(['customer', 'shipment.customer']);
+        $query = Invoice::with(['customer', 'shipment.customer', 'items.product']);
 
         // Apply search filter
         if ($this->search) {
@@ -119,6 +119,11 @@ class InvoiceManager extends Component
         // Apply type filter
         if ($this->filterType) {
             $query->where('type', $this->filterType);
+        }
+
+        // Apply product category filter
+        if ($this->filterCategory) {
+            $query->whereHas('items.product', fn($q) => $q->where('category', $this->filterCategory));
         }
 
         $invoices = $query->latest()->paginate(25);

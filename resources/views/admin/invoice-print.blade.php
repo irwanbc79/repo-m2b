@@ -215,6 +215,34 @@
 
         {{-- TABLES --}}
         <div class="flex-1">
+            {{-- PRODUCT CATEGORY SUMMARY --}}
+            @php
+                $printCategoryColors = [
+                    'import'        => ['bg' => '#dbeafe', 'text' => '#1d4ed8', 'label' => 'Import'],
+                    'export'        => ['bg' => '#d1fae5', 'text' => '#065f46', 'label' => 'Export'],
+                    'domestic'      => ['bg' => '#ffedd5', 'text' => '#9a3412', 'label' => 'Domestic'],
+                    'consultation'  => ['bg' => '#ede9fe', 'text' => '#5b21b6', 'label' => 'Consultation'],
+                    'reimbursement' => ['bg' => '#f1f5f9', 'text' => '#475569', 'label' => 'Reimbursement'],
+                ];
+                $printCategories = $invoice->items
+                    ->whereNotNull('product_id')
+                    ->map(fn($it) => $it->product?->category)
+                    ->filter()
+                    ->unique()
+                    ->values();
+            @endphp
+            @if($printCategories->isNotEmpty())
+            <div class="flex items-center gap-2 mb-3 p-2 bg-slate-50 border border-slate-200 rounded-lg">
+                <span class="text-[10px] font-bold text-slate-400 uppercase tracking-wider whitespace-nowrap">Kategori Layanan:</span>
+                <div class="flex flex-wrap gap-1.5">
+                    @foreach($printCategories as $pCat)
+                        @php $pc = $printCategoryColors[$pCat] ?? ['bg'=>'#f1f5f9','text'=>'#475569','label'=>ucfirst($pCat)]; @endphp
+                        <span style="background-color:{{ $pc['bg'] }};color:{{ $pc['text'] }}" class="text-[10px] font-black px-2.5 py-0.5 rounded-full uppercase tracking-wide">{{ $pc['label'] }}</span>
+                    @endforeach
+                </div>
+            </div>
+            @endif
+
             {{-- I. SERVICES --}}
             @if($invoice->items->where('item_type', 'service')->count() > 0)
             <div class="mb-4">

@@ -77,6 +77,16 @@
                     <option value="commercial">Commercial</option>
                     <option value="proforma">Proforma</option>
                 </select>
+
+                {{-- Filter Kategori Produk --}}
+                <select wire:model.live="filterCategory" class="border-gray-300 rounded-lg text-sm py-2 px-3 focus:ring-2 focus:ring-blue-500">
+                    <option value="">Semua Kategori</option>
+                    <option value="import">Import</option>
+                    <option value="export">Export</option>
+                    <option value="domestic">Domestic</option>
+                    <option value="consultation">Consultation</option>
+                    <option value="reimbursement">Reimbursement</option>
+                </select>
             </div>
             
             @unless(auth()->user()->hasRole('auditor'))
@@ -93,6 +103,7 @@
                     <tr>
                         <th class="px-6 py-4">Invoice No / Tipe</th>
                         <th class="px-6 py-4">Customer</th>
+                        <th class="px-4 py-4">Kategori Produk</th>
                         <th class="px-6 py-4">Jatuh Tempo</th>
                         <th class="px-6 py-4">Total</th>
                         <th class="px-6 py-4">Status</th>
@@ -117,6 +128,32 @@
                                 <div class="text-xs text-gray-500">Ref: {{ $inv->shipment->awb_number }}</div>
                             @else
                                 <div class="text-xs text-orange-500 italic">No Shipment (DP)</div>
+                            @endif
+                        </td>
+                        <td class="px-4 py-4">
+                            @php
+                                $categoryColors = [
+                                    'import'        => 'bg-blue-100 text-blue-700',
+                                    'export'        => 'bg-emerald-100 text-emerald-700',
+                                    'domestic'      => 'bg-orange-100 text-orange-700',
+                                    'consultation'  => 'bg-purple-100 text-purple-700',
+                                    'reimbursement' => 'bg-gray-100 text-gray-600',
+                                ];
+                                $categories = $inv->items
+                                    ->whereNotNull('product_id')
+                                    ->map(fn($it) => $it->product?->category)
+                                    ->filter()
+                                    ->unique()
+                                    ->values();
+                            @endphp
+                            @if($categories->isEmpty())
+                                <span class="text-xs text-gray-400 italic">-</span>
+                            @else
+                                <div class="flex flex-wrap gap-1">
+                                @foreach($categories as $cat)
+                                    <span class="text-[10px] font-bold px-2 py-0.5 rounded-full uppercase {{ $categoryColors[$cat] ?? 'bg-gray-100 text-gray-600' }}">{{ $cat }}</span>
+                                @endforeach
+                                </div>
                             @endif
                         </td>
                         <td class="px-6 py-4 text-red-500 font-bold text-xs">{{ $inv->due_date ? date('d M Y', strtotime($inv->due_date)) : '-' }}</td>
@@ -366,7 +403,7 @@
 
                                                 {{-- Shipment Reference (Misal: OCTO) --}}
                         <div class="lg:col-span-2">
-                            <label class="block text-[10px] font-black text-gray-400 uppercase tracking-widest mb-1.5 ml-1">Shipment Ref (Layanan Milik) <span class="text-red-500">*</span></label>
+                            <label class="block text-[10px] font-black text-gray-400 uppercase tracking-widest mb-1.5 ml-1">Shipment Ref (Layanan Milik) <span class="text-gray-400 font-normal normal-case tracking-normal">(opsional)</span></label>
                             <!-- Searchable Dropdown with Alpine.js -->
                             <div wire:ignore x-data="{
                                 open: false,
