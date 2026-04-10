@@ -34,3 +34,11 @@
     RewriteRule .* - [E=noabort:1]
     RewriteRule .* - [E=noconntimeout:1]
 </IfModule>
+
+# Jangan cache route Livewire — mencegah LiteSpeed meng-cache POST endpoint
+<IfModule mod_headers.c>
+    <If "%{REQUEST_URI} =~ m|^/livewire/|">
+        Header set Cache-Control "no-store, no-cache, must-revalidate"
+        Header set X-LiteSpeed-Cache-Control "no-cache"
+    </If>
+</IfModule>
