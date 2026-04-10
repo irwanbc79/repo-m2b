@@ -6,11 +6,13 @@ use Livewire\Component;
 use Livewire\WithPagination;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Storage;
+use Illuminate\Support\Str;
 use App\Models\Shipment;
 use App\Models\Customer;
 use App\Models\Document;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Artisan;
+use Webklex\IMAP\Facades\Client;
 use Carbon\Carbon;
 
 class EmailInbox extends Component
@@ -107,6 +109,98 @@ class EmailInbox extends Component
         
         // Auto-select all attachments by default
         $this->selectedAttachments = array_keys($attachments);
+
+        // Cek apakah ada attachment yang filenya sudah hilang dari disk
+        $this->checkMissingAttachments();
+    }
+
+    public $hasMissingAttachments = false;
+
+    protected function checkMissingAttachments()
+    {
+        if (!$this->selectedEmail) return;
+        foreach ($this->selectedEmail['attachments'] as $att) {
+            $path = $att['file_path'] ?? null;
+            if ($path && !Storage::disk('public')->exists($path) && !Storage::disk('local')->exists($path)) {
+                $this->hasMissingAttachments = true;
+                return;
+            }
+        }
+        $this->hasMissingAttachments = false;
+    }
+
+    public function redownloadAttachments()
+    {
+        if (!$this->selectedEmail) return;
+
+        $email = DB::table('emails')->where('id', $this->selectedEmail['db_id'])->first();
+        if (!$email) return;
+
+        try {
+            $client = Client::account($email->mailbox);
+            if (!$client->isConnected()) $client->connect();
+
+            $folders = $client->getFolders();
+            $targetFolder = null;
+            foreach ($folders as $folder) {
+                $name = strtolower($folder->name);
+                if ($name === 'inbox' || str_contains($name, 'fokus') || str_contains($name, 'focused')) {
+                    $targetFolder = $folder;
+                    break;
+                }
+            }
+            if (!$targetFolder) {
+                session()->flash('error', 'Folder INBOX tidak ditemukan di server email.');
+                return;
+            }
+
+            $messages = $targetFolder->messages()->getMessageByUid($email->uid);
+            if (!$messages || $messages->isEmpty()) {
+                session()->flash('error', 'Email tidak ditemukan di server IMAP (mungkin sudah dihapus dari kotak masuk).');
+                return;
+            }
+
+            $message  = $messages->first();
+            $mailbox  = $email->mailbox;
+            $uid      = $email->uid;
+            $restored = 0;
+
+            foreach ($message->getAttachments() as $att) {
+                $filename = $att->getName();
+                $slug     = Str::slug(pathinfo($filename, PATHINFO_FILENAME));
+                $ext      = pathinfo($filename, PATHINFO_EXTENSION) ?: 'bin';
+                $newPath  = "email_attachments/{$mailbox}/{$uid}/{$slug}_" . uniqid() . ".{$ext}";
+
+                Storage::disk('public')->put($newPath, $att->getContent());
+
+                // Update path di tabel email_attachments (cari by filename yang mirip)
+                $record = DB::table('email_attachments')
+                    ->where('email_id', $email->id)
+                    ->where('filename', $filename)
+                    ->first();
+
+                if ($record) {
+                    DB::table('email_attachments')->where('id', $record->id)->update(['file_path' => $newPath]);
+                } else {
+                    DB::table('email_attachments')->insert([
+                        'email_id'  => $email->id,
+                        'filename'  => $filename,
+                        'file_path' => $newPath,
+                        'mime_type' => $att->getMimeType(),
+                        'size'      => $att->getSize(),
+                        'created_at' => now(),
+                    ]);
+                }
+                $restored++;
+            }
+
+            // Reload attachments setelah restore
+            $this->selectEmail($email->id);
+            session()->flash('message', "{$restored} file berhasil diunduh ulang dari server email.");
+
+        } catch (\Throwable $e) {
+            session()->flash('error', 'Gagal download ulang: ' . $e->getMessage());
+        }
     }
 
     public function syncNow()

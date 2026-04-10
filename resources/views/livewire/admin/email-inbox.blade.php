@@ -148,6 +148,27 @@
 
                     @if(count($selectedEmail['attachments'] ?? []) > 0)
                     <div class="mt-8 pt-6 border-t border-gray-100">
+
+                        {{-- Banner: file hilang dari server --}}
+                        @if($hasMissingAttachments)
+                        <div class="mb-4 flex items-center justify-between bg-amber-50 border border-amber-200 rounded-xl px-4 py-3">
+                            <div class="flex items-center gap-2">
+                                <span class="text-amber-500 text-lg">⚠️</span>
+                                <div>
+                                    <p class="text-xs font-bold text-amber-800">File lampiran sudah terhapus dari server</p>
+                                    <p class="text-[10px] text-amber-600">File akan diunduh ulang dari server email sebelum bisa di-convert.</p>
+                                </div>
+                            </div>
+                            <button wire:click="redownloadAttachments"
+                                wire:loading.attr="disabled"
+                                wire:target="redownloadAttachments"
+                                class="shrink-0 bg-amber-500 hover:bg-amber-600 text-white text-xs font-black px-4 py-2 rounded-lg transition shadow-sm flex items-center gap-2">
+                                <span wire:loading.remove wire:target="redownloadAttachments">🔄 Download Ulang</span>
+                                <span wire:loading wire:target="redownloadAttachments">⏳ Mengunduh...</span>
+                            </button>
+                        </div>
+                        @endif
+
                         <div class="flex items-center justify-between mb-4">
                             <h4 class="text-xs font-bold text-gray-500 uppercase flex items-center gap-2">
                                 Lampiran ({{ count($selectedEmail['attachments']) }})
@@ -163,17 +184,19 @@
                         <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
                             @foreach($selectedEmail['attachments'] as $index => $att)
                                 @php
-                                    $attName = data_get($att, 'name') ?? data_get($att, 'filename', 'Unknown');
-                                    $attId   = data_get($att, 'id', 0);
-                                    $attSize = data_get($att, 'size', 0);
-                                    $ext     = strtolower(pathinfo($attName, PATHINFO_EXTENSION));
-                                    $isImage = in_array($ext, ['jpg', 'jpeg', 'png', 'gif', 'webp']);
-                                    $isPdf   = $ext === 'pdf';
-                                    $iconBg  = $isImage ? 'bg-emerald-50 text-emerald-600' : ($isPdf ? 'bg-rose-50 text-rose-600' : 'bg-blue-50 text-blue-600');
-                                    $isChecked = in_array($index, $selectedAttachments);
+                                    $attName    = data_get($att, 'name') ?? data_get($att, 'filename', 'Unknown');
+                                    $attId      = data_get($att, 'id', 0);
+                                    $attSize    = data_get($att, 'size', 0);
+                                    $attPath    = data_get($att, 'file_path');
+                                    $ext        = strtolower(pathinfo($attName, PATHINFO_EXTENSION));
+                                    $isImage    = in_array($ext, ['jpg', 'jpeg', 'png', 'gif', 'webp']);
+                                    $isPdf      = $ext === 'pdf';
+                                    $iconBg     = $isImage ? 'bg-emerald-50 text-emerald-600' : ($isPdf ? 'bg-rose-50 text-rose-600' : 'bg-blue-50 text-blue-600');
+                                    $isChecked  = in_array($index, $selectedAttachments);
+                                    $fileMissing = $attPath && !\Illuminate\Support\Facades\Storage::disk('public')->exists($attPath) && !\Illuminate\Support\Facades\Storage::disk('local')->exists($attPath);
                                 @endphp
                                 <label class="flex items-center gap-3 bg-white p-3 rounded-xl border-2 cursor-pointer transition group
-                                    {{ $isChecked ? 'border-blue-400 bg-blue-50/30 shadow-sm' : 'border-gray-200 hover:border-blue-200 hover:shadow-md' }}">
+                                    {{ $fileMissing ? 'border-amber-200 bg-amber-50/30 opacity-70' : ($isChecked ? 'border-blue-400 bg-blue-50/30 shadow-sm' : 'border-gray-200 hover:border-blue-200 hover:shadow-md') }}">
                                     {{-- Checkbox --}}
                                     <input type="checkbox"
                                         wire:model.live="selectedAttachments"
@@ -188,8 +211,8 @@
                                     {{-- Info --}}
                                     <div class="min-w-0 flex-1">
                                         <p class="text-xs font-bold text-gray-800 truncate">{{ $attName }}</p>
-                                        <p class="text-[10px] text-gray-400 font-bold uppercase tracking-tight">
-                                            {{ is_numeric($attSize) ? number_format($attSize / 1024, 1) . ' KB' : $attSize }}
+                                        <p class="text-[10px] font-bold uppercase tracking-tight {{ $fileMissing ? 'text-amber-500' : 'text-gray-400' }}">
+                                            {{ $fileMissing ? '⚠ File terhapus' : (is_numeric($attSize) ? number_format($attSize / 1024, 1) . ' KB' : $attSize) }}
                                         </p>
                                     </div>
 
