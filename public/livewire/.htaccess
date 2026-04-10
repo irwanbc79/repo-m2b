@@ -1,0 +1,18 @@
+<IfModule mod_headers.c>
+    Header always set Cache-Control "no-store, no-cache, must-revalidate, max-age=0"
+    Header always set Pragma "no-cache"
+    Header always set X-LiteSpeed-Cache-Control "no-cache"
+    Header always unset X-LiteSpeed-Cache
+</IfModule>
+
+<IfModule LiteSpeed>
+    CacheDisable on
+    RewriteRule .* - [E=noabort:1]
+    RewriteRule .* - [E=noconntimeout:1]
+</IfModule>
+
+# Prevent LiteSpeed from caching this directory
+<IfModule mod_rewrite.c>
+    RewriteEngine On
+    RewriteRule .* - [E=no-cache:1]
+</IfModule>

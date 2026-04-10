@@ -54,6 +54,15 @@ return Application::configure(basePath: dirname(__DIR__))
             'permission' => \App\Http\Middleware\PermissionMiddleware::class,
             'customer' => \App\Http\Middleware\CustomerMiddleware::class,
         ]);
+
+        /*
+        |--------------------------------------------------------------------------
+        | LITESPEED CACHE — disable caching for Livewire endpoints
+        |--------------------------------------------------------------------------
+        */
+        $middleware->web(append: [
+            \App\Http\Middleware\DisableLivewireCache::class,
+        ]);
         
         /*
         |--------------------------------------------------------------------------
