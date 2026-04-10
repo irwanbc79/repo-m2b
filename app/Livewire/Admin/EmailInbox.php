@@ -5,6 +5,7 @@ namespace App\Livewire\Admin;
 use Livewire\Component;
 use Livewire\WithPagination;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Storage;
 use App\Models\Shipment;
 use App\Models\Customer;
 use App\Models\Document;
@@ -84,6 +85,7 @@ class EmailInbox extends Component
         $attachments = DB::table('email_attachments')
             ->where('email_id', $email->id)
             ->get()
+            ->map(fn($a) => (array) $a)
             ->toArray();
 
         $this->selectedEmail = [
@@ -167,15 +169,38 @@ class EmailInbox extends Component
             foreach ($this->selectedEmail['attachments'] as $idx => $att) {
                 if (!in_array($idx, $this->selectedAttachments)) continue;
 
+                // Support both object and array (Livewire serialisasi ke array antar request)
+                $attArr      = is_array($att) ? $att : (array) $att;
+                $sourcePath  = $attArr['file_path'] ?? null;
+                $filename    = $attArr['filename'] ?? 'attachment';
+                $mimeType    = $attArr['mime_type'] ?? null;
+                $fileSize    = $attArr['size'] ?? null;
+
+                // Salin file ke documents/public/ agar tidak terhapus oleh cleanup job
+                $ext         = pathinfo($filename, PATHINFO_EXTENSION) ?: 'bin';
+                $safeName    = pathinfo($filename, PATHINFO_FILENAME);
+                $destPath    = 'documents/public/' . $safeName . '_' . uniqid() . '.' . $ext;
+
+                if ($sourcePath && Storage::disk('public')->exists($sourcePath)) {
+                    // File sudah di public disk (hasil sync baru)
+                    Storage::disk('public')->copy($sourcePath, $destPath);
+                } elseif ($sourcePath && Storage::disk('local')->exists($sourcePath)) {
+                    // File di local disk (hasil sync lama)
+                    Storage::disk('public')->put($destPath, Storage::disk('local')->get($sourcePath));
+                } else {
+                    // File tidak ditemukan, tetap simpan path asli agar info tersedia
+                    $destPath = $sourcePath;
+                }
+
                 Document::create([
                     'shipment_id' => $shipment->id,
-                    'description' => 'Email Attachment: ' . $att->filename,
-                    'file_path' => $att->file_path,
-                    'filename' => $att->filename,
+                    'description' => 'Email Attachment: ' . $filename,
+                    'file_path'   => $destPath,
+                    'filename'    => $filename,
                     'is_internal' => false,
                     'uploaded_by' => $uploader,
-                    'file_size' => $att->size,
-                    'mime_type' => $att->mime_type,
+                    'file_size'   => $fileSize,
+                    'mime_type'   => $mimeType,
                     'uploaded_at' => now(),
                 ]);
             }
