@@ -358,7 +358,7 @@ class InvoiceManager extends Component
             }
 
             foreach ($this->items as $item) {
-                $invoice->items()->create(['description' => $item['description'], 'item_type' => $item['item_type'], 'qty' => $item['qty'], 'price' => $item['price'], 'total' => ((float)$item['qty'] * (float)$item['price'])]);
+                $invoice->items()->create(['product_id' => $item['product_id'] ?? null, 'description' => $item['description'], 'item_type' => $item['item_type'], 'qty' => $item['qty'], 'price' => $item['price'], 'total' => ((float)$item['qty'] * (float)$item['price'])]);
             }
         });
 
@@ -401,7 +401,7 @@ class InvoiceManager extends Component
         $this->tax_rate = ($serviceAfterDiscount > 0) ? ($this->tax_amount / $serviceAfterDiscount) * 100 : 11;
         $this->pph_rate = ($serviceAfterDiscount > 0) ? ($this->pph_amount / $serviceAfterDiscount) * 100 : 0;
         $this->items = $invoice->items->map(function ($item) {
-            return ['description' => $item->description, 'item_type' => $item->item_type ?? 'service', 'qty' => $item->qty, 'price' => $item->price, 'total' => $item->total ?? ($item->qty * $item->price)];
+            return ['product_id' => $item->product_id, 'description' => $item->description, 'item_type' => $item->item_type ?? 'service', 'qty' => $item->qty, 'price' => $item->price, 'total' => $item->total ?? ($item->qty * $item->price)];
         })->toArray();
         $this->isEditing = true;
         $this->isModalOpen = true;
@@ -513,7 +513,7 @@ class InvoiceManager extends Component
     }
     public function addItem()
     {
-        $this->items[] = ['description' => '', 'item_type' => 'service', 'qty' => 1, 'price' => 0, 'total' => 0];
+        $this->items[] = ['product_id' => null, 'description' => '', 'item_type' => 'service', 'qty' => 1, 'price' => 0, 'total' => 0];
     }
     public function removeItem($index)
     {
