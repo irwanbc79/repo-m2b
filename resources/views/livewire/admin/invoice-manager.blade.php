@@ -102,10 +102,10 @@
                 <thead class="bg-gray-100 text-gray-600 font-bold uppercase text-xs border-b">
                     <tr>
                         <th class="px-6 py-4">Invoice No / Tipe</th>
-                        <th class="px-6 py-4">Customer</th>
-                        <th class="px-6 py-4">Jatuh Tempo</th>
-                        <th class="px-6 py-4">Total / Status</th>
                         <th class="px-6 py-4">Related Invoice</th>
+                        <th class="px-6 py-4">Customer</th>
+                        <th class="px-6 py-4">Total / Status</th>
+                        <th class="px-6 py-4">Jatuh Tempo</th>
                         <th class="px-6 py-4 text-center">Klaim</th>
                         <th class="px-6 py-4 text-center">Faktur Pajak</th>
                         <th class="px-6 py-4 text-center">Aksi</th>
@@ -117,32 +117,6 @@
                         <td class="px-6 py-4">
                             <span class="block font-bold text-blue-900">{{ $inv->invoice_number }}</span>
                             <span class="text-[10px] {{ $inv->type == 'Proforma' ? 'bg-orange-100 text-orange-700' : 'bg-blue-50 text-blue-700' }} px-2 py-0.5 rounded font-bold uppercase">{{ $inv->type }}</span>
-                        </td>
-                        <td class="px-6 py-4">
-                            <div class="font-bold text-gray-800">
-                                {{ $inv->customer->company_name ?? ($inv->shipment->customer->company_name ?? '-') }}
-                            </div>
-                            @if($inv->shipment)
-                                <div class="text-xs text-gray-500">Ref: {{ $inv->shipment->awb_number }}</div>
-                            @else
-                                <div class="text-xs text-orange-500 italic">No Shipment (DP)</div>
-                            @endif
-                        </td>
-                        <td class="px-6 py-4 text-red-500 font-bold text-xs">{{ $inv->due_date ? date('d M Y', strtotime($inv->due_date)) : '-' }}</td>
-                        <td class="px-6 py-4">
-                            <div class="font-mono font-bold">
-                                @if($inv->status == 'partial')
-                                    <span class="text-orange-600">Rp {{ number_format($inv->grand_total - ($inv->total_paid ?? 0), 0, ',', '.') }}</span>
-                                    <div class="text-[10px] text-gray-400 font-normal">dari Rp {{ number_format($inv->grand_total, 0, ',', '.') }}</div>
-                                @else
-                                    Rp {{ number_format($inv->grand_total, 0, ',', '.') }}
-                                @endif
-                            </div>
-                            <div class="mt-1">
-                                <span class="px-2 py-0.5 rounded-full text-[10px] font-bold uppercase {{ $inv->status == 'paid' ? 'bg-green-100 text-green-700' : ($inv->status == 'partial' ? 'bg-yellow-100 text-yellow-700' : 'bg-red-100 text-red-700') }}">
-                                    {{ $inv->status }}
-                                </span>
-                            </div>
                         </td>
                         <td class="px-6 py-4">
                             @if($inv->shipment_id)
@@ -161,6 +135,32 @@
                                 <span class="text-gray-400 text-xs">-</span>
                             @endif
                         </td>
+                        <td class="px-6 py-4">
+                            <div class="font-bold text-gray-800">
+                                {{ $inv->customer->company_name ?? ($inv->shipment->customer->company_name ?? '-') }}
+                            </div>
+                            @if($inv->shipment)
+                                <div class="text-xs text-gray-500">Ref: {{ $inv->shipment->awb_number }}</div>
+                            @else
+                                <div class="text-xs text-orange-500 italic">No Shipment (DP)</div>
+                            @endif
+                        </td>
+                        <td class="px-6 py-4">
+                            <div class="font-mono font-bold">
+                                @if($inv->status == 'partial')
+                                    <span class="text-orange-600">Rp {{ number_format($inv->grand_total - ($inv->total_paid ?? 0), 0, ',', '.') }}</span>
+                                    <div class="text-[10px] text-gray-400 font-normal">dari Rp {{ number_format($inv->grand_total, 0, ',', '.') }}</div>
+                                @else
+                                    Rp {{ number_format($inv->grand_total, 0, ',', '.') }}
+                                @endif
+                            </div>
+                            <div class="mt-1">
+                                <span class="px-2 py-0.5 rounded-full text-[10px] font-bold uppercase {{ $inv->status == 'paid' ? 'bg-green-100 text-green-700' : ($inv->status == 'partial' ? 'bg-yellow-100 text-yellow-700' : 'bg-red-100 text-red-700') }}">
+                                    {{ $inv->status }}
+                                </span>
+                            </div>
+                        </td>
+                        <td class="px-6 py-4 text-red-500 font-bold text-xs">{{ $inv->due_date ? date('d M Y', strtotime($inv->due_date)) : '-' }}</td>
                         <td class="px-6 py-4 text-center" x-data="{ showUpload: false }">
                             @if($inv->status == 'paid')
                                 <span class="px-2 py-1 text-xs font-medium bg-green-100 text-green-800 rounded-full">✓ PAID</span>
