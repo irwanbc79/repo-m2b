@@ -104,8 +104,7 @@
                         <th class="px-6 py-4">Invoice No / Tipe</th>
                         <th class="px-6 py-4">Customer</th>
                         <th class="px-6 py-4">Jatuh Tempo</th>
-                        <th class="px-6 py-4">Total</th>
-                        <th class="px-6 py-4">Status</th>
+                        <th class="px-6 py-4">Total / Status</th>
                         <th class="px-6 py-4">Related Invoice</th>
                         <th class="px-6 py-4 text-center">Klaim</th>
                         <th class="px-6 py-4 text-center">Faktur Pajak</th>
@@ -130,18 +129,20 @@
                             @endif
                         </td>
                         <td class="px-6 py-4 text-red-500 font-bold text-xs">{{ $inv->due_date ? date('d M Y', strtotime($inv->due_date)) : '-' }}</td>
-                        <td class="px-6 py-4 font-mono font-bold">
-                            @if($inv->status == 'partial')
-                                <span class="text-orange-600">Rp {{ number_format($inv->grand_total - ($inv->total_paid ?? 0), 0, ',', '.') }}</span>
-                                <div class="text-[10px] text-gray-400 font-normal">dari Rp {{ number_format($inv->grand_total, 0, ',', '.') }}</div>
-                            @else
-                                Rp {{ number_format($inv->grand_total, 0, ',', '.') }}
-                            @endif
-                        </td>
                         <td class="px-6 py-4">
-                            <span class="px-2.5 py-1 rounded-full text-xs font-bold uppercase {{ $inv->status == 'paid' ? 'bg-green-100 text-green-700' : ($inv->status == 'partial' ? 'bg-yellow-100 text-yellow-700' : 'bg-red-100 text-red-700') }}">
-                                {{ $inv->status }}
-                            </span>
+                            <div class="font-mono font-bold">
+                                @if($inv->status == 'partial')
+                                    <span class="text-orange-600">Rp {{ number_format($inv->grand_total - ($inv->total_paid ?? 0), 0, ',', '.') }}</span>
+                                    <div class="text-[10px] text-gray-400 font-normal">dari Rp {{ number_format($inv->grand_total, 0, ',', '.') }}</div>
+                                @else
+                                    Rp {{ number_format($inv->grand_total, 0, ',', '.') }}
+                                @endif
+                            </div>
+                            <div class="mt-1">
+                                <span class="px-2 py-0.5 rounded-full text-[10px] font-bold uppercase {{ $inv->status == 'paid' ? 'bg-green-100 text-green-700' : ($inv->status == 'partial' ? 'bg-yellow-100 text-yellow-700' : 'bg-red-100 text-red-700') }}">
+                                    {{ $inv->status }}
+                                </span>
+                            </div>
                         </td>
                         <td class="px-6 py-4">
                             @if($inv->shipment_id)
