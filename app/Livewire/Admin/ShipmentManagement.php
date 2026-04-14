@@ -28,6 +28,7 @@ class ShipmentManagement extends Component
     public $filterCustomer = '';
     public $filterServiceType = '';
     public $filterShipmentType = '';
+    public $filterLaneStatus = '';
     public $filterDateFrom = '';
     public $filterDateTo = '';
     public $sortField = 'created_at';
@@ -85,12 +86,13 @@ class ShipmentManagement extends Component
     public $printDoAlamatBongkar = '';
     public $printDoNamaPenerima = '';
 
-    protected $queryString = ['search', 'filterStatus', 'filterCustomer', 'filterServiceType', 'sortField', 'sortDirection'];
+    protected $queryString = ['search', 'filterStatus', 'filterCustomer', 'filterServiceType', 'filterLaneStatus', 'sortField', 'sortDirection'];
 
     public function updatingSearch() { $this->resetPage(); }
     public function updatingFilterStatus() { $this->resetPage(); }
     public function updatingFilterCustomer() { $this->resetPage(); }
     public function updatingFilterServiceType() { $this->resetPage(); }
+    public function updatingFilterLaneStatus() { $this->resetPage(); }
 
     public function updatedSelectAll($value)
     {
@@ -164,6 +166,9 @@ class ShipmentManagement extends Component
             })
             ->when($this->filterShipmentType, function($q) {
                 $q->where('shipment_type', $this->filterShipmentType);
+            })
+            ->when($this->filterLaneStatus, function($q) {
+                $q->where('lane_status', $this->filterLaneStatus);
             })
             ->when($this->filterDateFrom, function($q) {
                 $q->whereDate('created_at', '>=', $this->filterDateFrom);

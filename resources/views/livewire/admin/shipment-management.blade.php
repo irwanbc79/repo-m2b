@@ -90,6 +90,13 @@
                         <option value="export">📤 Export</option>
                         <option value="domestic">🏠 Domestic</option>
                     </select>
+
+                    <select wire:model.live="filterLaneStatus" class="px-4 py-2.5 border border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500 text-sm">
+                        <option value="">Semua Jalur</option>
+                        <option value="green">🟩 Jalur Hijau</option>
+                        <option value="red">🟥 Jalur Merah</option>
+                    </select>
+
                     <select wire:model.live="perPage" class="px-4 py-2.5 border border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500 text-sm">
                         <option value="10">10</option>
                         <option value="25">25</option>
