@@ -1,4 +1,4 @@
-<div>
+<div x-data="{ showSelfieModal: false, selfieUrl: '', zoomLevel: 1 }">
     {{-- Notifikasi --}}
     <div x-data="{ show: false, message: '', type: 'success' }"
         @notify.window="show = true; message = $event.detail.message; type = $event.detail.type; setTimeout(() => show = false, 3500)"
@@ -140,8 +140,9 @@
                         </td>
                         <td class="px-4 py-3 text-center">
                             @if($rec->selfie_path)
-                                <a href="{{ asset('storage/' . $rec->selfie_path) }}" target="_blank"
-                                    class="text-blue-400 hover:text-blue-300 text-xs underline">Lihat</a>
+                                <button
+                                    @click="selfieUrl = '{{ asset('storage/' . $rec->selfie_path) }}'; showSelfieModal = true; zoomLevel = 1"
+                                    class="text-blue-400 hover:text-blue-300 text-xs underline">Lihat</button>
                             @else
                                 <span class="text-gray-600 text-xs">-</span>
                             @endif
@@ -162,5 +163,48 @@
             {{ $records->links() }}
         </div>
         @endif
+    </div>
+
+    {{-- Modal Preview Selfie --}}
+    <div
+        x-show="showSelfieModal"
+        x-transition:enter="transition ease-out duration-200"
+        x-transition:enter-start="opacity-0"
+        x-transition:enter-end="opacity-100"
+        x-transition:leave="transition ease-in duration-150"
+        x-transition:leave-start="opacity-100"
+        x-transition:leave-end="opacity-0"
+        x-cloak
+        class="fixed inset-0 z-50 flex items-center justify-center bg-black/80"
+        @click.self="showSelfieModal = false">
+
+        <div class="relative bg-gray-900 rounded-2xl shadow-2xl flex flex-col items-center p-4 max-w-lg w-full mx-4">
+            {{-- Header --}}
+            <div class="flex items-center justify-between w-full mb-3">
+                <span class="text-white text-sm font-semibold">Preview Selfie</span>
+                <button @click="showSelfieModal = false" class="text-gray-400 hover:text-white text-xl leading-none">&times;</button>
+            </div>
+
+            {{-- Image --}}
+            <div class="overflow-auto w-full flex justify-center" style="max-height:65vh;">
+                <img :src="selfieUrl"
+                    :style="`transform: scale(${zoomLevel}); transform-origin: center top; transition: transform 0.2s;`"
+                    class="rounded-lg max-w-full object-contain"
+                    alt="Selfie">
+            </div>
+
+            {{-- Zoom & Download Controls --}}
+            <div class="flex items-center gap-3 mt-4">
+                <button @click="zoomLevel = Math.max(0.5, zoomLevel - 0.25)"
+                    class="px-3 py-1.5 bg-gray-700 hover:bg-gray-600 text-white rounded-lg text-sm font-bold">− Zoom</button>
+                <span x-text="`${Math.round(zoomLevel * 100)}%`" class="text-gray-300 text-xs w-12 text-center"></span>
+                <button @click="zoomLevel = Math.min(4, zoomLevel + 0.25)"
+                    class="px-3 py-1.5 bg-gray-700 hover:bg-gray-600 text-white rounded-lg text-sm font-bold">+ Zoom</button>
+                <a :href="selfieUrl" download
+                    class="ml-2 px-3 py-1.5 bg-blue-600 hover:bg-blue-500 text-white rounded-lg text-sm font-semibold flex items-center gap-1">
+                    ⬇ Download
+                </a>
+            </div>
+        </div>
     </div>
 </div>
