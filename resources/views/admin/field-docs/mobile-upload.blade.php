@@ -32,7 +32,7 @@
     {{-- Mobile Header --}}
     <header class="bg-m2b-secondary text-white px-4 py-3 sticky top-0 z-40 shadow-lg">
         <div class="flex items-center justify-between max-w-lg mx-auto">
-            <a href="{{ route('admin.field-docs.index') }}" class="text-white/80 hover:text-white">
+            <a href="{{ $backUrl ?? route('admin.field-docs.index') }}" class="text-white/80 hover:text-white">
                 ← Kembali
             </a>
             <h1 class="text-lg font-bold">📷 Upload Foto</h1>

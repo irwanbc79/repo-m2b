@@ -39,6 +39,9 @@ class UserManagement extends Component
         'staff_documentation' => 'Staff Documentation',
         'cashier' => 'Kasir',
         
+        // === FIELD OFFICER ===
+        'field_uploader' => 'Petugas Lapangan (Freelance)',
+
         // === LEGACY (for backward compatibility) ===
         'admin' => 'Admin (Legacy)',
         'staff' => 'Staff (Legacy)',

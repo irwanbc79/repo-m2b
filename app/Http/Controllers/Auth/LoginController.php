@@ -30,17 +30,27 @@ class LoginController extends Controller
 
     $user = Auth::user();
 
-    // 🔒 HARD RULE: arahkan berdasarkan role
-    return match ($user->role) {
-        'admin', 'staff', 'finance', 'accounting'
-            => redirect()->intended('/admin/dashboard'),
+    // Arahkan berdasarkan role (mendukung roles array baru & legacy)
+    if ($user->hasRole(['field_uploader'])) {
+        return redirect()->intended('/field');
+    }
 
-        'customer'
-            => redirect()->intended('/customer/dashboard'),
+    if ($user->hasRole(['customer', 'customer_viewer'])) {
+        return redirect()->intended('/customer/dashboard');
+    }
 
-        default
-            => redirect('/logout'), // role aneh = tendang keluar
-    };
+    if ($user->isAdminLevel() || $user->hasRole([
+        'super_admin', 'director', 'manager', 'supervisor',
+        'staff_accounting', 'staff_operations', 'staff_sales',
+        'staff_ppjk', 'staff_documentation', 'cashier', 'auditor',
+        'admin', 'staff', 'finance', 'accounting',
+    ])) {
+        return redirect()->intended('/admin/dashboard');
+    }
+
+    // Role tidak dikenal — tendang keluar
+    Auth::logout();
+    return redirect('/login')->withErrors(['email' => 'Akun Anda tidak memiliki akses.']);
 }
 
     public function logout(Request $request)

@@ -15,12 +15,12 @@ class FieldDocController extends Controller
     /**
      * Dashboard
      */
-    public function index()
+    public function index(Request $request)
     {
         $todayStr = today()->format('Y-m-d');
         $startOfWeekStr = now()->startOfWeek()->format('Y-m-d H:i:s');
         $endOfWeekStr = now()->endOfWeek()->format('Y-m-d H:i:s');
-        
+
         $statsQuery = FieldPhoto::selectRaw("
             COUNT(*) as total,
             SUM(CASE WHEN DATE(created_at) = ? THEN 1 ELSE 0 END) as today,
@@ -29,19 +29,41 @@ class FieldDocController extends Controller
         ", [$todayStr, $startOfWeekStr, $endOfWeekStr])->first();
 
         $stats = [
-            'today' => (int) ($statsQuery->today ?? 0),
-            'week' => (int) ($statsQuery->week ?? 0),
-            'total' => (int) ($statsQuery->total ?? 0),
+            'today'         => (int) ($statsQuery->today ?? 0),
+            'week'          => (int) ($statsQuery->week ?? 0),
+            'total'         => (int) ($statsQuery->total ?? 0),
             'with_location' => (int) ($statsQuery->with_location ?? 0),
         ];
-        $recentShipments = Shipment::withCount('fieldPhotos')
-            ->with(['customer'])
-            ->whereHas('fieldPhotos')
-            ->orderBy('updated_at', 'desc')
-            ->limit(10)
-            ->get();
 
-        return view('admin.field-docs.index', compact('stats', 'recentShipments'));
+        // Filter inputs
+        $search       = trim($request->input('search', ''));
+        $serviceType  = $request->input('service_type', '');
+        $shipmentType = $request->input('shipment_type', '');
+        $dateFrom     = $request->input('date_from', '');
+        $dateTo       = $request->input('date_to', '');
+
+        $shipmentsQuery = Shipment::withCount('fieldPhotos')
+            ->with(['customer'])
+            ->whereHas('fieldPhotos', function ($q) use ($dateFrom, $dateTo) {
+                if ($dateFrom) $q->whereDate('created_at', '>=', $dateFrom);
+                if ($dateTo)   $q->whereDate('created_at', '<=', $dateTo);
+            })
+            ->when($search, function ($q) use ($search) {
+                $q->where(function ($inner) use ($search) {
+                    $inner->where('awb_number', 'like', "%{$search}%")
+                          ->orWhere('bl_number', 'like', "%{$search}%")
+                          ->orWhereHas('customer', fn($c) => $c->where('company_name', 'like', "%{$search}%"));
+                });
+            })
+            ->when($serviceType,  fn($q) => $q->where('service_type',  $serviceType))
+            ->when($shipmentType, fn($q) => $q->where('shipment_type', $shipmentType))
+            ->orderBy('updated_at', 'desc');
+
+        $recentShipments = $shipmentsQuery->paginate(20)->withQueryString();
+
+        $filters = compact('search', 'serviceType', 'shipmentType', 'dateFrom', 'dateTo');
+
+        return view('admin.field-docs.index', compact('stats', 'recentShipments', 'filters'));
     }
 
     /**

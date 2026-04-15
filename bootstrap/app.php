@@ -50,9 +50,10 @@ return Application::configure(basePath: dirname(__DIR__))
         | Pengganti Kernel.php (yang sudah tidak ada)
         */
         $middleware->alias([
-            'admin'    => \App\Http\Middleware\AdminMiddleware::class,
-            'permission' => \App\Http\Middleware\PermissionMiddleware::class,
-            'customer' => \App\Http\Middleware\CustomerMiddleware::class,
+            'admin'          => \App\Http\Middleware\AdminMiddleware::class,
+            'permission'     => \App\Http\Middleware\PermissionMiddleware::class,
+            'customer'       => \App\Http\Middleware\CustomerMiddleware::class,
+            'field_uploader' => \App\Http\Middleware\FieldUploaderMiddleware::class,
         ]);
 
         /*

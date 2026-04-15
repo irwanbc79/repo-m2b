@@ -607,6 +607,14 @@ Route::middleware(['auth'])->prefix('mobile')->name('mobile.')->group(function (
         ->name('field-upload');
 });
 
+// Portal Petugas Lapangan (field_uploader role)
+Route::middleware(['auth', 'field_uploader'])->prefix('field')->name('field.')->group(function () {
+    Route::get('/', [App\Http\Controllers\Field\FieldUploaderController::class, 'dashboard'])
+        ->name('dashboard');
+    Route::get('/upload/{shipment?}', [App\Http\Controllers\Field\FieldUploaderController::class, 'upload'])
+        ->name('upload');
+});
+
 // Field Documentation - Delete Photo & Download Routes (admin only)
 Route::middleware(['auth', 'admin'])->prefix('admin/field-docs')->name('admin.field-docs.')->group(function () {
     Route::delete('/photo/{photo}', [App\Http\Controllers\Admin\FieldDocController::class , 'deletePhoto'])->name('delete-photo');

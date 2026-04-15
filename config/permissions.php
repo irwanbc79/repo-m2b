@@ -177,6 +177,14 @@ return [
                 'customer_portal.download',
             ],
         ],
+        'field_uploader' => [
+            'label' => 'Petugas Lapangan',
+            'level' => 20,
+            'permissions' => [
+                'field_photos.upload',
+                'field_photos.view_own',
+            ],
+        ],
     ],
 
     /*
