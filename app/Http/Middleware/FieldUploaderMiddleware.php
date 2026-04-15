@@ -17,9 +17,14 @@ class FieldUploaderMiddleware
 
         $user = Auth::user();
 
-        // Admin level juga boleh akses (untuk monitoring/testing)
-        if ($user->isAdminLevel() || $user->hasRole(['field_uploader'])) {
+        // Hanya field_uploader yang boleh akses portal ini
+        if ($user->hasRole(['field_uploader'])) {
             return $next($request);
+        }
+
+        // Admin yang mencoba akses /field diarahkan ke admin portal mereka
+        if ($user->isAdminLevel()) {
+            return redirect('/admin/field-docs');
         }
 
         abort(403, 'Anda tidak memiliki akses ke halaman ini.');

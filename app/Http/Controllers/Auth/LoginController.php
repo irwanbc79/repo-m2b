@@ -31,8 +31,9 @@ class LoginController extends Controller
     $user = Auth::user();
 
     // Arahkan berdasarkan role (mendukung roles array baru & legacy)
+    // field_uploader: hardcoded redirect — tidak boleh ke admin apapun
     if ($user->hasRole(['field_uploader'])) {
-        return redirect()->intended('/field');
+        return redirect('/field');
     }
 
     if ($user->hasRole(['customer', 'customer_viewer'])) {
