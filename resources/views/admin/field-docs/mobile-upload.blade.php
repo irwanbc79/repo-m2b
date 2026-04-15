@@ -42,7 +42,7 @@
 
     {{-- Main Content --}}
     <main class="p-4 pb-8 max-w-lg mx-auto">
-        @livewire('field-photo-upload', ['shipment' => $shipmentModel?->shipment_number])
+        @livewire('field-photo-upload', ['shipment' => $shipmentNumber ?? null])
     </main>
 
     @livewireScripts
