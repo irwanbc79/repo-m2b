@@ -313,7 +313,32 @@ class QuotationManager extends Component
     }
     public function openSendModal($id) { $q = Quotation::find($id); if($q){ $this->sendingId = $id; $this->sendToEmail = $q->customer ? ($q->customer->user->email ?? $q->customer->email) : $q->manual_email; $this->isSendModalOpen = true; } }
     public function closeSendModal() { $this->isSendModalOpen = false; }
-    public function sendQuotation() { $q = Quotation::find($this->sendingId); if($q) { Mail::to($this->sendToEmail)->send(new QuotationMail($q)); \App\Models\SentEmail::create(['mailbox' => 'sales', 'to_email' => $this->sendToEmail, 'subject' => 'Quotation #' . $q->quotation_number, 'body' => 'Penawaran harga untuk customer', 'user_id' => auth()->id(), 'user_name' => auth()->user()->name]); } $this->closeSendModal(); }
+    public function sendQuotation() {
+        $q = Quotation::find($this->sendingId);
+        if ($q) {
+            // Generate approval token jika belum ada
+            if (!$q->approval_token) {
+                $q->approval_token  = \Illuminate\Support\Str::random(48);
+                $q->approval_status = 'pending';
+                $q->save();
+            }
+            // Update status quotation → sent
+            $q->update(['status' => 'sent']);
+
+            Mail::to($this->sendToEmail)->send(new QuotationMail($q));
+
+            \App\Models\SentEmail::create([
+                'mailbox'   => 'sales',
+                'to_email'  => $this->sendToEmail,
+                'subject'   => 'Quotation #' . $q->quotation_number,
+                'body'      => 'Penawaran harga untuk customer',
+                'user_id'   => auth()->id(),
+                'user_name' => auth()->user()->name,
+            ]);
+        }
+        $this->closeSendModal();
+        session()->flash('success', 'Quotation berhasil dikirim ke ' . $this->sendToEmail);
+    }
     public function render() {
         $query = Quotation::with("customer");
         

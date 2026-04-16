@@ -266,7 +266,16 @@ Route::middleware(['auth', 'customer'])->prefix('customer')->name('customer.')->
     Route::get('/hs-codes', \App\Livewire\Customer\HsCodeExplorer::class)->name('hs-codes');
     Route::get('/invoices', \App\Livewire\Customer\InvoiceList::class)->name('invoices');
     Route::get('/reports', \App\Livewire\Customer\ReportStatistics::class)->name('reports');
+
+    // Penawaran (Quotation) Customer
+    Route::get('/quotations', \App\Livewire\Customer\QuotationList::class)->name('quotations');
 });
+
+// Public: Approval quotation via token (tanpa login)
+Route::get('/quotation/approve/{token}', [\App\Http\Controllers\QuotationApprovalController::class, 'show'])
+    ->name('quotation.approve');
+Route::post('/quotation/approve/{token}', [\App\Http\Controllers\QuotationApprovalController::class, 'process'])
+    ->name('quotation.process');
 
 // --- ADMIN ROUTES ---
 Route::middleware(['auth', 'admin'])->prefix('admin')->name('admin.')->group(function () {

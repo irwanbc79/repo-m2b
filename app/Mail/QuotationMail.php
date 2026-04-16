@@ -57,9 +57,14 @@ class QuotationMail extends Mailable
         return new Content(
             view: 'emails.quotation-body',
             with: [
-                'customer_name' => $customerName,
-                'service_name'  => $serviceName,
-                'company_name'  => $this->quotation->customer ? $this->quotation->customer->company_name : $this->quotation->manual_company,
+                'customer_name'  => $customerName,
+                'service_name'   => $serviceName,
+                'company_name'   => $this->quotation->customer ? $this->quotation->customer->company_name : $this->quotation->manual_company,
+                'approval_url'   => $this->quotation->approval_token
+                    ? url('/quotation/approve/' . $this->quotation->approval_token)
+                    : null,
+                'portal_url'     => url('/register'),
+                'is_registered'  => (bool) $this->quotation->customer_id,
             ],
         );
     }

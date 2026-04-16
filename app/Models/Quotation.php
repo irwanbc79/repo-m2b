@@ -36,12 +36,18 @@ class Quotation extends Model
         'destination', 
         'service_type', 
         'quotation_type',
-        'notes', 'terbilang_lang'
+        'notes', 'terbilang_lang',
+
+        // Approval
+        'approval_token', 'approval_status',
+        'approved_at', 'approved_by',
+        'approval_ip', 'approval_user_agent',
     ];
 
     protected $casts = [
         'quotation_date' => 'date',
-        'valid_until' => 'date',
+        'valid_until'    => 'date',
+        'approved_at'    => 'datetime',
     ];
 
     public function customer()

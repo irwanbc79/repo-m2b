@@ -67,6 +67,12 @@
                     HS Code Explorer
                 </a>
 
+                {{-- MENU PENAWARAN --}}
+                <a href="{{ route('customer.quotations') }}" class="flex items-center px-4 py-3 text-sm font-medium rounded-lg {{ request()->routeIs('customer.quotations') ? 'bg-m2b-accent text-white' : 'hover:bg-blue-900 text-gray-300' }}">
+                    <span class="text-lg mr-3">📄</span>
+                    Penawaran Saya
+                </a>
+
                 {{-- MENU PEMBAYARAN --}}
                 <a href="{{ route('customer.invoices') }}" class="flex items-center px-4 py-3 text-sm font-medium rounded-lg {{ request()->routeIs('customer.invoices') ? 'bg-m2b-accent text-white' : 'hover:bg-blue-900 text-gray-300' }}">
                     <span class="text-lg mr-3">💳</span>
