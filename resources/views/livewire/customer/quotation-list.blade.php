@@ -39,6 +39,7 @@
             $qt->status === 'sent'      => ['Menunggu',     'bg-yellow-100 text-yellow-700'],
             default                     => [ucfirst($qt->status), 'bg-gray-100 text-gray-600'],
         };
+        $hasDoc = !empty($qt->signed_document_path);
     @endphp
     <div class="bg-white rounded-xl shadow-sm overflow-hidden border border-gray-100">
         <div class="px-5 py-4 flex flex-col md:flex-row md:items-center justify-between gap-3">
@@ -52,6 +53,18 @@
                     <span class="text-[11px] font-bold px-2.5 py-0.5 rounded-full bg-blue-100 text-blue-700 animate-pulse">
                         Menunggu Keputusan Anda
                     </span>
+                    @endif
+                    {{-- Dokumen TTD badge --}}
+                    @if($qt->status === 'accepted')
+                        @if($hasDoc)
+                        <span class="text-[11px] font-bold px-2.5 py-0.5 rounded-full bg-emerald-100 text-emerald-700">
+                            📎 Dok Terupload
+                        </span>
+                        @else
+                        <span class="text-[11px] font-bold px-2.5 py-0.5 rounded-full bg-orange-100 text-orange-700 animate-pulse">
+                            ⚠️ Upload Dok Wajib
+                        </span>
+                        @endif
                     @endif
                 </div>
                 <p class="text-sm text-gray-600 mt-1">
@@ -75,7 +88,7 @@
             </div>
         </div>
 
-        {{-- Action row --}}
+        {{-- Action row: Pending --}}
         @if($qt->approval_status === 'pending' && !$isExpired)
         <div class="px-5 py-3 bg-yellow-50 border-t border-yellow-100 flex flex-wrap items-center gap-2">
             <span class="text-xs text-yellow-700 flex-1">Penawaran ini menunggu persetujuan Anda.</span>
@@ -92,12 +105,65 @@
         </div>
         @endif
 
+        {{-- Row: Accepted — upload + view document --}}
         @if($qt->status === 'accepted')
-        <div class="px-5 py-2.5 bg-green-50 border-t border-green-100">
-            <p class="text-xs text-green-700">
-                ✅ Disetujui pada {{ $qt->approved_at?->format('d M Y, H:i') }}
-                @if($qt->approved_by) oleh {{ $qt->approved_by }}@endif
-            </p>
+        <div class="px-5 py-3 bg-green-50 border-t border-green-100">
+            <div class="flex flex-wrap items-center justify-between gap-3">
+                <p class="text-xs text-green-700">
+                    ✅ Disetujui pada {{ $qt->approved_at?->format('d M Y, H:i') }}
+                    @if($qt->approved_by) oleh {{ $qt->approved_by }}@endif
+                </p>
+                <div class="flex items-center gap-2">
+                    @if($hasDoc)
+                    <a href="{{ Storage::url($qt->signed_document_path) }}" target="_blank"
+                        class="inline-flex items-center gap-1 px-3 py-1.5 bg-white border border-emerald-300 text-emerald-700 text-xs font-semibold rounded-lg hover:bg-emerald-50 transition">
+                        <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"/></svg>
+                        Lihat Dokumen
+                    </a>
+                    <button wire:click="openUpload({{ $qt->id }})"
+                        class="inline-flex items-center gap-1 px-3 py-1.5 bg-white border border-gray-300 text-gray-600 text-xs font-semibold rounded-lg hover:bg-gray-50 transition">
+                        🔄 Ganti
+                    </button>
+                    @else
+                    <button wire:click="openUpload({{ $qt->id }})"
+                        class="inline-flex items-center gap-1 px-3 py-1.5 bg-orange-500 hover:bg-orange-600 text-white text-xs font-bold rounded-lg transition shadow-sm">
+                        📤 Upload Dok TTD
+                    </button>
+                    @endif
+                </div>
+            </div>
+
+            {{-- Upload form (inline, shown when openUpload active) --}}
+            @if($uploadQuotationId === $qt->id)
+            <div class="mt-3 p-4 bg-white rounded-xl border border-orange-200 shadow-sm">
+                <p class="text-xs font-bold text-gray-700 mb-2">Upload Dokumen yang Sudah Ditandatangani & Distempel</p>
+                <p class="text-[11px] text-gray-500 mb-3">Format: PDF · Maks 5 MB · Penawaran asli yang dicetak, ditandatangani Pimpinan, dan distempel perusahaan.</p>
+                <div class="flex flex-wrap items-center gap-3">
+                    <input type="file" wire:model="signedDocument" accept=".pdf"
+                        class="text-xs text-gray-600 file:mr-3 file:py-1.5 file:px-3 file:rounded-lg file:border-0 file:text-xs file:font-semibold file:bg-orange-50 file:text-orange-700 hover:file:bg-orange-100 cursor-pointer">
+                    <div wire:loading wire:target="signedDocument" class="text-xs text-gray-400">Memuat file...</div>
+                </div>
+                @error('signedDocument')
+                <p class="text-xs text-red-600 mt-2">⚠️ {{ $message }}</p>
+                @enderror
+                <div class="flex gap-2 mt-3">
+                    <button wire:click="uploadSignedDocument"
+                        wire:loading.attr="disabled"
+                        class="px-4 py-1.5 bg-orange-500 hover:bg-orange-600 disabled:opacity-50 text-white text-xs font-bold rounded-lg transition flex items-center gap-1">
+                        <span wire:loading.remove wire:target="uploadSignedDocument">📤 Upload Sekarang</span>
+                        <span wire:loading wire:target="uploadSignedDocument">Mengupload...</span>
+                    </button>
+                    <button wire:click="cancelUpload"
+                        class="px-4 py-1.5 bg-white border border-gray-300 text-gray-600 text-xs font-semibold rounded-lg hover:bg-gray-50 transition">
+                        Batal
+                    </button>
+                </div>
+            </div>
+            @endif
+
+            @if($hasDoc && $qt->signed_document_at)
+            <p class="text-[10px] text-gray-400 mt-2">Diupload: {{ $qt->signed_document_at->format('d M Y, H:i') }}</p>
+            @endif
         </div>
         @endif
     </div>

@@ -120,6 +120,7 @@
                         <th class="px-6 py-3">Rute & Service</th>
                         <th class="px-6 py-3 text-right">Total (IDR)</th>
                         <th class="px-6 py-3 text-center">Valid Until</th>
+                        <th class="px-6 py-3 text-center">Dok TTD</th>
                         <th class="px-6 py-3 text-center">Action</th>
                     </tr>
                 </thead>
@@ -154,6 +155,27 @@
                             <span class="text-xs px-2 py-1 rounded font-bold shadow-sm {{ now() > $q->valid_until ? 'bg-red-100 text-red-600 border border-red-200' : 'bg-green-100 text-green-600 border border-green-200' }}">
                                 {{ $q->valid_until->format('d M Y') }}
                             </span>
+                        </td>
+                        <td class="px-6 py-4 text-center">
+                            @if($q->status === 'accepted')
+                                @if($q->signed_document_path)
+                                <a href="{{ Storage::url($q->signed_document_path) }}" target="_blank"
+                                    class="inline-flex flex-col items-center gap-0.5 group">
+                                    <span class="text-xs font-bold px-2 py-1 rounded bg-emerald-100 text-emerald-700 border border-emerald-200 group-hover:bg-emerald-200 transition">
+                                        📎 Tersedia
+                                    </span>
+                                    @if($q->signed_document_at)
+                                    <span class="text-[9px] text-gray-400">{{ $q->signed_document_at->format('d M Y') }}</span>
+                                    @endif
+                                </a>
+                                @else
+                                <span class="text-xs font-bold px-2 py-1 rounded bg-orange-100 text-orange-600 border border-orange-200">
+                                    ⏳ Belum Upload
+                                </span>
+                                @endif
+                            @else
+                                <span class="text-[10px] text-gray-300">—</span>
+                            @endif
                         </td>
                         <td class="px-6 py-4 text-center">
                             <div class="flex justify-center gap-2 items-center">
@@ -194,7 +216,7 @@
                         </td>
                     </tr>
                     @empty
-                    <tr><td colspan="6" class="p-8 text-center text-gray-500 italic">Belum ada data quotation.</td></tr>
+                    <tr><td colspan="7" class="p-8 text-center text-gray-500 italic">Belum ada data quotation.</td></tr>
                     @endforelse
                 </tbody>
             </table>

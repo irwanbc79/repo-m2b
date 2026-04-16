@@ -42,12 +42,16 @@ class Quotation extends Model
         'approval_token', 'approval_status',
         'approved_at', 'approved_by',
         'approval_ip', 'approval_user_agent',
+
+        // Signed document
+        'signed_document_path', 'signed_document_at',
     ];
 
     protected $casts = [
-        'quotation_date' => 'date',
-        'valid_until'    => 'date',
-        'approved_at'    => 'datetime',
+        'quotation_date'      => 'date',
+        'valid_until'         => 'date',
+        'approved_at'         => 'datetime',
+        'signed_document_at'  => 'datetime',
     ];
 
     public function customer()

@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Models\Quotation;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Storage;
 
 class QuotationApprovalController extends Controller
 {
@@ -63,5 +64,45 @@ class QuotationApprovalController extends Controller
         ]);
 
         return view('quotation.approval-done', compact('quotation'));
+    }
+
+    /**
+     * Upload signed document (via token, no auth required)
+     */
+    public function uploadDocument(Request $request, string $token)
+    {
+        $quotation = Quotation::where('approval_token', $token)->firstOrFail();
+
+        if ($quotation->approval_status !== 'approved') {
+            return redirect()->route('quotation.approve', $token)
+                ->with('upload_error', 'Dokumen hanya bisa diupload setelah penawaran disetujui.');
+        }
+
+        $request->validate([
+            'signed_document' => 'required|file|mimes:pdf|max:5120',
+        ], [
+            'signed_document.required' => 'Pilih file PDF terlebih dahulu.',
+            'signed_document.mimes'    => 'File harus berformat PDF.',
+            'signed_document.max'      => 'Ukuran file maksimal 5 MB.',
+        ]);
+
+        // Delete old file if exists
+        if ($quotation->signed_document_path) {
+            Storage::disk('public')->delete($quotation->signed_document_path);
+        }
+
+        $path = $request->file('signed_document')->storeAs(
+            'signed-quotations',
+            'QT-' . $quotation->id . '-' . now()->format('YmdHis') . '.pdf',
+            'public'
+        );
+
+        $quotation->update([
+            'signed_document_path' => $path,
+            'signed_document_at'   => now(),
+        ]);
+
+        return view('quotation.approval-done', compact('quotation'))
+            ->with('upload_success', 'Dokumen berhasil diupload. Tim M2B akan segera memverifikasi.');
     }
 }

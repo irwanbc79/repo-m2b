@@ -4,14 +4,20 @@ namespace App\Livewire\Customer;
 
 use Livewire\Component;
 use Livewire\WithPagination;
+use Livewire\WithFileUploads;
 use App\Models\Quotation;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Storage;
 
 class QuotationList extends Component
 {
-    use WithPagination;
+    use WithPagination, WithFileUploads;
 
     public $filterStatus = '';
+
+    // Upload state
+    public $uploadQuotationId = null;
+    public $signedDocument = null;
 
     public function updatingFilterStatus() { $this->resetPage(); }
 
@@ -28,7 +34,7 @@ class QuotationList extends Component
             'approval_ip'     => request()->ip(),
         ]);
 
-        session()->flash('success', 'Penawaran ' . $quotation->quotation_number . ' berhasil disetujui.');
+        session()->flash('success', 'Penawaran ' . $quotation->quotation_number . ' berhasil disetujui. Silakan upload dokumen yang sudah ditandatangani.');
     }
 
     public function reject(int $id)
@@ -45,6 +51,57 @@ class QuotationList extends Component
         ]);
 
         session()->flash('info', 'Penawaran ' . $quotation->quotation_number . ' telah ditolak.');
+    }
+
+    public function openUpload(int $id)
+    {
+        $quotation = $this->findOwnQuotation($id);
+        if (!$quotation || $quotation->approval_status !== 'approved') return;
+
+        $this->uploadQuotationId = $id;
+        $this->signedDocument = null;
+    }
+
+    public function cancelUpload()
+    {
+        $this->uploadQuotationId = null;
+        $this->signedDocument = null;
+    }
+
+    public function uploadSignedDocument()
+    {
+        $this->validate([
+            'signedDocument' => 'required|file|mimes:pdf|max:5120', // 5 MB max
+        ], [
+            'signedDocument.required' => 'Pilih file PDF terlebih dahulu.',
+            'signedDocument.mimes'    => 'File harus berformat PDF.',
+            'signedDocument.max'      => 'Ukuran file maksimal 5 MB.',
+        ]);
+
+        $quotation = $this->findOwnQuotation($this->uploadQuotationId);
+        if (!$quotation || $quotation->approval_status !== 'approved') {
+            $this->cancelUpload();
+            return;
+        }
+
+        // Delete old file if exists
+        if ($quotation->signed_document_path) {
+            Storage::disk('public')->delete($quotation->signed_document_path);
+        }
+
+        $path = $this->signedDocument->storeAs(
+            'signed-quotations',
+            'QT-' . $quotation->id . '-' . now()->format('YmdHis') . '.pdf',
+            'public'
+        );
+
+        $quotation->update([
+            'signed_document_path' => $path,
+            'signed_document_at'   => now(),
+        ]);
+
+        $this->cancelUpload();
+        session()->flash('success', 'Dokumen berhasil diupload. Tim M2B akan segera memverifikasi.');
     }
 
     private function findOwnQuotation(int $id): ?Quotation

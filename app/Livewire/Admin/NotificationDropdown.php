@@ -11,11 +11,12 @@ use Carbon\Carbon;
 
 class NotificationDropdown extends Component
 {
-    public $newBookings       = [];
-    public $newCustomers      = [];
-    public $dueInvoices       = [];
-    public $approvedQuotations = [];
-    public $totalNotif        = 0;
+    public $newBookings            = [];
+    public $newCustomers           = [];
+    public $dueInvoices            = [];
+    public $approvedQuotations     = [];
+    public $signedDocUploads       = [];
+    public $totalNotif             = 0;
 
     public function mount()
     {
@@ -60,10 +61,22 @@ class NotificationDropdown extends Component
             $this->approvedQuotations = collect([]);
         }
 
+        // 5. Dokumen TTD baru diupload customer (< 24 jam)
+        try {
+            $this->signedDocUploads = Quotation::whereNotNull('signed_document_path')
+                ->where('signed_document_at', '>=', Carbon::now()->subHours(24))
+                ->orderByDesc('signed_document_at')
+                ->take(5)
+                ->get();
+        } catch (\Exception $e) {
+            $this->signedDocUploads = collect([]);
+        }
+
         $this->totalNotif = count($this->newBookings)
             + count($this->newCustomers)
             + count($this->dueInvoices)
-            + count($this->approvedQuotations);
+            + count($this->approvedQuotations)
+            + count($this->signedDocUploads);
     }
 
     public function render()

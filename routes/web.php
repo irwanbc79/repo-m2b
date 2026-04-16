@@ -276,6 +276,8 @@ Route::get('/quotation/approve/{token}', [\App\Http\Controllers\QuotationApprova
     ->name('quotation.approve');
 Route::post('/quotation/approve/{token}', [\App\Http\Controllers\QuotationApprovalController::class, 'process'])
     ->name('quotation.process');
+Route::post('/quotation/approve/{token}/upload', [\App\Http\Controllers\QuotationApprovalController::class, 'uploadDocument'])
+    ->name('quotation.upload');
 
 // --- ADMIN ROUTES ---
 Route::middleware(['auth', 'admin'])->prefix('admin')->name('admin.')->group(function () {
