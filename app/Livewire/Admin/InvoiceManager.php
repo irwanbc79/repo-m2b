@@ -116,9 +116,9 @@ class InvoiceManager extends Component
             }
         }
 
-        // Apply type filter
+        // Apply type filter (case-insensitive agar konsisten dengan data di DB)
         if ($this->filterType) {
-            $query->where('type', $this->filterType);
+            $query->whereRaw("LOWER(type) = ?", [strtolower($this->filterType)]);
         }
 
         // Apply product category filter

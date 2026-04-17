@@ -6,6 +6,7 @@ use Livewire\Component;
 use Livewire\WithPagination;
 use Livewire\WithFileUploads;
 use App\Models\Shipment;
+use App\Models\Invoice;
 use App\Models\JobCost;
 use App\Models\Vendor;
 use App\Models\Account;
@@ -135,60 +136,71 @@ class JobCostingManager extends Component
     {
         return Cache::remember('jobcost_stats', 300, function() {
             try {
-                // Eager load relationships untuk performa
-                $shipments = Shipment::with(['invoices', 'jobCosts'])->active()->limit(500)->get();
-            
-            $totalRevenue = 0;
-            $totalCost = 0;
-            $margins = [];
-            
-            foreach ($shipments as $s) {
-                $revenue = $s->invoices->sum('grand_total');
-                $cost = $s->jobCosts->sum('amount');
-                
-                $totalRevenue += $revenue;
-                $totalCost += $cost;
-                
-                // Hitung margin hanya jika ada revenue
-                if ($revenue > 0) {
-                    $marginPercent = (($revenue - $cost) / $revenue) * 100;
-                    $margins[] = $marginPercent;
-                }
-            }
-            
-            // Count shipments dengan margin rendah (< 10%)
-            $lowMarginCount = $shipments->filter(function($s) {
-                $rev = $s->invoices->sum('grand_total');
-                $cost = $s->jobCosts->sum('amount');
-                
-                if ($rev <= 0) return false;
-                
-                $margin = (($rev - $cost) / $rev) * 100;
-                return $margin < 10;
-            })->count();
-            
-            return [
-                'total_shipments' => $shipments->count(),
-                'total_revenue' => $totalRevenue,
-                'total_cost' => $totalCost,
-                'total_profit' => $totalRevenue - $totalCost,
-                'avg_margin' => count($margins) > 0 ? array_sum($margins) / count($margins) : 0,
-                'low_margin' => $lowMarginCount,
-                'shipments_with_costs' => $shipments->filter(fn($s) => $s->jobCosts->count() > 0)->count(),
-                'unpaid_costs' => JobCost::where('status', 'unpaid')->sum('amount'),
+                $activeStatuses = ['cancelled', 'cancel'];
+
+                // Agregasi langsung di DB — tidak ada limit, tidak ada loop PHP
+                $totalRevenue = Invoice::commercial()
+                    ->whereHas('shipment', fn($q) => $q->active())
+                    ->sum('grand_total');
+
+                $totalCost = JobCost::whereHas('shipment', fn($q) => $q->active())
+                    ->sum('amount');
+
+                $totalShipments = Shipment::active()->count();
+
+                $shipmentsWithCosts = Shipment::active()->whereHas('jobCosts')->count();
+
+                $unpaidCosts = JobCost::where('status', 'unpaid')->sum('amount');
+
+                // Hitung avg_margin & low_margin per shipment di DB
+                // Subquery revenue per shipment (commercial invoice saja)
+                $revenuePerShipment = DB::table('invoices')
+                    ->whereRaw("LOWER(type) = 'commercial'")
+                    ->selectRaw('shipment_id, SUM(grand_total) as revenue')
+                    ->groupBy('shipment_id');
+
+                // Subquery cost per shipment
+                $costPerShipment = DB::table('job_costs')
+                    ->selectRaw('shipment_id, SUM(amount) as cost')
+                    ->groupBy('shipment_id');
+
+                $marginRows = DB::table('shipments')
+                    ->joinSub($revenuePerShipment, 'inv', 'inv.shipment_id', '=', 'shipments.id')
+                    ->leftJoinSub($costPerShipment, 'jc', 'jc.shipment_id', '=', 'shipments.id')
+                    ->whereNotIn('shipments.status', $activeStatuses)
+                    ->whereRaw('inv.revenue > 0')
+                    ->selectRaw('inv.revenue, COALESCE(jc.cost, 0) as cost')
+                    ->get();
+
+                $margins = $marginRows->map(
+                    fn($r) => (($r->revenue - $r->cost) / $r->revenue) * 100
+                );
+
+                $avgMargin    = $margins->avg() ?? 0;
+                $lowMarginCount = $margins->filter(fn($m) => $m < 10)->count();
+
+                return [
+                    'total_shipments'      => $totalShipments,
+                    'total_revenue'        => $totalRevenue,
+                    'total_cost'           => $totalCost,
+                    'total_profit'         => $totalRevenue - $totalCost,
+                    'avg_margin'           => $avgMargin,
+                    'low_margin'           => $lowMarginCount,
+                    'shipments_with_costs' => $shipmentsWithCosts,
+                    'unpaid_costs'         => $unpaidCosts,
                 ];
             } catch (Exception $e) {
-            Log::error('Error calculating stats: ' . $e->getMessage());
-            
-            return [
-                'total_shipments' => 0,
-                'total_revenue' => 0,
-                'total_cost' => 0,
-                'total_profit' => 0,
-                'avg_margin' => 0,
-                'low_margin' => 0,
-                'shipments_with_costs' => 0,
-                'unpaid_costs' => 0,
+                Log::error('Error calculating stats: ' . $e->getMessage());
+
+                return [
+                    'total_shipments'      => 0,
+                    'total_revenue'        => 0,
+                    'total_cost'           => 0,
+                    'total_profit'         => 0,
+                    'avg_margin'           => 0,
+                    'low_margin'           => 0,
+                    'shipments_with_costs' => 0,
+                    'unpaid_costs'         => 0,
                 ];
             }
         });

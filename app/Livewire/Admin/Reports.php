@@ -131,12 +131,12 @@ class Reports extends Component
 
         // Current Period Stats
         $currentRevenue = Invoice::whereBetween('invoice_date', [$startDate, $endDate])
-            ->where('type', 'commercial')
+            ->commercial()
             ->whereIn('status', ['paid', 'partial'])
             ->sum('total_paid');
 
         $currentInvoiced = Invoice::whereBetween('invoice_date', [$startDate, $endDate])
-            ->where('type', 'commercial')
+            ->commercial()
             ->sum('grand_total');
 
         $currentCost = JobCost::whereHas('shipment', function($q) use ($startDate, $endDate) {
@@ -149,7 +149,7 @@ class Reports extends Component
 
         // Previous Period Stats
         $prevRevenue = Invoice::whereBetween('invoice_date', [$prevStart, $prevEnd])
-            ->where('type', 'commercial')
+            ->commercial()
             ->whereIn('status', ['paid', 'partial'])
             ->sum('total_paid');
 
@@ -206,7 +206,7 @@ class Reports extends Component
         $sixMonthsAgo = now()->subMonths(5)->startOfMonth();
         
         $revenueByMonth = Invoice::where('invoice_date', '>=', $sixMonthsAgo)
-            ->where('type', 'commercial')
+            ->commercial()
             ->selectRaw("DATE_FORMAT(invoice_date, '%Y-%m') as month_key, SUM(grand_total) as total")
             ->groupByRaw("DATE_FORMAT(invoice_date, '%Y-%m')")
             ->pluck('total', 'month_key');
@@ -375,7 +375,7 @@ class Reports extends Component
 
         // Revenue by Customer
         $revenueByCustomer = Invoice::whereBetween('invoice_date', [$startDate, $endDate])
-            ->where('type', 'commercial')
+            ->commercial()
             ->select('customer_id', DB::raw('SUM(grand_total) as total'), DB::raw('COUNT(*) as invoice_count'))
             ->groupBy('customer_id')
             ->with('customer')
@@ -431,7 +431,7 @@ class Reports extends Component
 
         // Invoice Status Summary
         $invoiceStatus = Invoice::whereBetween('invoice_date', [$startDate, $endDate])
-            ->where('type', 'commercial')
+            ->commercial()
             ->select('status', DB::raw('COUNT(*) as count'), DB::raw('SUM(grand_total) as total'))
             ->groupBy('status')
             ->get()
@@ -526,7 +526,7 @@ class Reports extends Component
         }])
         ->with(['invoices' => function($q) use ($startDate, $endDate) {
             $q->whereBetween('invoice_date', [$startDate, $endDate])
-              ->where('type', 'commercial');
+              ->commercial();
         }])
         ->get()
         ->map(function($customer) {
@@ -626,7 +626,7 @@ class Reports extends Component
         $shipmentIds = Shipment::whereBetween('created_at', [$startDate, $endDate])->pluck('id');
         
         $revenueByService = Invoice::whereIn('shipment_id', $shipmentIds)
-            ->where('type', 'commercial')
+            ->commercial()
             ->join('shipments', 'invoices.shipment_id', '=', 'shipments.id')
             ->selectRaw('shipments.service_type, SUM(invoices.grand_total) as total')
             ->groupBy('shipments.service_type')
@@ -660,7 +660,7 @@ class Reports extends Component
 
         // Shipment Type Performance - OPTIMIZED: single query with joins
         $revenueByShipType = Invoice::whereIn('shipment_id', $shipmentIds)
-            ->where('type', 'commercial')
+            ->commercial()
             ->join('shipments', 'invoices.shipment_id', '=', 'shipments.id')
             ->selectRaw('shipments.shipment_type, SUM(invoices.grand_total) as total')
             ->groupBy('shipments.shipment_type')

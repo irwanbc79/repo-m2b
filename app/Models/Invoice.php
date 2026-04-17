@@ -74,6 +74,16 @@ class Invoice extends Model
         'claimed_at' => 'datetime',
     ];
 
+    public function scopeCommercial($query)
+    {
+        return $query->whereRaw("LOWER(type) = 'commercial'");
+    }
+
+    public function scopeProforma($query)
+    {
+        return $query->whereRaw("LOWER(type) = 'proforma'");
+    }
+
     public function getIsOverdueAttribute()
     {
         if (is_null($this->due_date)) {
