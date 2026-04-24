@@ -9,8 +9,9 @@ use App\Models\Document;
 use App\Models\ActivityLog;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Storage;
-use Illuminate\Support\Facades\Mail; 
-use Carbon\Carbon; // Import Carbon
+use Illuminate\Support\Facades\Mail;
+use Illuminate\Support\Facades\Cache;
+use Carbon\Carbon;
 
 class ShipmentDetail extends Component
 {
@@ -172,9 +173,13 @@ class ShipmentDetail extends Component
         }
 
         // --- TRIGGER NOTIFIKASI EMAIL UNTUK DOKUMEN PUBLIK ---
+        // Cooldown 30 menit: hanya kirim 1 email per shipment per sesi upload
         if (!$isInternal) {
-            // Mengirim notifikasi tentang dokumen baru
-            $this->sendUpdateNotification($this->doc_type, "DOKUMEN BARU DIUNGGAH");
+            $cacheKey = 'doc_notif_' . $this->shipment->id;
+            if (!Cache::has($cacheKey)) {
+                Cache::put($cacheKey, true, now()->addMinutes(30));
+                $this->sendUpdateNotification($this->doc_type, "DOKUMEN BARU DIUNGGAH");
+            }
         }
 
         $this->reset(['file_upload', 'doc_type', 'custom_note', 'custom_description']);
