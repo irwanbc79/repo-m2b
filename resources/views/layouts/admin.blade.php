@@ -8,7 +8,14 @@
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <meta name="csrf-token" content="{{ csrf_token() }}">
     <title>M2B Admin Panel</title>
-    
+
+    {{-- PWA / Add to Home Screen (iPhone & Android) --}}
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="apple-mobile-web-app-title" content="M2B Portal">
+    <meta name="theme-color" content="#0F2C59">
+    <link rel="apple-touch-icon" href="{{ asset('images/m2b-logo.png') }}">
+
     <link rel="icon" href="{{ asset('images/m2b-logo.png') }}" type="image/png">
     <link rel="preconnect" href="https://fonts.bunny.net">
     <link href="https://fonts.bunny.net/css?family=figtree:400,500,600&display=swap" rel="stylesheet" />

@@ -4,6 +4,14 @@
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <title>M2B Portal Customer</title>
+
+    {{-- PWA / Add to Home Screen (iPhone & Android) --}}
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="apple-mobile-web-app-title" content="M2B Customer">
+    <meta name="theme-color" content="#0F2C59">
+    <link rel="apple-touch-icon" href="{{ asset('images/m2b-logo.png') }}">
+
     <link rel="icon" href="{{ asset('images/m2b-logo.png') }}" type="image/png">
     
     <link rel="preconnect" href="https://fonts.bunny.net">
