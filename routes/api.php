@@ -4,6 +4,7 @@ use App\Http\Controllers\Api\V1\AttendanceController;
 use App\Http\Controllers\Api\V1\AuthController;
 use App\Http\Controllers\Api\V1\DashboardController;
 use App\Http\Controllers\Api\V1\ExpenseController;
+use App\Http\Controllers\Api\V1\FieldDocController;
 use App\Http\Controllers\Api\V1\LeaveController;
 use App\Http\Controllers\Api\V1\VisitController;
 use App\Http\Controllers\Api\V1\PayrollController;
@@ -67,5 +68,12 @@ Route::prefix('v1')->group(function () {
 
         // Dashboard
         Route::get('/dashboard/summary', [DashboardController::class, 'summary']);
+
+        // Field Documentation (petugas lapangan & staf yang merangkap)
+        Route::prefix('field-docs')->group(function () {
+            Route::get('/shipments/search', [FieldDocController::class, 'searchShipments']);
+            Route::post('/upload',          [FieldDocController::class, 'upload']);
+            Route::get('/history',          [FieldDocController::class, 'history']);
+        });
     });
 });

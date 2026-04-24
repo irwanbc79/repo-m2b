@@ -17,8 +17,9 @@ class AdminMiddleware
 
         $user = Auth::user();
 
-        // field_uploader tidak boleh masuk admin sama sekali — redirect ke portal mereka
-        if ($user->hasRole(['field_uploader'])) {
+        // Hanya blok kalau field_uploader murni (tidak punya role admin/staff lain).
+        // Staf yang merangkap petugas lapangan tetap boleh masuk portal admin.
+        if ($user->isOnlyFieldUploader()) {
             return redirect('/field');
         }
 

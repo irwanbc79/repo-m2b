@@ -205,6 +205,26 @@ class User extends Authenticatable
     }
 
     /**
+     * True kalau field_uploader adalah satu-satunya role (tidak punya akses admin/staff).
+     * Dipakai untuk routing: redirect ke /field bukan /admin.
+     * Staf yang merangkap petugas lapangan (roles: ['staff','field_uploader'])
+     * akan return false sehingga tetap masuk portal admin.
+     */
+    public function isOnlyFieldUploader(): bool
+    {
+        if (!$this->hasRole(['field_uploader'])) {
+            return false;
+        }
+        $adminRoles = [
+            'super_admin', 'director', 'manager', 'supervisor', 'admin',
+            'staff', 'staff_accounting', 'staff_operations', 'staff_sales',
+            'staff_ppjk', 'staff_documentation', 'cashier', 'auditor',
+            'finance', 'accounting',
+        ];
+        return !$this->hasRole($adminRoles);
+    }
+
+    /**
      * Relasi ke Customer via pivot table (Many-to-Many)
      * Untuk mendukung multi-user per customer
      */
