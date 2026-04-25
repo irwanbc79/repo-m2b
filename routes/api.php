@@ -6,6 +6,7 @@ use App\Http\Controllers\Api\V1\DashboardController;
 use App\Http\Controllers\Api\V1\ExpenseController;
 use App\Http\Controllers\Api\V1\FieldDocController;
 use App\Http\Controllers\Api\V1\LeaveController;
+use App\Http\Controllers\Api\V1\SsoController;
 use App\Http\Controllers\Api\V1\VisitController;
 use App\Http\Controllers\Api\V1\PayrollController;
 use Illuminate\Support\Facades\Route;
@@ -27,8 +28,9 @@ Route::prefix('v1')->group(function () {
     Route::middleware('auth:sanctum')->group(function () {
 
         // Auth
-        Route::post('/auth/logout',  [AuthController::class, 'logout']);
-        Route::get('/auth/profile',  [AuthController::class, 'profile']);
+        Route::post('/auth/logout',       [AuthController::class, 'logout']);
+        Route::get('/auth/profile',       [AuthController::class, 'profile']);
+        Route::post('/auth/sso-token',    [SsoController::class,  'generateToken']);
 
         // Attendance
         Route::prefix('attendance')->group(function () {

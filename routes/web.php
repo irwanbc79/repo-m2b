@@ -252,6 +252,9 @@ Route::post('/email/verification-notification', function (Request $request) {
 
 
 
+// SSO Web Login — token-based, tidak perlu middleware auth (token sudah validasi identitas)
+Route::get('/sso/login', [App\Http\Controllers\SsoWebController::class, 'login'])->name('sso.login');
+
 // --- CUSTOMER ROUTES ---
 Route::middleware(['auth', 'customer'])->prefix('customer')->name('customer.')->group(function () {
     Route::get('/dashboard', CustomerDashboard::class)->name('dashboard');
