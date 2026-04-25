@@ -84,6 +84,51 @@
     </div>
     @endif
 
+    {{-- ===== AKSES CEPAT (terlihat di semua device, terutama iPhone PWA) ===== --}}
+    <div class="bg-white rounded-xl shadow-sm border border-gray-100 p-4">
+        <h3 class="text-xs font-bold text-gray-400 uppercase tracking-wider mb-3 flex items-center gap-2">
+            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"/></svg>
+            Akses Cepat
+        </h3>
+        <div class="grid grid-cols-3 sm:grid-cols-5 gap-2">
+            <a href="{{ route('admin.quotations.index') }}"
+               class="flex flex-col items-center gap-2 p-3 rounded-xl hover:bg-blue-50 transition-colors group">
+                <div class="w-10 h-10 rounded-xl bg-blue-100 flex items-center justify-center group-hover:bg-blue-200 transition-colors">
+                    <svg class="w-5 h-5 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/></svg>
+                </div>
+                <span class="text-[11px] font-semibold text-gray-600 text-center leading-tight">Penawaran</span>
+            </a>
+            <a href="{{ route('admin.shipments.index') }}"
+               class="flex flex-col items-center gap-2 p-3 rounded-xl hover:bg-teal-50 transition-colors group">
+                <div class="w-10 h-10 rounded-xl bg-teal-100 flex items-center justify-center group-hover:bg-teal-200 transition-colors">
+                    <svg class="w-5 h-5 text-teal-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4"/></svg>
+                </div>
+                <span class="text-[11px] font-semibold text-gray-600 text-center leading-tight">Shipment</span>
+            </a>
+            <a href="{{ route('admin.invoices.index') }}"
+               class="flex flex-col items-center gap-2 p-3 rounded-xl hover:bg-purple-50 transition-colors group">
+                <div class="w-10 h-10 rounded-xl bg-purple-100 flex items-center justify-center group-hover:bg-purple-200 transition-colors">
+                    <svg class="w-5 h-5 text-purple-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"/></svg>
+                </div>
+                <span class="text-[11px] font-semibold text-gray-600 text-center leading-tight">Invoicing</span>
+            </a>
+            <a href="{{ route('inbox.index') }}"
+               class="flex flex-col items-center gap-2 p-3 rounded-xl hover:bg-amber-50 transition-colors group">
+                <div class="w-10 h-10 rounded-xl bg-amber-100 flex items-center justify-center group-hover:bg-amber-200 transition-colors">
+                    <svg class="w-5 h-5 text-amber-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"/></svg>
+                </div>
+                <span class="text-[11px] font-semibold text-gray-600 text-center leading-tight">Email Inbox</span>
+            </a>
+            <a href="{{ route('finance.simple-invoice.index') }}"
+               class="flex flex-col items-center gap-2 p-3 rounded-xl hover:bg-cyan-50 transition-colors group">
+                <div class="w-10 h-10 rounded-xl bg-cyan-100 flex items-center justify-center group-hover:bg-cyan-200 transition-colors">
+                    <svg class="w-5 h-5 text-cyan-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 9V7a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2m2 4h10a2 2 0 002-2v-6a2 2 0 00-2-2H9a2 2 0 00-2 2v6a2 2 0 002 2zm7-5a2 2 0 11-4 0 2 2 0 014 0z"/></svg>
+                </div>
+                <span class="text-[11px] font-semibold text-gray-600 text-center leading-tight">Nota Sederhana</span>
+            </a>
+        </div>
+    </div>
+
     {{-- Main Stats Cards --}}
     <div class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4">
         {{-- Total Shipments --}}
