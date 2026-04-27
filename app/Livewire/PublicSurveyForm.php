@@ -2,8 +2,10 @@
 
 namespace App\Livewire;
 
+use App\Mail\SurveySubmittedMail;
 use App\Models\CustomerSurvey;
 use App\Models\Customer;
+use Illuminate\Support\Facades\Mail;
 use Livewire\Component;
 use Illuminate\Support\Facades\Request;
 
@@ -217,7 +219,7 @@ class PublicSurveyForm extends Component
         }
         
         // Save survey
-        CustomerSurvey::create([
+        $survey = CustomerSurvey::create([
             'survey_year' => date('Y'),
             'response_date' => now(),
             
@@ -279,6 +281,12 @@ class PublicSurveyForm extends Component
             'is_complete' => true,
         ]);
         
+        // Kirim notifikasi ke admin (silent — tidak blokir redirect jika gagal)
+        try {
+            Mail::to(config('mail.from.address'))
+                ->send(new SurveySubmittedMail($survey));
+        } catch (\Throwable) {}
+
         // Redirect to thank you page
         return redirect()->route('survey.thank-you');
     }

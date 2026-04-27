@@ -2,10 +2,11 @@
 
 namespace App\Http\Controllers;
 
+use App\Mail\TestimonialApprovedMail;
+use App\Mail\TestimonialPendingMail;
 use App\Models\Testimonial;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Mail;
-use App\Mail\TestimonialApprovedMail;
 
 class TestimonialController extends Controller
 {
@@ -47,6 +48,12 @@ class TestimonialController extends Controller
             'content'      => $request->content,
             'ip_address'   => $request->ip(),
         ]);
+
+        // Notifikasi admin — testimoni baru pending moderasi
+        try {
+            Mail::to(config('mail.from.address'))
+                ->send(new TestimonialPendingMail($testimonial));
+        } catch (\Throwable) {}
 
         return redirect()->route('testimonial.thankyou');
     }
