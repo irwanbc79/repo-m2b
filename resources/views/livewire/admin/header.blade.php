@@ -44,7 +44,7 @@
         </div>
 
         {{-- 2. NOTIFIKASI --}}
-        @unless(auth()->user()->hasRole('konsultan_pajak'))
+        @unless(auth()->user()->hasRole(['konsultan_pajak', 'auditor']))
         <livewire:admin.notification-dropdown />
         @endunless
 
