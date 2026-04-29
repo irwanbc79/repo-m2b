@@ -11,7 +11,7 @@ class SentEmails extends Component
     use WithPagination;
 
     public $activeMailbox = 'all';
-    public $mailboxes = ['sales', 'import', 'export', 'finance', 'gmail', 'no_reply'];
+    public $mailboxes = ['sales', 'import', 'export', 'finance', 'gmail', 'pajak', 'no_reply'];
     public $search = '';
     public $selectedEmail = null;
 
