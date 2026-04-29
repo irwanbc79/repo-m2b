@@ -80,30 +80,6 @@ class TaxNoteManagement extends Component
         return $options;
     }
 
-    public function getShipmentOptionsProperty(): \Illuminate\Support\Collection
-    {
-        return Shipment::query()
-            ->when($this->shipmentSearch, fn($q) =>
-                $q->where('awb_number', 'like', '%' . $this->shipmentSearch . '%')
-                  ->orWhere('bl_number', 'like', '%' . $this->shipmentSearch . '%')
-                  ->orWhereHas('customer', fn($q2) =>
-                      $q2->where('company_name', 'like', '%' . $this->shipmentSearch . '%')
-                  )
-            )
-            ->whereNotIn('status', ['cancelled', 'cancel'])
-            ->latest()
-            ->limit(50)
-            ->get(['id', 'awb_number', 'bl_number', 'customer_id', 'status'])
-            ->map(fn($s) => [
-                'id'    => $s->id,
-                'label' => implode(' · ', array_filter([
-                    $s->awb_number ?: $s->bl_number,
-                    $s->customer?->company_name,
-                    strtoupper($s->status),
-                ])),
-            ]);
-    }
-
     // --- Actions ---
 
     public function openCreate(): void
@@ -187,10 +163,32 @@ class TaxNoteManagement extends Component
             ->orderByDesc('created_at')
             ->paginate($this->perPage);
 
+        $search = trim($this->shipmentSearch);
+        $shipmentOptions = Shipment::query()
+            ->with('customer:id,company_name')
+            ->when($search, fn($q) =>
+                $q->where('awb_number', 'like', "%{$search}%")
+                  ->orWhere('bl_number',  'like', "%{$search}%")
+                  ->orWhereHas('customer', fn($q2) =>
+                      $q2->where('company_name', 'like', "%{$search}%")
+                  )
+            )
+            ->latest()
+            ->limit(50)
+            ->get()
+            ->map(fn($s) => [
+                'id'    => $s->id,
+                'label' => implode(' · ', array_filter([
+                    $s->awb_number ?: ($s->bl_number ?: '#'.$s->id),
+                    $s->customer?->company_name,
+                    strtoupper($s->status),
+                ])),
+            ]);
+
         return view('livewire.admin.tax-note-management', [
             'notes'           => $notes,
             'periodeOptions'  => $this->periodeOptions(),
-            'shipmentOptions' => $this->shipmentOptions,
+            'shipmentOptions' => $shipmentOptions,
         ])->layout('layouts.admin');
     }
 }
