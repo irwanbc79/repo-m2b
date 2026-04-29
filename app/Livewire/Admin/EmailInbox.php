@@ -20,7 +20,7 @@ class EmailInbox extends Component
     use WithPagination;
 
     public $activeAccount = 'sales';
-    public $mailboxes = ['sales', 'import', 'export', 'finance', 'gmail'];
+    public $mailboxes = ['sales', 'import', 'export', 'finance', 'gmail', 'pajak'];
     public $emails = [];
     public $selectedEmail = null;
     public $showConvertModal = false;
@@ -438,6 +438,7 @@ class EmailInbox extends Component
             'export' => 'export@m2b.co.id',
             'finance' => 'finance@m2b.co.id',
             'gmail' => 'logisolmed@gmail.com',
+            'pajak' => 'moramultiberkahpt@gmail.com',
         ];
         
         $fromEmail = $mailboxEmails[$this->activeAccount] ?? config('mail.from.address');

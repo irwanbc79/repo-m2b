@@ -15,7 +15,7 @@ class SyncEmailInbox extends Command
     protected $signature = 'email:sync {mailbox?} {--force} {--backfill} {--days=7}';
     protected $description = 'Sync IMAP email inbox — fetches recent emails using date-based query';
 
-    protected array $mailboxes = ['sales', 'import', 'export', 'finance', 'gmail'];
+    protected array $mailboxes = ['sales', 'import', 'export', 'finance', 'gmail', 'pajak'];
 
     public function handle()
     {
