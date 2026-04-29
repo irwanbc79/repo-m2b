@@ -91,25 +91,27 @@
                 </a>
                 @endif
 
+                @unless(auth()->user()->hasRole('konsultan_pajak'))
                 <div class="px-4 py-2 mt-4 text-xs font-bold text-gray-500 uppercase tracking-wider">Operations</div>
 
                 @if(auth()->user()->hasPermission('shipment.view'))
                 <a href="{{ route('admin.shipments.index') }}" class="flex items-center px-4 py-3 text-sm font-medium rounded-lg transition-colors {{ request()->routeIs('admin.shipments*') ? 'bg-m2b-accent text-white' : 'hover:bg-gray-800 text-gray-300' }}">
                     📦 Manage Shipments
                 </a>
-                
+
                 <a href="{{ route('admin.calculator') }}" class="flex items-center px-4 py-3 text-sm font-medium rounded-lg transition-colors {{ request()->routeIs('admin.calculator') ? 'bg-m2b-accent text-white' : 'hover:bg-gray-800 text-gray-300' }}">
                     🧮 Kalkulator Pabean
                 </a>
-                
+
                 <a href="{{ route('hs-codes.explorer') }}" class="flex items-center px-4 py-3 text-sm font-medium rounded-lg transition-colors {{ request()->routeIs('hs-codes*') ? 'bg-m2b-accent text-white' : 'hover:bg-gray-800 text-gray-300' }}">
                     📋 HS Code Explorer
                 </a>
-                
+
                 <a href="{{ route('admin.field-docs.index') }}" class="flex items-center px-4 py-3 text-sm font-medium rounded-lg transition-colors {{ request()->routeIs('admin.field-docs*') ? 'bg-m2b-accent text-white' : 'hover:bg-gray-800 text-gray-300' }}">
                     📸 Dokumentasi Lapangan
                 </a>
                 @endif
+                @endunless
 
                 @if(auth()->user()->hasPermission('customer.view'))
                 <a href="{{ route('admin.customers.index') }}" class="flex items-center px-4 py-3 text-sm font-medium rounded-lg transition-colors {{ request()->routeIs('admin.customers*') ? 'bg-m2b-accent text-white' : 'hover:bg-gray-800 text-gray-300' }}">
