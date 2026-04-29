@@ -2,6 +2,7 @@
 
 namespace App\Livewire\Admin;
 
+use App\Models\Shipment;
 use App\Models\TaxNote;
 use Illuminate\Support\Facades\Auth;
 use Livewire\Component;
@@ -14,11 +15,15 @@ class TaxNoteManagement extends Component
     public $perPage = 25;
 
     // Form fields
-    public $isModalOpen = false;
-    public $isEditing   = false;
-    public $editingId   = null;
-    public $periode     = '';
-    public $catatan     = '';
+    public $isModalOpen  = false;
+    public $isEditing    = false;
+    public $editingId    = null;
+    public $periode      = '';
+    public $catatan      = '';
+    public $shipment_id  = null;
+
+    // Shipment search
+    public $shipmentSearch = '';
 
     // Delete confirm
     public $showDeleteConfirm = false;
@@ -27,8 +32,9 @@ class TaxNoteManagement extends Component
     protected function rules(): array
     {
         return [
-            'periode' => ['required', 'regex:/^\d{4}-(0[1-9]|1[0-2])$/'],
-            'catatan' => 'required|string|min:5|max:5000',
+            'periode'     => ['required', 'regex:/^\d{4}-(0[1-9]|1[0-2])$/'],
+            'catatan'     => 'required|string|min:5|max:5000',
+            'shipment_id' => 'nullable|exists:shipments,id',
         ];
     }
 
@@ -74,12 +80,36 @@ class TaxNoteManagement extends Component
         return $options;
     }
 
+    public function getShipmentOptionsProperty(): \Illuminate\Support\Collection
+    {
+        return Shipment::query()
+            ->when($this->shipmentSearch, fn($q) =>
+                $q->where('awb_number', 'like', '%' . $this->shipmentSearch . '%')
+                  ->orWhere('bl_number', 'like', '%' . $this->shipmentSearch . '%')
+                  ->orWhereHas('customer', fn($q2) =>
+                      $q2->where('company_name', 'like', '%' . $this->shipmentSearch . '%')
+                  )
+            )
+            ->whereNotIn('status', ['cancelled', 'cancel'])
+            ->latest()
+            ->limit(50)
+            ->get(['id', 'awb_number', 'bl_number', 'customer_id', 'status'])
+            ->map(fn($s) => [
+                'id'    => $s->id,
+                'label' => implode(' · ', array_filter([
+                    $s->awb_number ?: $s->bl_number,
+                    $s->customer?->company_name,
+                    strtoupper($s->status),
+                ])),
+            ]);
+    }
+
     // --- Actions ---
 
     public function openCreate(): void
     {
         abort_unless($this->canCreate(), 403);
-        $this->reset(['isEditing', 'editingId', 'catatan']);
+        $this->reset(['isEditing', 'editingId', 'catatan', 'shipment_id', 'shipmentSearch']);
         $this->periode    = now()->format('Y-m');
         $this->isModalOpen = true;
     }
@@ -93,6 +123,7 @@ class TaxNoteManagement extends Component
         $this->editingId   = $id;
         $this->periode     = $note->periode;
         $this->catatan     = $note->catatan;
+        $this->shipment_id = $note->shipment_id;
         $this->isModalOpen = true;
     }
 
@@ -100,23 +131,25 @@ class TaxNoteManagement extends Component
     {
         $this->validate();
 
+        $data = [
+            'periode'     => $this->periode,
+            'catatan'     => $this->catatan,
+            'shipment_id' => $this->shipment_id ?: null,
+        ];
+
         if ($this->isEditing) {
             $note = TaxNote::findOrFail($this->editingId);
             abort_unless($this->canEdit($note), 403);
-            $note->update(['periode' => $this->periode, 'catatan' => $this->catatan]);
+            $note->update($data);
             session()->flash('success', 'Catatan pajak berhasil diperbarui.');
         } else {
             abort_unless($this->canCreate(), 403);
-            TaxNote::create([
-                'user_id' => Auth::id(),
-                'periode' => $this->periode,
-                'catatan' => $this->catatan,
-            ]);
+            TaxNote::create(array_merge($data, ['user_id' => Auth::id()]));
             session()->flash('success', 'Catatan pajak berhasil disimpan.');
         }
 
         $this->isModalOpen = false;
-        $this->reset(['isEditing', 'editingId', 'periode', 'catatan']);
+        $this->reset(['isEditing', 'editingId', 'periode', 'catatan', 'shipment_id', 'shipmentSearch']);
     }
 
     public function confirmDelete(int $id): void
@@ -142,21 +175,22 @@ class TaxNoteManagement extends Component
     public function closeModal(): void
     {
         $this->isModalOpen = false;
-        $this->reset(['isEditing', 'editingId', 'periode', 'catatan']);
+        $this->reset(['isEditing', 'editingId', 'periode', 'catatan', 'shipment_id', 'shipmentSearch']);
     }
 
     // --- Render ---
 
     public function render()
     {
-        $notes = TaxNote::with('user')
+        $notes = TaxNote::with(['user', 'shipment'])
             ->orderByDesc('periode')
             ->orderByDesc('created_at')
             ->paginate($this->perPage);
 
         return view('livewire.admin.tax-note-management', [
-            'notes'          => $notes,
-            'periodeOptions' => $this->periodeOptions(),
+            'notes'           => $notes,
+            'periodeOptions'  => $this->periodeOptions(),
+            'shipmentOptions' => $this->shipmentOptions,
         ])->layout('layouts.admin');
     }
 }

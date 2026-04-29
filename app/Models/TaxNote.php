@@ -7,10 +7,15 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
 class TaxNote extends Model
 {
-    protected $fillable = ['user_id', 'periode', 'catatan'];
+    protected $fillable = ['user_id', 'shipment_id', 'periode', 'catatan'];
 
     public function user(): BelongsTo
     {
         return $this->belongsTo(User::class);
+    }
+
+    public function shipment(): BelongsTo
+    {
+        return $this->belongsTo(\App\Models\Shipment::class);
     }
 }

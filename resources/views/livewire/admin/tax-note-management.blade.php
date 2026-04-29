@@ -24,6 +24,7 @@
             <thead>
                 <tr class="bg-gray-700 text-gray-400 uppercase text-xs tracking-wider">
                     <th class="px-4 py-3 text-left">Periode</th>
+                    <th class="px-4 py-3 text-left">Shipment</th>
                     <th class="px-4 py-3 text-left">Catatan</th>
                     <th class="px-4 py-3 text-left">Dibuat Oleh</th>
                     <th class="px-4 py-3 text-left">Tanggal</th>
@@ -34,7 +35,16 @@
                 @forelse($notes as $note)
                 <tr class="hover:bg-gray-750 transition-colors">
                     <td class="px-4 py-3 font-mono font-medium text-blue-300">{{ $note->periode }}</td>
-                    <td class="px-4 py-3 text-gray-300 max-w-md">
+                    <td class="px-4 py-3">
+                        @if($note->shipment)
+                            <span class="inline-flex items-center gap-1 px-2 py-1 bg-indigo-900/50 border border-indigo-700 rounded text-xs text-indigo-300 font-mono">
+                                📦 {{ $note->shipment->awb_number ?: $note->shipment->bl_number ?: '#'.$note->shipment->id }}
+                            </span>
+                        @else
+                            <span class="text-gray-600 text-xs">—</span>
+                        @endif
+                    </td>
+                    <td class="px-4 py-3 text-gray-300 max-w-xs">
                         {{ Str::limit($note->catatan, 80) }}
                     </td>
                     <td class="px-4 py-3 text-gray-400 text-xs">{{ $note->user?->name ?? '-' }}</td>
@@ -58,7 +68,7 @@
                 </tr>
                 @empty
                 <tr>
-                    <td colspan="5" class="px-4 py-10 text-center text-gray-500">
+                    <td colspan="6" class="px-4 py-10 text-center text-gray-500">
                         Belum ada catatan pajak.
                     </td>
                 </tr>
@@ -94,6 +104,26 @@
                         @endforeach
                     </select>
                     @error('periode') <p class="text-red-400 text-xs mt-1">{{ $message }}</p> @enderror
+                </div>
+
+                {{-- Referensi Shipment --}}
+                <div>
+                    <label class="block text-xs font-semibold text-gray-400 mb-1 uppercase tracking-wide">
+                        Referensi Shipment <span class="text-gray-600 normal-case font-normal">(opsional)</span>
+                    </label>
+                    <input wire:model.live.debounce.300ms="shipmentSearch"
+                        type="text"
+                        placeholder="Cari AWB / BL / nama customer..."
+                        class="w-full bg-gray-700 border border-gray-600 text-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 mb-2">
+
+                    <select wire:model="shipment_id"
+                        class="w-full bg-gray-700 border border-gray-600 text-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500">
+                        <option value="">— Tidak terkait shipment tertentu —</option>
+                        @foreach($shipmentOptions as $opt)
+                            <option value="{{ $opt['id'] }}">{{ $opt['label'] }}</option>
+                        @endforeach
+                    </select>
+                    @error('shipment_id') <p class="text-red-400 text-xs mt-1">{{ $message }}</p> @enderror
                 </div>
 
                 {{-- Catatan --}}
