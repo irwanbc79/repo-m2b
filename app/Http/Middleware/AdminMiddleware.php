@@ -24,7 +24,7 @@ class AdminMiddleware
         }
 
         // Check if user has admin level access (level >= 60)
-        if (!$user->isAdminLevel() && !$user->hasRole(['super_admin', 'admin', 'staff', 'director', 'manager', 'supervisor', 'staff_accounting', 'staff_operations', 'staff_sales', 'staff_ppjk', 'staff_documentation', 'cashier', 'auditor', 'finance'])) {
+        if (!$user->isAdminLevel() && !$user->hasRole(['super_admin', 'admin', 'staff', 'director', 'manager', 'supervisor', 'staff_accounting', 'staff_operations', 'staff_sales', 'staff_ppjk', 'staff_documentation', 'cashier', 'auditor', 'finance', 'konsultan_pajak'])) {
             abort(403, 'Anda tidak memiliki akses ke halaman ini.');
         }
 

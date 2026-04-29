@@ -31,6 +31,11 @@ class PayrollPeriodManagement extends Component
     }
 
     // --- Access Control ---
+    public function canViewAny(): bool
+    {
+        return Auth::user()->hasRole(['admin', 'super_admin', 'director', 'finance', 'konsultan_pajak']);
+    }
+
     public function canCreate(): bool
     {
         return Auth::user()->hasRole(['admin', 'super_admin', 'finance']);

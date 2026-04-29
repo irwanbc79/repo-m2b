@@ -365,6 +365,9 @@ Route::middleware(['auth', 'admin'])->prefix('admin')->name('admin.')->group(fun
             Route::get('/penggajian/{periodId}/export-excel', [\App\Http\Controllers\Admin\HRD\PayrollExportController::class, 'exportExcel'])->name('export-excel');
             Route::get('/slip/{slipId}/export-pdf', [\App\Http\Controllers\Admin\HRD\PayrollExportController::class, 'exportPdfSlip'])->name('export-pdf-slip');
         });
+
+        // --- PAJAK & KEUANGAN ---
+        Route::get('/pajak/catatan', \App\Livewire\Admin\TaxNoteManagement::class)->name('tax-notes.index');
     });
 
 

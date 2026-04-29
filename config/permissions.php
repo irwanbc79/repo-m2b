@@ -185,6 +185,18 @@ return [
                 'field_photos.view_own',
             ],
         ],
+        'konsultan_pajak' => [
+            'label' => 'Konsultan Pajak',
+            'level' => 45,
+            'permissions' => [
+                'dashboard.view',
+                'invoice.view',
+                'report.view_financial',
+                'report.export',
+                'hrd.view',
+                'tax_note.*',
+            ],
+        ],
     ],
 
     /*
@@ -208,6 +220,7 @@ return [
         'documentation' => ['view', 'create', 'edit', 'upload'],
         'audit_log' => ['view', 'export'],
         'accounting' => ['view', 'input', 'approve'],
+        'tax_note' => ['view', 'create', 'edit', 'delete'],
     ],
 
     /*
@@ -233,5 +246,6 @@ return [
         'audit_logs' => ['audit_log.view'],
         'user_management' => ['user.view'],
         'settings' => ['settings.view'],
+        'tax_notes' => ['tax_note.view'],
     ],
 ];
