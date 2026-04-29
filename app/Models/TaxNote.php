@@ -7,12 +7,13 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
 class TaxNote extends Model
 {
-    protected $fillable = ['user_id', 'shipment_id', 'invoice_id', 'jenis_pajak', 'nominal', 'is_resolved', 'resolved_at', 'periode', 'catatan'];
+    protected $fillable = ['user_id', 'invoice_id', 'jenis_pajak', 'nominal', 'is_resolved', 'resolved_at', 'attachments', 'periode', 'catatan'];
 
     protected $casts = [
         'nominal'     => 'decimal:2',
         'is_resolved' => 'boolean',
         'resolved_at' => 'datetime',
+        'attachments' => 'array',
     ];
 
     public const JENIS_PAJAK = [
@@ -28,11 +29,6 @@ class TaxNote extends Model
     public function user(): BelongsTo
     {
         return $this->belongsTo(User::class);
-    }
-
-    public function shipment(): BelongsTo
-    {
-        return $this->belongsTo(\App\Models\Shipment::class);
     }
 
     public function invoice(): BelongsTo
