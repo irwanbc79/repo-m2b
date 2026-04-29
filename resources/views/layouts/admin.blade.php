@@ -79,7 +79,7 @@
                     🏠 Dashboard
                 </a>
 
-                @if(auth()->user()->hasPermission('dashboard.view') && !auth()->user()->hasRole('auditor'))
+                @if(auth()->user()->hasPermission('dashboard.view') && !auth()->user()->hasRole(['auditor', 'konsultan_pajak']))
                 <div class="px-4 py-2 mt-4 text-xs font-bold text-gray-500 uppercase tracking-wider">Communication</div>
 
                 <a href="{{ route('inbox.index') }}" class="flex items-center px-4 py-3 text-sm font-medium rounded-lg transition-colors group {{ request()->routeIs('inbox.*') ? 'bg-m2b-accent text-white shadow-lg' : 'hover:bg-gray-800 text-gray-300' }}">
@@ -190,9 +190,10 @@
                 @endif
 
                 {{-- HRD & PAYROLL --}}
-                @if(auth()->user()->hasRole(['admin', 'super_admin', 'director', 'finance']))
+                @if(auth()->user()->hasRole(['admin', 'super_admin', 'director', 'finance', 'konsultan_pajak']))
                 <div class="px-4 py-2 mt-4 text-xs font-bold text-gray-500 uppercase tracking-wider">HRD &amp; Payroll</div>
 
+                @unless(auth()->user()->hasRole('konsultan_pajak'))
                 <a href="{{ route('admin.hrd.employees') }}" class="flex items-center px-4 py-3 text-sm font-medium rounded-lg transition-colors {{ request()->routeIs('admin.hrd.employees') ? 'bg-m2b-accent text-white shadow-lg' : 'hover:bg-gray-800 text-gray-300' }}">
                     👥 Karyawan
                 </a>
@@ -212,8 +213,14 @@
                 <a href="{{ route('admin.visits') }}" class="flex items-center px-4 py-3 text-sm font-medium rounded-lg transition-colors {{ request()->routeIs('admin.visits') ? 'bg-m2b-accent text-white shadow-lg' : 'hover:bg-gray-800 text-gray-300' }}">
                     🚗 Kunjungan Karyawan
                 </a>
+                @endunless
+
+                <a href="{{ route('admin.tax-notes.index') }}" class="flex items-center px-4 py-3 text-sm font-medium rounded-lg transition-colors {{ request()->routeIs('admin.tax-notes*') ? 'bg-m2b-accent text-white shadow-lg' : 'hover:bg-gray-800 text-gray-300' }}">
+                    🗒️ Catatan Pajak
+                </a>
                 @endif
 
+                @unless(auth()->user()->hasRole('konsultan_pajak'))
                 <div class="px-4 py-2 mt-4 text-xs font-bold text-gray-500 uppercase tracking-wider">Settings</div>
 
                 @if(auth()->user()->hasPermission('report.view_basic'))
@@ -252,16 +259,17 @@
                 </a>
                 @endif
 
-                <a href="{{ route('admin.profile') }}" class="flex items-center px-4 py-3 text-sm font-medium rounded-lg transition-colors {{ request()->routeIs('admin.profile') ? 'bg-m2b-accent text-white' : 'hover:bg-gray-800 text-gray-300' }}">
-                    ⚙️ Admin Profile
-                </a>
-
                 @if(!in_array('auditor', auth()->user()->roles ?? []))
                 <a href="https://medsos.m2b.co.id" target="_blank" class="flex items-center px-4 py-3 text-sm font-medium rounded-lg transition-colors hover:bg-blue-900 text-blue-400 hover:text-blue-200 border border-blue-800 mt-2">
                     📱 Media Sosial
                     <svg xmlns="http://www.w3.org/2000/svg" class="ml-auto h-3 w-3 opacity-60" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14"/></svg>
                 </a>
                 @endif
+                @endunless
+
+                <a href="{{ route('admin.profile') }}" class="flex items-center px-4 py-3 text-sm font-medium rounded-lg transition-colors {{ request()->routeIs('admin.profile') ? 'bg-m2b-accent text-white' : 'hover:bg-gray-800 text-gray-300' }}">
+                    ⚙️ Admin Profile
+                </a>
 
             </nav>
 
