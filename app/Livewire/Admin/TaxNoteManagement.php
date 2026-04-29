@@ -2,6 +2,7 @@
 
 namespace App\Livewire\Admin;
 
+use App\Models\Invoice;
 use App\Models\Shipment;
 use App\Models\TaxNote;
 use Illuminate\Support\Facades\Auth;
@@ -21,9 +22,13 @@ class TaxNoteManagement extends Component
     public $periode      = '';
     public $catatan      = '';
     public $shipment_id  = null;
+    public $invoice_id   = null;
+    public $jenis_pajak  = '';
+    public $nominal      = '';
 
-    // Shipment search
+    // Search inputs
     public $shipmentSearch = '';
+    public $invoiceSearch  = '';
 
     // Delete confirm
     public $showDeleteConfirm = false;
@@ -35,6 +40,9 @@ class TaxNoteManagement extends Component
             'periode'     => ['required', 'regex:/^\d{4}-(0[1-9]|1[0-2])$/'],
             'catatan'     => 'required|string|min:5|max:5000',
             'shipment_id' => 'nullable|exists:shipments,id',
+            'invoice_id'  => 'nullable|exists:invoices,id',
+            'jenis_pajak' => 'nullable|string|max:50',
+            'nominal'     => 'nullable|numeric|min:0',
         ];
     }
 
@@ -85,7 +93,8 @@ class TaxNoteManagement extends Component
     public function openCreate(): void
     {
         abort_unless($this->canCreate(), 403);
-        $this->reset(['isEditing', 'editingId', 'catatan', 'shipment_id', 'shipmentSearch']);
+        $this->reset(['isEditing', 'editingId', 'catatan', 'shipment_id', 'invoice_id',
+                      'jenis_pajak', 'nominal', 'shipmentSearch', 'invoiceSearch']);
         $this->periode    = now()->format('Y-m');
         $this->isModalOpen = true;
     }
@@ -100,6 +109,9 @@ class TaxNoteManagement extends Component
         $this->periode     = $note->periode;
         $this->catatan     = $note->catatan;
         $this->shipment_id = $note->shipment_id;
+        $this->invoice_id  = $note->invoice_id;
+        $this->jenis_pajak = $note->jenis_pajak ?? '';
+        $this->nominal     = $note->nominal ?? '';
         $this->isModalOpen = true;
     }
 
@@ -111,6 +123,9 @@ class TaxNoteManagement extends Component
             'periode'     => $this->periode,
             'catatan'     => $this->catatan,
             'shipment_id' => $this->shipment_id ?: null,
+            'invoice_id'  => $this->invoice_id  ?: null,
+            'jenis_pajak' => $this->jenis_pajak  ?: null,
+            'nominal'     => $this->nominal !== '' ? $this->nominal : null,
         ];
 
         if ($this->isEditing) {
@@ -125,7 +140,20 @@ class TaxNoteManagement extends Component
         }
 
         $this->isModalOpen = false;
-        $this->reset(['isEditing', 'editingId', 'periode', 'catatan', 'shipment_id', 'shipmentSearch']);
+        $this->reset(['isEditing', 'editingId', 'periode', 'catatan', 'shipment_id', 'invoice_id',
+                      'jenis_pajak', 'nominal', 'shipmentSearch', 'invoiceSearch']);
+    }
+
+    public function toggleResolved(int $id): void
+    {
+        $note = TaxNote::findOrFail($id);
+        abort_unless($this->canEdit($note), 403);
+
+        if ($note->is_resolved) {
+            $note->update(['is_resolved' => false, 'resolved_at' => null]);
+        } else {
+            $note->update(['is_resolved' => true, 'resolved_at' => now()]);
+        }
     }
 
     public function confirmDelete(int $id): void
@@ -151,26 +179,27 @@ class TaxNoteManagement extends Component
     public function closeModal(): void
     {
         $this->isModalOpen = false;
-        $this->reset(['isEditing', 'editingId', 'periode', 'catatan', 'shipment_id', 'shipmentSearch']);
+        $this->reset(['isEditing', 'editingId', 'periode', 'catatan', 'shipment_id', 'invoice_id',
+                      'jenis_pajak', 'nominal', 'shipmentSearch', 'invoiceSearch']);
     }
 
     // --- Render ---
 
     public function render()
     {
-        $notes = TaxNote::with(['user', 'shipment'])
+        $notes = TaxNote::with(['user', 'shipment', 'invoice.customer'])
             ->orderByDesc('periode')
             ->orderByDesc('created_at')
             ->paginate($this->perPage);
 
-        $search = trim($this->shipmentSearch);
+        $shipSearch = trim($this->shipmentSearch);
         $shipmentOptions = Shipment::query()
             ->with('customer:id,company_name')
-            ->when($search, fn($q) =>
-                $q->where('awb_number', 'like', "%{$search}%")
-                  ->orWhere('bl_number',  'like', "%{$search}%")
+            ->when($shipSearch, fn($q) =>
+                $q->where('awb_number', 'like', "%{$shipSearch}%")
+                  ->orWhere('bl_number',  'like', "%{$shipSearch}%")
                   ->orWhereHas('customer', fn($q2) =>
-                      $q2->where('company_name', 'like', "%{$search}%")
+                      $q2->where('company_name', 'like', "%{$shipSearch}%")
                   )
             )
             ->latest()
@@ -185,10 +214,34 @@ class TaxNoteManagement extends Component
                 ])),
             ]);
 
+        $invSearch = trim($this->invoiceSearch);
+        $invoiceOptions = Invoice::query()
+            ->with('customer:id,company_name')
+            ->when($invSearch, fn($q) =>
+                $q->where('invoice_number', 'like', "%{$invSearch}%")
+                  ->orWhereHas('customer', fn($q2) =>
+                      $q2->where('company_name', 'like', "%{$invSearch}%")
+                  )
+            )
+            ->latest()
+            ->limit(50)
+            ->get()
+            ->map(fn($i) => [
+                'id'    => $i->id,
+                'label' => implode(' · ', array_filter([
+                    $i->invoice_number,
+                    $i->customer?->company_name,
+                    strtoupper($i->type ?? ''),
+                    $i->status ? strtoupper($i->status) : null,
+                ])),
+            ]);
+
         return view('livewire.admin.tax-note-management', [
-            'notes'           => $notes,
-            'periodeOptions'  => $this->periodeOptions(),
+            'notes'          => $notes,
+            'periodeOptions' => $this->periodeOptions(),
             'shipmentOptions' => $shipmentOptions,
+            'invoiceOptions'  => $invoiceOptions,
+            'jenisPajakList'  => TaxNote::JENIS_PAJAK,
         ])->layout('layouts.admin');
     }
 }
