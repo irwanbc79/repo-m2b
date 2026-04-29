@@ -44,8 +44,9 @@
         </div>
 
         {{-- 2. NOTIFIKASI --}}
-        {{-- Kita panggil komponen notifikasi yang sudah ada --}}
+        @unless(auth()->user()->hasRole('konsultan_pajak'))
         <livewire:admin.notification-dropdown />
+        @endunless
 
         {{-- 3. LIVE DATE & TIME --}}
         <div class="hidden md:flex flex-col items-end text-right" 
