@@ -22,11 +22,10 @@ class CreateKonsultanPajakUser extends Command
         }
 
         $user = User::create([
-            'name'     => $this->argument('name'),
-            'email'    => $email,
-            'password' => Hash::make($this->argument('password')),
-            'roles'    => ['konsultan_pajak'],
-            'role'     => 'konsultan_pajak',
+            'name'      => $this->argument('name'),
+            'email'     => $email,
+            'password'  => Hash::make($this->argument('password')),
+            'roles'     => ['konsultan_pajak'],
             'is_active' => true,
         ]);
 
