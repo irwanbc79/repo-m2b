@@ -190,6 +190,7 @@ return [
             'level' => 45,
             'permissions' => [
                 'dashboard.view',
+                'shipment.view',
                 'invoice.view',
                 'report.view_financial',
                 'report.export',
