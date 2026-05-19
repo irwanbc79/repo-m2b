@@ -128,8 +128,7 @@ class SimpleCashier extends Component
                 $q->whereHas('customer', fn($q) => $q->where('company_name', 'LIKE', "%{$search}%"))
                   ->orWhereHas('vendor', fn($q) => $q->where('name', 'LIKE', "%{$search}%"))
                   ->orWhereHas('shipment', fn($q) => $q->where('awb_number', 'LIKE', "%{$search}%"))
-                  ->orWhere('description', 'LIKE', "%{$search}%")
-                  ->orWhere('counterpart_name', 'LIKE', "%{$search}%");
+                  ->orWhere('description', 'LIKE', "%{$search}%");
             });
         }
 
