@@ -160,6 +160,8 @@ class CashierService
             'description' => $data['description'] ?? '',
             'proof_file' => $data['proof_file'] ?? null,
             'journal_id' => $journal->id,
+            'is_posted' => true,
+            'posted_at' => now(),
             'created_by' => Auth::id(),
         ]);
     }
@@ -423,6 +425,8 @@ class CashierService
                 'shipment_id' => $data['shipment_id'] ?? null,
                 'description' => $data['description'] ?? null,
                 'journal_id' => $journal->id,
+                'is_posted' => true,
+                'posted_at' => $cashTransaction->posted_at ?? now(),
             ]);
             
             if ($attachment) {
