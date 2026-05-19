@@ -817,6 +817,7 @@
                             @else
                             <span class="text-gray-400">-</span>
                             @endif
+                        </td>
                         <td class="px-4 py-3">
                             @if(!empty($trx['description']))
                             <div class="text-sm text-gray-700 max-w-xs" title="{{ $trx['description'] }}">
@@ -825,7 +826,6 @@
                             @else
                             <span class="text-gray-400 text-xs italic">- tidak ada keterangan -</span>
                             @endif
-                        </td>
                         </td>
                         <td class="px-4 py-3 text-right">
                             <span class="font-semibold {{ ($trx['type'] ?? 'out') === 'in' ? 'text-green-600' : 'text-red-600' }}">
