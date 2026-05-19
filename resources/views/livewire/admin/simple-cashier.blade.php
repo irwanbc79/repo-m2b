@@ -635,7 +635,8 @@
                         + ($filterCurrency !== 'all' ? 1 : 0)
                         + (!empty($filterAmountMin) ? 1 : 0)
                         + (!empty($filterAmountMax) ? 1 : 0)
-                        + ($filterNoJournal ? 1 : 0);
+                        + ($filterNoJournal ? 1 : 0)
+                        + ($filterNoBukti ? 1 : 0);
                 @endphp
                 <button wire:click="toggleFilters"
                         class="relative px-3 py-2 text-sm font-medium border rounded-lg transition-colors {{ $showFilters ? 'bg-blue-600 text-white border-blue-600' : 'bg-white text-gray-700 border-gray-300 hover:bg-gray-50' }}">
@@ -864,6 +865,7 @@
                         <td class="px-4 py-3 text-center">
                             @if(!empty($trx['proof_file']))
                             <button
+                                type="button"
                                 wire:click="openProofModal({{ $trx['id'] }})"
                                 class="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-lg text-xs font-semibold bg-emerald-50 text-emerald-700 border border-emerald-200 hover:bg-emerald-100 transition"
                                 title="Lihat bukti transaksi">
@@ -872,6 +874,7 @@
                             </button>
                             @else
                             <button
+                                type="button"
                                 wire:click="openUploadProofModal({{ $trx['id'] }})"
                                 class="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-lg text-xs font-semibold bg-amber-50 text-amber-700 border border-amber-200 hover:bg-amber-100 transition"
                                 title="Upload bukti transaksi">
@@ -1005,7 +1008,7 @@
 
 {{-- Proof Preview Modal --}}
 @if($showProofModal)
-<div class="fixed inset-0 bg-gray-900 bg-opacity-70 overflow-y-auto h-full w-full z-[200]" wire:click.self="closeProofModal">
+<div class="fixed inset-0 bg-gray-900 bg-opacity-70 overflow-y-auto h-full w-full" style="z-index:9999" wire:click.self="closeProofModal">
     <div class="relative mx-auto mt-10 mb-10 w-full max-w-3xl bg-white rounded-xl shadow-2xl overflow-hidden">
         {{-- Header --}}
         <div class="flex items-center justify-between px-5 py-4 border-b bg-gray-50">
@@ -1061,7 +1064,7 @@
 
 {{-- Upload Proof Modal --}}
 @if($showUploadProofModal)
-<div class="fixed inset-0 bg-gray-900 bg-opacity-70 overflow-y-auto h-full w-full z-[200]" wire:click.self="closeUploadProofModal">
+<div class="fixed inset-0 bg-gray-900 bg-opacity-70 overflow-y-auto h-full w-full" style="z-index:9999" wire:click.self="closeUploadProofModal">
     <div class="relative mx-auto mt-20 mb-10 w-full max-w-lg bg-white rounded-xl shadow-2xl overflow-hidden">
         {{-- Header --}}
         <div class="flex items-center justify-between px-5 py-4 border-b bg-gray-50">
