@@ -67,11 +67,13 @@ class SimpleCashier extends Component
     public $filterAmountMin = '';
     public $filterAmountMax = '';
     public $filterNoJournal = false;
+    public $filterNoBukti = false;
 
     // Summary stats (recomputed on every filter load)
     public $summaryTotalIn = 0;
     public $summaryTotalOut = 0;
     public $summaryCount = 0;
+    public $summaryNoBukti = 0;
     
     // Edit mode
     public $editingId = null;
@@ -180,6 +182,10 @@ class SimpleCashier extends Component
             $query->where('amount', '<=', (float) $this->filterAmountMax);
         }
 
+        if ($this->filterNoBukti) {
+            $query->whereNull('proof_file');
+        }
+
         return $query;
     }
 
@@ -191,6 +197,8 @@ class SimpleCashier extends Component
         $this->summaryCount  = $this->totalRecords;
         $this->summaryTotalIn  = (clone $base)->where('type', 'in')->sum('amount');
         $this->summaryTotalOut = (clone $base)->where('type', 'out')->sum('amount');
+
+        $this->summaryNoBukti = (clone $base)->whereNull('proof_file')->count();
 
         $this->recentTransactions = (clone $base)
             ->with(['customer', 'vendor', 'shipment', 'journal', 'creator'])
@@ -239,6 +247,7 @@ class SimpleCashier extends Component
         $this->filterAmountMin = '';
         $this->filterAmountMax = '';
         $this->filterNoJournal = false;
+        $this->filterNoBukti = false;
         $this->currentPage = 1;
         $this->loadRecentTransactions();
     }

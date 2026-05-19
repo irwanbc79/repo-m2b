@@ -568,19 +568,34 @@
             </div>
             <div class="text-xs {{ $netCash >= 0 ? 'text-blue-500' : 'text-orange-500' }} mt-0.5">Selisih masuk vs keluar</div>
         </div>
-        <div class="{{ $filterNoJournal ? 'bg-orange-50 border-2 border-orange-400' : 'bg-gray-50 border border-gray-200' }} rounded-xl p-4 flex flex-col transition-all">
-            <div class="text-xs font-semibold {{ $filterNoJournal ? 'text-orange-600' : 'text-gray-500' }} uppercase tracking-wide">
-                {{ $filterNoJournal ? 'Tanpa Jurnal' : 'Transaksi' }}
+        @php
+            $card4Active = $filterNoJournal || $filterNoBukti;
+            $card4Color  = $filterNoBukti ? 'amber' : ($filterNoJournal ? 'orange' : 'gray');
+            $card4Label  = $filterNoBukti ? 'Tanpa Bukti' : ($filterNoJournal ? 'Tanpa Jurnal' : 'Transaksi');
+            $card4Sub    = $filterNoBukti ? 'Perlu dilengkapi' : ($filterNoJournal ? 'Perlu rekonsiliasi' : 'Total hasil filter');
+        @endphp
+        <div class="{{ $filterNoBukti ? 'bg-amber-50 border-2 border-amber-400' : ($filterNoJournal ? 'bg-orange-50 border-2 border-orange-400' : 'bg-gray-50 border border-gray-200') }} rounded-xl p-4 flex flex-col transition-all">
+            <div class="text-xs font-semibold {{ $filterNoBukti ? 'text-amber-600' : ($filterNoJournal ? 'text-orange-600' : 'text-gray-500') }} uppercase tracking-wide">
+                {{ $card4Label }}
             </div>
-            <div class="mt-1 text-lg font-bold {{ $filterNoJournal ? 'text-orange-700' : 'text-gray-700' }}">{{ number_format($summaryCount, 0, ',', '.') }}</div>
-            <div class="text-xs {{ $filterNoJournal ? 'text-orange-500 font-medium' : 'text-gray-400' }} mt-0.5">
-                {{ $filterNoJournal ? 'Perlu rekonsiliasi' : 'Total hasil filter' }}
+            <div class="mt-1 text-lg font-bold {{ $filterNoBukti ? 'text-amber-700' : ($filterNoJournal ? 'text-orange-700' : 'text-gray-700') }}">
+                {{ number_format($summaryCount, 0, ',', '.') }}
             </div>
+            <div class="text-xs {{ $filterNoBukti ? 'text-amber-500 font-medium' : ($filterNoJournal ? 'text-orange-500 font-medium' : 'text-gray-400') }} mt-0.5">
+                {{ $card4Sub }}
+            </div>
+            @if(!$card4Active && $summaryNoBukti > 0)
+            <button wire:click="$set('filterNoBukti', true)"
+                    class="mt-2 inline-flex items-center gap-1 text-xs font-semibold text-amber-700 bg-amber-100 hover:bg-amber-200 rounded px-2 py-0.5 transition self-start">
+                <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+                {{ $summaryNoBukti }} tanpa bukti
+            </button>
+            @endif
         </div>
     </div>
 
     {{-- Main Transactions Card --}}
-    <div class="{{ $filterNoJournal ? 'border-2 border-orange-400' : 'border border-gray-200' }} bg-white rounded-xl shadow-sm mt-4 overflow-hidden transition-all">
+    <div class="{{ $filterNoBukti ? 'border-2 border-amber-400' : ($filterNoJournal ? 'border-2 border-orange-400' : 'border border-gray-200') }} bg-white rounded-xl shadow-sm mt-4 overflow-hidden transition-all">
 
         {{-- Card Header: Title + Search + Controls --}}
         <div class="flex flex-col md:flex-row md:items-center gap-3 px-6 py-4 border-b border-gray-100">
@@ -589,7 +604,9 @@
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"/>
                 </svg>
                 <h3 class="text-lg font-bold text-gray-900 whitespace-nowrap">Transaksi Kas</h3>
-                @if($filterNoJournal)
+                @if($filterNoBukti)
+                <span class="px-2 py-0.5 bg-amber-100 text-amber-700 text-xs font-bold rounded-full animate-pulse">Mode Cek Bukti</span>
+                @elseif($filterNoJournal)
                 <span class="px-2 py-0.5 bg-orange-100 text-orange-700 text-xs font-bold rounded-full animate-pulse">Mode Rekonsiliasi</span>
                 @endif
             </div>
@@ -707,13 +724,21 @@
                         <option value="EUR">EUR (Euro)</option>
                     </select>
                 </div>
-                <div class="flex items-end pb-0.5">
-                    <label class="flex items-start gap-3 cursor-pointer group w-full p-3 rounded-lg border-2 border-dashed {{ $filterNoJournal ? 'border-orange-400 bg-orange-50' : 'border-gray-300 hover:border-orange-300 hover:bg-orange-50/50' }} transition-all">
+                <div class="flex items-end pb-0.5 gap-2">
+                    <label class="flex items-start gap-3 cursor-pointer group flex-1 p-3 rounded-lg border-2 border-dashed {{ $filterNoJournal ? 'border-orange-400 bg-orange-50' : 'border-gray-300 hover:border-orange-300 hover:bg-orange-50/50' }} transition-all">
                         <input type="checkbox" wire:model.live="filterNoJournal"
                                class="mt-0.5 rounded border-gray-300 text-orange-500 focus:ring-orange-500 focus:ring-2">
                         <div>
                             <div class="text-sm font-semibold {{ $filterNoJournal ? 'text-orange-700' : 'text-gray-700' }}">Tanpa Jurnal</div>
                             <div class="text-xs {{ $filterNoJournal ? 'text-orange-500' : 'text-gray-400' }}">Temukan selisih akuntansi</div>
+                        </div>
+                    </label>
+                    <label class="flex items-start gap-3 cursor-pointer group flex-1 p-3 rounded-lg border-2 border-dashed {{ $filterNoBukti ? 'border-amber-400 bg-amber-50' : 'border-gray-300 hover:border-amber-300 hover:bg-amber-50/50' }} transition-all">
+                        <input type="checkbox" wire:model.live="filterNoBukti"
+                               class="mt-0.5 rounded border-gray-300 text-amber-500 focus:ring-amber-500 focus:ring-2">
+                        <div>
+                            <div class="text-sm font-semibold {{ $filterNoBukti ? 'text-amber-700' : 'text-gray-700' }}">Tanpa Bukti</div>
+                            <div class="text-xs {{ $filterNoBukti ? 'text-amber-500' : 'text-gray-400' }}">Transaksi perlu dilengkapi</div>
                         </div>
                     </label>
                 </div>
@@ -754,6 +779,7 @@
                 if (!empty($filterAmountMin)) $activeTags[] = ['label' => 'Min: IDR ' . number_format((float)$filterAmountMin, 0, ',', '.'), 'action' => "\$set('filterAmountMin', '')"];
                 if (!empty($filterAmountMax)) $activeTags[] = ['label' => 'Maks: IDR ' . number_format((float)$filterAmountMax, 0, ',', '.'), 'action' => "\$set('filterAmountMax', '')"];
                 if ($filterNoJournal) $activeTags[] = ['label' => 'Tanpa Jurnal', 'action' => "\$set('filterNoJournal', false)"];
+                if ($filterNoBukti)   $activeTags[] = ['label' => 'Tanpa Bukti',  'action' => "\$set('filterNoBukti', false)"];
             @endphp
             @if(count($activeTags) > 0)
             <div class="flex flex-wrap gap-2 pt-2 border-t border-gray-200">
@@ -787,7 +813,9 @@
                 </thead>
                 <tbody class="divide-y divide-gray-100">
                     @foreach($recentTransactions as $trx)
-                    <tr class="hover:bg-gray-50">
+                    <tr class="{{ empty($trx['proof_file']) ? 'bg-amber-50/40 hover:bg-amber-50' : 'hover:bg-gray-50' }}"
+                        title="{{ empty($trx['proof_file']) ? 'Transaksi ini belum memiliki bukti' : '' }}"
+                    >
                         <td class="px-4 py-3">{{ \Carbon\Carbon::parse($trx['transaction_date'])->format('d/m/Y') }}</td>
                         <td class="px-4 py-3">
                             @if(($trx['type'] ?? 'out') === 'in')
