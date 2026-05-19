@@ -820,11 +820,12 @@
                             </span>
                         </td>
                         <td class="px-4 py-3 text-center">
-                            @if(empty($trx['journal_id']))
+                            @php $journalStatus = $trx['journal']['status'] ?? null; @endphp
+                            @if(empty($trx['journal_id']) || $journalStatus === null)
                             <span class="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-red-100 text-red-700 border border-red-300" title="Tidak ada jurnal akuntansi — perlu rekonsiliasi">
                                 ⚠ No Journal
                             </span>
-                            @elseif(($trx['is_posted'] ?? false))
+                            @elseif($journalStatus === 'posted')
                             <span class="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-green-100 text-green-800">
                                 ✓ Posted
                             </span>
