@@ -12,13 +12,16 @@ class Testimonial extends Model
     protected $fillable = [
         'customer_id', 'invoice_id', 'display_name', 'company_name',
         'position', 'rating', 'content', 'status', 'approved_by',
-        'approved_at', 'admin_note', 'token', 'google_review_sent',
-        'google_review_sent_at', 'ip_address',
+        'approved_at', 'admin_note', 'token', 'token_expires_at',
+        'google_review_sent', 'google_review_sent_at',
+        'reminder_sent_at', 'ip_address',
     ];
 
     protected $casts = [
         'approved_at'           => 'datetime',
         'google_review_sent_at' => 'datetime',
+        'token_expires_at'      => 'datetime',
+        'reminder_sent_at'      => 'datetime',
         'google_review_sent'    => 'boolean',
         'rating'                => 'integer',
     ];
@@ -29,6 +32,16 @@ class Testimonial extends Model
 
     public function scopeApproved($q) { return $q->where('status', 'approved'); }
     public function scopePending($q)  { return $q->where('status', 'pending'); }
+
+    public function isExpired(): bool
+    {
+        return $this->token_expires_at && $this->token_expires_at->isPast();
+    }
+
+    public function isFilled(): bool
+    {
+        return trim($this->content) !== '';
+    }
 
     public static function generateToken(): string
     {

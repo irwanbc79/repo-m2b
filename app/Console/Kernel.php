@@ -20,6 +20,9 @@ class Kernel extends ConsoleKernel
 
         // 💌 FOLLOW-UP EMAIL 3 HARI SETELAH PAID (SETIAP HARI JAM 09:00)
         $schedule->command('emails:send-followup')->dailyAt('09:00');
+
+        // 🔔 REMINDER TESTIMONI 7 HARI SETELAH FOLLOW-UP (SETIAP HARI JAM 10:00)
+        $schedule->command('emails:testimonial-reminder')->dailyAt('10:00');
     }
 
     /**
