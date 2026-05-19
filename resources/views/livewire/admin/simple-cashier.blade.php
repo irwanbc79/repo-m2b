@@ -535,39 +535,228 @@
 
     {{-- Recent Transactions (Bottom Section) --}}
     {{-- @if(count($recentTransactions) > 0) --}}
-    <div class="bg-white rounded-xl shadow-sm border border-gray-200 p-6 mt-6">
-        <div class="flex flex-col md:flex-row md:items-center md:justify-between gap-4 mb-4">
-            <h3 class="text-lg font-bold text-gray-900 flex items-center">
-                <svg class="w-5 h-5 mr-2 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+
+    {{-- Summary Stats Bar --}}
+    <div class="grid grid-cols-2 lg:grid-cols-4 gap-3 mt-6">
+        <div class="bg-green-50 border border-green-200 rounded-xl p-4 flex flex-col">
+            <div class="text-xs font-semibold text-green-600 uppercase tracking-wide">Total Masuk</div>
+            <div class="mt-1 text-lg font-bold text-green-700 truncate">IDR {{ number_format($summaryTotalIn, 0, ',', '.') }}</div>
+            <div class="text-xs text-green-500 mt-0.5">Dana diterima periode ini</div>
+        </div>
+        <div class="bg-red-50 border border-red-200 rounded-xl p-4 flex flex-col">
+            <div class="text-xs font-semibold text-red-600 uppercase tracking-wide">Total Keluar</div>
+            <div class="mt-1 text-lg font-bold text-red-700 truncate">IDR {{ number_format($summaryTotalOut, 0, ',', '.') }}</div>
+            <div class="text-xs text-red-500 mt-0.5">Dana dikeluarkan periode ini</div>
+        </div>
+        @php $netCash = $summaryTotalIn - $summaryTotalOut; @endphp
+        <div class="{{ $netCash >= 0 ? 'bg-blue-50 border-blue-200' : 'bg-orange-50 border-orange-200' }} border rounded-xl p-4 flex flex-col">
+            <div class="text-xs font-semibold {{ $netCash >= 0 ? 'text-blue-600' : 'text-orange-600' }} uppercase tracking-wide">Net Kas</div>
+            <div class="mt-1 text-lg font-bold {{ $netCash >= 0 ? 'text-blue-700' : 'text-orange-700' }} truncate">
+                {{ $netCash < 0 ? '-' : '' }}IDR {{ number_format(abs($netCash), 0, ',', '.') }}
+            </div>
+            <div class="text-xs {{ $netCash >= 0 ? 'text-blue-500' : 'text-orange-500' }} mt-0.5">Selisih masuk vs keluar</div>
+        </div>
+        <div class="{{ $filterNoJournal ? 'bg-orange-50 border-2 border-orange-400' : 'bg-gray-50 border border-gray-200' }} rounded-xl p-4 flex flex-col transition-all">
+            <div class="text-xs font-semibold {{ $filterNoJournal ? 'text-orange-600' : 'text-gray-500' }} uppercase tracking-wide">
+                {{ $filterNoJournal ? 'Tanpa Jurnal' : 'Transaksi' }}
+            </div>
+            <div class="mt-1 text-lg font-bold {{ $filterNoJournal ? 'text-orange-700' : 'text-gray-700' }}">{{ number_format($summaryCount, 0, ',', '.') }}</div>
+            <div class="text-xs {{ $filterNoJournal ? 'text-orange-500 font-medium' : 'text-gray-400' }} mt-0.5">
+                {{ $filterNoJournal ? 'Perlu rekonsiliasi' : 'Total hasil filter' }}
+            </div>
+        </div>
+    </div>
+
+    {{-- Main Transactions Card --}}
+    <div class="{{ $filterNoJournal ? 'border-2 border-orange-400' : 'border border-gray-200' }} bg-white rounded-xl shadow-sm mt-4 overflow-hidden transition-all">
+
+        {{-- Card Header: Title + Search + Controls --}}
+        <div class="flex flex-col md:flex-row md:items-center gap-3 px-6 py-4 border-b border-gray-100">
+            <div class="flex items-center gap-2 flex-shrink-0">
+                <svg class="w-5 h-5 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"/>
                 </svg>
-                Transaksi Kas
-            </h3>
-            
-            {{-- Filter & Export --}}
-            <div class="flex flex-wrap items-center gap-2">
-                <div class="flex items-center gap-2">
-                    <label class="text-sm text-gray-600">Dari:</label>
-                    <input type="date" wire:model.live="filterDateFrom" class="text-sm border-gray-300 rounded-md shadow-sm px-2 py-1">
-                </div>
-                <div class="flex items-center gap-2">
-                    <label class="text-sm text-gray-600">Sampai:</label>
-                    <input type="date" wire:model.live="filterDateTo" class="text-sm border-gray-300 rounded-md shadow-sm px-2 py-1">
-                </div>
-                <button wire:click="applyFilters" class="px-3 py-1.5 bg-blue-600 text-white text-sm rounded-md hover:bg-blue-700">
-                    <svg class="w-4 h-4 inline mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 4a1 1 0 011-1h16a1 1 0 011 1v2.586a1 1 0 01-.293.707l-6.414 6.414a1 1 0 00-.293.707V17l-4 4v-6.586a1 1 0 00-.293-.707L3.293 7.293A1 1 0 013 6.586V4z"/></svg>
+                <h3 class="text-lg font-bold text-gray-900 whitespace-nowrap">Transaksi Kas</h3>
+                @if($filterNoJournal)
+                <span class="px-2 py-0.5 bg-orange-100 text-orange-700 text-xs font-bold rounded-full animate-pulse">Mode Rekonsiliasi</span>
+                @endif
+            </div>
+
+            {{-- Live Search --}}
+            <div class="relative flex-1">
+                <svg class="absolute left-3 top-2.5 w-4 h-4 text-gray-400 pointer-events-none" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/>
+                </svg>
+                <input type="text"
+                       wire:model.live.debounce.300ms="searchTerm"
+                       placeholder="Cari customer, vendor, AWB shipment, keterangan..."
+                       class="w-full pl-9 pr-8 py-2 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 bg-white">
+                @if(!empty($searchTerm))
+                <button wire:click="$set('searchTerm', '')" class="absolute right-2.5 top-1.5 w-6 h-6 flex items-center justify-center text-gray-400 hover:text-gray-700 text-xl font-bold">&times;</button>
+                @endif
+            </div>
+
+            {{-- Action Buttons --}}
+            <div class="flex items-center gap-2 flex-shrink-0">
+                @php
+                    $activeFilterCount = ($filterType !== 'all' ? 1 : 0)
+                        + ($filterStatus !== 'all' ? 1 : 0)
+                        + ($filterCounterpartType !== 'all' ? 1 : 0)
+                        + ($filterCostCategory !== 'all' ? 1 : 0)
+                        + ($filterCurrency !== 'all' ? 1 : 0)
+                        + (!empty($filterAmountMin) ? 1 : 0)
+                        + (!empty($filterAmountMax) ? 1 : 0)
+                        + ($filterNoJournal ? 1 : 0);
+                @endphp
+                <button wire:click="toggleFilters"
+                        class="relative px-3 py-2 text-sm font-medium border rounded-lg transition-colors {{ $showFilters ? 'bg-blue-600 text-white border-blue-600' : 'bg-white text-gray-700 border-gray-300 hover:bg-gray-50' }}">
+                    <svg class="w-4 h-4 inline mr-1 -mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 4a1 1 0 011-1h16a1 1 0 011 1v2.586a1 1 0 01-.293.707l-6.414 6.414a1 1 0 00-.293.707V17l-4 4v-6.586a1 1 0 00-.293-.707L3.293 7.293A1 1 0 013 6.586V4z"/>
+                    </svg>
                     Filter
+                    @if($activeFilterCount > 0)
+                    <span class="absolute -top-1.5 -right-1.5 w-5 h-5 bg-red-500 text-white text-xs font-bold rounded-full flex items-center justify-center leading-none">{{ $activeFilterCount }}</span>
+                    @endif
                 </button>
-                <button wire:click="exportExcel" class="px-3 py-1.5 bg-green-600 text-white text-sm rounded-md hover:bg-green-700">
-                    <svg class="w-4 h-4 inline mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/></svg>
+                <button wire:click="exportExcel" class="px-3 py-2 bg-green-600 text-white text-sm font-medium rounded-lg hover:bg-green-700 flex items-center gap-1.5 transition-colors">
+                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/></svg>
                     Excel
                 </button>
-                <button wire:click="exportPdf" class="px-3 py-1.5 bg-red-600 text-white text-sm rounded-md hover:bg-red-700">
-                    <svg class="w-4 h-4 inline mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 21h10a2 2 0 002-2V9.414a1 1 0 00-.293-.707l-5.414-5.414A1 1 0 0012.586 3H7a2 2 0 00-2 2v14a2 2 0 002 2z"/></svg>
+                <button wire:click="exportPdf" class="px-3 py-2 bg-red-600 text-white text-sm font-medium rounded-lg hover:bg-red-700 flex items-center gap-1.5 transition-colors">
+                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 21h10a2 2 0 002-2V9.414a1 1 0 00-.293-.707l-5.414-5.414A1 1 0 0012.586 3H7a2 2 0 00-2 2v14a2 2 0 002 2z"/></svg>
                     PDF
                 </button>
             </div>
         </div>
+
+        {{-- Advanced Filter Panel (collapsible) --}}
+        @if($showFilters)
+        <div class="px-6 py-4 bg-gray-50 border-b border-gray-200 space-y-3">
+
+            <div class="grid grid-cols-2 md:grid-cols-4 gap-3">
+                <div>
+                    <label class="block text-xs font-semibold text-gray-600 mb-1">Dari Tanggal</label>
+                    <input type="date" wire:model.live="filterDateFrom"
+                           class="w-full text-sm border-gray-300 rounded-lg shadow-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
+                </div>
+                <div>
+                    <label class="block text-xs font-semibold text-gray-600 mb-1">Sampai Tanggal</label>
+                    <input type="date" wire:model.live="filterDateTo"
+                           class="w-full text-sm border-gray-300 rounded-lg shadow-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
+                </div>
+                <div>
+                    <label class="block text-xs font-semibold text-gray-600 mb-1">Tipe Transaksi</label>
+                    <select wire:model.live="filterType"
+                            class="w-full text-sm border-gray-300 rounded-lg shadow-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
+                        <option value="all">Semua Tipe</option>
+                        <option value="in">Terima (Masuk)</option>
+                        <option value="out">Keluar (Bayar)</option>
+                    </select>
+                </div>
+                <div>
+                    <label class="block text-xs font-semibold text-gray-600 mb-1">Status Posting</label>
+                    <select wire:model.live="filterStatus"
+                            class="w-full text-sm border-gray-300 rounded-lg shadow-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
+                        <option value="all">Semua Status</option>
+                        <option value="posted">Posted</option>
+                        <option value="draft">Draft / Pending</option>
+                    </select>
+                </div>
+            </div>
+
+            <div class="grid grid-cols-2 md:grid-cols-4 gap-3">
+                <div>
+                    <label class="block text-xs font-semibold text-gray-600 mb-1">Tipe Mitra</label>
+                    <select wire:model.live="filterCounterpartType"
+                            class="w-full text-sm border-gray-300 rounded-lg shadow-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
+                        <option value="all">Semua Mitra</option>
+                        <option value="customer">Customer</option>
+                        <option value="vendor">Vendor</option>
+                    </select>
+                </div>
+                <div>
+                    <label class="block text-xs font-semibold text-gray-600 mb-1">Kategori Biaya</label>
+                    <select wire:model.live="filterCostCategory"
+                            class="w-full text-sm border-gray-300 rounded-lg shadow-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
+                        <option value="all">Semua Kategori</option>
+                        <option value="shipment">Shipment</option>
+                        <option value="overhead">Overhead</option>
+                        <option value="other">Lainnya</option>
+                    </select>
+                </div>
+                <div>
+                    <label class="block text-xs font-semibold text-gray-600 mb-1">Mata Uang</label>
+                    <select wire:model.live="filterCurrency"
+                            class="w-full text-sm border-gray-300 rounded-lg shadow-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
+                        <option value="all">Semua Mata Uang</option>
+                        <option value="IDR">IDR (Rupiah)</option>
+                        <option value="USD">USD (Dolar)</option>
+                        <option value="CNY">CNY (Yuan)</option>
+                        <option value="EUR">EUR (Euro)</option>
+                    </select>
+                </div>
+                <div class="flex items-end pb-0.5">
+                    <label class="flex items-start gap-3 cursor-pointer group w-full p-3 rounded-lg border-2 border-dashed {{ $filterNoJournal ? 'border-orange-400 bg-orange-50' : 'border-gray-300 hover:border-orange-300 hover:bg-orange-50/50' }} transition-all">
+                        <input type="checkbox" wire:model.live="filterNoJournal"
+                               class="mt-0.5 rounded border-gray-300 text-orange-500 focus:ring-orange-500 focus:ring-2">
+                        <div>
+                            <div class="text-sm font-semibold {{ $filterNoJournal ? 'text-orange-700' : 'text-gray-700' }}">Tanpa Jurnal</div>
+                            <div class="text-xs {{ $filterNoJournal ? 'text-orange-500' : 'text-gray-400' }}">Temukan selisih akuntansi</div>
+                        </div>
+                    </label>
+                </div>
+            </div>
+
+            <div class="grid grid-cols-2 md:grid-cols-4 gap-3">
+                <div>
+                    <label class="block text-xs font-semibold text-gray-600 mb-1">Jumlah Minimal (IDR)</label>
+                    <input type="number" wire:model.live.debounce.500ms="filterAmountMin"
+                           placeholder="0"
+                           class="w-full text-sm border-gray-300 rounded-lg shadow-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
+                </div>
+                <div>
+                    <label class="block text-xs font-semibold text-gray-600 mb-1">Jumlah Maksimal (IDR)</label>
+                    <input type="number" wire:model.live.debounce.500ms="filterAmountMax"
+                           placeholder="Tidak terbatas"
+                           class="w-full text-sm border-gray-300 rounded-lg shadow-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
+                </div>
+                <div class="col-span-2 flex items-end">
+                    <button wire:click="clearFilters"
+                            class="w-full px-4 py-2 bg-gray-100 text-gray-700 text-sm font-medium rounded-lg hover:bg-gray-200 transition-colors flex items-center justify-center gap-2">
+                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/>
+                        </svg>
+                        Reset Semua Filter
+                    </button>
+                </div>
+            </div>
+
+            {{-- Active Filter Tags --}}
+            @php
+                $activeTags = [];
+                if ($filterType !== 'all') $activeTags[] = ['label' => 'Tipe: ' . ($filterType === 'in' ? 'Masuk' : 'Keluar'), 'action' => "\$set('filterType', 'all')"];
+                if ($filterStatus !== 'all') $activeTags[] = ['label' => 'Status: ' . ($filterStatus === 'posted' ? 'Posted' : 'Draft'), 'action' => "\$set('filterStatus', 'all')"];
+                if ($filterCounterpartType !== 'all') $activeTags[] = ['label' => 'Mitra: ' . ucfirst($filterCounterpartType), 'action' => "\$set('filterCounterpartType', 'all')"];
+                if ($filterCostCategory !== 'all') $activeTags[] = ['label' => 'Kategori: ' . ucfirst($filterCostCategory), 'action' => "\$set('filterCostCategory', 'all')"];
+                if ($filterCurrency !== 'all') $activeTags[] = ['label' => 'Mata Uang: ' . $filterCurrency, 'action' => "\$set('filterCurrency', 'all')"];
+                if (!empty($filterAmountMin)) $activeTags[] = ['label' => 'Min: IDR ' . number_format((float)$filterAmountMin, 0, ',', '.'), 'action' => "\$set('filterAmountMin', '')"];
+                if (!empty($filterAmountMax)) $activeTags[] = ['label' => 'Maks: IDR ' . number_format((float)$filterAmountMax, 0, ',', '.'), 'action' => "\$set('filterAmountMax', '')"];
+                if ($filterNoJournal) $activeTags[] = ['label' => 'Tanpa Jurnal', 'action' => "\$set('filterNoJournal', false)"];
+            @endphp
+            @if(count($activeTags) > 0)
+            <div class="flex flex-wrap gap-2 pt-2 border-t border-gray-200">
+                <span class="text-xs text-gray-500 self-center font-medium">Filter aktif:</span>
+                @foreach($activeTags as $tag)
+                <span class="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-medium bg-blue-100 text-blue-800 border border-blue-200">
+                    {{ $tag['label'] }}
+                    <button wire:click="{{ $tag['action'] }}" class="text-blue-500 hover:text-blue-800 font-bold text-sm leading-none ml-0.5">&times;</button>
+                </span>
+                @endforeach
+            </div>
+            @endif
+
+        </div>
+        @endif
         
         <div class="overflow-x-auto">
             <table wire:key="transactions-{{ $perPage }}-{{ $currentPage }}" class="w-full text-sm">
@@ -631,7 +820,11 @@
                             </span>
                         </td>
                         <td class="px-4 py-3 text-center">
-                            @if(($trx['is_posted'] ?? false))
+                            @if(empty($trx['journal_id']))
+                            <span class="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-red-100 text-red-700 border border-red-300" title="Tidak ada jurnal akuntansi — perlu rekonsiliasi">
+                                ⚠ No Journal
+                            </span>
+                            @elseif(($trx['is_posted'] ?? false))
                             <span class="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-green-100 text-green-800">
                                 ✓ Posted
                             </span>

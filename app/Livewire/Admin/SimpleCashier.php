@@ -60,6 +60,17 @@ class SimpleCashier extends Component
     public $filterDateFrom = '';
     public $filterDateTo = '';
     public $showFilters = false;
+    public $filterCounterpartType = 'all';
+    public $filterCostCategory = 'all';
+    public $filterCurrency = 'all';
+    public $filterAmountMin = '';
+    public $filterAmountMax = '';
+    public $filterNoJournal = false;
+
+    // Summary stats (recomputed on every filter load)
+    public $summaryTotalIn = 0;
+    public $summaryTotalOut = 0;
+    public $summaryCount = 0;
     
     // Edit mode
     public $editingId = null;
@@ -107,54 +118,73 @@ class SimpleCashier extends Component
             ->toArray();
     }
     
-    private function loadRecentTransactions()
+    private function buildTransactionQuery()
     {
-        $query = CashTransaction::with(['customer', 'vendor', 'shipment', 'journal', 'creator']);
-        
+        $query = CashTransaction::query();
+
         if (!empty($this->searchTerm)) {
             $search = $this->searchTerm;
-            $query->where(function($q) use ($search) {
-                $q->whereHas('customer', function($q) use ($search) {
-                    $q->where('company_name', 'LIKE', "%{$search}%");
-                })
-                ->orWhereHas('vendor', function($q) use ($search) {
-                    $q->where('name', 'LIKE', "%{$search}%");
-                })
-                ->orWhereHas('shipment', function($q) use ($search) {
-                    $q->where('awb_number', 'LIKE', "%{$search}%");
-                })
-                ->orWhere('description', 'LIKE', "%{$search}%");
+            $query->where(function ($q) use ($search) {
+                $q->whereHas('customer', fn($q) => $q->where('company_name', 'LIKE', "%{$search}%"))
+                  ->orWhereHas('vendor', fn($q) => $q->where('name', 'LIKE', "%{$search}%"))
+                  ->orWhereHas('shipment', fn($q) => $q->where('awb_number', 'LIKE', "%{$search}%"))
+                  ->orWhere('description', 'LIKE', "%{$search}%")
+                  ->orWhere('counterpart_name', 'LIKE', "%{$search}%");
             });
         }
-        
+
         if ($this->filterType !== 'all') {
             $query->where('type', $this->filterType);
         }
-        
-        if ($this->filterStatus !== 'all') {
-            $query->whereHas('journal', function($q) {
-                if ($this->filterStatus === 'posted') {
-                    $q->where('status', 'posted');
-                } else {
-                    $q->where('status', 'draft');
-                }
+
+        if ($this->filterNoJournal) {
+            $query->whereNull('journal_id');
+        } elseif ($this->filterStatus !== 'all') {
+            $query->whereHas('journal', function ($q) {
+                $q->where('status', $this->filterStatus === 'posted' ? 'posted' : 'draft');
             });
         }
-        
+
         if (!empty($this->filterDateFrom)) {
             $query->whereDate('transaction_date', '>=', $this->filterDateFrom);
         }
         if (!empty($this->filterDateTo)) {
             $query->whereDate('transaction_date', '<=', $this->filterDateTo);
         }
-        
-        // Count total records
-        $this->totalRecords = $query->count();
-        
-        // Get paginated data
-        
-        $this->recentTransactions = $query->latest()
-            ->skip(($this->currentPage - 1) * $this->perPage)->take($this->perPage)
+
+        if ($this->filterCounterpartType !== 'all') {
+            $query->where('counterpart_type', $this->filterCounterpartType);
+        }
+        if ($this->filterCostCategory !== 'all') {
+            $query->where('cost_category', $this->filterCostCategory);
+        }
+        if ($this->filterCurrency !== 'all') {
+            $query->where('currency', $this->filterCurrency);
+        }
+        if (!empty($this->filterAmountMin)) {
+            $query->where('amount', '>=', (float) $this->filterAmountMin);
+        }
+        if (!empty($this->filterAmountMax)) {
+            $query->where('amount', '<=', (float) $this->filterAmountMax);
+        }
+
+        return $query;
+    }
+
+    private function loadRecentTransactions()
+    {
+        $base = $this->buildTransactionQuery();
+
+        $this->totalRecords  = (clone $base)->count();
+        $this->summaryCount  = $this->totalRecords;
+        $this->summaryTotalIn  = (clone $base)->where('type', 'in')->sum('amount');
+        $this->summaryTotalOut = (clone $base)->where('type', 'out')->sum('amount');
+
+        $this->recentTransactions = (clone $base)
+            ->with(['customer', 'vendor', 'shipment', 'journal', 'creator'])
+            ->latest('transaction_date')
+            ->skip(($this->currentPage - 1) * $this->perPage)
+            ->take($this->perPage)
             ->get()
             ->toArray();
     }
@@ -163,13 +193,27 @@ class SimpleCashier extends Component
     {
         $this->showFilters = !$this->showFilters;
     }
-    
+
     public function applyFilters()
     {
+        $this->currentPage = 1;
         $this->loadRecentTransactions();
-        session()->flash('success', 'Filter diterapkan!');
     }
-    
+
+    public function updatedSearchTerm()
+    {
+        $this->currentPage = 1;
+        $this->loadRecentTransactions();
+    }
+
+    public function updated($name)
+    {
+        if (str_starts_with($name, 'filter')) {
+            $this->currentPage = 1;
+            $this->loadRecentTransactions();
+        }
+    }
+
     public function clearFilters()
     {
         $this->searchTerm = '';
@@ -177,25 +221,21 @@ class SimpleCashier extends Component
         $this->filterStatus = 'all';
         $this->filterDateFrom = now()->startOfMonth()->format('Y-m-d');
         $this->filterDateTo = now()->format('Y-m-d');
+        $this->filterCounterpartType = 'all';
+        $this->filterCostCategory = 'all';
+        $this->filterCurrency = 'all';
+        $this->filterAmountMin = '';
+        $this->filterAmountMax = '';
+        $this->filterNoJournal = false;
+        $this->currentPage = 1;
         $this->loadRecentTransactions();
-        session()->flash('success', 'Filter direset!');
     }
     
     public function exportExcel()
     {
-        $transactions = CashTransaction::with(['customer', 'vendor', 'shipment', 'journal', 'creator'])
-            ->when(!empty($this->searchTerm), function($q) {
-                $search = $this->searchTerm;
-                $q->where(function($q) use ($search) {
-                    $q->whereHas('customer', fn($q) => $q->where('company_name', 'LIKE', "%{$search}%"))
-                      ->orWhereHas('vendor', fn($q) => $q->where('name', 'LIKE', "%{$search}%"))
-                      ->orWhereHas('shipment', fn($q) => $q->where('awb_number', 'LIKE', "%{$search}%"));
-                });
-            })
-            ->when($this->filterType !== 'all', fn($q) => $q->where('type', $this->filterType))
-            ->when(!empty($this->filterDateFrom), fn($q) => $q->whereDate('transaction_date', '>=', $this->filterDateFrom))
-            ->when(!empty($this->filterDateTo), fn($q) => $q->whereDate('transaction_date', '<=', $this->filterDateTo))
-            ->latest()
+        $transactions = $this->buildTransactionQuery()
+            ->with(['customer', 'vendor', 'shipment', 'journal', 'creator'])
+            ->latest('transaction_date')
             ->get();
         
         $filename = 'cash_transactions_' . now()->format('YmdHis') . '.csv';
@@ -239,19 +279,9 @@ class SimpleCashier extends Component
     
     public function exportPdf()
     {
-        $transactions = CashTransaction::with(['customer', 'vendor', 'shipment', 'journal', 'creator'])
-            ->when(!empty($this->searchTerm), function($q) {
-                $search = $this->searchTerm;
-                $q->where(function($q) use ($search) {
-                    $q->whereHas('customer', fn($q) => $q->where('company_name', 'LIKE', "%{$search}%"))
-                      ->orWhereHas('vendor', fn($q) => $q->where('name', 'LIKE', "%{$search}%"))
-                      ->orWhereHas('shipment', fn($q) => $q->where('awb_number', 'LIKE', "%{$search}%"));
-                });
-            })
-            ->when($this->filterType !== 'all', fn($q) => $q->where('type', $this->filterType))
-            ->when(!empty($this->filterDateFrom), fn($q) => $q->whereDate('transaction_date', '>=', $this->filterDateFrom))
-            ->when(!empty($this->filterDateTo), fn($q) => $q->whereDate('transaction_date', '<=', $this->filterDateTo))
-            ->latest()
+        $transactions = $this->buildTransactionQuery()
+            ->with(['customer', 'vendor', 'shipment', 'journal', 'creator'])
+            ->latest('transaction_date')
             ->get();
         
         $totalIn = $transactions->where('type', 'in')->sum('amount');
@@ -358,6 +388,11 @@ class SimpleCashier extends Component
     {
         $this->showDeleteConfirm = false;
         $this->deleteId = null;
+    }
+
+    public function executeDelete()
+    {
+        $this->deleteTransaction();
     }
     
     public function updatedTransactionType()
