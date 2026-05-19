@@ -978,8 +978,6 @@
                 </button>
             </div>
         </div>
-    </div>
-    {{-- @endif --}}
 
 {{-- Delete Confirmation Modal --}}
 @if($showDeleteConfirm)
