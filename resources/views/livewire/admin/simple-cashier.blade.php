@@ -131,25 +131,33 @@
                     @endif
 
                     {{-- Customer/Vendor Selection with Search --}}
+                    {{-- wire:ignore mencegah Livewire morphdom me-reset Alpine state (open/selected) saat re-render --}}
                     @if($counterpart_type)
+                    <div wire:ignore>
                     <div x-data="{
                         open: false,
                         search: '',
                         selected: $wire.counterpart_id,
+                        allCustomers: @js($customers),
+                        allVendors: @js($vendors),
                         items: [],
                         init() {
-                            this.items = this.$wire.counterpart_type === 'customer' 
-                                ? @js($customers) 
-                                : @js($vendors);
+                            this.items = this.$wire.counterpart_type === 'customer'
+                                ? this.allCustomers
+                                : this.allVendors;
                             this.$watch('$wire.counterpart_type', (value) => {
-                                this.items = value === 'customer' ? @js($customers) : @js($vendors);
-                                this.selected = '';
+                                this.items = value === 'customer' ? this.allCustomers : this.allVendors;
+                                this.selected = null;
                                 this.search = '';
+                                this.open = false;
+                            });
+                            this.$watch('$wire.counterpart_id', (value) => {
+                                this.selected = value;
                             });
                         },
                         get filteredItems() {
                             if (!this.search) return this.items;
-                            return this.items.filter(item => 
+                            return this.items.filter(item =>
                                 (item.code + ' ' + item.name).toLowerCase().includes(this.search.toLowerCase())
                             );
                         },
@@ -157,30 +165,33 @@
                             const item = this.items.find(i => i.id == this.selected);
                             return item ? item.code + ' - ' + item.name : '';
                         },
+                        get typeLabel() {
+                            return this.$wire.counterpart_type === 'customer' ? 'Customer' : 'Vendor';
+                        },
                         selectItem(id) {
                             this.selected = id;
-                            $wire.set('counterpart_id', id);
                             this.open = false;
                             this.search = '';
+                            this.$wire.set('counterpart_id', id);
                         }
                     }" class="relative">
                         <label class="block text-sm font-medium text-gray-700 mb-1">
-                            Pilih {{ $counterpart_type === 'customer' ? 'Customer' : 'Vendor' }} <span class="text-red-500">*</span>
+                            Pilih <span x-text="typeLabel"></span> <span class="text-red-500">*</span>
                         </label>
                         <div class="relative">
                             <button type="button" @click="open = !open" class="w-full bg-white border border-gray-300 rounded-md shadow-sm pl-3 pr-10 py-2 text-left cursor-pointer focus:outline-none focus:ring-1 focus:ring-blue-500 focus:border-blue-500">
-                                <span x-text="selectedLabel || '-- Pilih {{ $counterpart_type === 'customer' ? 'Customer' : 'Vendor' }} --'" class="block truncate" :class="{'text-gray-400': !selected}"></span>
+                                <span x-text="selectedLabel || ('-- Pilih ' + typeLabel + ' --')" class="block truncate" :class="{'text-gray-400': !selected}"></span>
                                 <span class="absolute inset-y-0 right-0 flex items-center pr-2 pointer-events-none">
                                     <svg class="h-5 w-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/></svg>
                                 </span>
                             </button>
-                            <div x-show="open" @click.away="open = false" x-transition class="absolute z-50 mt-1 w-full bg-white shadow-lg max-h-60 rounded-md overflow-hidden border border-gray-200">
+                            <div x-show="open" @click.away="open = false" x-transition class="absolute z-[100] mt-1 w-full bg-white shadow-lg max-h-60 rounded-md overflow-hidden border border-gray-200">
                                 <div class="p-2 border-b sticky top-0 bg-white">
                                     <input type="text" x-model="search" placeholder="Ketik untuk mencari..." class="w-full border-gray-300 rounded-md text-sm focus:ring-blue-500 focus:border-blue-500" @click.stop>
                                 </div>
                                 <ul class="max-h-48 overflow-y-auto">
                                     <template x-for="item in filteredItems" :key="item.id">
-                                        <li @click="selectItem(item.id)" class="cursor-pointer select-none relative py-2 pl-3 pr-9 hover:bg-blue-50" :class="{'bg-blue-100': selected == item.id}">
+                                        <li @mousedown.prevent="selectItem(item.id)" class="cursor-pointer select-none relative py-2 pl-3 pr-9 hover:bg-blue-50" :class="{'bg-blue-100': selected == item.id}">
                                             <span x-text="item.code + ' - ' + item.name" class="block truncate text-sm"></span>
                                         </li>
                                     </template>
@@ -188,6 +199,7 @@
                                 </ul>
                             </div>
                         </div>
+                    </div>
                     </div>
                     @endif
 
