@@ -25,7 +25,7 @@ class VerifyShipmentPayments extends Command
 
         // --- [1] Daftar shipment yang dicek ---
         $shipmentQuery = DB::table('shipments')
-            ->selectRaw("id, shipment_number, created_at, customer_id, status");
+            ->selectRaw("id, awb_number, bl_number, created_at, customer_id, status");
 
         if ($shipmentId) {
             $shipmentQuery->where('id', $shipmentId);
@@ -50,7 +50,8 @@ class VerifyShipmentPayments extends Command
         $grandTotalCashOut = 0;
 
         foreach ($shipments as $ship) {
-            $this->info("  ┌─ Shipment #{$ship->id} | {$ship->shipment_number} | {$ship->created_at}");
+            $label = $ship->awb_number ?? $ship->bl_number ?? "ID#{$ship->id}";
+            $this->info("  ┌─ Shipment #{$ship->id} | {$label} | {$ship->created_at}");
 
             // Job costs untuk shipment ini
             $jobCosts = DB::table('job_costs')
