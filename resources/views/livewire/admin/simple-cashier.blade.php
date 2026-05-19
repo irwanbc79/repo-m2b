@@ -777,7 +777,7 @@
                     <tr class="hover:bg-gray-50">
                         <td class="px-4 py-3">{{ \Carbon\Carbon::parse($trx['transaction_date'])->format('d/m/Y') }}</td>
                         <td class="px-4 py-3">
-                            @if(($trx['transaction_type'] ?? $trx['type'] ?? 'in') === 'in')
+                            @if(($trx['type'] ?? 'out') === 'in')
                             <span class="inline-flex items-center px-2 py-1 rounded text-xs font-medium bg-green-100 text-green-800">
                                 💰 Terima
                             </span>
@@ -815,7 +815,7 @@
                         </td>
                         </td>
                         <td class="px-4 py-3 text-right">
-                            <span class="font-semibold {{ ($trx['transaction_type'] ?? $trx['type'] ?? 'in') === 'in' ? 'text-green-600' : 'text-red-600' }}">
+                            <span class="font-semibold {{ ($trx['type'] ?? 'out') === 'in' ? 'text-green-600' : 'text-red-600' }}">
                                 {{ $trx['currency'] ?? 'IDR' }} {{ number_format($trx['amount'], 0, ',', '.') }}
                             </span>
                         </td>
