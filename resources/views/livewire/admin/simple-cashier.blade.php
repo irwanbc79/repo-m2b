@@ -814,9 +814,7 @@
                 </thead>
                 <tbody class="divide-y divide-gray-100">
                     @foreach($recentTransactions as $trx)
-                    <tr class="{{ empty($trx['proof_file']) ? 'bg-amber-50/40 hover:bg-amber-50' : 'hover:bg-gray-50' }}"
-                        title="{{ empty($trx['proof_file']) ? 'Transaksi ini belum memiliki bukti' : '' }}"
-                    >
+                    <tr class="{{ empty($trx['proof_file']) ? 'bg-amber-50/40 hover:bg-amber-50' : 'hover:bg-gray-50' }}">
                         <td class="px-4 py-3">{{ \Carbon\Carbon::parse($trx['transaction_date'])->format('d/m/Y') }}</td>
                         <td class="px-4 py-3">
                             @if(($trx['type'] ?? 'out') === 'in')
@@ -866,7 +864,7 @@
                             @if(!empty($trx['proof_file']))
                             <button
                                 type="button"
-                                wire:click="openProofModal({{ $trx['id'] }})"
+                                @click="$wire.openProofModal({{ $trx['id'] }})"
                                 class="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-lg text-xs font-semibold bg-emerald-50 text-emerald-700 border border-emerald-200 hover:bg-emerald-100 transition"
                                 title="Lihat bukti transaksi">
                                 <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15.172 7l-6.586 6.586a2 2 0 102.828 2.828l6.414-6.586a4 4 0 00-5.656-5.656l-6.415 6.585a6 6 0 108.486 8.486L20.5 13"/></svg>
@@ -875,7 +873,7 @@
                             @else
                             <button
                                 type="button"
-                                wire:click="openUploadProofModal({{ $trx['id'] }})"
+                                @click="$wire.openUploadProofModal({{ $trx['id'] }})"
                                 class="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-lg text-xs font-semibold bg-amber-50 text-amber-700 border border-amber-200 hover:bg-amber-100 transition"
                                 title="Upload bukti transaksi">
                                 <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12"/></svg>
