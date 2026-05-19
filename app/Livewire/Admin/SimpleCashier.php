@@ -12,6 +12,7 @@ use App\Models\Invoice;
 use App\Models\VendorBill;
 use App\Models\CashTransaction;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Storage;
 use Barryvdh\DomPDF\Facade\Pdf;
 
 class SimpleCashier extends Component
@@ -79,6 +80,18 @@ class SimpleCashier extends Component
     public $perPage = 25;
     public $totalRecords = 0;
     public $currentPage = 1;
+
+    // Proof / bukti transaksi
+    public $showProofModal = false;
+    public $proofTransactionId = null;
+    public $proofUrl = null;
+    public $proofFilename = null;
+    public $proofIsImage = false;
+    public $proofIsPdf = false;
+
+    public $showUploadProofModal = false;
+    public $uploadProofId = null;
+    public $proofAttachment;
     
     protected $cashierService;
     
@@ -393,7 +406,74 @@ class SimpleCashier extends Component
     {
         $this->deleteTransaction();
     }
-    
+
+    // ── BUKTI TRANSAKSI ─────────────────────────────────────────────────────
+
+    public function openProofModal($id)
+    {
+        $trx = CashTransaction::find($id);
+        if (!$trx || !$trx->proof_file) return;
+
+        $ext = strtolower(pathinfo($trx->proof_file, PATHINFO_EXTENSION));
+
+        $this->proofTransactionId = $id;
+        $this->proofUrl           = Storage::disk('public')->url($trx->proof_file);
+        $this->proofFilename      = basename($trx->proof_file);
+        $this->proofIsImage       = in_array($ext, ['jpg', 'jpeg', 'png', 'gif', 'webp']);
+        $this->proofIsPdf         = $ext === 'pdf';
+        $this->showProofModal     = true;
+    }
+
+    public function closeProofModal()
+    {
+        $this->showProofModal     = false;
+        $this->proofTransactionId = null;
+        $this->proofUrl           = null;
+        $this->proofFilename      = null;
+    }
+
+    public function openUploadProofModal($id)
+    {
+        $this->uploadProofId         = $id;
+        $this->proofAttachment       = null;
+        $this->showUploadProofModal  = true;
+        $this->showProofModal        = false;
+    }
+
+    public function closeUploadProofModal()
+    {
+        $this->showUploadProofModal = false;
+        $this->uploadProofId        = null;
+        $this->proofAttachment      = null;
+    }
+
+    public function saveProof()
+    {
+        $this->validate([
+            'proofAttachment' => 'required|file|max:5120|mimes:jpg,jpeg,png,gif,webp,pdf',
+        ], [
+            'proofAttachment.required' => 'Pilih file bukti transaksi.',
+            'proofAttachment.max'      => 'Ukuran file maksimal 5MB.',
+            'proofAttachment.mimes'    => 'Format file: JPG, PNG, GIF, WEBP, atau PDF.',
+        ]);
+
+        $trx = CashTransaction::find($this->uploadProofId);
+        if (!$trx) return;
+
+        if ($trx->proof_file && Storage::disk('public')->exists($trx->proof_file)) {
+            Storage::disk('public')->delete($trx->proof_file);
+        }
+
+        $path = $this->proofAttachment->store('cash-transactions', 'public');
+        $trx->update(['proof_file' => $path]);
+
+        $this->closeUploadProofModal();
+        $this->loadRecentTransactions();
+        session()->flash('success', 'Bukti transaksi berhasil disimpan.');
+    }
+
+    // ────────────────────────────────────────────────────────────────────────
+
     public function updatedTransactionType()
     {
         $this->counterpart_type = $this->transaction_type === 'cash_in' ? 'customer' : 'vendor';

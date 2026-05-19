@@ -780,6 +780,7 @@
                         <th class="px-4 py-2 text-left font-semibold text-gray-700">Shipment</th>
                         <th class="px-4 py-2 text-left font-semibold text-gray-700">Keterangan</th>
                         <th class="px-4 py-2 text-right font-semibold text-gray-700">Jumlah</th>
+                        <th class="px-4 py-2 text-center font-semibold text-gray-700">Bukti</th>
                         <th class="px-4 py-2 text-center font-semibold text-gray-700">Status</th>
                         <th class="px-4 py-2 text-center font-semibold text-gray-700">Aksi</th>
                     </tr>
@@ -830,6 +831,26 @@
                             <span class="font-semibold {{ ($trx['type'] ?? 'out') === 'in' ? 'text-green-600' : 'text-red-600' }}">
                                 {{ $trx['currency'] ?? 'IDR' }} {{ number_format($trx['amount'], 0, ',', '.') }}
                             </span>
+                        </td>
+                        {{-- Kolom Bukti Transaksi --}}
+                        <td class="px-4 py-3 text-center">
+                            @if(!empty($trx['proof_file']))
+                            <button
+                                wire:click="openProofModal({{ $trx['id'] }})"
+                                class="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-lg text-xs font-semibold bg-emerald-50 text-emerald-700 border border-emerald-200 hover:bg-emerald-100 transition"
+                                title="Lihat bukti transaksi">
+                                <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15.172 7l-6.586 6.586a2 2 0 102.828 2.828l6.414-6.586a4 4 0 00-5.656-5.656l-6.415 6.585a6 6 0 108.486 8.486L20.5 13"/></svg>
+                                Ada
+                            </button>
+                            @else
+                            <button
+                                wire:click="openUploadProofModal({{ $trx['id'] }})"
+                                class="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-lg text-xs font-semibold bg-amber-50 text-amber-700 border border-amber-200 hover:bg-amber-100 transition"
+                                title="Upload bukti transaksi">
+                                <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12"/></svg>
+                                Upload
+                            </button>
+                            @endif
                         </td>
                         <td class="px-4 py-3 text-center">
                             @php $journalStatus = $trx['journal']['status'] ?? null; @endphp
@@ -949,6 +970,153 @@
                 <button wire:click="executeDelete" class="px-4 py-2 bg-red-600 text-white text-base font-medium rounded-md w-full shadow-sm hover:bg-red-700">Ya, Hapus</button>
                 <button wire:click="cancelDelete" class="px-4 py-2 bg-gray-100 text-gray-700 text-base font-medium rounded-md w-full shadow-sm hover:bg-gray-200">Batal</button>
             </div>
+        </div>
+    </div>
+</div>
+@endif
+
+{{-- Proof Preview Modal --}}
+@if($showProofModal)
+<div class="fixed inset-0 bg-gray-900 bg-opacity-70 overflow-y-auto h-full w-full z-[200]" wire:click.self="closeProofModal">
+    <div class="relative mx-auto mt-10 mb-10 w-full max-w-3xl bg-white rounded-xl shadow-2xl overflow-hidden">
+        {{-- Header --}}
+        <div class="flex items-center justify-between px-5 py-4 border-b bg-gray-50">
+            <div class="flex items-center gap-2">
+                <svg class="w-5 h-5 text-emerald-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/></svg>
+                <h3 class="text-base font-semibold text-gray-800">Bukti Transaksi</h3>
+            </div>
+            <button wire:click="closeProofModal" class="p-1.5 hover:bg-gray-200 rounded-lg transition">
+                <svg class="w-5 h-5 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
+            </button>
+        </div>
+
+        {{-- File Preview --}}
+        <div class="p-5">
+            @if($proofIsImage)
+                <div class="flex justify-center bg-gray-100 rounded-lg p-2 min-h-48">
+                    <img src="{{ $proofUrl }}" alt="{{ $proofFilename }}" class="max-w-full max-h-[60vh] object-contain rounded shadow">
+                </div>
+            @elseif($proofIsPdf)
+                <iframe src="{{ $proofUrl }}" class="w-full rounded-lg border" style="height:65vh;" title="{{ $proofFilename }}"></iframe>
+            @else
+                <div class="flex flex-col items-center justify-center py-12 text-gray-500 gap-3">
+                    <svg class="w-16 h-16 text-gray-300" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/></svg>
+                    <p class="text-sm">Format file tidak dapat ditampilkan. Gunakan tombol Download.</p>
+                </div>
+            @endif
+
+            <p class="mt-2 text-xs text-gray-500 text-center truncate">{{ $proofFilename }}</p>
+        </div>
+
+        {{-- Actions --}}
+        <div class="flex items-center justify-between gap-3 px-5 py-4 border-t bg-gray-50">
+            <button
+                wire:click="openUploadProofModal({{ $proofTransactionId }})"
+                class="inline-flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium bg-amber-50 text-amber-700 border border-amber-300 hover:bg-amber-100 transition">
+                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12"/></svg>
+                Ganti File
+            </button>
+            <div class="flex gap-2">
+                <a href="{{ $proofUrl }}" download="{{ $proofFilename }}" target="_blank"
+                   class="inline-flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium bg-blue-600 text-white hover:bg-blue-700 transition">
+                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"/></svg>
+                    Download
+                </a>
+                <button wire:click="closeProofModal" class="px-4 py-2 rounded-lg text-sm font-medium bg-gray-100 text-gray-700 hover:bg-gray-200 transition">
+                    Tutup
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+@endif
+
+{{-- Upload Proof Modal --}}
+@if($showUploadProofModal)
+<div class="fixed inset-0 bg-gray-900 bg-opacity-70 overflow-y-auto h-full w-full z-[200]" wire:click.self="closeUploadProofModal">
+    <div class="relative mx-auto mt-20 mb-10 w-full max-w-lg bg-white rounded-xl shadow-2xl overflow-hidden">
+        {{-- Header --}}
+        <div class="flex items-center justify-between px-5 py-4 border-b bg-gray-50">
+            <div class="flex items-center gap-2">
+                <svg class="w-5 h-5 text-amber-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12"/></svg>
+                <h3 class="text-base font-semibold text-gray-800">Upload Bukti Transaksi</h3>
+            </div>
+            <button wire:click="closeUploadProofModal" class="p-1.5 hover:bg-gray-200 rounded-lg transition">
+                <svg class="w-5 h-5 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
+            </button>
+        </div>
+
+        <div class="p-5 space-y-4">
+            {{-- File dropzone --}}
+            <div
+                x-data="{ dragging: false }"
+                @dragover.prevent="dragging = true"
+                @dragleave.prevent="dragging = false"
+                @drop.prevent="dragging = false; $refs.fileInput.files = $event.dataTransfer.files; $refs.fileInput.dispatchEvent(new Event('change'))"
+                :class="dragging ? 'border-blue-500 bg-blue-50' : 'border-gray-300 bg-gray-50 hover:bg-gray-100'"
+                class="relative border-2 border-dashed rounded-xl p-8 text-center transition cursor-pointer"
+                @click="$refs.fileInput.click()">
+                <svg class="mx-auto w-10 h-10 text-gray-400 mb-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12"/></svg>
+                <p class="text-sm text-gray-600 font-medium">Klik atau seret file ke sini</p>
+                <p class="text-xs text-gray-400 mt-1">JPG, PNG, GIF, WEBP, PDF — maks. 5MB</p>
+                <input
+                    x-ref="fileInput"
+                    type="file"
+                    class="hidden"
+                    accept=".jpg,.jpeg,.png,.gif,.webp,.pdf"
+                    wire:model="proofAttachment">
+            </div>
+
+            {{-- Live preview after upload --}}
+            @if($proofAttachment)
+                @php
+                    $tmpExt = strtolower($proofAttachment->getClientOriginalExtension());
+                    $tmpIsImg = in_array($tmpExt, ['jpg','jpeg','png','gif','webp']);
+                @endphp
+                <div class="rounded-lg overflow-hidden border bg-gray-50 p-2">
+                    @if($tmpIsImg)
+                        <img src="{{ $proofAttachment->temporaryUrl() }}" alt="Preview" class="max-w-full max-h-48 mx-auto rounded object-contain">
+                    @else
+                        <div class="flex items-center gap-3 p-3">
+                            <svg class="w-8 h-8 text-red-500 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/></svg>
+                            <div>
+                                <p class="text-sm font-medium text-gray-800 truncate">{{ $proofAttachment->getClientOriginalName() }}</p>
+                                <p class="text-xs text-gray-500">{{ number_format($proofAttachment->getSize() / 1024, 0) }} KB</p>
+                            </div>
+                        </div>
+                    @endif
+                </div>
+            @endif
+
+            {{-- Validation errors --}}
+            @error('proofAttachment')
+                <p class="text-sm text-red-600 flex items-center gap-1">
+                    <svg class="w-4 h-4 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+                    {{ $message }}
+                </p>
+            @enderror
+
+            {{-- Upload progress indicator --}}
+            <div wire:loading wire:target="proofAttachment" class="flex items-center gap-2 text-sm text-blue-600">
+                <svg class="w-4 h-4 animate-spin" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/></svg>
+                Memproses file...
+            </div>
+        </div>
+
+        {{-- Actions --}}
+        <div class="flex justify-end gap-3 px-5 py-4 border-t bg-gray-50">
+            <button wire:click="closeUploadProofModal" class="px-4 py-2 rounded-lg text-sm font-medium bg-gray-100 text-gray-700 hover:bg-gray-200 transition">
+                Batal
+            </button>
+            <button
+                wire:click="saveProof"
+                wire:loading.attr="disabled"
+                wire:target="saveProof,proofAttachment"
+                class="inline-flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium bg-emerald-600 text-white hover:bg-emerald-700 disabled:opacity-60 transition">
+                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/></svg>
+                <span wire:loading.remove wire:target="saveProof">Simpan</span>
+                <span wire:loading wire:target="saveProof">Menyimpan...</span>
+            </button>
         </div>
     </div>
 </div>
