@@ -15,15 +15,29 @@ class SyncCashTransactionPostedStatus extends Command
     {
         $dryRun = $this->option('dry-run');
 
+        // Cek apakah kolom is_posted sudah ada
+        $hasIsPosted = \Illuminate\Support\Facades\Schema::hasColumn('cash_transactions', 'is_posted');
+
+        if (!$hasIsPosted) {
+            $this->warn('Kolom is_posted belum ada di tabel cash_transactions.');
+            $this->warn('Jalankan: php artisan migrate');
+            $this->newLine();
+            $this->info('Menghitung transaksi yang memiliki journal posted (tanpa filter is_posted)...');
+        }
+
         // Hitung berapa yang perlu diupdate
-        $count = DB::table('cash_transactions as ct')
+        $query = DB::table('cash_transactions as ct')
             ->join('journals as j', 'ct.journal_id', '=', 'j.id')
-            ->where('j.status', 'posted')
-            ->where(function ($q) {
+            ->where('j.status', 'posted');
+
+        if ($hasIsPosted) {
+            $query->where(function ($q) {
                 $q->where('ct.is_posted', false)
                   ->orWhereNull('ct.is_posted');
-            })
-            ->count();
+            });
+        }
+
+        $count = $query->count();
 
         if ($count === 0) {
             $this->info('Semua cash_transactions sudah sinkron. Tidak ada yang perlu diupdate.');
