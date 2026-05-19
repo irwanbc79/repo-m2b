@@ -37,6 +37,8 @@ class CashTransaction extends Model
         'attachment_path',
         'attachment_filename',
         'vendor_bill_id',
+        'invoice_payment_id',
+        'job_cost_id',
         'is_posted',
         'posted_at',
     ];

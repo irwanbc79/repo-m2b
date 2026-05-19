@@ -17,6 +17,8 @@ use Illuminate\Support\Str;
 use Illuminate\Support\Facades\Mail;
 use Barryvdh\DomPDF\Facade\Pdf;
 use App\Services\AccountingService;
+use App\Services\CashierService;
+use App\Models\CashTransaction;
 use Illuminate\Support\Facades\Cache;
 
 class InvoiceManager extends Component
@@ -749,7 +751,7 @@ class InvoiceManager extends Component
                     $proofPath = $this->quick_payment_proof->storeAs("payments", $filename, "public");
                 }
 
-                \App\Models\InvoicePayment::create([
+                $invoicePayment = \App\Models\InvoicePayment::create([
                     "invoice_id" => $inv->id,
                     "amount" => $this->amount,
                     "payment_date" => $this->payment_date,
@@ -763,6 +765,27 @@ class InvoiceManager extends Component
                 $inv->recalculateTotalPaid();
                 if ($proofPath) {
                     $inv->update(["payment_proof" => $proofPath]);
+                }
+
+                // Otomatis buat CashTransaction — idempotent via invoice_payment_id
+                if (!CashTransaction::where('invoice_payment_id', $invoicePayment->id)->exists()) {
+                    try {
+                        app(CashierService::class)->processPayment([
+                            'type'               => 'in',
+                            'category'           => 'payment_from_customer',
+                            'cost_category'      => 'payment_from_customer',
+                            'counterpart_type'   => 'customer',
+                            'amount'             => $this->amount,
+                            'transaction_date'   => $this->payment_date,
+                            'invoice_id'         => $inv->id,
+                            'invoice_payment_id' => $invoicePayment->id,
+                            'customer_id'        => $inv->customer_id,
+                            'proof_file'         => $proofPath,
+                            'description'        => 'Pelunasan ' . $inv->invoice_number,
+                        ]);
+                    } catch (\Throwable $e) {
+                        \Log::error('InvoiceManager: gagal buat CashTransaction untuk payment #' . $invoicePayment->id . ': ' . $e->getMessage());
+                    }
                 }
             });
 

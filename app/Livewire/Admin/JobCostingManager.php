@@ -13,6 +13,8 @@ use App\Models\Account;
 use App\Models\Journal;
 use App\Models\JournalItem;
 use App\Models\VendorRating;
+use App\Models\CashTransaction;
+use App\Services\CashierService;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
@@ -496,13 +498,26 @@ class JobCostingManager extends Component
                     $message = 'Biaya berhasil ditambahkan.';
                 }
 
-                // Buat journal entry otomatis jika status PAID dan ada COA
-                // DISABLED: Pembayaran harus lewat Simple Cashier
-                //                 if ($this->status === 'paid' && $this->coa_id && $this->credit_account_id) {
-                // DISABLED: Pembayaran harus lewat Simple Cashier
-                //                     $this->createJournalEntry($jobCost);
-                // DISABLED: Pembayaran harus lewat Simple Cashier
-                //                 }
+                // Otomatis buat CashTransaction saat status PAID — idempotent via job_cost_id
+                if ($this->status === 'paid' && !CashTransaction::where('job_cost_id', $jobCost->id)->exists()) {
+                    try {
+                        app(CashierService::class)->processPayment([
+                            'type'             => 'out',
+                            'category'         => 'payment_to_vendor',
+                            'cost_category'    => 'payment_to_vendor',
+                            'counterpart_type' => 'vendor',
+                            'amount'           => $jobCost->amount,
+                            'transaction_date' => $jobCost->date_paid ?? now()->toDateString(),
+                            'job_cost_id'      => $jobCost->id,
+                            'vendor_id'        => $jobCost->vendor_id,
+                            'shipment_id'      => $jobCost->shipment_id,
+                            'proof_file'       => $proofPath,
+                            'description'      => $jobCost->description ?: 'Job Cost #' . $jobCost->id,
+                        ]);
+                    } catch (\Throwable $e) {
+                        Log::error('JobCostingManager: gagal buat CashTransaction untuk job_cost #' . $jobCost->id . ': ' . $e->getMessage());
+                    }
+                }
                 
                 session()->flash('message', $message);
             });
