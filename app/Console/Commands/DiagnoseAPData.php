@@ -49,10 +49,10 @@ class DiagnoseAPData extends Command
         // 2. JobCost: distribusi unpaid per bulan shipment created_at
         $this->info('');
         $this->info('--- [2] JOB COSTS UNPAID per Bulan (shipment.created_at) ---');
-        $jcByMonth = DB::table('job_costings')
-            ->join('shipments', 'job_costings.shipment_id', '=', 'shipments.id')
-            ->where('job_costings.status', 'unpaid')
-            ->selectRaw("DATE_FORMAT(shipments.created_at,'%Y-%m') as bln, COUNT(*) as jml, SUM(job_costings.amount) as total")
+        $jcByMonth = DB::table('job_costs')
+            ->join('shipments', 'job_costs.shipment_id', '=', 'shipments.id')
+            ->where('job_costs.status', 'unpaid')
+            ->selectRaw("DATE_FORMAT(shipments.created_at,'%Y-%m') as bln, COUNT(*) as jml, SUM(job_costs.amount) as total")
             ->groupByRaw("DATE_FORMAT(shipments.created_at,'%Y-%m')")
             ->orderBy('bln')
             ->get();
@@ -85,9 +85,9 @@ class DiagnoseAPData extends Command
         // 4. Job Cost ALL (paid+unpaid) per bulan shipment - sumber angka trend report
         $this->info('');
         $this->info('--- [4] TOTAL BIAYA (ALL STATUS) per Bulan Shipment — sumber "Cost" di Trend Report ---');
-        $costAllByMonth = DB::table('job_costings')
-            ->join('shipments', 'job_costings.shipment_id', '=', 'shipments.id')
-            ->selectRaw("DATE_FORMAT(shipments.created_at,'%Y-%m') as bln, COUNT(*) as jml, SUM(job_costings.amount) as total, SUM(CASE WHEN job_costings.status='unpaid' THEN job_costings.amount ELSE 0 END) as unpaid, SUM(CASE WHEN job_costings.status='paid' THEN job_costings.amount ELSE 0 END) as paid")
+        $costAllByMonth = DB::table('job_costs')
+            ->join('shipments', 'job_costs.shipment_id', '=', 'shipments.id')
+            ->selectRaw("DATE_FORMAT(shipments.created_at,'%Y-%m') as bln, COUNT(*) as jml, SUM(job_costs.amount) as total, SUM(CASE WHEN job_costs.status='unpaid' THEN job_costs.amount ELSE 0 END) as unpaid, SUM(CASE WHEN job_costs.status='paid' THEN job_costs.amount ELSE 0 END) as paid")
             ->groupByRaw("DATE_FORMAT(shipments.created_at,'%Y-%m')")
             ->orderBy('bln')
             ->get();
@@ -133,8 +133,8 @@ class DiagnoseAPData extends Command
         $totalVB  = DB::table('vendor_bills')->count();
         $unpaidVB = DB::table('vendor_bills')->whereIn('status', ['unpaid','partial'])->count();
         $paidVB   = DB::table('vendor_bills')->where('status', 'paid')->count();
-        $totalJC  = DB::table('job_costings')->count();
-        $unpaidJC = DB::table('job_costings')->where('status','unpaid')->count();
+        $totalJC  = DB::table('job_costs')->count();
+        $unpaidJC = DB::table('job_costs')->where('status','unpaid')->count();
 
         $this->line("  VendorBill : total={$totalVB}, unpaid/partial={$unpaidVB}, paid={$paidVB}");
         $this->line("  JobCost    : total={$totalJC}, unpaid={$unpaidJC}");
@@ -142,9 +142,9 @@ class DiagnoseAPData extends Command
         // Deteksi apakah ada VB/JC sebelum tanggal go-live (estimasi: sebelum Feb 2026)
         $goLive = '2026-02-01';
         $oldVB = DB::table('vendor_bills')->whereIn('status',['unpaid','partial'])->where('created_at', '<', $goLive)->count();
-        $oldJC = DB::table('job_costings')->where('status','unpaid')->where('created_at', '<', $goLive)->count();
+        $oldJC = DB::table('job_costs')->where('status','unpaid')->where('created_at', '<', $goLive)->count();
         $oldVBAmount = DB::table('vendor_bills')->whereIn('status',['unpaid','partial'])->where('created_at', '<', $goLive)->selectRaw('SUM(amount_idr-paid_amount) as t')->value('t') ?? 0;
-        $oldJCAmount = DB::table('job_costings')->where('status','unpaid')->where('created_at', '<', $goLive)->sum('amount');
+        $oldJCAmount = DB::table('job_costs')->where('status','unpaid')->where('created_at', '<', $goLive)->sum('amount');
 
         $this->info('');
         $this->info("  [!] Data SEBELUM go-live (< {$goLive}) yang masih UNPAID:");
