@@ -548,7 +548,6 @@ class SimpleCashier extends Component
             // Vendor: show ALL shipments (vendor can pay costs for any shipment)
             $this->shipments = Shipment::with('customer')
                 ->orderBy('created_at', 'desc')
-                ->limit(50)
                 ->get()
                 ->map(fn($s) => [
                     'id' => $s->id,

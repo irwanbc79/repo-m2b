@@ -213,7 +213,7 @@
                         get filteredItems() {
                             if (!this.search) return this.items;
                             return this.items.filter(item => {
-                                const text = (item.awb_number || '') + ' ' + (item.origin || '') + ' ' + (item.destination || '') + ' ' + (item.status || '');
+                                const text = (item.awb_number || '') + ' ' + (item.customer_name || '') + ' ' + (item.origin || '') + ' ' + (item.destination || '') + ' ' + (item.status || '');
                                 return text.toLowerCase().includes(this.search.toLowerCase());
                             });
                         },
@@ -241,7 +241,7 @@
                             </button>
                             <div x-show="open" @click.away="open = false" x-transition class="absolute z-50 mt-1 w-full bg-white shadow-lg max-h-60 rounded-md overflow-hidden border border-gray-200">
                                 <div class="p-2 border-b sticky top-0 bg-white">
-                                    <input type="text" x-model="search" placeholder="Cari AWB, origin, destination..." class="w-full border-gray-300 rounded-md text-sm focus:ring-blue-500 focus:border-blue-500" @click.stop>
+                                    <input type="text" x-model="search" placeholder="Cari AWB, nama customer, origin, destination..." class="w-full border-gray-300 rounded-md text-sm focus:ring-blue-500 focus:border-blue-500" @click.stop>
                                 </div>
                                 <ul class="max-h-48 overflow-y-auto">
                                     <li @click="selectItem('')" class="cursor-pointer select-none relative py-2 pl-3 pr-9 hover:bg-gray-50 text-gray-500 text-sm">-- Tanpa Shipment --</li>
