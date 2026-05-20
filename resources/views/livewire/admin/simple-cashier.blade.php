@@ -765,7 +765,7 @@
                 </svg>
                 <input type="text"
                        wire:model.live.debounce.300ms="searchTerm"
-                       placeholder="Cari customer, vendor, AWB shipment, keterangan..."
+                       placeholder="Cari customer, vendor, No. Shipment, keterangan..."
                        class="w-full pl-9 pr-8 py-2 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 bg-white">
                 @if(!empty($searchTerm))
                 <button wire:click="$set('searchTerm', '')" class="absolute right-2.5 top-1.5 w-6 h-6 flex items-center justify-center text-gray-400 hover:text-gray-700 text-xl font-bold">&times;</button>

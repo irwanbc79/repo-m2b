@@ -9,7 +9,7 @@
     <form wire:submit="save">
         {{-- Shipment Search with Dropdown --}}
         <div class="mb-6">
-            <label class="block text-sm font-medium text-gray-700 mb-2">Cari Shipment (AWB/BL Number)</label>
+            <label class="block text-sm font-medium text-gray-700 mb-2">Cari Shipment (No. Shipment / BL)</label>
             <div class="relative">
                 <div class="flex gap-2">
                     <div class="flex-1 relative">
@@ -17,7 +17,7 @@
                                wire:model.live.debounce.300ms="searchQuery"
                                wire:focus="$set('showDropdown', true)"
                                class="w-full rounded-lg border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 pr-10"
-                               placeholder="Cari AWB, BL number atau nama customer..."
+                               placeholder="Cari No. Shipment, BL atau nama customer..."
                                autocomplete="off"
                                @if($shipment) disabled @endif>
                         

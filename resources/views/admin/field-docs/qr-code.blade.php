@@ -67,7 +67,7 @@
         <div class="bg-gray-50 rounded-lg p-4 mb-6 text-left">
             <div class="grid grid-cols-2 gap-3 text-sm">
                 <div>
-                    <span class="text-gray-500">AWB/BL Number:</span>
+                    <span class="text-gray-500">No. Shipment / BL:</span>
                     <p class="font-bold text-gray-800">{{ $shipment->awb_number ?: $shipment->bl_number ?: 'N/A' }}</p>
                 </div>
                 <div>

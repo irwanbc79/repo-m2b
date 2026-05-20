@@ -236,7 +236,7 @@
         
         @if(isset($transaction['shipment']) && $transaction['shipment'])
         <div class="info-row">
-            <div class="info-label">Shipment AWB:</div>
+            <div class="info-label">No. Shipment:</div>
             <div class="info-value">{{ $transaction['shipment']['awb_number'] ?? 'N/A' }}</div>
         </div>
         @endif

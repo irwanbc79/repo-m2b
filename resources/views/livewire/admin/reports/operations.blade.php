@@ -131,7 +131,7 @@
                 <thead>
                     <tr class="border-b-2 border-gray-200">
                         <th class="text-left py-2">Tanggal</th>
-                        <th class="text-left py-2">AWB/Ref</th>
+                        <th class="text-left py-2">No. Shipment</th>
                         <th class="text-left py-2">Customer</th>
                         <th class="text-left py-2">Rute</th>
                         <th class="text-center py-2">Mode</th>

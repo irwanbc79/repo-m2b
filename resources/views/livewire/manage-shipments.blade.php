@@ -67,7 +67,7 @@
             <div class="flex-1">
                 <input type="text" 
                     wire:model.live.debounce.300ms="search" 
-                    placeholder="🔍 Cari AWB, BL Number, atau Customer..."
+                    placeholder="🔍 Cari No. Shipment, BL, atau Customer..."
                     class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent">
             </div>
             

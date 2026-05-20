@@ -310,7 +310,7 @@
                                 <input type="text"
                                     wire:model.live.debounce.300ms="existingShipmentSearch"
                                     @focus="open = true" @click.away="open = false"
-                                    placeholder="Ketik No. AWB atau nama customer..."
+                                    placeholder="Ketik No. Shipment atau nama customer..."
                                     class="w-full border-gray-200 rounded-xl text-sm font-bold focus:ring-indigo-500 py-3 shadow-sm">
 
                                 @if($existingShipmentId)

@@ -312,7 +312,7 @@
                             x-model="search" 
                             @focus="open = true" 
                             @click.away="open = false"
-                            placeholder="Ketik AWB atau nama customer..." 
+                            placeholder="Ketik No. Shipment atau nama customer..." 
                             class="w-full rounded-lg border-gray-300 shadow-sm focus:ring-blue-500 focus:border-blue-500">
                         <div x-show="open" x-cloak class="absolute z-50 w-full mt-1 bg-white border rounded-lg shadow-lg max-h-60 overflow-y-auto">
                             <div @click="$wire.set('shipment_id', '')" class="px-4 py-2 hover:bg-gray-100 cursor-pointer text-gray-500">-- Tidak terkait job --</div>
