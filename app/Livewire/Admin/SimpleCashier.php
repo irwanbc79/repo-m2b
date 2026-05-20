@@ -83,6 +83,11 @@ class SimpleCashier extends Component
     public $totalRecords = 0;
     public $currentPage = 1;
 
+    // Job Costing reminder
+    public $outstandingJcAlert = null;
+    public $showReconcilePanel = false;
+    public $reconcileData = [];
+
     // Proof / bukti transaksi
     public $showProofModal = false;
     public $proofTransactionId = null;
@@ -485,6 +490,7 @@ class SimpleCashier extends Component
 
     public function updatedTransactionType()
     {
+        $this->outstandingJcAlert = null;
         $this->counterpart_type = $this->transaction_type === 'cash_in' ? 'customer' : 'vendor';
         $this->counterpart_id = null;
         $this->counterpart_name = null;
@@ -558,12 +564,99 @@ class SimpleCashier extends Component
     
     public function updatedShipmentId($value)
     {
+        $this->outstandingJcAlert = null;
         if (!$value) return;
-        
+
         $shipment = Shipment::find($value);
         if ($shipment && !$this->description) {
             $this->description = "Payment for shipment {$shipment->awb_number}";
         }
+
+        if ($this->transaction_type === 'cash_out') {
+            $this->loadOutstandingJcAlert((int) $value);
+        }
+    }
+
+    private function loadOutstandingJcAlert(int $shipmentId): void
+    {
+        $items = DB::table('job_costs')
+            ->leftJoin('vendors', 'job_costs.vendor_id', '=', 'vendors.id')
+            ->where('job_costs.shipment_id', $shipmentId)
+            ->where('job_costs.status', 'unpaid')
+            ->select(
+                'job_costs.id',
+                'job_costs.description',
+                'job_costs.amount',
+                DB::raw("COALESCE(vendors.name, '(vendor tidak dicatat)') as vendor_name")
+            )
+            ->get();
+
+        if ($items->isEmpty()) {
+            $this->outstandingJcAlert = null;
+            return;
+        }
+
+        $this->outstandingJcAlert = [
+            'count' => $items->count(),
+            'total' => $items->sum('amount'),
+            'items' => $items->map(fn($i) => [
+                'description' => $i->description,
+                'amount'      => $i->amount,
+                'vendor_name' => $i->vendor_name,
+            ])->toArray(),
+        ];
+    }
+
+    public function toggleReconcilePanel(): void
+    {
+        $this->showReconcilePanel = !$this->showReconcilePanel;
+        if ($this->showReconcilePanel) {
+            $this->loadReconcilePanel();
+        }
+    }
+
+    public function refreshReconcilePanel(): void
+    {
+        $this->loadReconcilePanel();
+    }
+
+    private function loadReconcilePanel(): void
+    {
+        $shipments = DB::table('shipments as s')
+            ->join('customers as c', 's.customer_id', '=', 'c.id')
+            ->join('job_costs as jc', 'jc.shipment_id', '=', 's.id')
+            ->where('jc.status', 'unpaid')
+            ->select(
+                's.id', 's.awb_number', 's.bl_number', 's.service_type',
+                'c.company_name',
+                DB::raw('SUM(jc.amount) as jc_outstanding'),
+                DB::raw('COUNT(jc.id) as jc_count')
+            )
+            ->groupBy('s.id', 's.awb_number', 's.bl_number', 's.service_type', 'c.company_name')
+            ->orderByDesc('jc_outstanding')
+            ->get();
+
+        $this->reconcileData = $shipments->map(function ($ship) {
+            $ctTotal = DB::table('cash_transactions')
+                ->where('shipment_id', $ship->id)
+                ->where('type', 'out')
+                ->sum('amount');
+
+            $gap    = max(0, (float) $ship->jc_outstanding - (float) $ctTotal);
+            $status = $gap <= 0 ? 'ok' : ((float) $ctTotal == 0 ? 'none' : 'partial');
+
+            return [
+                'ship_id'        => $ship->id,
+                'awb'            => $ship->awb_number ?? $ship->bl_number ?? "ID#{$ship->id}",
+                'customer'       => $ship->company_name,
+                'service_type'   => strtoupper($ship->service_type ?? '-'),
+                'jc_outstanding' => (float) $ship->jc_outstanding,
+                'jc_count'       => (int) $ship->jc_count,
+                'ct_total'       => (float) $ctTotal,
+                'gap'            => $gap,
+                'status'         => $status,
+            ];
+        })->toArray();
     }
     
     public function updatedAmount()
@@ -664,6 +757,7 @@ class SimpleCashier extends Component
     public function resetForm()
     {
         $this->editingId = null;
+        $this->outstandingJcAlert = null;
         $this->transaction_date = now()->format('Y-m-d');
         $this->transaction_type = 'cash_in';
         $this->counterpart_type = 'customer';

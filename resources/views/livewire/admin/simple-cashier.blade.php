@@ -256,6 +256,37 @@
                         </div>
                         <p class="mt-1 text-xs text-gray-500">Pilih shipment jika transaksi terkait dengan pengiriman tertentu</p>
                     </div>
+
+                    {{-- JC Outstanding Alert --}}
+                    @if($outstandingJcAlert && $transaction_type === 'cash_out')
+                    <div class="p-3 bg-amber-50 border border-amber-300 rounded-lg">
+                        <div class="flex items-start gap-2">
+                            <svg class="w-4 h-4 text-amber-500 mt-0.5 shrink-0" fill="currentColor" viewBox="0 0 20 20">
+                                <path fill-rule="evenodd" d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z" clip-rule="evenodd"/>
+                            </svg>
+                            <div class="flex-1 min-w-0">
+                                <p class="text-xs font-semibold text-amber-800">
+                                    Shipment ini masih ada <strong>{{ $outstandingJcAlert['count'] }} biaya outstanding</strong> di Job Costing — total
+                                    <strong>Rp {{ number_format($outstandingJcAlert['total'], 0, ',', '.') }}</strong>
+                                </p>
+                                <div class="mt-1.5 space-y-0.5">
+                                    @foreach($outstandingJcAlert['items'] as $jc)
+                                    <div class="flex justify-between gap-2 text-xs text-amber-700">
+                                        <span class="truncate">• {{ $jc['description'] ?? '-' }}
+                                            @if($jc['vendor_name'] !== '(vendor tidak dicatat)')
+                                                <span class="text-amber-500">({{ $jc['vendor_name'] }})</span>
+                                            @endif
+                                        </span>
+                                        <span class="font-medium shrink-0">Rp {{ number_format($jc['amount'], 0, ',', '.') }}</span>
+                                    </div>
+                                    @endforeach
+                                </div>
+                                <p class="mt-1.5 text-xs text-amber-600 italic">Pastikan transaksi ini adalah pembayaran untuk salah satu biaya di atas.</p>
+                            </div>
+                        </div>
+                    </div>
+                    @endif
+
                     @endif
                     {{-- Cost Category (if cash out) --}}
                     @if($transaction_type === 'cash_out')
@@ -543,6 +574,122 @@
             </div>
             @endif
         </div>
+    </div>
+
+    {{-- ── Panel Biaya Outstanding (Job Costing Reminder) ── --}}
+    <div class="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
+        <div class="flex items-center justify-between px-6 py-4 border-b border-gray-100 cursor-pointer hover:bg-gray-50 transition"
+             wire:click="toggleReconcilePanel">
+            <div class="flex items-center gap-3">
+                <div class="w-8 h-8 bg-amber-100 rounded-lg flex items-center justify-center shrink-0">
+                    <svg class="w-4 h-4 text-amber-600" fill="currentColor" viewBox="0 0 20 20">
+                        <path fill-rule="evenodd" d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z" clip-rule="evenodd"/>
+                    </svg>
+                </div>
+                <div>
+                    <h4 class="text-sm font-semibold text-gray-900">Panel Biaya Outstanding — Referensi Job Costing</h4>
+                    <p class="text-xs text-gray-500">Daftar shipment yang masih punya biaya belum terbayar. Klik untuk buka/tutup.</p>
+                </div>
+            </div>
+            <div class="flex items-center gap-2 shrink-0">
+                @if($showReconcilePanel)
+                <button wire:click.stop="refreshReconcilePanel"
+                        class="text-xs text-gray-500 hover:text-blue-600 px-2 py-1 rounded hover:bg-gray-100 transition">
+                    ↻ Refresh
+                </button>
+                @endif
+                <svg class="w-5 h-5 text-gray-400 transition-transform duration-200 {{ $showReconcilePanel ? 'rotate-180' : '' }}"
+                     fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/>
+                </svg>
+            </div>
+        </div>
+
+        @if($showReconcilePanel)
+        <div class="p-4" wire:loading.class="opacity-50" wire:target="toggleReconcilePanel,refreshReconcilePanel">
+            @if(empty($reconcileData))
+                <div class="text-center py-8">
+                    <svg class="w-10 h-10 mx-auto mb-2 text-green-400" fill="currentColor" viewBox="0 0 20 20">
+                        <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd"/>
+                    </svg>
+                    <p class="text-sm font-medium text-green-700">Semua biaya shipment sudah terbayar di kasir</p>
+                </div>
+            @else
+                <p class="text-xs text-gray-500 mb-3">
+                    {{ count($reconcileData) }} shipment dengan biaya outstanding.
+                    <span class="text-blue-600">Panel ini hanya referensi — tidak ada auto-link ke kasir.</span>
+                </p>
+                <div class="overflow-x-auto rounded-lg border border-gray-200">
+                    <table class="w-full text-xs">
+                        <thead>
+                            <tr class="bg-gray-50 border-b border-gray-200">
+                                <th class="text-left py-2 px-3 font-semibold text-gray-600">Shipment</th>
+                                <th class="text-left py-2 px-3 font-semibold text-gray-600">Customer</th>
+                                <th class="text-left py-2 px-3 font-semibold text-gray-600">Tipe</th>
+                                <th class="text-right py-2 px-3 font-semibold text-gray-600">JC Outstanding</th>
+                                <th class="text-right py-2 px-3 font-semibold text-gray-600">CT Kasir</th>
+                                <th class="text-right py-2 px-3 font-semibold text-gray-600">Selisih</th>
+                                <th class="text-center py-2 px-3 font-semibold text-gray-600">Status</th>
+                            </tr>
+                        </thead>
+                        <tbody class="divide-y divide-gray-100">
+                            @foreach($reconcileData as $row)
+                            <tr class="hover:bg-gray-50 transition
+                                {{ $row['status'] === 'none' ? 'bg-red-50' : ($row['status'] === 'partial' ? 'bg-amber-50' : '') }}">
+                                <td class="py-2 px-3 font-medium text-gray-900">{{ $row['awb'] }}</td>
+                                <td class="py-2 px-3 text-gray-600 max-w-[160px] truncate">{{ $row['customer'] }}</td>
+                                <td class="py-2 px-3">
+                                    <span class="px-1.5 py-0.5 rounded text-xs font-medium
+                                        {{ $row['service_type'] === 'IMPORT' ? 'bg-blue-100 text-blue-700' :
+                                           ($row['service_type'] === 'EXPORT' ? 'bg-green-100 text-green-700' : 'bg-gray-100 text-gray-600') }}">
+                                        {{ $row['service_type'] }}
+                                    </span>
+                                </td>
+                                <td class="py-2 px-3 text-right font-medium text-red-700">
+                                    Rp {{ number_format($row['jc_outstanding'], 0, ',', '.') }}
+                                    <span class="text-gray-400 font-normal text-xs">({{ $row['jc_count'] }})</span>
+                                </td>
+                                <td class="py-2 px-3 text-right text-gray-700">
+                                    Rp {{ number_format($row['ct_total'], 0, ',', '.') }}
+                                </td>
+                                <td class="py-2 px-3 text-right font-semibold {{ $row['gap'] > 0 ? 'text-red-600' : 'text-green-600' }}">
+                                    {{ $row['gap'] > 0 ? 'Rp ' . number_format($row['gap'], 0, ',', '.') : '✓ Seimbang' }}
+                                </td>
+                                <td class="py-2 px-3 text-center">
+                                    @if($row['status'] === 'none')
+                                        <span class="px-2 py-0.5 bg-red-100 text-red-700 rounded-full font-medium whitespace-nowrap">Belum Ada CT</span>
+                                    @elseif($row['status'] === 'partial')
+                                        <span class="px-2 py-0.5 bg-amber-100 text-amber-700 rounded-full font-medium">Sebagian</span>
+                                    @else
+                                        <span class="px-2 py-0.5 bg-green-100 text-green-700 rounded-full font-medium">OK</span>
+                                    @endif
+                                </td>
+                            </tr>
+                            @endforeach
+                        </tbody>
+                        <tfoot>
+                            <tr class="bg-gray-100 border-t-2 border-gray-300 font-semibold text-gray-700">
+                                <td colspan="3" class="py-2 px-3">TOTAL ({{ count($reconcileData) }} shipment)</td>
+                                <td class="py-2 px-3 text-right text-red-700">
+                                    Rp {{ number_format(array_sum(array_column($reconcileData, 'jc_outstanding')), 0, ',', '.') }}
+                                </td>
+                                <td class="py-2 px-3 text-right">
+                                    Rp {{ number_format(array_sum(array_column($reconcileData, 'ct_total')), 0, ',', '.') }}
+                                </td>
+                                <td class="py-2 px-3 text-right text-red-700">
+                                    Rp {{ number_format(array_sum(array_column($reconcileData, 'gap')), 0, ',', '.') }}
+                                </td>
+                                <td></td>
+                            </tr>
+                        </tfoot>
+                    </table>
+                </div>
+                <p class="mt-2 text-xs text-gray-400 italic">
+                    CT Kasir = total semua transaksi keluar yang tercatat di kasir untuk shipment tersebut, tanpa memandang apakah sudah ter-link ke Job Cost atau belum.
+                </p>
+            @endif
+        </div>
+        @endif
     </div>
 
     {{-- Recent Transactions (Bottom Section) --}}
