@@ -230,16 +230,35 @@ class CashierService
         // Create/Update Job Cost if shipment related (only if not already handled above)
         if ($cashTransaction->shipment_id) {
             $type = $data['type'] ?? $data['transaction_type'] ?? 'in';
-            
+
             if ($type === 'out') {
-                // Check if a matching unpaid JobCost already exists (avoid duplicates)
+                // If job_cost_id is explicitly set (e.g. from JobCostingManager), skip auto-match
+                if (!empty($data['job_cost_id'])) {
+                    return;
+                }
+
+                // Step 1: try exact match (same shipment + amount + vendor)
                 $existing = JobCost::where('shipment_id', $cashTransaction->shipment_id)
                     ->where('amount', $cashTransaction->amount)
                     ->where('status', 'unpaid')
-                    ->when($cashTransaction->vendor_id, function($q) use ($cashTransaction) {
-                        $q->where('vendor_id', $cashTransaction->vendor_id);
-                    })
+                    ->when($cashTransaction->vendor_id, fn($q) =>
+                        $q->where('vendor_id', $cashTransaction->vendor_id)
+                    )
                     ->first();
+
+                // Step 2: fallback — same shipment + amount, any vendor (catches vendor mismatch)
+                if (!$existing) {
+                    $existing = JobCost::where('shipment_id', $cashTransaction->shipment_id)
+                        ->where('amount', $cashTransaction->amount)
+                        ->where('status', 'unpaid')
+                        ->whereNotExists(function ($q) {
+                            // Exclude job costs that already have a linked cash transaction
+                            $q->select(\DB::raw(1))
+                              ->from('cash_transactions')
+                              ->whereColumn('cash_transactions.job_cost_id', 'job_costs.id');
+                        })
+                        ->first();
+                }
 
                 if ($existing) {
                     // Update existing JobCost to paid instead of creating duplicate
@@ -247,8 +266,10 @@ class CashierService
                         'status' => 'paid',
                         'date_paid' => $cashTransaction->transaction_date,
                     ]);
+                    // Link the cash transaction back to this job cost
+                    $cashTransaction->update(['job_cost_id' => $existing->id]);
                 } else {
-                    // No matching unpaid cost found, create new one as paid
+                    // No matching unpaid cost found — create new one as paid
                     JobCost::create([
                         'shipment_id' => $cashTransaction->shipment_id,
                         'description' => $data['description'] ?? 'Payment',
