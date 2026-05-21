@@ -8,11 +8,11 @@ use Illuminate\Support\Facades\DB;
 class FixJobCostDuplicates extends Command
 {
     protected $signature = 'diagnose:jc-duplicates
-                            {--fix        : Hapus UNPAID orphan yang ditemukan}
+                            {--fix        : Hapus shadow job cost (duplikat yang tidak perlu)}
                             {--shipment=  : Batasi ke satu shipment ID}
                             {--dry-run    : Preview tanpa eksekusi}';
 
-    protected $description = 'Cari & perbaiki JobCost duplikat: UNPAID orphan + PAID shadow pada shipment & amount yang sama';
+    protected $description = 'Cari & perbaiki duplikat JobCost (PAID+PAID atau UNPAID+PAID) pada shipment & amount yang sama';
 
     public function handle(): int
     {
@@ -22,16 +22,15 @@ class FixJobCostDuplicates extends Command
 
         $this->info('');
         $this->info('╔══════════════════════════════════════════════════════════════╗');
-        $this->info('║        DIAGNOSA DUPLIKAT JOB COST (UNPAID + PAID)            ║');
+        $this->info('║        DIAGNOSA DUPLIKAT JOB COST (semua status)             ║');
         $this->info('╚══════════════════════════════════════════════════════════════╝');
         $this->info('');
 
-        // ── Cari (shipment_id, amount) yang punya sekaligus UNPAID & PAID ─────
+        // ── Cari (shipment_id, amount) yang punya count > 1 ──────────────────
         $groupQuery = DB::table('job_costs')
             ->select('shipment_id', 'amount')
             ->groupBy('shipment_id', 'amount')
-            ->havingRaw("SUM(CASE WHEN status = 'unpaid' THEN 1 ELSE 0 END) > 0")
-            ->havingRaw("SUM(CASE WHEN status = 'paid'   THEN 1 ELSE 0 END) > 0");
+            ->havingRaw('COUNT(*) > 1');
 
         if ($shipmentId) {
             $groupQuery->where('shipment_id', (int) $shipmentId);
@@ -44,14 +43,14 @@ class FixJobCostDuplicates extends Command
             return 0;
         }
 
-        $duplicates = collect();
+        $toDelete  = collect();
+        $toDisplay = collect();
 
         foreach ($groups as $group) {
             $ref = DB::table('shipments')
                 ->where('id', $group->shipment_id)
                 ->value(DB::raw("COALESCE(awb_number, bl_number, CONCAT('SHP#', id))"));
 
-            // Detail tiap JC dalam grup ini
             $entries = DB::table('job_costs as jc')
                 ->leftJoin('vendors as v', 'jc.vendor_id', '=', 'v.id')
                 ->where('jc.shipment_id', $group->shipment_id)
@@ -64,62 +63,87 @@ class FixJobCostDuplicates extends Command
                 ->orderBy('jc.created_at')
                 ->get();
 
-            $unpaidEntries = $entries->where('status', 'unpaid');
-            $paidEntries   = $entries->where('status', 'paid');
-
-            foreach ($unpaidEntries as $unpaid) {
-                // UNPAID dianggap orphan jika:
-                // 1. Tidak ada CashTransaction yang link ke JC ini
-                // 2. Ada setidaknya satu PAID JC untuk shipment+amount yang sama
-                $hasCt = DB::table('cash_transactions')
-                    ->where('job_cost_id', $unpaid->id)
+            // Tandai entri mana yang punya CashTransaction
+            $entriesWithCt = $entries->filter(function ($e) {
+                return DB::table('cash_transactions')
+                    ->where('job_cost_id', $e->id)
                     ->exists();
+            });
 
-                if ($hasCt) {
-                    continue; // UNPAID ini punya CT → bukan orphan, lewati
-                }
+            // Tambah ke tampilan
+            foreach ($entries as $e) {
+                $hasCt = $entriesWithCt->contains('id', $e->id);
+                $toDisplay->push([
+                    'ref'        => $ref,
+                    'shipment_id'=> $group->shipment_id,
+                    'amount'     => $group->amount,
+                    'jc_id'      => $e->id,
+                    'desc'       => $e->description,
+                    'status'     => $e->status,
+                    'vendor'     => $e->vendor_name,
+                    'created_at' => substr($e->created_at, 0, 16),
+                    'has_ct'     => $hasCt,
+                ]);
+            }
 
-                foreach ($paidEntries as $paid) {
-                    $duplicates->push([
-                        'shipment_id'   => $group->shipment_id,
-                        'ref'           => $ref,
-                        'amount'        => $group->amount,
-                        'paid_jc_id'    => $paid->id,
-                        'paid_desc'     => $paid->description,
-                        'paid_vendor'   => $paid->vendor_name,
-                        'paid_at'       => substr($paid->date_paid ?? $paid->created_at, 0, 10),
-                        'unpaid_jc_id'  => $unpaid->id,
-                        'unpaid_desc'   => $unpaid->description,
-                        'unpaid_vendor' => $unpaid->vendor_name,
-                        'created_at'    => substr($unpaid->created_at, 0, 16),
-                    ]);
-                }
+            // Tentukan yang harus dihapus:
+            // Prioritas keep: yang ada linked CT (job_cost_id)
+            // Jika tidak ada yang punya CT: keep yang paling lama (ID terkecil)
+            if ($entriesWithCt->isNotEmpty()) {
+                // Hapus semua yang TIDAK punya CT
+                $shadows = $entries->filter(fn($e) => !$entriesWithCt->contains('id', $e->id));
+            } else {
+                // Tidak ada yang punya CT → hapus yang lebih baru (ID lebih besar)
+                $oldest  = $entries->first();
+                $shadows = $entries->filter(fn($e) => $e->id !== $oldest->id);
+            }
+
+            foreach ($shadows as $s) {
+                $toDelete->push([
+                    'ref'        => $ref,
+                    'shipment_id'=> $group->shipment_id,
+                    'jc_id'      => $s->id,
+                    'desc'       => $s->description,
+                    'status'     => $s->status,
+                    'amount'     => $group->amount,
+                ]);
             }
         }
 
-        if ($duplicates->isEmpty()) {
-            $this->info('✓ Tidak ada UNPAID orphan yang ditemukan (semua UNPAID punya CashTransaction).');
-            return 0;
-        }
+        // ── Tampilkan semua duplikat ───────────────────────────────────────────
+        $this->warn("  Ditemukan duplikat di " . $groups->count() . " grup (shipment+amount):\n");
 
-        $this->warn("  Ditemukan {$duplicates->count()} pasang duplikat:\n");
-
-        $tableRows = $duplicates->map(fn($d) => [
+        $tableRows = $toDisplay->map(fn($d) => [
             $d['ref'],
+            "JC#{$d['jc_id']}",
+            mb_strimwidth($d['desc'] ?? '-', 0, 32, '..'),
+            mb_strimwidth($d['vendor'], 0, 22, '..'),
             'Rp ' . number_format($d['amount'], 0, ',', '.'),
-            "JC#{$d['paid_jc_id']} ✓ PAID\n" . mb_strimwidth($d['paid_desc'] ?? '-', 0, 30, '..') . "\n" . mb_strimwidth($d['paid_vendor'], 0, 28, '..') . "\n{$d['paid_at']}",
-            "JC#{$d['unpaid_jc_id']} ✗ UNPAID (orphan)\n" . mb_strimwidth($d['unpaid_desc'] ?? '-', 0, 30, '..') . "\n" . mb_strimwidth($d['unpaid_vendor'], 0, 28, '..') . "\n{$d['created_at']}",
+            strtoupper($d['status']),
+            $d['has_ct'] ? '✓ ada' : '✗ tidak',
+            $d['created_at'],
         ])->toArray();
 
         $this->table(
-            ['Shipment', 'Amount', 'PAID (tetap)', 'UNPAID ORPHAN (akan dihapus)'],
+            ['Shipment', 'JC ID', 'Deskripsi', 'Vendor', 'Amount', 'Status', 'Ada CT?', 'Dibuat'],
             $tableRows
         );
 
+        if ($toDelete->isEmpty()) {
+            $this->info('  Semua entri memiliki CashTransaction — tidak ada yang aman dihapus otomatis.');
+            $this->line('  Hapus manual via UI jika perlu.');
+            return 0;
+        }
+
+        $this->warn("\n  Akan dihapus ({$toDelete->count()} shadow job cost):");
+        foreach ($toDelete as $d) {
+            $this->line("    JC#{$d['jc_id']} [{$d['desc']}] {$d['status']} | {$d['ref']} | Rp " . number_format($d['amount'], 0, ',', '.'));
+        }
+
         if (!$fix && !$isDryRun) {
             $this->line('');
-            $this->line('  Gunakan --fix untuk menghapus UNPAID orphan.');
-            $this->line('  Gunakan --dry-run untuk konfirmasi tanpa eksekusi.');
+            $this->line('  Gunakan --fix untuk menghapus shadow di atas.');
+            $this->line('  Gunakan --dry-run untuk preview tanpa eksekusi.');
             return 0;
         }
 
@@ -128,29 +152,27 @@ class FixJobCostDuplicates extends Command
             return 0;
         }
 
-        // ── Eksekusi fix ────────────────────────────────────────────────────────
-        $orphanIds = $duplicates->pluck('unpaid_jc_id')->unique()->values();
-        if (!$this->confirm("  Yakin hapus {$orphanIds->count()} UNPAID orphan job cost?")) {
+        if (!$this->confirm("  Yakin hapus {$toDelete->count()} shadow job cost?")) {
             $this->info('  Dibatalkan.');
             return 0;
         }
 
         $deleted = 0;
-        foreach ($orphanIds as $id) {
-            $row = $duplicates->firstWhere('unpaid_jc_id', $id);
-            $affected = DB::table('job_costs')
-                ->where('id', $id)
-                ->where('status', 'unpaid')
-                ->delete();
-
-            if ($affected) {
-                $this->line("  ✓ JC#{$id} [{$row['unpaid_desc']}] di {$row['ref']} dihapus.");
-                $deleted++;
+        foreach ($toDelete as $d) {
+            // Safety: jangan hapus jika ada CT yang link ke JC ini
+            $hasCt = DB::table('cash_transactions')->where('job_cost_id', $d['jc_id'])->exists();
+            if ($hasCt) {
+                $this->warn("  ⚠ JC#{$d['jc_id']} punya CT — dilewati demi keamanan.");
+                continue;
             }
+
+            DB::table('job_costs')->where('id', $d['jc_id'])->delete();
+            $this->line("  ✓ JC#{$d['jc_id']} [{$d['desc']}] dihapus.");
+            $deleted++;
         }
 
         $this->info('');
-        $this->info("  Selesai: {$deleted} dari {$orphanIds->count()} orphan dihapus.");
+        $this->info("  Selesai: {$deleted} shadow dihapus.");
         return 0;
     }
 }
