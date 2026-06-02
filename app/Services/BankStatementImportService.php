@@ -306,31 +306,40 @@ class BankStatementImportService
     }
 
     /**
+     * Generate hash unik untuk sebuah transaksi (digunakan sebagai dedup key)
+     */
+    protected function generateTransactionHash(string $bankName, $transactionDate, float $creditAmount, float $debitAmount, string $description): string
+    {
+        $dateStr = $transactionDate instanceof Carbon
+            ? $transactionDate->toDateString()
+            : date('Y-m-d', strtotime((string) $transactionDate));
+
+        return sha1(implode('|', [$bankName, $dateStr, $creditAmount, $debitAmount, $description]));
+    }
+
+    /**
      * Save transactions ke database
+     * Menggunakan transaction_hash + INSERT IGNORE untuk mencegah duplikasi
+     * bahkan jika ada race condition (klik 2x atau concurrent request)
      */
     protected function saveTransactions(array $transactions, string $bankName, string $batchId): void
     {
-        DB::beginTransaction();
-
         try {
             foreach ($transactions as $transaction) {
-                // Check duplicate berdasarkan tanggal, jumlah, dan deskripsi
-                $exists = BankTransaction::where('bank_name', $bankName)
-                    ->where('transaction_date', $transaction['transaction_date'])
-                    ->where('credit_amount', $transaction['credit_amount'])
-                    ->where('debit_amount', $transaction['debit_amount'])
-                    ->where('description', $transaction['description'])
-                    ->exists();
+                $hash = $this->generateTransactionHash(
+                    $bankName,
+                    $transaction['transaction_date'],
+                    (float) $transaction['credit_amount'],
+                    (float) $transaction['debit_amount'],
+                    $transaction['description']
+                );
 
-                if ($exists) {
-                    $this->duplicateCount++;
-                    continue;
-                }
-
-                BankTransaction::create([
+                $inserted = DB::table('bank_transactions')->insertOrIgnore([[
                     'bank_name' => $bankName,
                     'account_number' => $transaction['account_number'],
-                    'transaction_date' => $transaction['transaction_date'],
+                    'transaction_date' => $transaction['transaction_date'] instanceof Carbon
+                        ? $transaction['transaction_date']->toDateString()
+                        : $transaction['transaction_date'],
                     'description' => $transaction['description'],
                     'additional_description' => $transaction['additional_description'],
                     'credit_amount' => $transaction['credit_amount'],
@@ -340,15 +349,19 @@ class BankStatementImportService
                     'category' => $transaction['category'],
                     'is_reconciled' => false,
                     'import_batch' => $batchId,
+                    'transaction_hash' => $hash,
                     'imported_at' => now(),
-                ]);
+                    'created_at' => now(),
+                    'updated_at' => now(),
+                ]]);
 
-                $this->importedCount++;
+                if ($inserted) {
+                    $this->importedCount++;
+                } else {
+                    $this->duplicateCount++;
+                }
             }
-
-            DB::commit();
         } catch (\Exception $e) {
-            DB::rollBack();
             $this->errors[] = 'Database error: ' . $e->getMessage();
             Log::error('Bank statement import failed', [
                 'error' => $e->getMessage(),

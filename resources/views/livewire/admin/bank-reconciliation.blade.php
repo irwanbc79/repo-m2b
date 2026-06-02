@@ -90,10 +90,15 @@
                         class="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition flex items-center gap-2">
                     <span>📤</span> Import CSV
                 </button>
-                <button wire:click="runAutoMatch" 
+                <button wire:click="runAutoMatch"
                         wire:confirm="Jalankan auto-matching untuk semua transaksi?"
-                        class="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition flex items-center gap-2">
-                    <span>🔄</span> Auto-Match
+                        wire:loading.attr="disabled"
+                        wire:target="runAutoMatch"
+                        class="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 disabled:opacity-50 disabled:cursor-not-allowed transition flex items-center gap-2">
+                    <span wire:loading.remove wire:target="runAutoMatch">🔄</span>
+                    <span wire:loading wire:target="runAutoMatch">⏳</span>
+                    <span wire:loading.remove wire:target="runAutoMatch">Auto-Match</span>
+                    <span wire:loading wire:target="runAutoMatch">Memproses...</span>
                 </button>
                 {{-- Export Dropdown --}}
                 <div class="relative" id="exportDropdownWrap">
