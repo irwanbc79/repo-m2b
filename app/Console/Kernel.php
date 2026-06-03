@@ -23,6 +23,9 @@ class Kernel extends ConsoleKernel
 
         // 🔔 REMINDER TESTIMONI 7 HARI SETELAH FOLLOW-UP (SETIAP HARI JAM 10:00)
         $schedule->command('emails:testimonial-reminder')->dailyAt('10:00');
+
+        // 💱 FETCH KURS PAJAK KEMENKEU (SETIAP RABU JAM 00:01 — periode baru berlaku mulai Rabu)
+        $schedule->command('kurs:fetch-pajak')->weeklyOn(3, '00:01');
     }
 
     /**

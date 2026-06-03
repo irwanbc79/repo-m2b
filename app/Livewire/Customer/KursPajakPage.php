@@ -54,12 +54,18 @@ class KursPajakPage extends Component
             ->orderBy('currency_code', 'asc')
             ->get();
 
+        // Fallback: jika belum ada data aktif minggu ini, tampilkan data periode terbaru
         if ($rows->isEmpty()) {
-            return [
-                'rates' => [],
-                'period' => '-',
-                'last_updated' => '-'
-            ];
+            $latestValidFrom = TaxExchangeRate::orderByDesc('valid_from')->value('valid_from');
+
+            if (!$latestValidFrom) {
+                return ['rates' => [], 'period' => '-', 'last_updated' => '-'];
+            }
+
+            $rows = TaxExchangeRate::whereDate('valid_from', $latestValidFrom)
+                ->orderByRaw("CASE WHEN currency_code = 'USD' THEN 0 ELSE 1 END")
+                ->orderBy('currency_code', 'asc')
+                ->get();
         }
 
         /**
