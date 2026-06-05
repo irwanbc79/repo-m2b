@@ -25,7 +25,7 @@
 
     <div class="w-full max-w-5xl bg-white rounded-2xl shadow-2xl overflow-hidden flex flex-col md:flex-row border border-gray-150">
         <!-- Left Side: Login Form -->
-        <div class="w-full md:w-1/2 p-6 sm:p-10 flex flex-col justify-center">
+        <div class="w-full md:w-3/5 p-6 sm:p-10 flex flex-col justify-center">
             <div class="bg-white text-center mb-6">
                 <img src="{{ asset('images/m2b-logo.png') }}" alt="M2B Portal" class="h-24 mx-auto w-auto">
             </div>
@@ -73,7 +73,7 @@
         </div>
 
         <!-- Right Side: Ecosystem Panel (Dark theme / Gradient) -->
-        <div class="w-full md:w-1/2 bg-slate-950 text-white p-8 sm:p-10 flex flex-col justify-between relative overflow-hidden border-t border-gray-200 md:border-t-0 md:border-l md:border-gray-150">
+        <div class="w-full md:w-2/5 bg-slate-950 text-white p-6 sm:p-8 flex flex-col justify-between relative overflow-hidden border-t border-gray-200 md:border-t-0 md:border-l md:border-gray-150">
             <!-- Decorative gradients -->
             <div class="absolute -right-20 -top-20 w-48 h-48 rounded-full bg-blue-600/10 blur-[80px] pointer-events-none"></div>
             <div class="absolute -left-20 -bottom-20 w-48 h-48 rounded-full bg-violet-600/15 blur-[80px] pointer-events-none"></div>
