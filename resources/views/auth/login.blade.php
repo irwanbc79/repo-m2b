@@ -151,7 +151,7 @@
                     <div class="flex flex-col gap-1.5">
                         <div class="flex items-center gap-1.5">
                             <div class="w-5 h-5 rounded bg-cyan-600 flex items-center justify-center text-[10px] font-bold text-slate-950 shrink-0">M</div>
-                            <span class="text-xs font-bold text-white truncate">Mora Bangun</span>
+                            <span class="text-xs font-bold text-white truncate">Mora Bangun Solutions</span>
                         </div>
                         <span class="self-start text-[9px] text-cyan-400 bg-cyan-400/10 px-2 py-0.5 rounded border border-cyan-400/20 font-semibold uppercase tracking-wider">IT PARTNER</span>
                     </div>
