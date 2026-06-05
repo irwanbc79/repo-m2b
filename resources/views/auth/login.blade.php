@@ -69,7 +69,7 @@
                     <div class="flex-grow border-t border-gray-200"></div>
                 </div>
 
-                <a href="#" class="w-full inline-flex items-center justify-center gap-3 bg-white border border-gray-300 hover:bg-gray-50 text-gray-700 font-bold py-3 px-4 rounded-lg shadow-sm hover:shadow transition duration-200 transform hover:-translate-y-0.5">
+                <a href="{{ route('login.google') }}" class="w-full inline-flex items-center justify-center gap-3 bg-white border border-gray-300 hover:bg-gray-50 text-gray-700 font-bold py-3 px-4 rounded-lg shadow-sm hover:shadow transition duration-200 transform hover:-translate-y-0.5">
                     <svg class="w-5 h-5" viewBox="0 0 24 24">
                         <path fill="#EA4335" d="M12 5.04c1.66 0 3.2.57 4.38 1.69l3.27-3.27C17.68 1.54 14.98 1 12 1 7.24 1 3.2 3.73 1.24 7.74l3.86 3C6.01 7.73 8.78 5.04 12 5.04z"/>
                         <path fill="#4285F4" d="M23.49 12.27c0-.81-.07-1.59-.2-2.36H12v4.51h6.43c-.28 1.44-1.1 2.67-2.33 3.5l3.61 2.8c2.11-1.95 3.33-4.82 3.33-8.45z"/>
@@ -89,7 +89,9 @@
                     </p>
                 </div>
             </div>
-        </div>        <!-- Right Side: Ecosystem Panel (Dark theme / Gradient) -->
+        </div>
+
+        <!-- Right Side: Ecosystem Panel (Dark theme / Gradient) -->
         <div class="w-full md:w-1/4 bg-slate-950 text-white p-5 sm:p-6 flex flex-col justify-between relative overflow-hidden border-t border-gray-200 md:border-t-0 md:border-l md:border-gray-150">
             <!-- Decorative gradients -->
             <div class="absolute -right-20 -top-20 w-48 h-48 rounded-full bg-blue-600/10 blur-[80px] pointer-events-none"></div>
