@@ -46,7 +46,10 @@ class GoogleAuthController extends Controller
             ]);
 
             Auth::login($user);
-            return redirect()->intended('/admin'); // Redirect to filament dashboard
+            $primaryRole = $user->getPrimaryRole();
+            return $primaryRole === 'customer'
+                ? redirect()->intended(route('customer.dashboard'))
+                : redirect()->intended(route('admin.dashboard'));
         }
 
         // Check if user exists with the same email address
@@ -61,7 +64,10 @@ class GoogleAuthController extends Controller
             ]);
 
             Auth::login($user);
-            return redirect()->intended('/admin');
+            $primaryRole = $user->getPrimaryRole();
+            return $primaryRole === 'customer'
+                ? redirect()->intended(route('customer.dashboard'))
+                : redirect()->intended(route('admin.dashboard'));
         }
 
         // Create a new user (customer by default)
@@ -85,6 +91,9 @@ class GoogleAuthController extends Controller
         ]);
 
         Auth::login($newUser);
-        return redirect()->intended('/admin');
+        $primaryRole = $newUser->getPrimaryRole();
+        return $primaryRole === 'customer'
+            ? redirect()->intended(route('customer.dashboard'))
+            : redirect()->intended(route('admin.dashboard'));
     }
 }

@@ -205,6 +205,11 @@ Route::middleware('guest')->group(function () {
     });
 
 
+// --- GOOGLE OAUTH ROUTES ---
+Route::get('auth/google', [\App\Http\Controllers\Auth\GoogleAuthController::class, 'redirectToGoogle'])->name('login.google');
+Route::get('auth/google/callback', [\App\Http\Controllers\Auth\GoogleAuthController::class, 'handleGoogleCallback'])->name('login.google.callback');
+
+
 // --- AUTH COMMON ---
 Route::post('/logout', function () {
     Auth::logout();
