@@ -21,15 +21,16 @@
         }
     </script>
 </head>
-<body class="bg-gray-100 h-screen flex items-center justify-center font-sans">
+<body class="bg-slate-50 min-h-screen flex items-center justify-center font-sans p-4 sm:p-6 md:p-8">
 
-    <div class="w-full max-w-md bg-white rounded-xl shadow-2xl overflow-hidden m-4 border-t-4 border-m2b-primary">
-        <div class="bg-white p-6 text-center border-b-4 border-m2b-accent">
-            <img src="{{ asset('images/m2b-logo.png') }}" alt="M2B Portal" class="h-32 mx-auto w-auto">
-        </div>
+    <div class="w-full max-w-5xl bg-white rounded-2xl shadow-2xl overflow-hidden flex flex-col md:flex-row border border-gray-150">
+        <!-- Left Side: Login Form -->
+        <div class="w-full md:w-1/2 p-6 sm:p-10 flex flex-col justify-center">
+            <div class="bg-white text-center mb-6">
+                <img src="{{ asset('images/m2b-logo.png') }}" alt="M2B Portal" class="h-24 mx-auto w-auto">
+            </div>
 
-        <div class="p-8 pt-8">
-            <h2 class="text-2xl font-bold text-m2b-primary text-center mb-8">PT. MORA MULTI BERKAH</h2>
+            <h2 class="text-2xl font-bold text-m2b-primary text-center mb-6">PT. MORA MULTI BERKAH</h2>
 
             @if ($errors->any())
                 <div class="mb-4 bg-red-50 border-l-4 border-red-500 p-4">
@@ -68,6 +69,92 @@
                 <p class="text-xs text-gray-400">
                     Butuh bantuan? <a href="mailto:support@m2b.co.id" class="hover:text-m2b-accent">Hubungi Support</a>
                 </p>
+            </div>
+        </div>
+
+        <!-- Right Side: Ecosystem Panel (Dark theme / Gradient) -->
+        <div class="w-full md:w-1/2 bg-slate-950 text-white p-8 sm:p-10 flex flex-col justify-between relative overflow-hidden border-t border-gray-200 md:border-t-0 md:border-l md:border-gray-150">
+            <!-- Decorative gradients -->
+            <div class="absolute -right-20 -top-20 w-48 h-48 rounded-full bg-blue-600/10 blur-[80px] pointer-events-none"></div>
+            <div class="absolute -left-20 -bottom-20 w-48 h-48 rounded-full bg-violet-600/15 blur-[80px] pointer-events-none"></div>
+            
+            <div class="relative z-10 space-y-6">
+                <div>
+                    <span class="inline-flex items-center gap-1.5 text-xs font-bold text-blue-400 uppercase tracking-widest bg-blue-400/10 px-3 py-1.5 rounded-full border border-blue-400/20">
+                        M2B TECH ECOSYSTEM
+                    </span>
+                    <h3 class="text-xl font-bold text-white mt-4">Rekomendasi Partner & Teknologi</h3>
+                    <p class="text-xs text-slate-400 mt-2">Kami bermitra dengan penyedia teknologi terbaik untuk akselerasi bisnis Anda.</p>
+                </div>
+
+                <!-- Partner 1: Hostinger -->
+                <div class="bg-slate-900/60 border border-slate-800/80 rounded-xl p-4 space-y-3 hover:border-violet-500/40 transition duration-300">
+                    <div class="flex items-center justify-between">
+                        <div class="flex items-center gap-2">
+                            <!-- Violet box H icon -->
+                            <div class="w-6 h-6 rounded bg-violet-600 flex items-center justify-center text-xs font-bold text-white">H</div>
+                            <span class="text-sm font-bold text-white">Hostinger Cloud Hosting</span>
+                        </div>
+                        <span class="text-[10px] text-emerald-400 bg-emerald-400/10 px-2 py-0.5 rounded border border-emerald-400/20 font-semibold uppercase">20% OFF</span>
+                    </div>
+                    <p class="text-[11px] text-slate-400 leading-relaxed font-light">
+                        Infrastruktur cloud ultra-cepat dengan server lokal Jakarta untuk kecepatan & keandalan sistem maksimal.
+                    </p>
+                    <div>
+                        <a href="https://www.hostinger.com/id?REFERRALCODE=7YYIRWANB72L" target="_blank" rel="noopener noreferrer" 
+                           class="inline-flex items-center text-[11px] font-bold text-violet-400 hover:text-violet-300 transition gap-1">
+                            Klaim Diskon Hosting &rarr;
+                        </a>
+                    </div>
+                </div>
+
+                <!-- Partner 2: Emergent AI -->
+                <div class="bg-slate-900/60 border border-slate-800/80 rounded-xl p-4 space-y-3 hover:border-blue-500/40 transition duration-300">
+                    <div class="flex items-center justify-between">
+                        <div class="flex items-center gap-2">
+                            <!-- Blue box E icon -->
+                            <div class="w-6 h-6 rounded bg-blue-600 flex items-center justify-center text-xs font-bold text-white">E</div>
+                            <span class="text-sm font-bold text-white">Emergent AI</span>
+                        </div>
+                        <span class="text-[10px] text-blue-400 bg-blue-400/10 px-2 py-0.5 rounded border border-blue-400/20 font-semibold uppercase">FREE ACCESS</span>
+                    </div>
+                    <p class="text-[11px] text-slate-400 leading-relaxed font-light">
+                        Platform automasi alur kerja (agentic workflow engine) berbasis AI tingkat lanjut untuk menyederhanakan administrasi bisnis.
+                    </p>
+                    <div>
+                        <a href="https://app.emergent.sh/register?ref=irwa212175" target="_blank" rel="noopener noreferrer" 
+                           class="inline-flex items-center text-[11px] font-bold text-blue-400 hover:text-blue-300 transition gap-1">
+                            Daftar Emergent AI &rarr;
+                        </a>
+                    </div>
+                </div>
+
+                <!-- Partner 3: Mora Bangun Solutions -->
+                <div class="bg-slate-900/60 border border-slate-800/80 rounded-xl p-4 space-y-3 hover:border-cyan-500/40 transition duration-300">
+                    <div class="flex items-center justify-between">
+                        <div class="flex items-center gap-2">
+                            <!-- Cyan box M icon -->
+                            <div class="w-6 h-6 rounded bg-cyan-600 flex items-center justify-center text-xs font-bold text-slate-950">M</div>
+                            <span class="text-sm font-bold text-white">Mora Bangun Solutions</span>
+                        </div>
+                        <span class="text-[10px] text-cyan-400 bg-cyan-400/10 px-2 py-0.5 rounded border border-cyan-400/20 font-semibold uppercase font-bold">IT PARTNER</span>
+                    </div>
+                    <p class="text-[11px] text-slate-400 leading-relaxed font-light">
+                        Partner terpercaya untuk pengembangan Enterprise System (ERP, CRM, Portal) & integrasi kecerdasan buatan.
+                    </p>
+                    <div>
+                        <a href="https://morabangun.com" target="_blank" rel="noopener noreferrer" 
+                           class="inline-flex items-center text-[11px] font-bold text-cyan-400 hover:text-cyan-300 transition gap-1">
+                            Kunjungi morabangun.com &rarr;
+                        </a>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Footer text in right panel -->
+            <div class="relative z-10 pt-4 text-[10px] text-slate-500 flex justify-between items-center border-t border-slate-900/80 mt-6">
+                <span>&copy; {{ date('Y') }} M2B Portal</span>
+                <span>v1.2.0</span>
             </div>
         </div>
     </div>
