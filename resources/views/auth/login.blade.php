@@ -25,7 +25,7 @@
 
     <div class="w-full max-w-5xl bg-white rounded-2xl shadow-2xl overflow-hidden flex flex-col md:flex-row border border-gray-150">
         <!-- Left Side: Login Form -->
-        <div class="w-full md:w-3/5 p-6 sm:p-10 flex flex-col justify-center">
+        <div class="w-full md:w-3/4 p-6 sm:p-10 flex flex-col justify-center">
             <div class="bg-white text-center mb-6">
                 <img src="{{ asset('images/m2b-logo.png') }}" alt="M2B Portal" class="h-24 mx-auto w-auto">
             </div>
@@ -73,87 +73,84 @@
         </div>
 
         <!-- Right Side: Ecosystem Panel (Dark theme / Gradient) -->
-        <div class="w-full md:w-2/5 bg-slate-950 text-white p-6 sm:p-8 flex flex-col justify-between relative overflow-hidden border-t border-gray-200 md:border-t-0 md:border-l md:border-gray-150">
+        <div class="w-full md:w-1/4 bg-slate-950 text-white p-5 sm:p-6 flex flex-col justify-between relative overflow-hidden border-t border-gray-200 md:border-t-0 md:border-l md:border-gray-150">
             <!-- Decorative gradients -->
             <div class="absolute -right-20 -top-20 w-48 h-48 rounded-full bg-blue-600/10 blur-[80px] pointer-events-none"></div>
             <div class="absolute -left-20 -bottom-20 w-48 h-48 rounded-full bg-violet-600/15 blur-[80px] pointer-events-none"></div>
             
-            <div class="relative z-10 space-y-6">
+            <div class="relative z-10 space-y-5">
                 <div>
-                    <span class="inline-flex items-center gap-1.5 text-xs font-bold text-blue-400 uppercase tracking-widest bg-blue-400/10 px-3 py-1.5 rounded-full border border-blue-400/20">
-                        M2B TECH ECOSYSTEM
+                    <span class="inline-flex items-center gap-1.5 text-[10px] font-bold text-blue-400 uppercase tracking-widest bg-blue-400/10 px-2.5 py-1 rounded-full border border-blue-400/20">
+                        PARTNER ECOSYSTEM
                     </span>
-                    <h3 class="text-xl font-bold text-white mt-4">Rekomendasi Partner & Teknologi</h3>
-                    <p class="text-xs text-slate-400 mt-2">Kami bermitra dengan penyedia teknologi terbaik untuk akselerasi bisnis Anda.</p>
+                    <h3 class="text-base font-bold text-white mt-3.5">Rekomendasi Partner</h3>
+                    <p class="text-[10px] text-slate-400 mt-1">Solusi teknologi pendukung akselerasi bisnis Anda.</p>
                 </div>
 
                 <!-- Partner 1: Hostinger -->
-                <div class="bg-slate-900/60 border border-slate-800/80 rounded-xl p-4 space-y-3 hover:border-violet-500/40 transition duration-300">
-                    <div class="flex items-center justify-between">
-                        <div class="flex items-center gap-2">
-                            <!-- Violet box H icon -->
-                            <div class="w-6 h-6 rounded bg-violet-600 flex items-center justify-center text-xs font-bold text-white">H</div>
-                            <span class="text-sm font-bold text-white">Hostinger Cloud Hosting</span>
+                <div class="bg-slate-900/60 border border-slate-800/80 rounded-xl p-3.5 space-y-2 hover:border-violet-500/40 transition duration-300">
+                    <div class="flex flex-col gap-1.5">
+                        <div class="flex items-center gap-1.5">
+                            <div class="w-5 h-5 rounded bg-violet-600 flex items-center justify-center text-[10px] font-bold text-white shrink-0">H</div>
+                            <span class="text-xs font-bold text-white truncate">Hostinger Hosting</span>
                         </div>
-                        <span class="text-[10px] text-emerald-400 bg-emerald-400/10 px-2 py-0.5 rounded border border-emerald-400/20 font-semibold uppercase">20% OFF</span>
+                        <span class="self-start text-[9px] text-emerald-400 bg-emerald-400/10 px-2 py-0.5 rounded border border-emerald-400/20 font-semibold uppercase tracking-wider">20% OFF</span>
                     </div>
-                    <p class="text-[11px] text-slate-400 leading-relaxed font-light">
-                        Infrastruktur cloud ultra-cepat dengan server lokal Jakarta untuk kecepatan & keandalan sistem maksimal.
+                    <p class="text-[10px] text-slate-400 leading-relaxed font-light">
+                        Infrastruktur cloud ultra-cepat dengan server lokal Jakarta.
                     </p>
-                    <div>
+                    <div class="pt-0.5">
                         <a href="https://www.hostinger.com/id?REFERRALCODE=7YYIRWANB72L" target="_blank" rel="noopener noreferrer" 
-                           class="inline-flex items-center text-[11px] font-bold text-violet-400 hover:text-violet-300 transition gap-1">
-                            Klaim Diskon Hosting &rarr;
+                           class="inline-flex items-center text-[10px] font-bold text-violet-400 hover:text-violet-300 transition gap-1">
+                            Klaim Diskon &rarr;
                         </a>
                     </div>
                 </div>
 
                 <!-- Partner 2: Emergent AI -->
-                <div class="bg-slate-900/60 border border-slate-800/80 rounded-xl p-4 space-y-3 hover:border-blue-500/40 transition duration-300">
-                    <div class="flex items-center justify-between">
-                        <div class="flex items-center gap-2">
-                            <!-- Blue box E icon -->
-                            <div class="w-6 h-6 rounded bg-blue-600 flex items-center justify-center text-xs font-bold text-white">E</div>
-                            <span class="text-sm font-bold text-white">Emergent AI</span>
+                <div class="bg-slate-900/60 border border-slate-800/80 rounded-xl p-3.5 space-y-2 hover:border-blue-500/40 transition duration-300">
+                    <div class="flex flex-col gap-1.5">
+                        <div class="flex items-center gap-1.5">
+                            <div class="w-5 h-5 rounded bg-blue-600 flex items-center justify-center text-[10px] font-bold text-white shrink-0">E</div>
+                            <span class="text-xs font-bold text-white truncate">Emergent AI</span>
                         </div>
-                        <span class="text-[10px] text-blue-400 bg-blue-400/10 px-2 py-0.5 rounded border border-blue-400/20 font-semibold uppercase">FREE ACCESS</span>
+                        <span class="self-start text-[9px] text-blue-400 bg-blue-400/10 px-2 py-0.5 rounded border border-blue-400/20 font-semibold uppercase tracking-wider">FREE ACCESS</span>
                     </div>
-                    <p class="text-[11px] text-slate-400 leading-relaxed font-light">
-                        Platform automasi alur kerja (agentic workflow engine) berbasis AI tingkat lanjut untuk menyederhanakan administrasi bisnis.
+                    <p class="text-[10px] text-slate-400 leading-relaxed font-light">
+                        Platform automasi alur kerja (workflow) berbasis AI.
                     </p>
-                    <div>
+                    <div class="pt-0.5">
                         <a href="https://app.emergent.sh/register?ref=irwa212175" target="_blank" rel="noopener noreferrer" 
-                           class="inline-flex items-center text-[11px] font-bold text-blue-400 hover:text-blue-300 transition gap-1">
-                            Daftar Emergent AI &rarr;
+                           class="inline-flex items-center text-[10px] font-bold text-blue-400 hover:text-blue-300 transition gap-1">
+                            Daftar Akun &rarr;
                         </a>
                     </div>
                 </div>
 
                 <!-- Partner 3: Mora Bangun Solutions -->
-                <div class="bg-slate-900/60 border border-slate-800/80 rounded-xl p-4 space-y-3 hover:border-cyan-500/40 transition duration-300">
-                    <div class="flex items-center justify-between">
-                        <div class="flex items-center gap-2">
-                            <!-- Cyan box M icon -->
-                            <div class="w-6 h-6 rounded bg-cyan-600 flex items-center justify-center text-xs font-bold text-slate-950">M</div>
-                            <span class="text-sm font-bold text-white">Mora Bangun Solutions</span>
+                <div class="bg-slate-900/60 border border-slate-800/80 rounded-xl p-3.5 space-y-2 hover:border-cyan-500/40 transition duration-300">
+                    <div class="flex flex-col gap-1.5">
+                        <div class="flex items-center gap-1.5">
+                            <div class="w-5 h-5 rounded bg-cyan-600 flex items-center justify-center text-[10px] font-bold text-slate-950 shrink-0">M</div>
+                            <span class="text-xs font-bold text-white truncate">Mora Bangun</span>
                         </div>
-                        <span class="text-[10px] text-cyan-400 bg-cyan-400/10 px-2 py-0.5 rounded border border-cyan-400/20 font-semibold uppercase font-bold">IT PARTNER</span>
+                        <span class="self-start text-[9px] text-cyan-400 bg-cyan-400/10 px-2 py-0.5 rounded border border-cyan-400/20 font-semibold uppercase tracking-wider">IT PARTNER</span>
                     </div>
-                    <p class="text-[11px] text-slate-400 leading-relaxed font-light">
-                        Partner terpercaya untuk pengembangan Enterprise System (ERP, CRM, Portal) & integrasi kecerdasan buatan.
+                    <p class="text-[10px] text-slate-400 leading-relaxed font-light">
+                        Sistem Enterprise (ERP, CRM) & integrasi AI terpercaya.
                     </p>
-                    <div>
+                    <div class="pt-0.5">
                         <a href="https://morabangun.com" target="_blank" rel="noopener noreferrer" 
-                           class="inline-flex items-center text-[11px] font-bold text-cyan-400 hover:text-cyan-300 transition gap-1">
-                            Kunjungi morabangun.com &rarr;
+                           class="inline-flex items-center text-[10px] font-bold text-cyan-400 hover:text-cyan-300 transition gap-1">
+                            Kunjungi Web &rarr;
                         </a>
                     </div>
                 </div>
             </div>
 
             <!-- Footer text in right panel -->
-            <div class="relative z-10 pt-4 text-[10px] text-slate-500 flex justify-between items-center border-t border-slate-900/80 mt-6">
-                <span>&copy; {{ date('Y') }} M2B Portal</span>
+            <div class="relative z-10 pt-4 text-[9px] text-slate-500 flex justify-between items-center border-t border-slate-900/80 mt-4">
+                <span>&copy; {{ date('Y') }} M2B</span>
                 <span>v1.2.0</span>
             </div>
         </div>
