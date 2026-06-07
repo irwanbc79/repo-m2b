@@ -227,10 +227,18 @@ class EmailInbox extends Component
     public function syncNow()
     {
         try {
-            Artisan::call('email:sync', ['mailbox' => $this->activeAccount, '--force' => true]);
+            @set_time_limit(120);
+            Artisan::call('email:sync', [
+                'mailbox' => $this->activeAccount,
+                '--force' => true,
+                '--days' => 2
+            ]);
             $this->loadEmails();
             session()->flash('message', 'Sinkronisasi selesai.');
-        } catch (\Exception $e) {
+        } catch (\Throwable $e) {
+            \Log::error('Sync error via button: ' . $e->getMessage(), [
+                'exception' => $e
+            ]);
             session()->flash('error', 'Sync gagal: ' . $e->getMessage());
         }
     }
