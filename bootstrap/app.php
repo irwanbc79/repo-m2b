@@ -79,16 +79,17 @@ return Application::configure(basePath: dirname(__DIR__))
             'livewire/upload-file/*',
             'livewire/update',
             'livewire/preview-file/*',
+            'lw-update',
         ]);
     })
 
     ->withExceptions(function (Exceptions $exceptions) {
-        // Tangani GET /livewire/update yang di-cache oleh LiteSpeed — redirect daripada error 405
+        // Tangani GET /livewire/update atau /lw-update yang di-cache oleh LiteSpeed
         $exceptions->render(function (
             \Symfony\Component\HttpKernel\Exception\MethodNotAllowedHttpException $e,
             \Illuminate\Http\Request $request
         ) {
-            if ($request->is('livewire/*') && $request->isMethod('get')) {
+            if (($request->is('livewire/*') || $request->is('lw-update')) && $request->isMethod('get')) {
                 return redirect('/admin/dashboard');
             }
         });
