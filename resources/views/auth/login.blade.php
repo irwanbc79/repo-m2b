@@ -81,12 +81,52 @@
 
                 <div class="text-center space-y-2 border-t pt-4 border-gray-100">
                     <p class="text-sm text-gray-600">
-                        Belum punya akun? 
+                        Belum punya akun?
                         <a href="{{ route('register') }}" class="text-m2b-primary font-bold hover:underline text-base">Daftar Sekarang</a>
                     </p>
                     <p class="text-xs text-gray-400">
                         Butuh bantuan? <a href="mailto:support@m2b.co.id" class="hover:text-m2b-accent">Hubungi Support</a>
                     </p>
+                </div>
+
+                <!-- Partner Production: Akses Cepat Layanan Mitra Operasional -->
+                <div class="border-t pt-5 border-gray-100">
+                    <div class="flex items-center justify-between gap-2 mb-1">
+                        <span class="inline-flex items-center gap-1.5 text-[10px] font-bold text-m2b-primary uppercase tracking-widest bg-m2b-primary/5 px-2.5 py-1 rounded-full border border-m2b-primary/10">
+                            <span class="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse"></span>
+                            Partner Production
+                        </span>
+                    </div>
+                    <p class="text-[10px] text-gray-400 mb-3">Akses cepat ke layanan kepabeanan & perdagangan yang kami gunakan.</p>
+                    <div class="grid grid-cols-3 gap-2.5">
+                        <!-- INSW: rujukan klasifikasi & HS Code -->
+                        <a href="https://insw.go.id" target="_blank" rel="noopener noreferrer"
+                           class="group flex flex-col items-center justify-center text-center gap-1.5 bg-gray-50 border border-gray-200 rounded-xl p-3 hover:border-m2b-primary hover:bg-white hover:shadow-md transition duration-200">
+                            <div class="w-8 h-8 rounded-lg bg-white border border-gray-200 flex items-center justify-center shrink-0 overflow-hidden">
+                                <img src="{{ asset('images/partners/insw.png') }}" alt="INSW" class="w-5 h-5 object-contain" loading="lazy">
+                            </div>
+                            <span class="text-[10px] font-bold text-m2b-primary leading-tight">INSW</span>
+                            <span class="text-[8px] text-gray-400 leading-tight mt-0.5">Cek HS Code<br>&amp; Lartas</span>
+                        </a>
+                        <!-- Bea Cukai (CEISA): submit dokumen impor/ekspor -->
+                        <a href="https://portal.beacukai.go.id/portal/login" target="_blank" rel="noopener noreferrer"
+                           class="group flex flex-col items-center justify-center text-center gap-1.5 bg-gray-50 border border-gray-200 rounded-xl p-3 hover:border-m2b-primary hover:bg-white hover:shadow-md transition duration-200">
+                            <div class="w-8 h-8 rounded-lg bg-white border border-gray-200 flex items-center justify-center shrink-0 overflow-hidden">
+                                <img src="{{ asset('images/partners/beacukai.ico') }}" alt="Bea Cukai" class="w-5 h-5 object-contain" loading="lazy">
+                            </div>
+                            <span class="text-[10px] font-bold text-m2b-primary leading-tight">Bea Cukai</span>
+                            <span class="text-[8px] text-gray-400 leading-tight mt-0.5">Submit Dokumen<br>Impor/Ekspor</span>
+                        </a>
+                        <!-- Dira: mitra jasa undername & trading -->
+                        <a href="https://dira.co.id" target="_blank" rel="noopener noreferrer"
+                           class="group flex flex-col items-center justify-center text-center gap-1.5 bg-gray-50 border border-gray-200 rounded-xl p-3 hover:border-m2b-primary hover:bg-white hover:shadow-md transition duration-200">
+                            <div class="w-8 h-8 rounded-lg bg-white border border-gray-200 flex items-center justify-center shrink-0 overflow-hidden">
+                                <img src="{{ asset('images/partners/dira.jpg') }}" alt="Dira" class="w-5 h-5 object-contain" loading="lazy">
+                            </div>
+                            <span class="text-[10px] font-bold text-m2b-primary leading-tight">Dira</span>
+                            <span class="text-[8px] text-gray-400 leading-tight mt-0.5">Jasa Undername<br>&amp; Trading</span>
+                        </a>
+                    </div>
                 </div>
             </div>
         </div>
