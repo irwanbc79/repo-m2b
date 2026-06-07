@@ -26,7 +26,7 @@
     <div class="w-full max-w-6xl bg-white rounded-2xl shadow-2xl overflow-hidden flex flex-col md:flex-row border border-gray-150">
 
         <!-- Left Side: Partner Production Panel (Dark theme / Gradient) -->
-        <div class="w-full md:w-1/4 order-2 md:order-1 bg-slate-950 text-white p-5 sm:p-6 flex flex-col justify-between relative overflow-hidden border-t border-gray-200 md:border-t-0 md:border-r md:border-gray-150">
+        <div class="w-full md:w-1/4 order-2 md:order-1 bg-gradient-to-b from-[#0F2C59] to-slate-950 text-white p-5 sm:p-6 flex flex-col justify-between relative overflow-hidden border-t border-gray-200 md:border-t-0 md:border-r md:border-gray-150">
             <!-- Decorative gradients -->
             <div class="absolute -left-20 -top-20 w-48 h-48 rounded-full bg-emerald-600/10 blur-[80px] pointer-events-none"></div>
             <div class="absolute -right-20 -bottom-20 w-48 h-48 rounded-full bg-blue-600/15 blur-[80px] pointer-events-none"></div>
@@ -43,7 +43,7 @@
 
                 <!-- Partner 1: INSW -->
                 <a href="https://insw.go.id" target="_blank" rel="noopener noreferrer"
-                   class="group block bg-slate-900/60 border border-slate-800/80 rounded-xl p-3.5 space-y-2 hover:border-blue-500/40 transition duration-300">
+                   class="group block bg-white/5 border border-white/10 rounded-xl p-3.5 space-y-2 hover:border-blue-500/40 transition duration-300">
                     <div class="flex flex-col gap-1.5">
                         <div class="flex items-center gap-1.5">
                             <div class="w-5 h-5 rounded bg-white flex items-center justify-center shrink-0 overflow-hidden">
@@ -65,7 +65,7 @@
 
                 <!-- Partner 2: Bea Cukai (CEISA) -->
                 <a href="https://portal.beacukai.go.id/portal/login" target="_blank" rel="noopener noreferrer"
-                   class="group block bg-slate-900/60 border border-slate-800/80 rounded-xl p-3.5 space-y-2 hover:border-amber-500/40 transition duration-300">
+                   class="group block bg-white/5 border border-white/10 rounded-xl p-3.5 space-y-2 hover:border-amber-500/40 transition duration-300">
                     <div class="flex flex-col gap-1.5">
                         <div class="flex items-center gap-1.5">
                             <div class="w-5 h-5 rounded bg-white flex items-center justify-center shrink-0 overflow-hidden">
@@ -87,7 +87,7 @@
 
                 <!-- Partner 3: Dira -->
                 <a href="https://dira.co.id" target="_blank" rel="noopener noreferrer"
-                   class="group block bg-slate-900/60 border border-slate-800/80 rounded-xl p-3.5 space-y-2 hover:border-emerald-500/40 transition duration-300">
+                   class="group block bg-white/5 border border-white/10 rounded-xl p-3.5 space-y-2 hover:border-emerald-500/40 transition duration-300">
                     <div class="flex flex-col gap-1.5">
                         <div class="flex items-center gap-1.5">
                             <div class="w-5 h-5 rounded bg-white flex items-center justify-center shrink-0 overflow-hidden">
@@ -109,7 +109,7 @@
             </div>
 
             <!-- Footer text in left panel -->
-            <div class="relative z-10 pt-4 text-[9px] text-slate-500 flex items-center gap-1.5 border-t border-slate-900/80 mt-4">
+            <div class="relative z-10 pt-4 text-[9px] text-slate-500 flex items-center gap-1.5 border-t border-white/10 mt-4">
                 <span class="w-1.5 h-1.5 rounded-full bg-emerald-500"></span>
                 <span>Tautan resmi mitra &amp; instansi</span>
             </div>
@@ -183,7 +183,7 @@
         </div>
 
         <!-- Right Side: Ecosystem Panel (Dark theme / Gradient) -->
-        <div class="w-full md:w-1/4 order-3 bg-slate-950 text-white p-5 sm:p-6 flex flex-col justify-between relative overflow-hidden border-t border-gray-200 md:border-t-0 md:border-l md:border-gray-150">
+        <div class="w-full md:w-1/4 order-3 bg-gradient-to-b from-[#0F2C59] to-slate-950 text-white p-5 sm:p-6 flex flex-col justify-between relative overflow-hidden border-t border-gray-200 md:border-t-0 md:border-l md:border-gray-150">
             <!-- Decorative gradients -->
             <div class="absolute -right-20 -top-20 w-48 h-48 rounded-full bg-blue-600/10 blur-[80px] pointer-events-none"></div>
             <div class="absolute -left-20 -bottom-20 w-48 h-48 rounded-full bg-violet-600/15 blur-[80px] pointer-events-none"></div>
@@ -198,7 +198,7 @@
                 </div>
 
                 <!-- Partner 1: Hostinger -->
-                <div class="bg-slate-900/60 border border-slate-800/80 rounded-xl p-3.5 space-y-2 hover:border-violet-500/40 transition duration-300">
+                <div class="bg-white/5 border border-white/10 rounded-xl p-3.5 space-y-2 hover:border-violet-500/40 transition duration-300">
                     <div class="flex flex-col gap-1.5">
                         <div class="flex items-center gap-1.5">
                             <div class="w-5 h-5 rounded bg-violet-600 flex items-center justify-center text-[10px] font-bold text-white shrink-0">H</div>
@@ -218,7 +218,7 @@
                 </div>
 
                 <!-- Partner 2: Emergent AI -->
-                <div class="bg-slate-900/60 border border-slate-800/80 rounded-xl p-3.5 space-y-2 hover:border-blue-500/40 transition duration-300">
+                <div class="bg-white/5 border border-white/10 rounded-xl p-3.5 space-y-2 hover:border-blue-500/40 transition duration-300">
                     <div class="flex flex-col gap-1.5">
                         <div class="flex items-center gap-1.5">
                             <div class="w-5 h-5 rounded bg-blue-600 flex items-center justify-center text-[10px] font-bold text-white shrink-0">E</div>
@@ -238,7 +238,7 @@
                 </div>
 
                 <!-- Partner 3: Mora Bangun Solutions -->
-                <div class="bg-slate-900/60 border border-slate-800/80 rounded-xl p-3.5 space-y-2 hover:border-cyan-500/40 transition duration-300">
+                <div class="bg-white/5 border border-white/10 rounded-xl p-3.5 space-y-2 hover:border-cyan-500/40 transition duration-300">
                     <div class="flex flex-col gap-1.5">
                         <div class="flex items-center gap-1.5">
                             <div class="w-5 h-5 rounded bg-cyan-600 flex items-center justify-center text-[10px] font-bold text-slate-950 shrink-0">M</div>
@@ -259,7 +259,7 @@
             </div>
 
             <!-- Footer text in right panel -->
-            <div class="relative z-10 pt-4 text-[9px] text-slate-500 flex justify-between items-center border-t border-slate-900/80 mt-4">
+            <div class="relative z-10 pt-4 text-[9px] text-slate-500 flex justify-between items-center border-t border-white/10 mt-4">
                 <span>&copy; {{ date('Y') }} M2B</span>
                 <span>v1.2.0</span>
             </div>
