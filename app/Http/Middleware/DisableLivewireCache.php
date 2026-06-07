@@ -12,7 +12,16 @@ class DisableLivewireCache
     {
         $response = $next($request);
 
-        if ($request->is('livewire/*')) {
+        // Endpoint dinamis yang TIDAK boleh di-cache LiteSpeed:
+        // - livewire/*    : update/upload Livewire
+        // - lw-update     : route update Livewire custom (hasil override)
+        // - admin/inbox/* : body email (iframe), attachment, download
+        //   -> mencegah LiteSpeed menyajikan 404/konten basi di dalam iframe inbox
+        $noCache = $request->is('livewire/*')
+            || $request->is('lw-update')
+            || $request->is('admin/inbox/*');
+
+        if ($noCache) {
             $response->headers->set('Cache-Control', 'no-store, no-cache, must-revalidate, max-age=0');
             $response->headers->set('Pragma', 'no-cache');
             $response->headers->set('X-LiteSpeed-Cache-Control', 'no-cache');

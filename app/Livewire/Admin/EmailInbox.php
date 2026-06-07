@@ -22,6 +22,9 @@ class EmailInbox extends Component
     public $activeAccount = 'sales';
     public $mailboxes = ['sales', 'import', 'export', 'finance', 'gmail', 'pajak'];
     public $emails = [];
+    // Jumlah email belum dibaca per mailbox. Dihitung sekali (1 query grouped)
+    // di loadEmails(), menggantikan pemanggilan getUnreadCount() per-mailbox di blade.
+    public $unreadCounts = [];
     public $selectedEmail = null;
     public $showConvertModal = false;
 
@@ -77,6 +80,22 @@ class EmailInbox extends Component
             'is_read' => (bool) $email->is_read,
             'attachments' => (int) ($attachmentCounts[$email->id] ?? 0),
         ])->toArray();
+
+        $this->loadUnreadCounts();
+    }
+
+    /**
+     * Hitung jumlah unread untuk SEMUA mailbox dalam satu query (anti N+1).
+     */
+    protected function loadUnreadCounts()
+    {
+        $this->unreadCounts = DB::table('emails')
+            ->where('is_read', false)
+            ->whereIn('mailbox', $this->mailboxes)
+            ->selectRaw('mailbox, COUNT(*) as c')
+            ->groupBy('mailbox')
+            ->pluck('c', 'mailbox')
+            ->toArray();
     }
 
     /**
@@ -252,7 +271,8 @@ class EmailInbox extends Component
 
     public function getUnreadCount($account)
     {
-        return DB::table('emails')->where('mailbox', $account)->where('is_read', false)->count();
+        // Baca dari cache yang sudah dihitung di loadUnreadCounts() (tanpa query baru).
+        return (int) ($this->unreadCounts[$account] ?? 0);
     }
 
 

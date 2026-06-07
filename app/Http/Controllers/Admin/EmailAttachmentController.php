@@ -62,13 +62,30 @@ class EmailAttachmentController extends Controller
     {
         $email = DB::table('emails')->where('id', $id)->first();
 
+        // PENTING: jangan abort(404) di sini.
+        // Endpoint ini dipanggil dari dalam <iframe> pada halaman inbox,
+        // sehingga abort(404) akan menampilkan halaman error 404 (skater)
+        // di dalam konten inbox. Selalu balas 200 dengan pesan yang ramah.
         if (!$email) {
-            abort(404);
+            $html = '<div style="font-family:system-ui,-apple-system,sans-serif;color:#6b7280;'
+                . 'padding:2.5rem;text-align:center">'
+                . '<p style="font-size:14px;font-weight:600;color:#374151;margin:0 0 .35rem">'
+                . 'Konten email tidak tersedia</p>'
+                . '<p style="font-size:12px;margin:0">Email mungkin belum tersinkron. '
+                . 'Klik <b>Sync Now</b> lalu buka kembali email ini.</p></div>';
+        } else {
+            $html = trim((string) $email->body) !== ''
+                ? $email->body
+                : '<p style="font-family:system-ui,sans-serif;color:#9ca3af;padding:1.5rem">'
+                    . '(Konten email kosong)</p>';
         }
 
-        // Return raw body
-        return response($email->body ?? '(Konten kosong)')
+        // Header anti-cache: cegah LiteSpeed menyajikan body/404 basi dari cache.
+        return response($html)
             ->header('Content-Type', 'text/html; charset=UTF-8')
-            ->header('X-Frame-Options', 'SAMEORIGIN');
+            ->header('X-Frame-Options', 'SAMEORIGIN')
+            ->header('Cache-Control', 'no-store, no-cache, must-revalidate, max-age=0')
+            ->header('Pragma', 'no-cache')
+            ->header('X-LiteSpeed-Cache-Control', 'no-cache');
     }
 }

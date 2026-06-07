@@ -38,7 +38,7 @@
                     <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 00-2-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"></path></svg>
                     {{ $acc }}
                 </span>
-                @php $unread = $this->getUnreadCount($acc); @endphp
+                @php $unread = $unreadCounts[$acc] ?? 0; @endphp
                 @if($unread > 0)
                 <span class="bg-red-500 text-white text-[10px] px-1.5 py-0.5 rounded-full font-bold">{{ $unread }}</span>
                 @endif
@@ -138,9 +138,9 @@
                 <div class="flex-1 overflow-y-auto p-8 bg-gray-50/30">
                     <div class="bg-white p-4 rounded-2xl shadow-sm border border-gray-100 min-h-full">
                         {{-- IFRAME FOR EMAIL BODY --}}
-                        <iframe 
-                            src="{{ route('admin.inbox.body', $selectedEmail['db_id']) }}" 
-                            class="w-full border-0" 
+                        <iframe
+                            src="{{ route('admin.inbox.body', $selectedEmail['db_id']) }}?v=2"
+                            class="w-full border-0"
                             onload="this.style.height = this.contentWindow.document.body.scrollHeight + 'px'; this.contentWindow.document.body.style.overflow = 'hidden';"
                             style="min-height: 400px;">
                         </iframe>
