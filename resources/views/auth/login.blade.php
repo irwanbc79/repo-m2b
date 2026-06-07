@@ -23,9 +23,100 @@
 </head>
 <body class="bg-slate-50 min-h-screen flex items-center justify-center font-sans p-4 sm:p-6 md:p-8">
 
-    <div class="w-full max-w-5xl bg-white rounded-2xl shadow-2xl overflow-hidden flex flex-col md:flex-row border border-gray-150">
-        <!-- Left Side: Login Form -->
-        <div class="w-full md:w-3/4 p-8 sm:p-12 flex flex-col justify-center items-center">
+    <div class="w-full max-w-6xl bg-white rounded-2xl shadow-2xl overflow-hidden flex flex-col md:flex-row border border-gray-150">
+
+        <!-- Left Side: Partner Production Panel (Dark theme / Gradient) -->
+        <div class="w-full md:w-1/4 order-2 md:order-1 bg-slate-950 text-white p-5 sm:p-6 flex flex-col justify-between relative overflow-hidden border-t border-gray-200 md:border-t-0 md:border-r md:border-gray-150">
+            <!-- Decorative gradients -->
+            <div class="absolute -left-20 -top-20 w-48 h-48 rounded-full bg-emerald-600/10 blur-[80px] pointer-events-none"></div>
+            <div class="absolute -right-20 -bottom-20 w-48 h-48 rounded-full bg-blue-600/15 blur-[80px] pointer-events-none"></div>
+
+            <div class="relative z-10 space-y-5">
+                <div>
+                    <span class="inline-flex items-center gap-1.5 text-[10px] font-bold text-emerald-400 uppercase tracking-widest bg-emerald-400/10 px-2.5 py-1 rounded-full border border-emerald-400/20">
+                        <span class="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse"></span>
+                        Partner Production
+                    </span>
+                    <h3 class="text-base font-bold text-white mt-3.5">Mitra Operasional</h3>
+                    <p class="text-[10px] text-slate-400 mt-1">Akses cepat layanan kepabeanan &amp; perdagangan yang kami gunakan.</p>
+                </div>
+
+                <!-- Partner 1: INSW -->
+                <a href="https://insw.go.id" target="_blank" rel="noopener noreferrer"
+                   class="group block bg-slate-900/60 border border-slate-800/80 rounded-xl p-3.5 space-y-2 hover:border-blue-500/40 transition duration-300">
+                    <div class="flex flex-col gap-1.5">
+                        <div class="flex items-center gap-1.5">
+                            <div class="w-5 h-5 rounded bg-white flex items-center justify-center shrink-0 overflow-hidden">
+                                <img src="{{ asset('images/partners/insw.png') }}" alt="INSW" class="w-4 h-4 object-contain" loading="lazy">
+                            </div>
+                            <span class="text-xs font-bold text-white truncate">INSW</span>
+                        </div>
+                        <span class="self-start text-[9px] text-blue-400 bg-blue-400/10 px-2 py-0.5 rounded border border-blue-400/20 font-semibold uppercase tracking-wider">HS Code</span>
+                    </div>
+                    <p class="text-[10px] text-slate-400 leading-relaxed font-light">
+                        Rujukan klasifikasi HS Code &amp; cek Lartas (larangan/pembatasan).
+                    </p>
+                    <div class="pt-0.5">
+                        <span class="inline-flex items-center text-[10px] font-bold text-blue-400 group-hover:text-blue-300 transition gap-1">
+                            Buka INSW &rarr;
+                        </span>
+                    </div>
+                </a>
+
+                <!-- Partner 2: Bea Cukai (CEISA) -->
+                <a href="https://portal.beacukai.go.id/portal/login" target="_blank" rel="noopener noreferrer"
+                   class="group block bg-slate-900/60 border border-slate-800/80 rounded-xl p-3.5 space-y-2 hover:border-amber-500/40 transition duration-300">
+                    <div class="flex flex-col gap-1.5">
+                        <div class="flex items-center gap-1.5">
+                            <div class="w-5 h-5 rounded bg-white flex items-center justify-center shrink-0 overflow-hidden">
+                                <img src="{{ asset('images/partners/beacukai.ico') }}" alt="Bea Cukai" class="w-4 h-4 object-contain" loading="lazy">
+                            </div>
+                            <span class="text-xs font-bold text-white truncate">Bea Cukai</span>
+                        </div>
+                        <span class="self-start text-[9px] text-amber-400 bg-amber-400/10 px-2 py-0.5 rounded border border-amber-400/20 font-semibold uppercase tracking-wider">Portal CEISA</span>
+                    </div>
+                    <p class="text-[10px] text-slate-400 leading-relaxed font-light">
+                        Submit dokumen impor/ekspor (PIB/PEB) lewat portal resmi.
+                    </p>
+                    <div class="pt-0.5">
+                        <span class="inline-flex items-center text-[10px] font-bold text-amber-400 group-hover:text-amber-300 transition gap-1">
+                            Login CEISA &rarr;
+                        </span>
+                    </div>
+                </a>
+
+                <!-- Partner 3: Dira -->
+                <a href="https://dira.co.id" target="_blank" rel="noopener noreferrer"
+                   class="group block bg-slate-900/60 border border-slate-800/80 rounded-xl p-3.5 space-y-2 hover:border-emerald-500/40 transition duration-300">
+                    <div class="flex flex-col gap-1.5">
+                        <div class="flex items-center gap-1.5">
+                            <div class="w-5 h-5 rounded bg-white flex items-center justify-center shrink-0 overflow-hidden">
+                                <img src="{{ asset('images/partners/dira.jpg') }}" alt="Dira" class="w-4 h-4 object-contain" loading="lazy">
+                            </div>
+                            <span class="text-xs font-bold text-white truncate">Dira</span>
+                        </div>
+                        <span class="self-start text-[9px] text-emerald-400 bg-emerald-400/10 px-2 py-0.5 rounded border border-emerald-400/20 font-semibold uppercase tracking-wider">Undername</span>
+                    </div>
+                    <p class="text-[10px] text-slate-400 leading-relaxed font-light">
+                        Mitra jasa undername, general trading, impor &amp; ekspor.
+                    </p>
+                    <div class="pt-0.5">
+                        <span class="inline-flex items-center text-[10px] font-bold text-emerald-400 group-hover:text-emerald-300 transition gap-1">
+                            Kunjungi Web &rarr;
+                        </span>
+                    </div>
+                </a>
+            </div>
+
+            <!-- Footer text in left panel -->
+            <div class="relative z-10 pt-4 text-[9px] text-slate-500 flex items-center gap-1.5 border-t border-slate-900/80 mt-4">
+                <span class="w-1.5 h-1.5 rounded-full bg-emerald-500"></span>
+                <span>Tautan resmi mitra &amp; instansi</span>
+            </div>
+        </div>
+
+        <!-- Center: Login Form -->
+        <div class="w-full md:w-2/4 order-1 md:order-2 p-8 sm:p-12 flex flex-col justify-center items-center">
             <div class="w-full max-w-md space-y-6">
                 <div class="bg-white text-center">
                     <img src="{{ asset('images/m2b-logo.png') }}" alt="M2B Portal" class="h-24 mx-auto w-auto">
@@ -41,10 +132,10 @@
 
                 <form method="POST" action="{{ route('login') }}" class="space-y-4">
                     @csrf
-                    
+
                     <div>
                         <label class="block text-m2b-primary text-sm font-bold mb-2 ml-1">Email Address</label>
-                        <input class="w-full px-4 py-3 bg-gray-50 border border-blue-200 rounded-lg focus:outline-none focus:border-m2b-primary focus:ring-2 focus:ring-m2b-primary/20 transition duration-200" 
+                        <input class="w-full px-4 py-3 bg-gray-50 border border-blue-200 rounded-lg focus:outline-none focus:border-m2b-primary focus:ring-2 focus:ring-m2b-primary/20 transition duration-200"
                                id="email" type="email" name="email" value="{{ old('email') }}" required autofocus placeholder="name@company.com">
                     </div>
 
@@ -53,7 +144,7 @@
                             <label class="block text-m2b-primary text-sm font-bold">Password</label>
                             <a href="{{ route('password.request') }}" class="text-xs text-m2b-accent font-semibold hover:underline">Forgot Password?</a>
                         </div>
-                        <input class="w-full px-4 py-3 bg-gray-50 border border-blue-200 rounded-lg focus:outline-none focus:border-m2b-primary focus:ring-2 focus:ring-m2b-primary/20 transition duration-200" 
+                        <input class="w-full px-4 py-3 bg-gray-50 border border-blue-200 rounded-lg focus:outline-none focus:border-m2b-primary focus:ring-2 focus:ring-m2b-primary/20 transition duration-200"
                                id="password" type="password" name="password" required placeholder="••••••••">
                     </div>
 
@@ -88,55 +179,15 @@
                         Butuh bantuan? <a href="mailto:support@m2b.co.id" class="hover:text-m2b-accent">Hubungi Support</a>
                     </p>
                 </div>
-
-                <!-- Partner Production: Akses Cepat Layanan Mitra Operasional -->
-                <div class="border-t pt-5 border-gray-100">
-                    <div class="flex items-center justify-between gap-2 mb-1">
-                        <span class="inline-flex items-center gap-1.5 text-[10px] font-bold text-m2b-primary uppercase tracking-widest bg-m2b-primary/5 px-2.5 py-1 rounded-full border border-m2b-primary/10">
-                            <span class="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse"></span>
-                            Partner Production
-                        </span>
-                    </div>
-                    <p class="text-[10px] text-gray-400 mb-3">Akses cepat ke layanan kepabeanan & perdagangan yang kami gunakan.</p>
-                    <div class="grid grid-cols-3 gap-2.5">
-                        <!-- INSW: rujukan klasifikasi & HS Code -->
-                        <a href="https://insw.go.id" target="_blank" rel="noopener noreferrer"
-                           class="group flex flex-col items-center justify-center text-center gap-1.5 bg-gray-50 border border-gray-200 rounded-xl p-3 hover:border-m2b-primary hover:bg-white hover:shadow-md transition duration-200">
-                            <div class="w-8 h-8 rounded-lg bg-white border border-gray-200 flex items-center justify-center shrink-0 overflow-hidden">
-                                <img src="{{ asset('images/partners/insw.png') }}" alt="INSW" class="w-5 h-5 object-contain" loading="lazy">
-                            </div>
-                            <span class="text-[10px] font-bold text-m2b-primary leading-tight">INSW</span>
-                            <span class="text-[8px] text-gray-400 leading-tight mt-0.5">Cek HS Code<br>&amp; Lartas</span>
-                        </a>
-                        <!-- Bea Cukai (CEISA): submit dokumen impor/ekspor -->
-                        <a href="https://portal.beacukai.go.id/portal/login" target="_blank" rel="noopener noreferrer"
-                           class="group flex flex-col items-center justify-center text-center gap-1.5 bg-gray-50 border border-gray-200 rounded-xl p-3 hover:border-m2b-primary hover:bg-white hover:shadow-md transition duration-200">
-                            <div class="w-8 h-8 rounded-lg bg-white border border-gray-200 flex items-center justify-center shrink-0 overflow-hidden">
-                                <img src="{{ asset('images/partners/beacukai.ico') }}" alt="Bea Cukai" class="w-5 h-5 object-contain" loading="lazy">
-                            </div>
-                            <span class="text-[10px] font-bold text-m2b-primary leading-tight">Bea Cukai</span>
-                            <span class="text-[8px] text-gray-400 leading-tight mt-0.5">Submit Dokumen<br>Impor/Ekspor</span>
-                        </a>
-                        <!-- Dira: mitra jasa undername & trading -->
-                        <a href="https://dira.co.id" target="_blank" rel="noopener noreferrer"
-                           class="group flex flex-col items-center justify-center text-center gap-1.5 bg-gray-50 border border-gray-200 rounded-xl p-3 hover:border-m2b-primary hover:bg-white hover:shadow-md transition duration-200">
-                            <div class="w-8 h-8 rounded-lg bg-white border border-gray-200 flex items-center justify-center shrink-0 overflow-hidden">
-                                <img src="{{ asset('images/partners/dira.jpg') }}" alt="Dira" class="w-5 h-5 object-contain" loading="lazy">
-                            </div>
-                            <span class="text-[10px] font-bold text-m2b-primary leading-tight">Dira</span>
-                            <span class="text-[8px] text-gray-400 leading-tight mt-0.5">Jasa Undername<br>&amp; Trading</span>
-                        </a>
-                    </div>
-                </div>
             </div>
         </div>
 
         <!-- Right Side: Ecosystem Panel (Dark theme / Gradient) -->
-        <div class="w-full md:w-1/4 bg-slate-950 text-white p-5 sm:p-6 flex flex-col justify-between relative overflow-hidden border-t border-gray-200 md:border-t-0 md:border-l md:border-gray-150">
+        <div class="w-full md:w-1/4 order-3 bg-slate-950 text-white p-5 sm:p-6 flex flex-col justify-between relative overflow-hidden border-t border-gray-200 md:border-t-0 md:border-l md:border-gray-150">
             <!-- Decorative gradients -->
             <div class="absolute -right-20 -top-20 w-48 h-48 rounded-full bg-blue-600/10 blur-[80px] pointer-events-none"></div>
             <div class="absolute -left-20 -bottom-20 w-48 h-48 rounded-full bg-violet-600/15 blur-[80px] pointer-events-none"></div>
-            
+
             <div class="relative z-10 space-y-5">
                 <div>
                     <span class="inline-flex items-center gap-1.5 text-[10px] font-bold text-blue-400 uppercase tracking-widest bg-blue-400/10 px-2.5 py-1 rounded-full border border-blue-400/20">
@@ -159,7 +210,7 @@
                         Infrastruktur cloud ultra-cepat dengan server lokal Jakarta.
                     </p>
                     <div class="pt-0.5">
-                        <a href="https://www.hostinger.com/id?REFERRALCODE=7YYIRWANB72L" target="_blank" rel="noopener noreferrer" 
+                        <a href="https://www.hostinger.com/id?REFERRALCODE=7YYIRWANB72L" target="_blank" rel="noopener noreferrer"
                            class="inline-flex items-center text-[10px] font-bold text-violet-400 hover:text-violet-300 transition gap-1">
                             Klaim Diskon &rarr;
                         </a>
@@ -179,7 +230,7 @@
                         Platform automasi alur kerja (workflow) berbasis AI.
                     </p>
                     <div class="pt-0.5">
-                        <a href="https://app.emergent.sh/register?ref=irwa212175" target="_blank" rel="noopener noreferrer" 
+                        <a href="https://app.emergent.sh/register?ref=irwa212175" target="_blank" rel="noopener noreferrer"
                            class="inline-flex items-center text-[10px] font-bold text-blue-400 hover:text-blue-300 transition gap-1">
                             Daftar Akun &rarr;
                         </a>
@@ -196,10 +247,10 @@
                         <span class="self-start text-[9px] text-cyan-400 bg-cyan-400/10 px-2 py-0.5 rounded border border-cyan-400/20 font-semibold uppercase tracking-wider">IT PARTNER</span>
                     </div>
                     <p class="text-[10px] text-slate-400 leading-relaxed font-light">
-                        Sistem Enterprise (ERP, CRM) & integrasi AI terpercaya.
+                        Sistem Enterprise (ERP, CRM) &amp; integrasi AI terpercaya.
                     </p>
                     <div class="pt-0.5">
-                        <a href="https://morabangun.com" target="_blank" rel="noopener noreferrer" 
+                        <a href="https://morabangun.com" target="_blank" rel="noopener noreferrer"
                            class="inline-flex items-center text-[10px] font-bold text-cyan-400 hover:text-cyan-300 transition gap-1">
                             Kunjungi Web &rarr;
                         </a>
@@ -213,6 +264,7 @@
                 <span>v1.2.0</span>
             </div>
         </div>
+
     </div>
 
 </body>
