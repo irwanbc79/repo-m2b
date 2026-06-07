@@ -19,5 +19,10 @@ class AppServiceProvider extends ServiceProvider
         Paginator::useTailwind();
 
         Shipment::observe(ShipmentObserver::class);
+
+        // Customize Livewire update route to bypass CDN/host restrictions on /livewire/update
+        \Livewire\Livewire::setUpdateRoute(function ($handle) {
+            return \Illuminate\Support\Facades\Route::post('/lw-update', $handle)->middleware('web');
+        });
     }
 }

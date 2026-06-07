@@ -2,9 +2,9 @@
 
 use Illuminate\Support\Facades\Route;
 
-// Fallback: jika LiteSpeed Cache atau browser melakukan GET ke /livewire/update
+// Fallback: jika LiteSpeed Cache atau browser melakukan GET ke /lw-update
 // (seharusnya POST), redirect ke dashboard daripada menampilkan error 405
-Route::get('/livewire/update', fn() => redirect('/admin/dashboard'));
+Route::get('/lw-update', fn() => redirect('/admin/dashboard'));
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Hash;
