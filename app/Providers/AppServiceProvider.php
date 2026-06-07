@@ -11,16 +11,7 @@ class AppServiceProvider extends ServiceProvider
 {
     public function register(): void
     {
-        // Override Livewire update route BEFORE LivewireServiceProvider::boot() sets the default.
-        // Must run at register() time so the guard (if !$this->updateRoute) is hit first.
-        $this->app->resolving(
-            \Livewire\Mechanisms\HandleRequests\HandleRequests::class,
-            function ($handleRequests) {
-                $handleRequests->setUpdateRoute(function ($handle) {
-                    return \Illuminate\Support\Facades\Route::post('/lw-update', $handle)->middleware('web');
-                });
-            }
-        );
+        //
     }
 
     public function boot(): void
@@ -28,5 +19,18 @@ class AppServiceProvider extends ServiceProvider
         Paginator::useTailwind();
 
         Shipment::observe(ShipmentObserver::class);
+
+        // Override Livewire update route to /lw-update after all providers boot
+        // This must be done after LivewireServiceProvider has booted
+        $this->app->booted(function () {
+            try {
+                $handleRequests = app(\Livewire\Mechanisms\HandleRequests\HandleRequests::class);
+                $handleRequests->setUpdateRoute(function ($handle) {
+                    return \Illuminate\Support\Facades\Route::post('/lw-update', $handle)->middleware('web');
+                });
+            } catch (\Throwable $e) {
+                \Illuminate\Support\Facades\Log::warning('Could not override Livewire update route: ' . $e->getMessage());
+            }
+        });
     }
 }
