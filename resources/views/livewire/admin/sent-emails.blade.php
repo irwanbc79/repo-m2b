@@ -26,7 +26,7 @@
         </div>
 
         <!-- Email List -->
-        <div class="col-span-{{ $selectedEmail ? '4' : '10' }}">
+        <div class="{{ $selectedEmail ? 'col-span-4' : 'col-span-10' }}">
             <div class="bg-white rounded-lg shadow">
                 <div class="p-3 border-b">
                     <input wire:model.live.debounce.300ms="search" type="text" placeholder="Cari email..." class="w-full px-3 py-2 border rounded-lg text-sm">
