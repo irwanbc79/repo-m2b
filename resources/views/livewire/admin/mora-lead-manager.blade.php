@@ -128,6 +128,47 @@
                             @endif
                         </div>
                     </div>
+
+                    {{-- Chat History (hanya MORA Chat dengan history) --}}
+                    @if($lead->source === 'mora_chat' && !empty($lead->chat_history))
+                    <div class="mt-3 ml-9" x-data="{ open: false }">
+                        <button @click="open = !open"
+                            class="flex items-center gap-1.5 text-[11px] text-blue-600 hover:text-blue-800 font-bold transition">
+                            <svg class="w-3.5 h-3.5 transition-transform" :class="open ? 'rotate-90' : ''" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/>
+                            </svg>
+                            <span x-text="open ? 'Sembunyikan percakapan' : '🗨 Lihat histori percakapan ({{ count($lead->chat_history) }} pesan)'"></span>
+                        </button>
+
+                        <div x-show="open" x-transition:enter="transition ease-out duration-150"
+                            x-transition:enter-start="opacity-0 -translate-y-1"
+                            x-transition:enter-end="opacity-100 translate-y-0"
+                            class="mt-2 bg-gray-50 rounded-xl border border-gray-200 p-3 space-y-2 max-h-72 overflow-y-auto"
+                            style="display:none;">
+                            @foreach($lead->chat_history as $msg)
+                                @if($msg['role'] === 'user')
+                                    <div class="flex justify-end">
+                                        <div class="max-w-[75%]">
+                                            <div class="text-[9px] text-right text-gray-400 mb-0.5 font-semibold">Pengunjung</div>
+                                            <div class="bg-blue-600 text-white text-xs px-3 py-2 rounded-2xl rounded-tr-sm leading-relaxed">
+                                                {{ $msg['content'] }}
+                                            </div>
+                                        </div>
+                                    </div>
+                                @else
+                                    <div class="flex justify-start">
+                                        <div class="max-w-[75%]">
+                                            <div class="text-[9px] text-gray-400 mb-0.5 font-semibold">🤖 MORA</div>
+                                            <div class="bg-white border border-gray-200 text-gray-700 text-xs px-3 py-2 rounded-2xl rounded-tl-sm leading-relaxed shadow-sm">
+                                                {{ $msg['content'] }}
+                                            </div>
+                                        </div>
+                                    </div>
+                                @endif
+                            @endforeach
+                        </div>
+                    </div>
+                    @endif
                 </div>
                 @endforeach
             </div>
