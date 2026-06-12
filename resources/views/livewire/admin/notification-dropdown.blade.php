@@ -38,6 +38,25 @@
                 </div>
             @else
                 
+                {{-- 0. MORA LEAD BARU --}}
+                @foreach($moraLeads as $lead)
+                <a href="{{ route('admin.mora-leads') }}" class="block p-3 hover:bg-orange-50 border-b border-gray-50 transition group">
+                    <div class="flex gap-3">
+                        <div class="bg-orange-100 text-orange-600 p-2 rounded-full h-8 w-8 flex items-center justify-center shrink-0 text-sm">
+                            {{ $lead->score === 'hot' ? '🔥' : ($lead->score === 'warm' ? '⚡' : '📩') }}
+                        </div>
+                        <div class="min-w-0">
+                            <p class="text-xs font-bold text-gray-800 group-hover:text-orange-700">Lead Baru: {{ $lead->name }}</p>
+                            <p class="text-[10px] text-gray-500 truncate">{{ $lead->company ?? $lead->phone }} · {{ $lead->source === 'mora_chat' ? 'MORA Chat' : 'CS Form' }}</p>
+                            @if($lead->summary)
+                                <p class="text-[10px] text-orange-600 mt-0.5 truncate">{{ \Illuminate\Support\Str::limit($lead->summary, 60) }}</p>
+                            @endif
+                            <p class="text-[9px] text-orange-400 mt-1 font-bold">{{ $lead->created_at->diffForHumans() }}</p>
+                        </div>
+                    </div>
+                </a>
+                @endforeach
+
                 {{-- 1. BOOKING BARU --}}
                 @foreach($newBookings as $shipment)
                 <a href="{{ route('admin.shipments.show', $shipment->id) }}" class="block p-3 hover:bg-blue-50 border-b border-gray-50 transition group">

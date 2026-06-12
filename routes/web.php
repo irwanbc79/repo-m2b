@@ -385,6 +385,7 @@ Route::middleware(['auth', 'admin'])->group(function () {
     // Route ini bernama 'inbox.index' (tanpa prefix admin.) agar cocok dengan admin.blade.php
     Route::get('/admin/inbox', EmailInbox::class)->name('inbox.index');
     Route::get('/admin/sent-emails', \App\Livewire\Admin\SentEmails::class)->name('sent-emails.index');
+    Route::get('/admin/mora-leads', \App\Livewire\Admin\MoraLeadManager::class)->name('admin.mora-leads');
 });
 
 // --- ADMIN ACCOUNTING ---

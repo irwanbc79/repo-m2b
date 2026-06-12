@@ -46,4 +46,8 @@ return [
         'redirect' => env('GOOGLE_REDIRECT_URI', 'https://portal.m2b.co.id/auth/google/callback'),
     ],
 
+    'mora' => [
+        'portal_secret' => env('MORA_PORTAL_WEBHOOK_SECRET'),
+    ],
+
 ];

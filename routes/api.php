@@ -1,5 +1,6 @@
 <?php
 
+use App\Http\Controllers\Api\MoraLeadWebhookController;
 use App\Http\Controllers\Api\V1\AttendanceController;
 use App\Http\Controllers\Api\V1\AuthController;
 use App\Http\Controllers\Api\V1\DashboardController;
@@ -10,6 +11,10 @@ use App\Http\Controllers\Api\V1\SsoController;
 use App\Http\Controllers\Api\V1\VisitController;
 use App\Http\Controllers\Api\V1\PayrollController;
 use Illuminate\Support\Facades\Route;
+
+// ── MORA Chat Lead Webhook (dari m2b.co.id) ────────────────────────────────
+Route::post('/mora-lead-incoming', [MoraLeadWebhookController::class, 'store'])
+    ->middleware('throttle:60,1');
 
 /*
 |--------------------------------------------------------------------------

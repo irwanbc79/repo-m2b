@@ -3,6 +3,7 @@
 namespace App\Livewire\Admin;
 
 use Livewire\Component;
+use App\Models\MoraLeadNotification;
 use App\Models\Shipment;
 use App\Models\User;
 use App\Models\Invoice;
@@ -11,6 +12,7 @@ use Carbon\Carbon;
 
 class NotificationDropdown extends Component
 {
+    public $moraLeads              = [];
     public $newBookings            = [];
     public $newCustomers           = [];
     public $dueInvoices            = [];
@@ -26,6 +28,10 @@ class NotificationDropdown extends Component
     // Polling setiap 30 detik
     public function loadNotifications()
     {
+        // 0. MORA Lead baru (unread, max 5)
+        $this->moraLeads = MoraLeadNotification::whereNull('read_at')
+            ->latest()->take(5)->get();
+
         // 1. Booking Baru (Status Pending)
         $this->newBookings = Shipment::where('status', 'pending')
             ->latest()
@@ -72,7 +78,8 @@ class NotificationDropdown extends Component
             $this->signedDocUploads = collect([]);
         }
 
-        $this->totalNotif = count($this->newBookings)
+        $this->totalNotif = count($this->moraLeads)
+            + count($this->newBookings)
             + count($this->newCustomers)
             + count($this->dueInvoices)
             + count($this->approvedQuotations)
