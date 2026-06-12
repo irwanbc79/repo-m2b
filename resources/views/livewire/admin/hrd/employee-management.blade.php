@@ -107,8 +107,8 @@
                                     @endphp
                                     @if($value)
                                         @if($isPdf)
-                                            <a href="{{ Storage::url($value) }}" target="_blank" title="Lihat {{ $doc['title'] }}"
-                                                class="px-1.5 py-0.5 {{ $colorMap[$doc['color']]['on'] }} text-xs rounded font-mono">{{ $doc['label'] }}</a>
+                                            <button @click="$dispatch('open-doc-viewer', { url: '{{ Storage::url($value) }}', title: '{{ $doc['title'] }} — {{ $emp->nama }}' })" title="Lihat {{ $doc['title'] }}"
+                                                class="px-1.5 py-0.5 {{ $colorMap[$doc['color']]['on'] }} text-xs rounded font-mono cursor-pointer">{{ $doc['label'] }}</button>
                                         @elseif($doc['preview'])
                                             <button wire:click="openPreview('{{ $value }}', '{{ $doc['title'] }} — {{ $emp->nama }}')" type="button"
                                                 title="Lihat {{ $doc['title'] }}"
@@ -322,11 +322,11 @@
                             @php $isPdf = str_ends_with(strtolower($current_surat_lamaran), '.pdf'); @endphp
                             <div class="mb-2 flex items-center gap-2">
                                 @if($isPdf)
-                                    <a href="{{ Storage::url($current_surat_lamaran) }}" target="_blank"
-                                        class="flex items-center gap-1.5 px-2 py-1 bg-gray-600 hover:bg-gray-500 text-gray-200 text-xs rounded transition-colors">
+                                    <button @click="$dispatch('open-doc-viewer', { url: '{{ Storage::url($current_surat_lamaran) }}', title: 'Surat Lamaran' })"
+                                        class="flex items-center gap-1.5 px-2 py-1 bg-gray-600 hover:bg-gray-500 text-gray-200 text-xs rounded transition-colors cursor-pointer">
                                         <svg class="w-4 h-4 text-red-400" fill="currentColor" viewBox="0 0 20 20"><path d="M4 18h12V8l-5-5H4v15zm7-14l4 4h-4V4z"/></svg>
                                         Lihat PDF
-                                    </a>
+                                    </button>
                                 @else
                                     <button type="button" wire:click="openPreview('{{ $current_surat_lamaran }}', 'Surat Lamaran')">
                                         <img src="{{ Storage::url($current_surat_lamaran) }}" alt="lamaran"
@@ -363,11 +363,11 @@
                             @php $isPdf = str_ends_with(strtolower($current_kartu_keluarga), '.pdf'); @endphp
                             <div class="mb-2 flex items-center gap-2">
                                 @if($isPdf)
-                                    <a href="{{ Storage::url($current_kartu_keluarga) }}" target="_blank"
-                                        class="flex items-center gap-1.5 px-2 py-1 bg-gray-600 hover:bg-gray-500 text-gray-200 text-xs rounded transition-colors">
+                                    <button @click="$dispatch('open-doc-viewer', { url: '{{ Storage::url($current_kartu_keluarga) }}', title: 'Kartu Keluarga' })"
+                                        class="flex items-center gap-1.5 px-2 py-1 bg-gray-600 hover:bg-gray-500 text-gray-200 text-xs rounded transition-colors cursor-pointer">
                                         <svg class="w-4 h-4 text-red-400" fill="currentColor" viewBox="0 0 20 20"><path d="M4 18h12V8l-5-5H4v15zm7-14l4 4h-4V4z"/></svg>
                                         Lihat PDF
-                                    </a>
+                                    </button>
                                 @else
                                     <button type="button" wire:click="openPreview('{{ $current_kartu_keluarga }}', 'Kartu Keluarga')">
                                         <img src="{{ Storage::url($current_kartu_keluarga) }}" alt="kk"
@@ -404,11 +404,11 @@
                             @php $isPdf = str_ends_with(strtolower($current_ijazah), '.pdf'); @endphp
                             <div class="mb-2 flex items-center gap-2">
                                 @if($isPdf)
-                                    <a href="{{ Storage::url($current_ijazah) }}" target="_blank"
-                                        class="flex items-center gap-1.5 px-2 py-1 bg-gray-600 hover:bg-gray-500 text-gray-200 text-xs rounded transition-colors">
+                                    <button @click="$dispatch('open-doc-viewer', { url: '{{ Storage::url($current_ijazah) }}', title: 'Ijazah' })"
+                                        class="flex items-center gap-1.5 px-2 py-1 bg-gray-600 hover:bg-gray-500 text-gray-200 text-xs rounded transition-colors cursor-pointer">
                                         <svg class="w-4 h-4 text-red-400" fill="currentColor" viewBox="0 0 20 20"><path d="M4 18h12V8l-5-5H4v15zm7-14l4 4h-4V4z"/></svg>
                                         Lihat PDF
-                                    </a>
+                                    </button>
                                 @else
                                     <button type="button" wire:click="openPreview('{{ $current_ijazah }}', 'Ijazah Terakhir')">
                                         <img src="{{ Storage::url($current_ijazah) }}" alt="ijazah"

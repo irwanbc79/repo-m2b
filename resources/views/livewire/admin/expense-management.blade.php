@@ -100,8 +100,8 @@
                         </td>
                         <td class="px-4 py-3 text-center">
                             @if($exp->receipt_path)
-                                <a href="{{ asset('storage/' . $exp->receipt_path) }}" target="_blank"
-                                    class="text-blue-400 hover:text-blue-300 text-xs underline">📎 Lihat</a>
+                                <button @click="$dispatch('open-doc-viewer', { url: '{{ asset('storage/' . $exp->receipt_path) }}', title: 'Bukti Pengeluaran — {{ $exp->user?->name }}' })"
+                                    class="text-blue-400 hover:text-blue-300 text-xs underline cursor-pointer">📎 Lihat</button>
                             @else
                                 <span class="text-gray-600 text-xs">-</span>
                             @endif

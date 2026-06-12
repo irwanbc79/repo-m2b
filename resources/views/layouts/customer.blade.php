@@ -17,14 +17,7 @@
     <link rel="preconnect" href="https://fonts.bunny.net">
     <link href="https://fonts.bunny.net/css?family=figtree:400,500,600&display=swap" rel="stylesheet" />
     
-    <script src="https://cdn.tailwindcss.com"></script>
-    <script>
-        tailwind.config = {
-            theme: {
-                extend: { colors: { m2b: { primary: '#0F2C59', secondary: '#1e3a8a', accent: '#B91C1C' } } }
-            }
-        }
-    </script>
+    @vite(['resources/css/app.css', 'resources/js/app.js'])
     @livewireStyles
 </head>
 <body class="font-sans antialiased bg-slate-50">
@@ -159,6 +152,33 @@
             </div>
         </main>
     </div>
+    {{-- Global Document Viewer Modal --}}
+    <div x-data="{ show: false, url: '', title: '' }"
+         x-on:open-doc-viewer.window="show = true; url = $event.detail.url; title = $event.detail.title ?? ''"
+         x-show="show"
+         x-cloak
+         @keydown.escape.window="show = false"
+         class="fixed inset-0 z-[9999] flex items-center justify-center bg-black/80 backdrop-blur-sm"
+         style="display: none;">
+        <div class="relative w-full h-full max-w-5xl mx-auto p-4 flex flex-col">
+            <div class="flex items-center justify-between mb-3 bg-gray-900/80 rounded-xl px-5 py-3">
+                <span class="text-white font-bold text-sm truncate max-w-lg" x-text="title || 'Dokumen'"></span>
+                <div class="flex items-center gap-2">
+                    <a :href="url" target="_blank" class="bg-gray-700 hover:bg-gray-600 text-white rounded-lg px-3 py-1.5 text-xs font-bold transition flex items-center gap-1.5">
+                        <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14"></path></svg>
+                        Tab Baru
+                    </a>
+                    <button @click="show = false; url = ''" class="text-gray-400 hover:text-red-400 text-2xl leading-none px-1">&times;</button>
+                </div>
+            </div>
+            <div class="flex-1 bg-gray-900/30 rounded-xl overflow-hidden">
+                <template x-if="url">
+                    <iframe :src="url" class="w-full h-full border-0 rounded-xl"></iframe>
+                </template>
+            </div>
+        </div>
+    </div>
+
     @livewireScripts
 </body>
 </html>

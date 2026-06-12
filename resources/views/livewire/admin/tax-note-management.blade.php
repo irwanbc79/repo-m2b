@@ -108,11 +108,11 @@
                                         default                                            => '📎',
                                     };
                                 @endphp
-                                <a href="{{ Storage::url($path) }}" target="_blank"
+                                <button @click="$dispatch('open-doc-viewer', { url: '{{ Storage::url($path) }}', title: '{{ basename($path) }}' })"
                                     title="{{ basename($path) }}"
-                                    class="inline-flex items-center gap-0.5 px-1.5 py-0.5 bg-gray-700 hover:bg-gray-600 border border-gray-600 rounded text-xs text-gray-300 transition-colors">
+                                    class="inline-flex items-center gap-0.5 px-1.5 py-0.5 bg-gray-700 hover:bg-gray-600 border border-gray-600 rounded text-xs text-gray-300 transition-colors cursor-pointer">
                                     {{ $icon }} <span class="max-w-[80px] truncate">{{ basename($path) }}</span>
-                                </a>
+                                </button>
                                 @endforeach
                             </div>
                         @endif
@@ -295,10 +295,10 @@
                         @endphp
                         <div class="flex items-center gap-2 px-2 py-1 bg-gray-700/60 rounded text-xs text-gray-300">
                             <span>{{ $icon }}</span>
-                            <a href="{{ Storage::url($path) }}" target="_blank"
-                                class="flex-1 truncate hover:text-blue-300 transition-colors">
+                            <button @click="$dispatch('open-doc-viewer', { url: '{{ Storage::url($path) }}', title: '{{ basename($path) }}' })"
+                                class="flex-1 truncate hover:text-blue-300 transition-colors text-left cursor-pointer">
                                 {{ basename($path) }}
-                            </a>
+                            </button>
                             <button type="button" wire:click="removeExistingAttachment({{ $i }})"
                                 class="text-red-400 hover:text-red-300 flex-shrink-0 leading-none">✕</button>
                         </div>

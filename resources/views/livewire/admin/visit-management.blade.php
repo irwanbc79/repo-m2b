@@ -108,12 +108,12 @@
                         </td>
                         <td class="px-4 py-3 text-center">
                             @if($visit->photo_path)
-                                <a href="{{ asset('storage/' . $visit->photo_path) }}" target="_blank"
+                                <button @click="$dispatch('open-doc-viewer', { url: '{{ asset('storage/' . $visit->photo_path) }}', title: 'Foto Kunjungan — {{ $visit->user?->name }}' })"
                                     class="inline-block">
                                     <img src="{{ asset('storage/' . $visit->photo_path) }}"
                                         class="w-14 h-14 object-cover rounded-lg border border-gray-600 hover:scale-110 transition-transform cursor-pointer"
                                         alt="Foto kunjungan">
-                                </a>
+                                </button>
                             @else
                                 <span class="text-gray-600 text-xs">-</span>
                             @endif

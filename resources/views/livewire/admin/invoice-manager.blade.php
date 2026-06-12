@@ -792,7 +792,7 @@
                         <div class="bg-green-600 text-white p-2 rounded-xl shadow-lg shadow-green-100"><svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 5h12M9 3v2m1.048 9.5A18.022 18.022 0 016.412 9m6.088 9h7M11 21l5-10 5 10M12.751 5C11.783 10.77 8.07 15.61 3 18.129"></path></svg></div>
                         <div><span class="font-black block uppercase tracking-wider">Cetak PDF Terlebih Dahulu?</span> Untuk preview visual dokumen sebelum dikirim.</div>
                     </div>
-                    <a href="{{ route('admin.invoices.print', $sendingInvoiceId) }}" target="_blank" class="bg-white border border-green-200 text-green-600 text-[10px] px-4 py-2 rounded-xl font-black uppercase tracking-widest hover:bg-green-50 transition-all shadow-sm">Preview PDF</a>
+                    <button @click="$dispatch('open-doc-viewer', { url: '{{ route('admin.invoices.print', $sendingInvoiceId) }}', title: 'Preview Invoice PDF' })" class="bg-white border border-green-200 text-green-600 text-[10px] px-4 py-2 rounded-xl font-black uppercase tracking-widest hover:bg-green-50 transition-all shadow-sm cursor-pointer">Preview PDF</button>
                 </div>
 
                 <div class="space-y-4">
