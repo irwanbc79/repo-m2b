@@ -255,6 +255,14 @@ class ShipmentDetail extends Component
         $this->showDocPreview = true;
     }
 
+    public function viewInternalDoc($docId)
+    {
+        $this->previewDoc = Document::find($docId);
+        $this->allPublicDocs = collect();
+        $this->currentDocIndex = 0;
+        $this->showDocPreview = true;
+    }
+
     public function nextDocument()
     {
         if ($this->currentDocIndex < $this->allPublicDocs->count() - 1) {

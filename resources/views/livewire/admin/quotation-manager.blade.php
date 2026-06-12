@@ -159,15 +159,15 @@
                         <td class="px-6 py-4 text-center">
                             @if($q->status === 'accepted')
                                 @if($q->signed_document_path)
-                                <a href="{{ Storage::url($q->signed_document_path) }}" target="_blank"
-                                    class="inline-flex flex-col items-center gap-0.5 group">
+                                <button @click="$dispatch('open-print-preview', { url: '{{ Storage::url($q->signed_document_path) }}' })"
+                                    class="inline-flex flex-col items-center gap-0.5 group cursor-pointer">
                                     <span class="text-xs font-bold px-2 py-1 rounded bg-emerald-100 text-emerald-700 border border-emerald-200 group-hover:bg-emerald-200 transition">
                                         📎 Tersedia
                                     </span>
                                     @if($q->signed_document_at)
                                     <span class="text-[9px] text-gray-400">{{ $q->signed_document_at->format('d M Y') }}</span>
                                     @endif
-                                </a>
+                                </button>
                                 @else
                                 <span class="text-xs font-bold px-2 py-1 rounded bg-orange-100 text-orange-600 border border-orange-200">
                                     ⏳ Belum Upload
