@@ -15,6 +15,8 @@ class AuditLogManager extends Component
     public $filterUser = '';
     public $filterModule = '';
     public $filterAction = '';
+    public $filterRole = '';
+    public $filterRisk = '';
     public $filterDateFrom = '';
     public $filterDateTo = '';
     public $perPage = 20;
@@ -27,9 +29,17 @@ class AuditLogManager extends Component
     public function updatingFilterUser() { $this->resetPage(); }
     public function updatingFilterModule() { $this->resetPage(); }
     public function updatingFilterAction() { $this->resetPage(); }
+    public function updatingFilterRole() { $this->resetPage(); }
+    public function updatingFilterRisk() { $this->resetPage(); }
 
     public function getStats()
     {
+        $todayHighRisk = ActivityLog::whereDate('created_at', today())
+            ->where(function($q) {
+                $q->whereIn('action', ['DELETE', 'STATUS_CHANGE', 'DELETE_COST', 'VOID', 'CANCEL'])
+                  ->orWhereIn('module', ['Cashier', 'JobCost', 'VendorBill', 'Invoice', 'Payroll']);
+            })->count();
+
         return [
             'total' => ActivityLog::count(),
             'today' => ActivityLog::whereDate('created_at', today())->count(),
@@ -38,6 +48,7 @@ class AuditLogManager extends Component
             'creates' => ActivityLog::where('action', 'CREATE')->count(),
             'updates' => ActivityLog::where('action', 'like', '%UPDATE%')->count(),
             'deletes' => ActivityLog::where('action', 'DELETE')->count(),
+            'today_high_risk' => $todayHighRisk,
         ];
     }
 
@@ -47,7 +58,28 @@ class AuditLogManager extends Component
             'users' => ActivityLog::distinct()->pluck('user_name')->filter()->sort()->values(),
             'modules' => ActivityLog::distinct()->pluck('module')->filter()->sort()->values(),
             'actions' => ActivityLog::distinct()->pluck('action')->filter()->sort()->values(),
+            'roles' => ActivityLog::distinct()->pluck('role')->filter()->sort()->values(),
         ];
+    }
+
+    public function getTopUsers()
+    {
+        return ActivityLog::select('user_name', 'role', \DB::raw('count(*) as count'))
+            ->where('created_at', '>=', now()->subDays(7))
+            ->groupBy('user_name', 'role')
+            ->orderByDesc('count')
+            ->limit(5)
+            ->get();
+    }
+
+    public function getTopModules()
+    {
+        return ActivityLog::select('module', \DB::raw('count(*) as count'))
+            ->where('created_at', '>=', now()->subDays(7))
+            ->groupBy('module')
+            ->orderByDesc('count')
+            ->limit(5)
+            ->get();
     }
 
     /**
@@ -127,8 +159,38 @@ class AuditLogManager extends Component
         if ($this->filterUser) $query->where('user_name', $this->filterUser);
         if ($this->filterModule) $query->where('module', $this->filterModule);
         if ($this->filterAction) $query->where('action', $this->filterAction);
+        if ($this->filterRole) $query->where('role', $this->filterRole);
         if ($this->filterDateFrom) $query->whereDate('created_at', '>=', $this->filterDateFrom);
         if ($this->filterDateTo) $query->whereDate('created_at', '<=', $this->filterDateTo);
+
+        if ($this->filterRisk) {
+            if ($this->filterRisk === 'high') {
+                $query->where(function($q) {
+                    $q->whereIn('action', ['DELETE', 'STATUS_CHANGE', 'DELETE_COST', 'VOID', 'CANCEL'])
+                      ->orWhereIn('module', ['Cashier', 'JobCost', 'VendorBill', 'Invoice', 'Payroll']);
+                });
+            } elseif ($this->filterRisk === 'medium') {
+                $query->where(function($q) {
+                    $q->whereNotIn('action', ['DELETE', 'STATUS_CHANGE', 'DELETE_COST', 'VOID', 'CANCEL'])
+                      ->whereNotIn('module', ['Cashier', 'JobCost', 'VendorBill', 'Invoice', 'Payroll'])
+                      ->where(function($sub) {
+                          $sub->where('action', 'CREATE')
+                              ->orWhere('action', 'like', '%UPDATE%')
+                              ->orWhere('action', 'like', '%EDIT%');
+                      });
+                });
+            } elseif ($this->filterRisk === 'low') {
+                $query->where(function($q) {
+                    $q->whereIn('action', ['LOGIN', 'LOGOUT', 'AUTO STATUS', 'VIEW', 'DOWNLOAD'])
+                      ->orWhere(function($sub) {
+                          $sub->whereNotIn('action', ['DELETE', 'STATUS_CHANGE', 'DELETE_COST', 'VOID', 'CANCEL', 'CREATE'])
+                              ->whereNotIn('action', 'like', '%UPDATE%')
+                              ->whereNotIn('action', 'like', '%EDIT%')
+                              ->whereNotIn('module', ['Cashier', 'JobCost', 'VendorBill', 'Invoice', 'Payroll']);
+                      });
+                });
+            }
+        }
 
         return $query->latest();
     }
@@ -141,12 +203,14 @@ class AuditLogManager extends Component
         $logs = $query->paginate($this->perPage);
         $stats = $this->getStats();
         $filterOptions = $this->getFilterOptions();
+        $topUsers = $this->getTopUsers();
+        $topModules = $this->getTopModules();
 
-        return view('livewire.admin.audit-log-manager', compact('logs', 'stats', 'filterOptions'))->layout('layouts.admin');
+        return view('livewire.admin.audit-log-manager', compact('logs', 'stats', 'filterOptions', 'topUsers', 'topModules'))->layout('layouts.admin');
     }
 
     public function clearFilters()
     {
-        $this->reset(['filterUser', 'filterModule', 'filterAction', 'filterDateFrom', 'filterDateTo']);
+        $this->reset(['filterUser', 'filterModule', 'filterAction', 'filterRole', 'filterRisk', 'filterDateFrom', 'filterDateTo']);
     }
 }
