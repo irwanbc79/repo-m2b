@@ -20,7 +20,10 @@ class SimpleInvoiceController extends Controller
             $search = $request->search;
             $query->where(function ($q) use ($search) {
                 $q->where('invoice_number', 'LIKE', "%{$search}%")
-                    ->orWhere('customer_name', 'LIKE', "%{$search}%");
+                    ->orWhere('customer_name', 'LIKE', "%{$search}%")
+                    ->orWhereHas('items', function ($itemQuery) use ($search) {
+                        $itemQuery->where('description', 'LIKE', "%{$search}%");
+                    });
             });
         }
 

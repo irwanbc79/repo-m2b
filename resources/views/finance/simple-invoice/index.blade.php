@@ -131,6 +131,7 @@
                     <th class="px-4 py-3 text-left text-xs font-medium text-gray-700">Invoice No</th>
                     <th class="px-4 py-3 text-left text-xs font-medium text-gray-700">Tanggal</th>
                     <th class="px-4 py-3 text-left text-xs font-medium text-gray-700">Customer</th>
+                    <th class="px-4 py-3 text-left text-xs font-medium text-gray-700">Keterangan</th>
                     <th class="px-4 py-3 text-left text-xs font-medium text-gray-700">Total</th>
                     <th class="px-4 py-3 text-left text-xs font-medium text-gray-700">Status</th>
                     <th class="px-4 py-3 text-left text-xs font-medium text-gray-700">Aksi</th>
@@ -142,6 +143,25 @@
                     <td class="px-4 py-3 text-sm font-medium text-blue-600">{{ $invoice->invoice_number }}</td>
                     <td class="px-4 py-3 text-sm text-gray-900">{{ $invoice->invoice_date->format('d M Y') }}</td>
                     <td class="px-4 py-3 text-sm text-gray-900">{{ $invoice->customer_name }}</td>
+                    <td class="px-4 py-3 text-sm text-gray-600">
+                        @php
+                            $itemsCount = $invoice->items->count();
+                            $firstItem = $invoice->items->first();
+                            $allDescriptions = $invoice->items->pluck('description')->join("\n");
+                        @endphp
+                        @if($firstItem)
+                            <div class="truncate max-w-[280px]" title="{{ $allDescriptions }}">
+                                {{ $firstItem->description }}
+                                @if($itemsCount > 1)
+                                    <span class="ml-1 inline-flex items-center px-1.5 py-0.5 rounded-full text-[10px] font-bold bg-blue-50 text-blue-700 border border-blue-100 whitespace-nowrap">
+                                        +{{ $itemsCount - 1 }} item
+                                    </span>
+                                @endif
+                            </div>
+                        @else
+                            <span class="text-gray-400 italic">Tidak ada keterangan</span>
+                        @endif
+                    </td>
                     <td class="px-4 py-3 text-sm font-semibold text-gray-900">{{ $invoice->formatted_total }}</td>
                     <td class="px-4 py-3 text-sm">
                         {!! $invoice->status_badge !!}
@@ -175,7 +195,7 @@
                 </tr>
                 @empty
                 <tr>
-                    <td colspan="6" class="px-6 py-12 text-center text-gray-500">
+                    <td colspan="7" class="px-6 py-12 text-center text-gray-500">
                         @if(request()->hasAny(['search', 'status', 'date_from', 'date_to', 'year', 'month']))
                             No invoices found. <a href="{{ route('finance.simple-invoice.index') }}" class="text-blue-600">Clear filters</a>
                         @else
