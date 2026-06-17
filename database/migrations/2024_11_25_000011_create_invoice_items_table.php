@@ -8,16 +8,18 @@ return new class extends Migration
 {
     public function up(): void
     {
-        Schema::create('invoice_items', function (Blueprint $table) {
-            $table->id();
-            $table->foreignId('invoice_id')->constrained()->onDelete('cascade');
-            $table->string('item_type', 30);
-            $table->text('description');
-            $table->decimal('qty', 10, 2)->default(1);
-            $table->decimal('price', 15, 2)->default(0);
-            $table->decimal('total', 15, 2)->default(0);
-            $table->timestamps();
-        });
+        if (!Schema::hasTable('invoice_items')) {
+            Schema::create('invoice_items', function (Blueprint $table) {
+                $table->id();
+                $table->foreignId('invoice_id')->constrained()->onDelete('cascade');
+                $table->string('item_type', 30);
+                $table->text('description');
+                $table->decimal('qty', 10, 2)->default(1);
+                $table->decimal('price', 15, 2)->default(0);
+                $table->decimal('total', 15, 2)->default(0);
+                $table->timestamps();
+            });
+        }
     }
 
     public function down(): void
