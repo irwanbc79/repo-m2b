@@ -17,7 +17,9 @@ return new class extends Migration
         $column = 'status';
         
         // Ubah kolom status untuk menambahkan 'cancel'
-        DB::statement("ALTER TABLE `{$table}` MODIFY COLUMN `{$column}` ENUM('pending', 'in_progress', 'completed', 'cancel') DEFAULT 'pending'");
+        if (\DB::getDriverName() === 'mysql') {
+            DB::statement("ALTER TABLE `{$table}` MODIFY COLUMN `{$column}` ENUM('pending', 'in_progress', 'completed', 'cancel') DEFAULT 'pending'");
+        }
         
         // Tambah kolom cancelled_at dan cancelled_by untuk tracking
         Schema::table('shipments', function (Blueprint $table) {
@@ -41,6 +43,8 @@ return new class extends Migration
         });
         
         // Kembalikan enum ke nilai sebelumnya
-        DB::statement("ALTER TABLE `shipments` MODIFY COLUMN `status` ENUM('pending', 'in_progress', 'completed') DEFAULT 'pending'");
+        if (\DB::getDriverName() === 'mysql') {
+            DB::statement("ALTER TABLE `shipments` MODIFY COLUMN `status` ENUM('pending', 'in_progress', 'completed') DEFAULT 'pending'");
+        }
     }
 };

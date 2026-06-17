@@ -14,17 +14,34 @@ return new class extends Migration
         });
 
         // Backfill hash untuk semua record yang ada
-        DB::statement("
-            UPDATE bank_transactions
-            SET transaction_hash = SHA1(CONCAT_WS('|',
-                COALESCE(bank_name, ''),
-                COALESCE(DATE(transaction_date), ''),
-                COALESCE(credit_amount, 0),
-                COALESCE(debit_amount, 0),
-                COALESCE(description, '')
-            ))
-            WHERE transaction_hash IS NULL
-        ");
+        if (\DB::getDriverName() === 'mysql') {
+            DB::statement("
+                UPDATE bank_transactions
+                SET transaction_hash = SHA1(CONCAT_WS('|',
+                    COALESCE(bank_name, ''),
+                    COALESCE(DATE(transaction_date), ''),
+                    COALESCE(credit_amount, 0),
+                    COALESCE(debit_amount, 0),
+                    COALESCE(description, '')
+                ))
+                WHERE transaction_hash IS NULL
+            ");
+        } else {
+            // SQLite fallback using PHP's sha1()
+            $rows = DB::table('bank_transactions')->whereNull('transaction_hash')->get();
+            foreach ($rows as $row) {
+                $hashString = implode('|', [
+                    $row->bank_name ?? '',
+                    $row->transaction_date ? date('Y-m-d', strtotime($row->transaction_date)) : '',
+                    $row->credit_amount ?? 0,
+                    $row->debit_amount ?? 0,
+                    $row->description ?? '',
+                ]);
+                DB::table('bank_transactions')
+                    ->where('id', $row->id)
+                    ->update(['transaction_hash' => sha1($hashString)]);
+            }
+        }
 
         Schema::table('bank_transactions', function (Blueprint $table) {
             $table->string('transaction_hash', 64)->nullable(false)->change();

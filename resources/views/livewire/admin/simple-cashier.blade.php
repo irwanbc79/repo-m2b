@@ -981,6 +981,11 @@
                             @elseif(isset($trx['vendor']) && $trx['vendor'])
                             <div class="font-medium text-gray-900">{{ $trx['vendor']['name'] ?? '-' }}</div>
                             <div class="text-xs text-orange-600">Vendor</div>
+                            @elseif(!empty($trx['counterpart_name']))
+                            <div class="font-medium text-gray-900">{{ $trx['counterpart_name'] }}</div>
+                            <div class="text-xs text-gray-500">
+                                {{ ($trx['counterpart_type'] ?? '') === 'customer' ? 'Customer' : (($trx['counterpart_type'] ?? '') === 'vendor' ? 'Vendor' : 'Pihak Lain') }}
+                            </div>
                             @else
                             <div class="font-medium text-gray-400">-</div>
                             @endif

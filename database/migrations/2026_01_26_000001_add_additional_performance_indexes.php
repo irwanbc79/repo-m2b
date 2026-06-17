@@ -54,7 +54,7 @@ return new class extends Migration
         }
         
         // Index untuk activity_logs - user_name
-        if (Schema::hasTable('activity_logs') && !$this->indexExists('activity_logs', 'idx_activity_user')) {
+        if (Schema::hasTable('activity_logs') && Schema::hasColumn('activity_logs', 'user_name') && !$this->indexExists('activity_logs', 'idx_activity_user')) {
             DB::statement('CREATE INDEX idx_activity_user ON activity_logs(user_name)');
         }
         
@@ -85,7 +85,11 @@ return new class extends Migration
         DB::statement('DROP INDEX IF EXISTS idx_job_costs_shipment ON job_costs');
         DB::statement('DROP INDEX IF EXISTS idx_cash_date_type ON cash_transactions');
         DB::statement('DROP INDEX IF EXISTS idx_activity_created ON activity_logs');
-        DB::statement('DROP INDEX IF EXISTS idx_activity_user ON activity_logs');
+        try {
+            DB::statement('DROP INDEX IF EXISTS idx_activity_user ON activity_logs');
+        } catch (\Exception $e) {
+            // Ignore
+        }
         DB::statement('DROP INDEX IF EXISTS idx_customers_created ON customers');
         DB::statement('DROP INDEX IF EXISTS idx_shipments_service ON shipments');
         DB::statement('DROP INDEX IF EXISTS idx_shipments_lane ON shipments');
@@ -93,7 +97,13 @@ return new class extends Migration
     
     private function indexExists($table, $indexName): bool
     {
-        $indexes = DB::select("SHOW INDEX FROM {$table} WHERE Key_name = ?", [$indexName]);
-        return count($indexes) > 0;
+        if (\DB::getDriverName() === 'mysql') {
+            $indexes = DB::select("SHOW INDEX FROM {$table} WHERE Key_name = ?", [$indexName]);
+            return count($indexes) > 0;
+        } else {
+            // For SQLite, query sqlite_master to see if index exists
+            $indexes = DB::select("SELECT name FROM sqlite_master WHERE type = 'index' AND tbl_name = ? AND name = ?", [$table, $indexName]);
+            return count($indexes) > 0;
+        }
     }
 };

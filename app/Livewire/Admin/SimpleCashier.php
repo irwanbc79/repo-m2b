@@ -148,6 +148,7 @@ class SimpleCashier extends Component
                 $q->whereHas('customer', fn($q) => $q->where('company_name', 'LIKE', "%{$search}%"))
                   ->orWhereHas('vendor', fn($q) => $q->where('name', 'LIKE', "%{$search}%"))
                   ->orWhereHas('shipment', fn($q) => $q->where('awb_number', 'LIKE', "%{$search}%"))
+                  ->orWhere('counterpart_name', 'LIKE', "%{$search}%")
                   ->orWhere('description', 'LIKE', "%{$search}%");
             });
         }
@@ -164,11 +165,13 @@ class SimpleCashier extends Component
             });
         }
 
-        if (!empty($this->filterDateFrom)) {
-            $query->whereDate('transaction_date', '>=', $this->filterDateFrom);
-        }
-        if (!empty($this->filterDateTo)) {
-            $query->whereDate('transaction_date', '<=', $this->filterDateTo);
+        if (empty($this->searchTerm) || $this->showFilters) {
+            if (!empty($this->filterDateFrom)) {
+                $query->whereDate('transaction_date', '>=', $this->filterDateFrom);
+            }
+            if (!empty($this->filterDateTo)) {
+                $query->whereDate('transaction_date', '<=', $this->filterDateTo);
+            }
         }
 
         if ($this->filterCounterpartType !== 'all') {

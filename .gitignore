@@ -29,9 +29,9 @@ btki_*.sql
 enote_*.sql
 *.sql.gz
 # Root-level temp/junk files
-/email_body,\
-/email_recipient,\
-/email_subject,\
+/email_body,
+/email_recipient,
+/email_subject,
 /contacts
 /count
 /filename,
@@ -41,3 +41,7 @@ enote_*.sql
 /-
 /description_en
 /description_id
+# Claude/Agent files
+/.claude/
+/PRPs/
+

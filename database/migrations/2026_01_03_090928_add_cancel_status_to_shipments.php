@@ -14,7 +14,9 @@ return new class extends Migration
         
         if ($hasStatusColumn) {
             // Update enum status untuk menambahkan 'cancel'
-            DB::statement("ALTER TABLE `shipments` MODIFY COLUMN `status` ENUM('pending', 'in_progress', 'completed', 'cancel') DEFAULT 'pending'");
+            if (\DB::getDriverName() === 'mysql') {
+                DB::statement("ALTER TABLE `shipments` MODIFY COLUMN `status` ENUM('pending', 'in_progress', 'completed', 'cancel') DEFAULT 'pending'");
+            }
         }
         
         // Tambah kolom tracking pembatalan jika belum ada
@@ -54,6 +56,8 @@ return new class extends Migration
             }
         });
         
-        DB::statement("ALTER TABLE `shipments` MODIFY COLUMN `status` ENUM('pending', 'in_progress', 'completed') DEFAULT 'pending'");
+        if (\DB::getDriverName() === 'mysql') {
+            DB::statement("ALTER TABLE `shipments` MODIFY COLUMN `status` ENUM('pending', 'in_progress', 'completed') DEFAULT 'pending'");
+        }
     }
 };

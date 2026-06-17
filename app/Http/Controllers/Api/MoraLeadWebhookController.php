@@ -29,6 +29,8 @@ class MoraLeadWebhookController extends Controller
             'service_interest' => 'nullable|string|max:30',
             'summary'          => 'nullable|string',
             'chat_history'     => 'nullable|array',
+            'status'           => 'nullable|string|in:new,contacted,qualified,negotiating,won,lost',
+            'deal_value'       => 'nullable|numeric|min:0',
         ]);
 
         MoraLeadNotification::create($data);

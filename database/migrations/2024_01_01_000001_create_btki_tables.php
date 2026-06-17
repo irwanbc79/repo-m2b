@@ -80,9 +80,11 @@ return new class extends Migration
         });
 
         // Add full-text indexes (after table creation)
-        DB::statement('ALTER TABLE hs_codes ADD FULLTEXT INDEX idx_search_id (description_id)');
-        DB::statement('ALTER TABLE hs_codes ADD FULLTEXT INDEX idx_search_en (description_en)');
-        DB::statement('ALTER TABLE hs_codes ADD FULLTEXT INDEX idx_search_both (description_id, description_en)');
+        if (\DB::getDriverName() === 'mysql') {
+            DB::statement('ALTER TABLE hs_codes ADD FULLTEXT INDEX idx_search_id (description_id)');
+            DB::statement('ALTER TABLE hs_codes ADD FULLTEXT INDEX idx_search_en (description_en)');
+            DB::statement('ALTER TABLE hs_codes ADD FULLTEXT INDEX idx_search_both (description_id, description_en)');
+        }
 
         // 4. hs_general_rules table
         Schema::create('hs_general_rules', function (Blueprint $table) {
@@ -142,7 +144,9 @@ return new class extends Migration
         });
 
         // Add full-text index
-        DB::statement('ALTER TABLE hs_explanatory_notes ADD FULLTEXT INDEX idx_content (note_content)');
+        if (\DB::getDriverName() === 'mysql') {
+            DB::statement('ALTER TABLE hs_explanatory_notes ADD FULLTEXT INDEX idx_content (note_content)');
+        }
 
         // 8. hs_search_logs table (Analytics)
         Schema::create('hs_search_logs', function (Blueprint $table) {

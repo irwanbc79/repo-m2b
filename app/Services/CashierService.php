@@ -47,26 +47,26 @@ class CashierService
         $type = $data['type'] ?? $data['transaction_type'] ?? 'in'; // Support both keys
         $category = $data['category'] ?? $data['cost_category'] ?? 'general'; // Support both keys
         
-        // Bank account (always 1103 - Bank Mandiri for now)
-        $bankAccount = Account::where('code', '1103')->first();
+        // Bank account (from config)
+        $bankAccount = Account::where('code', config('accounting.default_accounts.bank', '1103'))->first();
         
         if ($type === 'in') {
             // Cash In: Debit Bank, Credit other account
             switch ($category) {
                 case 'payment_from_customer':
                     // Debit: Bank, Credit: Piutang
-                    $creditAccount = Account::where('code', '1201')->first(); // Piutang Usaha
+                    $creditAccount = Account::where('code', config('accounting.default_accounts.piutang', '1201'))->first(); // Piutang Usaha
                     break;
                     
                 case 'down_payment':
                     // Debit: Bank, Credit: Uang Muka Customer
-                    $creditAccount = Account::where('code', '2103')->first() 
-                                  ?? Account::where('code', '1201')->first(); // Fallback
+                    $creditAccount = Account::where('code', config('accounting.default_accounts.uang_muka', '2103'))->first() 
+                                  ?? Account::where('code', config('accounting.default_accounts.piutang', '1201'))->first(); // Fallback
                     break;
                     
                 default:
                     // Debit: Bank, Credit: Revenue
-                    $creditAccount = Account::where('code', '4101')->first(); // Pendapatan Jasa
+                    $creditAccount = Account::where('code', config('accounting.default_accounts.pendapatan', '4101'))->first(); // Pendapatan Jasa
             }
             
             return [
@@ -79,19 +79,19 @@ class CashierService
             switch ($category) {
                 case 'payment_to_vendor':
                     // Debit: Biaya or Hutang Vendor, Credit: Bank
-                    $debitAccount = Account::where('code', '5101')->first() // Biaya Operasional
-                                 ?? Account::where('code', '2101')->first(); // Hutang Usaha
+                    $debitAccount = Account::where('code', config('accounting.default_accounts.biaya_ops', '5101'))->first() // Biaya Operasional
+                                 ?? Account::where('code', '2101')->first(); // Hutang Usaha (keep 2101 as fallback)
                     break;
                     
                 case 'operational_expense':
                     // Debit: Biaya Operasional, Credit: Bank
-                    $debitAccount = Account::where('code', '5101')->first();
+                    $debitAccount = Account::where('code', config('accounting.default_accounts.biaya_ops', '5101'))->first();
                     break;
                     
                 default:
                     // Debit: Biaya Lain-lain, Credit: Bank
-                    $debitAccount = Account::where('code', '5199')->first() // Biaya Lain-lain
-                                 ?? Account::where('code', '5101')->first(); // Fallback
+                    $debitAccount = Account::where('code', config('accounting.default_accounts.biaya_lain', '5199'))->first() // Biaya Lain-lain
+                                 ?? Account::where('code', config('accounting.default_accounts.biaya_ops', '5101'))->first(); // Fallback
             }
             
             return [

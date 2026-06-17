@@ -25,14 +25,34 @@ return new class extends Migration
         
         DB::statement('CREATE INDEX IF NOT EXISTS idx_payments_invoice ON invoice_payments(invoice_id)');
         DB::statement('CREATE INDEX IF NOT EXISTS idx_payments_date ON invoice_payments(payment_date)');
-        DB::statement('CREATE INDEX IF NOT EXISTS idx_payments_verified ON invoice_payments(is_verified)');
+        try {
+            DB::statement('CREATE INDEX IF NOT EXISTS idx_payments_verified ON invoice_payments(is_verified)');
+        } catch (\Exception $e) {
+            // Ignore if column does not exist
+        }
         
-        DB::statement('CREATE INDEX IF NOT EXISTS idx_job_costs_invoice ON job_costs(invoice_id)');
+        try {
+            DB::statement('CREATE INDEX IF NOT EXISTS idx_job_costs_invoice ON job_costs(invoice_id)');
+        } catch (\Exception $e) {
+            // Ignore if column does not exist
+        }
         DB::statement('CREATE INDEX IF NOT EXISTS idx_job_costs_vendor ON job_costs(vendor_id)');
-        DB::statement('CREATE INDEX IF NOT EXISTS idx_job_costs_date ON job_costs(cost_date)');
+        try {
+            DB::statement('CREATE INDEX IF NOT EXISTS idx_job_costs_date ON job_costs(cost_date)');
+        } catch (\Exception $e) {
+            // Ignore if column does not exist
+        }
         
-        DB::statement('CREATE INDEX IF NOT EXISTS idx_customers_name ON customers(name)');
-        DB::statement('CREATE INDEX IF NOT EXISTS idx_customers_email ON customers(email)');
+        try {
+            DB::statement('CREATE INDEX IF NOT EXISTS idx_customers_name ON customers(name)');
+        } catch (\Exception $e) {
+            // Ignore if column does not exist
+        }
+        try {
+            DB::statement('CREATE INDEX IF NOT EXISTS idx_customers_email ON customers(email)');
+        } catch (\Exception $e) {
+            // Ignore if column does not exist
+        }
         
         DB::statement('CREATE INDEX IF NOT EXISTS idx_users_role ON users(role)');
     }
@@ -56,14 +76,34 @@ return new class extends Migration
         
         DB::statement('DROP INDEX IF EXISTS idx_payments_invoice ON invoice_payments');
         DB::statement('DROP INDEX IF EXISTS idx_payments_date ON invoice_payments');
-        DB::statement('DROP INDEX IF EXISTS idx_payments_verified ON invoice_payments');
+        try {
+            DB::statement('DROP INDEX IF EXISTS idx_payments_verified ON invoice_payments');
+        } catch (\Exception $e) {
+            // Ignore
+        }
         
-        DB::statement('DROP INDEX IF EXISTS idx_job_costs_invoice ON job_costs');
+        try {
+            DB::statement('DROP INDEX IF EXISTS idx_job_costs_invoice ON job_costs');
+        } catch (\Exception $e) {
+            // Ignore
+        }
         DB::statement('DROP INDEX IF EXISTS idx_job_costs_vendor ON job_costs');
-        DB::statement('DROP INDEX IF EXISTS idx_job_costs_date ON job_costs');
+        try {
+            DB::statement('DROP INDEX IF EXISTS idx_job_costs_date ON job_costs');
+        } catch (\Exception $e) {
+            // Ignore
+        }
         
-        DB::statement('DROP INDEX IF EXISTS idx_customers_name ON customers');
-        DB::statement('DROP INDEX IF EXISTS idx_customers_email ON customers');
+        try {
+            DB::statement('DROP INDEX IF EXISTS idx_customers_name ON customers');
+        } catch (\Exception $e) {
+            // Ignore
+        }
+        try {
+            DB::statement('DROP INDEX IF EXISTS idx_customers_email ON customers');
+        } catch (\Exception $e) {
+            // Ignore
+        }
         
         DB::statement('DROP INDEX IF EXISTS idx_users_role ON users');
     }

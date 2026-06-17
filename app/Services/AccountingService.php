@@ -45,8 +45,8 @@ class AccountingService
         }
 
         // Get accounts
-        $piutangAccount = Account::where('code', '1201')->first(); // Piutang Usaha
-        $pendapatanAccount = Account::where('code', '4101')->first(); // Pendapatan Jasa Clearance
+        $piutangAccount = Account::where('code', config('accounting.default_accounts.piutang', '1201'))->first(); // Piutang Usaha
+        $pendapatanAccount = Account::where('code', config('accounting.default_accounts.pendapatan', '4101'))->first(); // Pendapatan Jasa Clearance
         
         if (!$piutangAccount || !$pendapatanAccount) {
             \Log::warning('Auto Journal: Account not found for invoice ' . $invoice->invoice_number);
@@ -113,7 +113,7 @@ class AccountingService
      * Debit: Kas/Bank
      * Credit: Piutang Usaha
      */
-    public static function createJournalFromPayment(Invoice $invoice, string $bankAccountCode = '1103'): ?Journal
+    public static function createJournalFromPayment(Invoice $invoice, ?string $bankAccountCode = null): ?Journal
     {
         // Skip if payment journal already exists
         $existingJournal = Journal::where('reference_no', 'PAY-' . $invoice->id)->first();
@@ -121,9 +121,11 @@ class AccountingService
             return $existingJournal;
         }
 
+        $bankAccountCode = $bankAccountCode ?? config('accounting.default_accounts.bank', '1103');
+
         // Get accounts
         $kasBank = Account::where('code', $bankAccountCode)->first(); // Default: Bank Mandiri
-        $piutangAccount = Account::where('code', '1201')->first(); // Piutang Usaha
+        $piutangAccount = Account::where('code', config('accounting.default_accounts.piutang', '1201'))->first(); // Piutang Usaha
         
         if (!$kasBank || !$piutangAccount) {
             \Log::warning('Auto Journal Payment: Account not found for invoice ' . $invoice->invoice_number);
