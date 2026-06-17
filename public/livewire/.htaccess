@@ -11,8 +11,14 @@
     RewriteRule .* - [E=noconntimeout:1]
 </IfModule>
 
-# Prevent LiteSpeed from caching this directory
+# FIX (2026-06-08): subdir .htaccess dgn RewriteEngine On mematikan pewarisan
+# rewrite front-controller dari parent. Sebelumnya hanya 'update' yg di-route ke
+# index.php, sehingga /livewire/upload-file & /livewire/preview-file -> 404
+# (gejala: "The payment_proof failed to upload" saat upload bukti bayar).
+# Solusi: route SEMUA path non-file di /livewire/ ke /index.php.
 <IfModule mod_rewrite.c>
     RewriteEngine On
     RewriteRule .* - [E=no-cache:1]
+    RewriteCond %{REQUEST_FILENAME} !-f
+    RewriteRule ^ /index.php [L]
 </IfModule>

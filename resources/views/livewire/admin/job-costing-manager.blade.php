@@ -307,8 +307,14 @@
                     <div class="lg:col-span-2">
                         <div class="flex justify-between items-center mb-3 border-b pb-2">
                             <h4 class="font-bold text-gray-700 text-sm uppercase">Rincian Pengeluaran</h4>
-                            <div class="text-red-600 font-black text-lg font-mono tracking-tight bg-red-50 px-3 py-1 rounded">
-                                Total: Rp {{ number_format($selectedShipment->jobCosts ? $selectedShipment->jobCosts->sum('amount') : 0) }}
+                            <div class="flex items-center gap-2">
+                                <button wire:click="exportCosts({{ $selectedShipment->id }})" class="bg-emerald-600 hover:bg-emerald-700 text-white px-3 py-1.5 rounded-lg font-bold text-xs shadow-sm transition flex items-center gap-1">
+                                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v2a2 2 0 002 2h12a2 2 0 002-2v-2M7 10l5 5 5-5M12 15V3"/></svg>
+                                    Export CSV
+                                </button>
+                                <div class="text-red-600 font-black text-lg font-mono tracking-tight bg-red-50 px-3 py-1 rounded">
+                                    Total: Rp {{ number_format($selectedShipment->jobCosts ? $selectedShipment->jobCosts->sum('amount') : 0) }}
+                                </div>
                             </div>
                         </div>
 

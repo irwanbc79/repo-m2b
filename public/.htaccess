@@ -13,6 +13,10 @@
     RewriteCond %{HTTP:x-xsrf-token} .
     RewriteRule .* - [E=HTTP_X_XSRF_TOKEN:%{HTTP:X-XSRF-Token}]
 
+    # CRITICAL FIX: Force POST to /livewire/update through to PHP even though directory exists
+    RewriteCond %{REQUEST_METHOD} POST
+    RewriteRule ^livewire/update$ index.php [L]
+
     # Redirect Trailing Slashes If Not A Folder...
     RewriteCond %{REQUEST_FILENAME} !-d
     RewriteCond %{REQUEST_URI} (.+)/$
@@ -41,11 +45,11 @@
     RewriteRule .* - [E=no-cache:1,E=no-gzip:1]
 </IfModule>
 
-<Location "/livewire/">
+<Location /livewire/>
     <IfModule mod_headers.c>
-        Header always set Cache-Control "no-store, no-cache, must-revalidate, max-age=0"
-        Header always set Pragma "no-cache"
-        Header always set X-LiteSpeed-Cache-Control "no-cache"
+        Header always set Cache-Control no-store, no-cache, must-revalidate, max-age=0
+        Header always set Pragma no-cache
+        Header always set X-LiteSpeed-Cache-Control no-cache
         Header always unset X-LiteSpeed-Cache
     </IfModule>
     <IfModule LiteSpeed>

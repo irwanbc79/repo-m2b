@@ -799,8 +799,40 @@ class JobCostingManager extends Component
     
     public function exportCosts($shipmentId)
     {
-        // TODO: Implement export to Excel/PDF
-        session()->flash('info', 'Fitur export akan segera tersedia.');
+        $shipment = Shipment::with(['jobCosts.vendor', 'jobCosts.account', 'invoices', 'customer'])->find($shipmentId);
+
+        if (!$shipment) {
+            session()->flash('error', 'Shipment tidak ditemukan.');
+            return;
+        }
+
+        $csvContent = "AWB Number,Customer,Description,Vendor,Akun Biaya,Amount,Status,Date Paid,Created\n";
+
+        foreach ($shipment->jobCosts as $cost) {
+            $csvContent .= implode(',', [
+                $shipment->awb_number,
+                '"' . str_replace('"', '""', $shipment->customer->company_name ?? '-') . '"',
+                '"' . str_replace('"', '""', $cost->description ?? '-') . '"',
+                '"' . str_replace('"', '""', $cost->vendor->name ?? '-') . '"',
+                '"' . str_replace('"', '""', $cost->account->name ?? '-') . '"',
+                $cost->amount ?? 0,
+                $cost->status,
+                $cost->date_paid?->format('Y-m-d') ?? '-',
+                $cost->created_at?->format('Y-m-d') ?? '-']) . "\n";
+        }
+
+        $totalCost = $shipment->jobCosts->sum('amount');
+        $totalRevenue = $shipment->invoices->sum('grand_total');
+        $csvContent .= ",,,,Total Cost," . $totalCost . ",,,\n";
+        $csvContent .= ",,,,Total Revenue," . $totalRevenue . ",,,\n";
+        $csvContent .= ",,,,Margin %," . round($this->calculateMargin($shipment), 2) . ",,,\n";
+
+        $filename = 'job_costs_' . $shipment->awb_number . '_' . date('Y-m-d_His') . '.csv';
+
+        return response()->streamDownload(function () use ($csvContent) {
+            echo "\xEF\xBB\xBF" . $csvContent;
+        }, $filename, [
+            'Content-Type' => 'text/csv; charset=UTF-8']);
     }
 
     // =========================================
