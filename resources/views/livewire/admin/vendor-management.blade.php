@@ -182,7 +182,7 @@
         <div class="flex items-center justify-center min-h-screen p-4">
             <div class="fixed inset-0 bg-gray-900/75 backdrop-blur-sm transition-opacity" aria-hidden="true"></div>
             
-            <div class="align-bottom bg-white rounded-xl text-left overflow-hidden shadow-xl transform transition-all w-full max-w-4xl">
+            <div style="position: relative; z-index: 10;" class="align-bottom bg-white rounded-xl text-left overflow-hidden shadow-xl transform transition-all w-full max-w-4xl">
                 {{-- FIX: Form harus memiliki wire:submit.prevent --}}
                 <form wire:submit.prevent="save">
                     {{-- Header Modal --}}

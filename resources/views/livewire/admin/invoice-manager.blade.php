@@ -272,7 +272,7 @@
             <div class="fixed inset-0 bg-gray-900/75 backdrop-blur-sm transition-opacity" wire:click="closeModal"></div>
             <span class="hidden sm:inline-block sm:align-middle sm:h-screen" aria-hidden="true">&#8203;</span>
 
-            <div class="inline-block align-bottom bg-white rounded-2xl text-left overflow-hidden shadow-2xl transform transition-all sm:my-8 sm:align-middle sm:max-w-6xl sm:w-full border-t-8 border-blue-900">
+            <div style="position: relative; z-index: 10;" class="inline-block align-bottom bg-white rounded-2xl text-left overflow-hidden shadow-2xl transform transition-all sm:my-8 sm:align-middle sm:max-w-6xl sm:w-full border-t-8 border-blue-900">
                 {{-- Header Modal --}}
                 <div class="bg-gray-50 px-6 py-5 border-b border-gray-100 flex justify-between items-center">
                     <div>
