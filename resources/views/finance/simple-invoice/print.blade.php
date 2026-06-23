@@ -314,8 +314,8 @@
             </div>
             <div class="bank-box">
                 <strong>TRANSFER KE:</strong><br>
-                Bank Mandiri | Rek: 106-00-5598809-6<br>
-                A/N: PT. MORA MULTI BERKAH
+                {{ $invoice->bank_name ?? 'Bank Mandiri' }} | Rek: {{ $invoice->bank_account_number ?? '106-00-5598889-6' }}<br>
+                A/N: {{ $invoice->bank_account_holder ?? 'PT. MORA MULTI BERKAH' }}
             </div>
         </div>
 

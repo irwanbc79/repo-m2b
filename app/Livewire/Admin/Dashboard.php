@@ -191,7 +191,7 @@ class Dashboard extends Component
                     'icon' => 'mail',
                     'title' => "{$unreadEmails} Email Belum Dibaca",
                     'message' => 'Ada email baru yang perlu diproses',
-                    'link' => route('admin.inbox.index'),
+                    'link' => route('inbox.index'),
                 ];
             }
 

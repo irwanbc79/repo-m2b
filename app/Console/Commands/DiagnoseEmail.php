@@ -12,7 +12,7 @@ class DiagnoseEmail extends Command
     protected $signature = 'email:diagnose {mailbox?}';
     protected $description = 'Diagnosa lengkap koneksi IMAP & jumlah email di server vs database';
 
-    protected array $mailboxes = ['sales', 'import', 'export', 'finance', 'gmail'];
+    protected array $mailboxes = ['sales', 'import', 'export', 'finance', 'gmail', 'pajak', 'outlook', 'shipping'];
 
     public function handle()
     {

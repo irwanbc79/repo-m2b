@@ -33,7 +33,7 @@ class MoraLeadNotification extends Model
 
     protected $fillable = [
         'remote_lead_id', 'name', 'company', 'phone', 'email',
-        'score', 'source', 'service_interest', 'summary', 'chat_history', 'read_at',
+        'score', 'source', 'service_interest', 'product_links', 'summary', 'chat_history', 'read_at',
         'status', 'assigned_to', 'follow_up_at', 'sales_notes', 'deal_value',
     ];
 

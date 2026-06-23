@@ -73,8 +73,14 @@
                 @if(auth()->user()->hasPermission('dashboard.view') && !auth()->user()->hasRole(['auditor', 'konsultan_pajak']))
                 <div class="px-4 py-2 mt-4 text-xs font-bold text-gray-500 uppercase tracking-wider">Communication</div>
 
+                @php $unreadInboxCount = \DB::table('emails')->where('is_read', false)->count(); @endphp
                 <a href="{{ route('inbox.index') }}" class="flex items-center px-4 py-3 text-sm font-medium rounded-lg transition-colors group {{ request()->routeIs('inbox.*') ? 'bg-m2b-accent text-white shadow-lg' : 'hover:bg-gray-800 text-gray-300' }}">
                     <span class="flex-1">📧 Email Inbox</span>
+                    @if($unreadInboxCount > 0)
+                        <span class="ml-2 min-w-5 h-5 px-1.5 bg-red-500 text-white text-[10px] font-black rounded-full flex items-center justify-center animate-pulse">
+                            {{ $unreadInboxCount > 99 ? '99+' : $unreadInboxCount }}
+                        </span>
+                    @endif
                 </a>
 
                 <a href="{{ route('sent-emails.index') }}" class="flex items-center px-4 py-3 text-sm font-medium rounded-lg transition-colors group {{ request()->routeIs('sent-emails.*') ? 'bg-m2b-accent text-white shadow-lg' : 'hover:bg-gray-800 text-gray-300' }}">

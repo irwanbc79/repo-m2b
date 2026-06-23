@@ -366,7 +366,7 @@
             </div>
             <div class="bank-row">
                 <div class="bank-label">No. Rek:</div>
-                <div class="bank-value"><strong style="font-size: 13px;">106-00-5598809-6</strong></div>
+                <div class="bank-value"><strong style="font-size: 13px;">106-00-5598889-6</strong></div>
             </div>
             <div class="bank-row">
                 <div class="bank-label">A/N:</div>

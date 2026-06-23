@@ -176,6 +176,7 @@ class ShipmentManagement extends Component
             ->when($this->filterDateTo, function($q) {
                 $q->whereDate('created_at', '<=', $this->filterDateTo);
             })
+            ->orderByRaw("CASE WHEN status = 'completed' OR status = 'cancel' THEN 1 ELSE 0 END")
             ->orderBy($this->sortField, $this->sortDirection);
     }
 

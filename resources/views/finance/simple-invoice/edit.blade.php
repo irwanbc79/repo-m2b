@@ -92,6 +92,53 @@
                 </div>
             </div>
 
+            {{-- Bank Account Section --}}
+            <div class="p-6 border-b bg-gray-50/50">
+                <h3 class="text-lg font-semibold mb-4">🏦 Rekening Penerima (Tujuan Transfer)</h3>
+                
+                <div class="mb-4">
+                    <label class="block text-sm font-medium text-gray-700 mb-2">Pilih Template Rekening</label>
+                    <select id="bankTemplateSelect" class="w-full md:w-1/2 px-4 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500">
+                        @foreach($bankAccounts as $account)
+                            <option value="{{ $account->id }}" 
+                                {{ old('bank_account_number', $invoice->bank_account_number) === $account->account_number ? 'selected' : '' }}>
+                                {{ $account->account_holder }} ({{ $account->bank_name }} - {{ $account->account_number }})
+                            </option>
+                        @endforeach
+                        <option value="custom" {{ old('bank_account_number', $invoice->bank_account_number) && !$bankAccounts->contains('account_number', old('bank_account_number', $invoice->bank_account_number)) ? 'selected' : '' }}>-- Input Kustom --</option>
+                    </select>
+                    <p class="text-xs text-gray-500 mt-1">Memilih template akan otomatis mengisi input di bawah.</p>
+                </div>
+
+                <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-2">Nama Bank *</label>
+                        <input type="text" name="bank_name" id="bank_name" value="{{ old('bank_name', $invoice->bank_name ?? 'PT BANK MANDIRI (Persero) Tbk') }}" required
+                               class="w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500">
+                    </div>
+                    
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-2">No. Rekening *</label>
+                        <input type="text" name="bank_account_number" id="bank_account_number" value="{{ old('bank_account_number', $invoice->bank_account_number ?? '106-00-5598889-6') }}" required
+                               class="w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500">
+                    </div>
+                    
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-2">Atas Nama *</label>
+                        <input type="text" name="bank_account_holder" id="bank_account_holder" value="{{ old('bank_account_holder', $invoice->bank_account_holder ?? 'PT. MORA MULTI BERKAH') }}" required
+                               class="w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500">
+                    </div>
+                </div>
+
+                <div class="mt-4" id="saveBankAccountContainer" style="display: none;">
+                    <label class="inline-flex items-center text-sm text-gray-700 cursor-pointer">
+                        <input type="checkbox" name="save_bank_account" id="save_bank_account" value="1" {{ old('save_bank_account') ? 'checked' : '' }}
+                               class="rounded border-gray-300 text-blue-600 focus:ring-blue-500 mr-2">
+                        💾 Simpan rekening ini sebagai template untuk penggunaan berikutnya
+                    </label>
+                </div>
+            </div>
+
             {{-- Notes --}}
             <div class="p-6 border-b">
                 <h3 class="text-lg font-semibold mb-4">📝 Catatan</h3>
@@ -173,5 +220,49 @@ function calculateTotal() {
 }
 
 calculateTotal();
+
+// Bank template select handler
+document.addEventListener('DOMContentLoaded', function() {
+    const bankTemplateSelect = document.getElementById('bankTemplateSelect');
+    const bankNameInput = document.getElementById('bank_name');
+    const bankAccNoInput = document.getElementById('bank_account_number');
+    const bankHolderInput = document.getElementById('bank_account_holder');
+    const saveBankAccountContainer = document.getElementById('saveBankAccountContainer');
+    const saveBankAccountCheckbox = document.getElementById('save_bank_account');
+    
+    if (bankTemplateSelect) {
+        const templates = {
+            @foreach($bankAccounts as $account)
+            "{{ $account->id }}": {
+                bank_name: "{{ $account->bank_name }}",
+                bank_account_number: "{{ $account->account_number }}",
+                bank_account_holder: "{{ $account->account_holder }}"
+            },
+            @endforeach
+        };
+
+        function toggleSaveCheckbox() {
+            if (bankTemplateSelect.value === 'custom') {
+                saveBankAccountContainer.style.display = 'block';
+            } else {
+                saveBankAccountContainer.style.display = 'none';
+                saveBankAccountCheckbox.checked = false;
+            }
+        }
+
+        bankTemplateSelect.addEventListener('change', function() {
+            const val = this.value;
+            if (templates[val]) {
+                bankNameInput.value = templates[val].bank_name;
+                bankAccNoInput.value = templates[val].bank_account_number;
+                bankHolderInput.value = templates[val].bank_account_holder;
+            }
+            toggleSaveCheckbox();
+        });
+
+        // Run on page load
+        toggleSaveCheckbox();
+    }
+});
 </script>
 @endsection

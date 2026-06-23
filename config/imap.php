@@ -137,6 +137,24 @@ return [
             'timeout' => 30,
             'extensions' => [],
         ],
+        'shipping' => [
+            'host'  => env('IMAP_SHIPPING_HOST'),
+            'port'  => env('IMAP_SHIPPING_PORT'),
+            'protocol'  => 'imap',
+            'encryption' => 'ssl',
+            'validate_cert' => env('IMAP_VALIDATE_CERT', true),
+            'username' => env('IMAP_SHIPPING_USER'),
+            'password' => env('IMAP_SHIPPING_PASS'),
+            'authentication' => null,
+            'proxy' => [
+                'socket' => null,
+                'request_fulluri' => false,
+                'username' => null,
+                'password' => null,
+            ],
+            'timeout' => 30,
+            'extensions' => [],
+        ],
     ],
 
     'options' => [

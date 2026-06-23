@@ -20,7 +20,7 @@ class EmailInbox extends Component
     use WithPagination;
 
     public $activeAccount = 'sales';
-    public $mailboxes = ['sales', 'import', 'export', 'finance', 'gmail', 'pajak'];
+    public $mailboxes = ['sales', 'import', 'export', 'finance', 'gmail', 'pajak', 'shipping'];
     public $emails = [];
     // Jumlah email belum dibaca per mailbox. Dihitung sekali (1 query grouped)
     // di loadEmails(), menggantikan pemanggilan getUnreadCount() per-mailbox di blade.
@@ -467,6 +467,7 @@ class EmailInbox extends Component
             'finance' => 'finance@m2b.co.id',
             'gmail' => 'logisolmed@gmail.com',
             'pajak' => 'moramultiberkahpt@gmail.com',
+            'shipping' => 'shipping@m2b.co.id',
         ];
         
         $fromEmail = $mailboxEmails[$this->activeAccount] ?? config('mail.from.address');

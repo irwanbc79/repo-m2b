@@ -170,7 +170,7 @@
     <div class="bank-details">
         <strong>*) TRANSFER TO:</strong><br>
         <strong>AN:</strong> PT. MORA MULTI BERKAH<br>
-        <strong>No:</strong> 106-00-5598809-6<br>
+        <strong>No:</strong> 106-00-5598889-6<br>
         <strong>Bank:</strong> PT BANK MANDIRI (Persero) Tbk
     </div>
 

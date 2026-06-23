@@ -273,7 +273,7 @@ class MoraLeadManager extends Component
                     $lead->phone,
                     $lead->email,
                     strtoupper($lead->score),
-                    $lead->source === 'mora_chat' ? 'MORA Chat' : ($lead->source === 'manual' ? 'Manual' : 'CS Form'),
+                    $lead->source === 'mora_chat' ? 'MORA Chat' : ($lead->source === 'manual' ? 'Manual' : ($lead->source === 'cs_form_whatsapp' ? 'CS WhatsApp' : ($lead->source === 'cs_form_telegram' ? 'CS Telegram' : 'CS Form'))),
                     $lead->serviceLabel() ?? '-',
                     $lead->deal_value ? (float)$lead->deal_value : 0,
                     $lead->stageLabel(),

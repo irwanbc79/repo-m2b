@@ -12,6 +12,7 @@ class SimpleInvoice extends Model
     protected $fillable = [
         'invoice_number', 'invoice_date', 'due_date', 'customer_id', 'customer_name',
         'customer_address', 'currency', 'subtotal', 'total', 'terbilang',
+        'bank_name', 'bank_account_number', 'bank_account_holder',
         'notes', 'status', 'paid_date', 'payment_proof', 'payment_notes', 'created_by',
     ];
 

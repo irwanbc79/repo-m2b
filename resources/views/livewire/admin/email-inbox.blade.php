@@ -34,14 +34,18 @@
             @foreach($mailboxes as $acc)
             <button wire:click="switchAccount('{{ $acc }}')" 
                class="w-full text-left flex items-center justify-between px-4 py-3 text-sm font-medium hover:bg-slate-800 transition border-l-4 {{ $activeAccount == $acc ? 'bg-slate-800 text-white border-blue-500' : 'border-transparent text-slate-400' }}">
-                <span class="flex items-center gap-2 capitalize">
-                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 00-2-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"></path></svg>
-                    {{ $acc }}
+                <span class="flex items-center gap-2 capitalize relative">
+                    <svg class="w-4 h-4 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 00-2-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"></path></svg>
+                    <span class="relative">
+                        {{ $acc }}
+                        @php $unread = $unreadCounts[$acc] ?? 0; @endphp
+                        @if($unread > 0)
+                        <span class="absolute -top-2 -right-6 bg-red-500 text-white text-[8px] min-w-[14px] h-[14px] px-1 rounded-full font-black flex items-center justify-center shadow-sm shadow-red-500/50 scale-90 leading-none">
+                            {{ $unread }}
+                        </span>
+                        @endif
+                    </span>
                 </span>
-                @php $unread = $unreadCounts[$acc] ?? 0; @endphp
-                @if($unread > 0)
-                <span class="bg-red-500 text-white text-[10px] px-1.5 py-0.5 rounded-full font-bold">{{ $unread }}</span>
-                @endif
             </button>
             @endforeach
         </div>

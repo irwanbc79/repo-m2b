@@ -128,7 +128,10 @@ class InvoiceManager extends Component
             $query->whereHas('items.product', fn($q) => $q->where('category', $this->filterCategory));
         }
 
-        $invoices = $query->latest()->paginate(25);
+        $invoices = $query->orderByRaw("CASE WHEN status = 'unpaid' THEN 0 WHEN status = 'partial' THEN 1 ELSE 2 END")
+            ->orderBy('invoice_date', 'desc')
+            ->orderBy('id', 'desc')
+            ->paginate(25);
 
         $relatedInvoiceLinks = $this->buildRelatedInvoiceLinksForPage($invoices);
 

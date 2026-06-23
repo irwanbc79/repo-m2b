@@ -76,9 +76,9 @@
     <div class="bg-green-50 border-2 border-green-200 rounded-lg p-4">
         <div class="text-xs text-gray-600 font-semibold mb-2">💳 INFORMASI TRANSFER:</div>
         <div class="text-sm space-y-1">
-            <div><span class="text-gray-600">Bank:</span> <span class="font-medium">PT BANK MANDIRI (Persero) Tbk</span></div>
-            <div><span class="text-gray-600">No. Rekening:</span> <span class="font-bold text-green-700">106-00-5598809-6</span></div>
-            <div><span class="text-gray-600">Atas Nama:</span> <span class="font-medium">PT. MORA MULTI BERKAH</span></div>
+            <div><span class="text-gray-600">Bank:</span> <span class="font-medium">{{ $invoice->bank_name ?? 'PT BANK MANDIRI (Persero) Tbk' }}</span></div>
+            <div><span class="text-gray-600">No. Rekening:</span> <span class="font-bold text-green-700">{{ $invoice->bank_account_number ?? '106-00-5598889-6' }}</span></div>
+            <div><span class="text-gray-600">Atas Nama:</span> <span class="font-medium">{{ $invoice->bank_account_holder ?? 'PT. MORA MULTI BERKAH' }}</span></div>
         </div>
     </div>
 

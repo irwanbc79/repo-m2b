@@ -427,9 +427,9 @@
     <div class="info-box green">
         <div class="box-label green">💳 Informasi Transfer</div>
         <div class="box-content green">
-            <strong>Bank:</strong> PT BANK MANDIRI (Persero) Tbk<br>
-            <strong>No. Rekening:</strong> <span style="font-weight: bold;">106-00-5598809-6</span><br>
-            <strong>Atas Nama:</strong> <strong>PT. MORA MULTI BERKAH</strong>
+            <strong>Bank:</strong> {{ $invoice->bank_name ?? 'PT BANK MANDIRI (Persero) Tbk' }}<br>
+            <strong>No. Rekening:</strong> <span style="font-weight: bold;">{{ $invoice->bank_account_number ?? '106-00-5598889-6' }}</span><br>
+            <strong>Atas Nama:</strong> <strong>{{ $invoice->bank_account_holder ?? 'PT. MORA MULTI BERKAH' }}</strong>
         </div>
     </div>
 

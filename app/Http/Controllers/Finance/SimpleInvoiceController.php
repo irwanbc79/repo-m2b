@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Finance;
 
 use App\Http\Controllers\Controller;
 use App\Models\SimpleInvoice;
+use App\Models\BankAccount;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Storage;
@@ -52,9 +53,15 @@ class SimpleInvoiceController extends Controller
 
         // Sort - whitelist untuk mencegah SQL injection
         $allowedSort = ['created_at', 'invoice_date', 'invoice_number', 'customer_name', 'total', 'status'];
-        $sortBy = in_array($request->get('sort_by'), $allowedSort) ? $request->get('sort_by') : 'created_at';
-        $sortOrder = strtolower($request->get('sort_order', 'desc')) === 'asc' ? 'asc' : 'desc';
-        $query->orderBy($sortBy, $sortOrder);
+        if (!$request->filled('sort_by')) {
+            $query->orderByRaw("CASE WHEN status = 'unpaid' THEN 0 ELSE 1 END")
+                  ->orderBy('invoice_date', 'desc')
+                  ->orderBy('id', 'desc');
+        } else {
+            $sortBy = in_array($request->get('sort_by'), $allowedSort) ? $request->get('sort_by') : 'created_at';
+            $sortOrder = strtolower($request->get('sort_order', 'desc')) === 'asc' ? 'asc' : 'desc';
+            $query->orderBy($sortBy, $sortOrder);
+        }
 
         $invoices = $query->paginate(20)->appends($request->except('page'));
 
@@ -91,7 +98,8 @@ class SimpleInvoiceController extends Controller
 
     public function create()
     {
-        return view('finance.simple-invoice.create');
+        $bankAccounts = BankAccount::orderBy('is_system', 'desc')->orderBy('created_at', 'asc')->get();
+        return view('finance.simple-invoice.create', compact('bankAccounts'));
     }
 
     public function store(Request $request)
@@ -101,6 +109,10 @@ class SimpleInvoiceController extends Controller
             'customer_address' => 'nullable|string',
             'invoice_date' => 'required|date',
             'notes' => 'nullable|string',
+            'bank_name' => 'nullable|string|max:100',
+            'bank_account_number' => 'nullable|string|max:50',
+            'bank_account_holder' => 'nullable|string|max:100',
+            'save_bank_account' => 'nullable|boolean',
             'items' => 'required|array|min:1',
             'items.*.description' => 'required|string',
             'items.*.quantity' => 'required|numeric|min:1',
@@ -110,13 +122,28 @@ class SimpleInvoiceController extends Controller
         // Create invoice
         $invoice = SimpleInvoice::create([
             'customer_name' => $validated['customer_name'],
-            'customer_address' => $validated['customer_address'],
+            'customer_address' => $validated['customer_address'] ?? null,
             'invoice_date' => $validated['invoice_date'],
-            'notes' => $validated['notes'],
+            'notes' => $validated['notes'] ?? null,
+            'bank_name' => $validated['bank_name'] ?? null,
+            'bank_account_number' => $validated['bank_account_number'] ?? null,
+            'bank_account_holder' => $validated['bank_account_holder'] ?? null,
             'currency' => 'IDR',
             'status' => 'unpaid',
             'created_by' => auth()->id(),
         ]);
+
+        // Save bank account as template if checked
+        if ($request->boolean('save_bank_account') && !empty($validated['bank_account_number'])) {
+            BankAccount::firstOrCreate(
+                ['account_number' => $validated['bank_account_number']],
+                [
+                    'bank_name' => $validated['bank_name'] ?? '',
+                    'account_holder' => $validated['bank_account_holder'] ?? '',
+                    'is_system' => false,
+                ]
+            );
+        }
 
         // Create items
         $total = 0;
@@ -165,7 +192,8 @@ class SimpleInvoiceController extends Controller
     public function edit($id)
     {
         $invoice = SimpleInvoice::with('items')->findOrFail($id);
-        return view('finance.simple-invoice.edit', compact('invoice'));
+        $bankAccounts = BankAccount::orderBy('is_system', 'desc')->orderBy('created_at', 'asc')->get();
+        return view('finance.simple-invoice.edit', compact('invoice', 'bankAccounts'));
     }
 
     public function detail($id)
@@ -183,6 +211,10 @@ class SimpleInvoiceController extends Controller
             'customer_address' => 'nullable|string',
             'invoice_date' => 'required|date',
             'notes' => 'nullable|string',
+            'bank_name' => 'nullable|string|max:100',
+            'bank_account_number' => 'nullable|string|max:50',
+            'bank_account_holder' => 'nullable|string|max:100',
+            'save_bank_account' => 'nullable|boolean',
             'items' => 'required|array|min:1',
             'items.*.description' => 'required|string',
             'items.*.quantity' => 'required|numeric|min:1',
@@ -192,10 +224,25 @@ class SimpleInvoiceController extends Controller
         // Update invoice
         $invoice->update([
             'customer_name' => $validated['customer_name'],
-            'customer_address' => $validated['customer_address'],
+            'customer_address' => $validated['customer_address'] ?? null,
             'invoice_date' => $validated['invoice_date'],
-            'notes' => $validated['notes'],
+            'notes' => $validated['notes'] ?? null,
+            'bank_name' => $validated['bank_name'] ?? null,
+            'bank_account_number' => $validated['bank_account_number'] ?? null,
+            'bank_account_holder' => $validated['bank_account_holder'] ?? null,
         ]);
+
+        // Save bank account as template if checked
+        if ($request->boolean('save_bank_account') && !empty($validated['bank_account_number'])) {
+            BankAccount::firstOrCreate(
+                ['account_number' => $validated['bank_account_number']],
+                [
+                    'bank_name' => $validated['bank_name'] ?? '',
+                    'account_holder' => $validated['bank_account_holder'] ?? '',
+                    'is_system' => false,
+                ]
+            );
+        }
 
         // Delete old items and create new ones
         $invoice->items()->delete();

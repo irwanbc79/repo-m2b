@@ -150,6 +150,10 @@
                                         <span class="text-[10px] bg-cyan-50 text-cyan-600 font-bold px-2 py-0.5 rounded-full">🤖 MORA Chat</span>
                                     @elseif($lead->source === 'manual')
                                         <span class="text-[10px] bg-purple-50 text-purple-600 font-bold px-2 py-0.5 rounded-full">👤 Manual</span>
+                                    @elseif($lead->source === 'cs_form_whatsapp')
+                                        <span class="text-[10px] bg-green-50 text-green-600 font-bold px-2 py-0.5 rounded-full">🟢 CS WhatsApp</span>
+                                    @elseif($lead->source === 'cs_form_telegram')
+                                        <span class="text-[10px] bg-sky-50 text-sky-600 font-bold px-2 py-0.5 rounded-full">🔵 CS Telegram</span>
                                     @else
                                         <span class="text-[10px] bg-slate-50 text-slate-600 font-bold px-2 py-0.5 rounded-full">📋 Form</span>
                                     @endif
@@ -257,8 +261,20 @@
                             </div>
                             <div>
                                 <span class="text-gray-400 block text-[9px] uppercase font-bold">Sumber Lead</span>
-                                <span class="font-bold text-gray-800 block capitalize">{{ $selectedLead->source === 'mora_chat' ? 'Mora Chat' : ($selectedLead->source === 'manual' ? 'Manual' : 'CS Form') }}</span>
+                                <span class="font-bold text-gray-800 block capitalize">{{ $selectedLead->source === 'mora_chat' ? 'Mora Chat' : ($selectedLead->source === 'manual' ? 'Manual' : ($selectedLead->source === 'cs_form_whatsapp' ? 'CS WhatsApp' : ($selectedLead->source === 'cs_form_telegram' ? 'CS Telegram' : 'CS Form'))) }}</span>
                             </div>
+                            @if($selectedLead->product_links)
+                            <div class="col-span-2 border-t border-gray-200/50 pt-2 mt-1">
+                                <span class="text-gray-400 block text-[9px] uppercase font-bold">Link Produk Supplier</span>
+                                <div class="space-y-1 mt-1">
+                                    @foreach(explode(', ', $selectedLead->product_links) as $index => $url)
+                                        <a href="{{ $url }}" target="_blank" class="text-indigo-600 hover:text-indigo-800 hover:underline font-semibold flex items-center gap-1 text-[11px] break-all leading-normal">
+                                            🔗 Link #{{ $index + 1 }}: {{ $url }}
+                                        </a>
+                                    @endforeach
+                                </div>
+                            </div>
+                            @endif
                         </div>
 
                         <div class="flex gap-2 mt-2 pt-2 border-t border-gray-200/60">

@@ -542,7 +542,7 @@
                 </div>
                 <div class="bank-row">
                     <div class="bank-label">No. Rekening:</div>
-                    <div class="bank-value account-number">106-00-5598809-6</div>
+                    <div class="bank-value account-number">106-00-5598889-6</div>
                 </div>
                 <div class="bank-row">
                     <div class="bank-label">Atas Nama:</div>
