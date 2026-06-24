@@ -295,6 +295,11 @@ class SimpleInvoiceController extends Controller
             'paid_date' => 'required_if:status,paid|nullable|date',
             'payment_proof' => 'nullable|file|mimes:jpg,jpeg,png,pdf|max:5120',
             'payment_notes' => 'nullable|string'
+        ], [
+            'paid_date.required_if' => 'Tanggal bayar wajib diisi jika status PAID.',
+            'paid_date.date' => 'Format tanggal bayar tidak valid.',
+            'payment_proof.mimes' => 'File bukti harus berupa JPG, PNG, atau PDF.',
+            'payment_proof.max' => 'Ukuran file bukti maksimal 5MB.',
         ]);
 
         $invoice = SimpleInvoice::findOrFail($id);

@@ -173,7 +173,7 @@
                         <div class="flex gap-2">
                             <button onclick="openViewModal({{ $invoice->id }}, '{{ $invoice->invoice_number }}')"
                                     class="text-blue-600 hover:text-blue-800 text-lg" title="View">🔍</button>
-                            <button onclick="openPaymentModal({{ $invoice->id }}, '{{ $invoice->invoice_number }}', '{{ $invoice->status }}', '{{ $invoice->paid_date }}', '{{ addslashes($invoice->payment_notes) }}')"
+                            <button onclick="openPaymentModal({{ $invoice->id }}, '{{ $invoice->invoice_number }}', '{{ $invoice->status }}', '{{ $invoice->paid_date ? $invoice->paid_date->format('Y-m-d') : '' }}', '{{ addslashes($invoice->payment_notes ?? '') }}')"
                                     class="text-green-600 hover:text-green-800 text-lg" title="Payment">💰</button>
                             @if($invoice->payment_proof)
                             <button onclick="viewProof('{{ asset('storage/' . $invoice->payment_proof) }}', '{{ pathinfo($invoice->payment_proof, PATHINFO_EXTENSION) }}')"
@@ -245,7 +245,19 @@
             @csrf
             <div class="p-6">
                 <h2 class="text-xl font-bold mb-4" id="paymentModalTitle">Update Payment</h2>
+
+                @if($errors->any())
+                <div class="bg-red-50 border border-red-300 text-red-700 rounded-lg p-3 mb-4 text-sm">
+                    <ul class="list-disc list-inside space-y-1">
+                        @foreach($errors->all() as $error)
+                            <li>{{ $error }}</li>
+                        @endforeach
+                    </ul>
+                </div>
+                @endif
+
                 <div class="space-y-4">
+                    <input type="hidden" name="_payment_invoice_id" id="paymentInvoiceId">
                     <div>
                         <label class="block text-sm font-medium text-gray-700 mb-2">Status *</label>
                         <select name="status" id="paymentStatus" required class="w-full px-4 py-2 border rounded-lg" onchange="togglePaidFields()">
@@ -338,6 +350,7 @@ function openPaymentModal(id, no, status, date, notes) {
     document.getElementById('paymentModal').classList.remove('hidden');
     document.getElementById('paymentForm').action = `/finance/simple-invoice/${id}/update-payment`;
     document.getElementById('paymentModalTitle').textContent = `Payment - ${no}`;
+    document.getElementById('paymentInvoiceId').value = id;
     document.getElementById('paymentStatus').value = status;
     document.getElementById('paidDate').value = date || new Date().toISOString().split('T')[0];
     document.getElementById('paymentNotes').value = notes || '';
@@ -390,6 +403,18 @@ document.addEventListener('keydown', function(e) {
         closePrintPreview();
     }
 });
+
+// Auto-open payment modal jika ada validation error (setelah redirect back)
+@if($errors->any() && old('_payment_invoice_id'))
+document.addEventListener('DOMContentLoaded', function() {
+    document.getElementById('paymentModal').classList.remove('hidden');
+    document.getElementById('paymentForm').action = `/finance/simple-invoice/{{ old('_payment_invoice_id') }}/update-payment`;
+    document.getElementById('paymentStatus').value = '{{ old('status', 'unpaid') }}';
+    document.getElementById('paidDate').value = '{{ old('paid_date') }}';
+    document.getElementById('paymentNotes').value = `{{ old('payment_notes') }}`;
+    togglePaidFields();
+});
+@endif
 
 function openPrintPreview(url) {
     document.getElementById('printPreviewIframe').src = url;
