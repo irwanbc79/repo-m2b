@@ -823,6 +823,10 @@
     right: calc(var(--spacing) * -2);
   }
 
+  .-right-6 {
+    right: calc(var(--spacing) * -6);
+  }
+
   .-right-20 {
     right: calc(var(--spacing) * -20);
   }
@@ -1459,6 +1463,10 @@
     height: calc(var(--spacing) * 80);
   }
 
+  .h-\[14px\] {
+    height: 14px;
+  }
+
   .h-\[60vh\] {
     height: 60vh;
   }
@@ -1907,6 +1915,10 @@
     min-width: 3rem;
   }
 
+  .min-w-\[14px\] {
+    min-width: 14px;
+  }
+
   .min-w-\[120px\] {
     min-width: 120px;
   }
@@ -1974,6 +1986,13 @@
   .translate-y-full {
     --tw-translate-y: 100%;
     translate: var(--tw-translate-x) var(--tw-translate-y);
+  }
+
+  .scale-90 {
+    --tw-scale-x: 90%;
+    --tw-scale-y: 90%;
+    --tw-scale-z: 90%;
+    scale: var(--tw-scale-x) var(--tw-scale-y);
   }
 
   .scale-95 {
@@ -2711,6 +2730,16 @@
 
   .border-gray-200 {
     border-color: var(--color-gray-200);
+  }
+
+  .border-gray-200\/50 {
+    border-color: #e5e7eb80;
+  }
+
+  @supports (color: color-mix(in lab, red, red)) {
+    .border-gray-200\/50 {
+      border-color: color-mix(in oklab, var(--color-gray-200) 50%, transparent);
+    }
   }
 
   .border-gray-200\/60 {
@@ -3705,6 +3734,10 @@
 
   .bg-rose-100 {
     background-color: var(--color-rose-100);
+  }
+
+  .bg-sky-50 {
+    background-color: var(--color-sky-50);
   }
 
   .bg-sky-100 {
@@ -5129,6 +5162,10 @@
     color: var(--color-rose-800);
   }
 
+  .text-sky-600 {
+    color: var(--color-sky-600);
+  }
+
   .text-sky-700 {
     color: var(--color-sky-700);
   }
@@ -5524,6 +5561,16 @@
   @supports (color: color-mix(in lab, red, red)) {
     .shadow-indigo-200 {
       --tw-shadow-color: color-mix(in oklab, var(--color-indigo-200) var(--tw-shadow-alpha), transparent);
+    }
+  }
+
+  .shadow-red-500\/50 {
+    --tw-shadow-color: #fb2c3680;
+  }
+
+  @supports (color: color-mix(in lab, red, red)) {
+    .shadow-red-500\/50 {
+      --tw-shadow-color: color-mix(in oklab, color-mix(in oklab, var(--color-red-500) 50%, transparent) var(--tw-shadow-alpha), transparent);
     }
   }
 
@@ -7231,6 +7278,10 @@
       display: none;
     }
 
+    .sm\:inline {
+      display: inline;
+    }
+
     .sm\:inline-block {
       display: inline-block;
     }
@@ -7394,6 +7445,10 @@
 
     .md\:inline-flex {
       display: inline-flex;
+    }
+
+    .md\:w-1\/2 {
+      width: 50%;
     }
 
     .md\:w-1\/4 {

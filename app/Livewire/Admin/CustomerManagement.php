@@ -188,7 +188,7 @@ class CustomerManagement extends Component
         DB::transaction(function () {
             if ($this->isEditing) {
                 $customer = Customer::find($this->customerId);
-                $userData = ['name' => $this->name, 'role' => $this->role, 'email' => $this->email];
+                $userData = ['name' => $this->name, 'role' => $this->role, 'email' => $this->email, 'is_active' => (bool) $this->is_active];
                 if (!empty($this->password)) {
                     $userData['password'] = Hash::make($this->password);
                 }
@@ -215,6 +215,7 @@ class CustomerManagement extends Component
                     'email' => $this->email,
                     'password' => Hash::make($this->password),
                     'role' => $this->role,
+                    'is_active' => (bool) $this->is_active,
                 ]);
 
                 $customerCode = Customer::generateCustomerCode();
@@ -259,6 +260,7 @@ class CustomerManagement extends Component
             $this->name = $customer->user->name ?? '';
             $this->email = $customer->user->email ?? '';
             $this->role = $customer->user->role ?? 'customer';
+            $this->is_active = (bool) ($customer->user->is_active ?? true);
 
             $this->customer_code = $customer->customer_code;
             $this->company_name = $customer->company_name;
@@ -275,6 +277,30 @@ class CustomerManagement extends Component
 
             $this->isEditing = true;
             $this->isModalOpen = true;
+        }
+    }
+
+    /**
+     * Setujui / aktifkan akun customer (mis. pendaftar Google yang pending).
+     */
+    public function approveCustomer($id)
+    {
+        $customer = Customer::with('user')->find($id);
+        if ($customer && $customer->user) {
+            $customer->user->update(['is_active' => true]);
+            session()->flash('message', 'Customer "' . ($customer->company_name ?: $customer->user->name) . '" berhasil diaktifkan.');
+        }
+    }
+
+    /**
+     * Nonaktifkan akun customer (blokir akses portal).
+     */
+    public function deactivateCustomer($id)
+    {
+        $customer = Customer::with('user')->find($id);
+        if ($customer && $customer->user) {
+            $customer->user->update(['is_active' => false]);
+            session()->flash('message', 'Customer "' . ($customer->company_name ?: $customer->user->name) . '" dinonaktifkan.');
         }
     }
 
@@ -478,6 +504,12 @@ class CustomerManagement extends Component
             })
             ->when($this->filterTag, function ($query) {
                 $query->where('business_type', $this->filterTag);
+            })
+            ->when($this->filterStatus !== '', function ($query) {
+                $active = $this->filterStatus === 'active';
+                $query->whereHas('user', function ($u) use ($active) {
+                    $u->where('is_active', $active);
+                });
             })
             ->orderBy($this->sortField, $this->sortDirection);
     }

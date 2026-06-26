@@ -17,7 +17,18 @@ class CustomerMiddleware
 
         $user = Auth::user();
 
-        // Customer harus punya role 'customer' 
+        // Akun nonaktif / menunggu persetujuan admin tidak boleh masuk portal.
+        if (! $user->is_active) {
+            Auth::logout();
+            $request->session()->invalidate();
+            $request->session()->regenerateToken();
+
+            return redirect()->route('login')->withErrors([
+                'email' => 'Akun Anda belum aktif / masih menunggu persetujuan admin.',
+            ]);
+        }
+
+        // Customer harus punya role 'customer'
         // Cek di roles array atau role single
         $primaryRole = $user->getPrimaryRole();
         $isCustomer = $primaryRole === 'customer' || $user->hasRole('customer');

@@ -115,6 +115,12 @@
                         @endforeach
                     </select>
 
+                    <select wire:model.live="filterStatus" class="text-sm border-gray-300 rounded-lg focus:ring-blue-500 py-2">
+                        <option value="">Semua Status</option>
+                        <option value="pending">⏳ Menunggu Persetujuan</option>
+                        <option value="active">✓ Aktif</option>
+                    </select>
+
                     <select wire:model.live="perPage" class="text-sm border-gray-300 rounded-lg focus:ring-blue-500 py-2">
                         <option value="10">10/hal</option>
                         <option value="25">25/hal</option>
@@ -191,7 +197,17 @@
                             @endif
                         </td>
                         <td class="px-4 py-3">
-                            <div class="font-semibold text-gray-800">{{ $c->company_name }}</div>
+                            <div class="font-semibold text-gray-800 flex items-center gap-2">
+                                {{ $c->company_name }}
+                                @if($c->user && ! $c->user->is_active)
+                                <span class="text-[10px] font-bold px-1.5 py-0.5 rounded-full bg-amber-100 text-amber-700 border border-amber-200">PENDING</span>
+                                @endif
+                            </div>
+                            @if($c->trade_type)
+                            <span class="text-[10px] font-semibold text-indigo-600 uppercase">
+                                {{ ['import'=>'Impor','export'=>'Ekspor','both'=>'Impor & Ekspor','domestic'=>'Domestik'][$c->trade_type] ?? $c->trade_type }}
+                            </span>
+                            @endif
                             @if($c->city)
                             <span class="text-xs text-gray-500 flex items-center mt-0.5">
                                 <svg class="w-3 h-3 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z"/></svg>
@@ -229,6 +245,19 @@
                         </td>
                         <td class="px-4 py-3 text-center" wire:click.stop>
                             <div class="flex justify-center gap-1">
+                                @if($c->user && ! $c->user->is_active)
+                                <button wire:click="approveCustomer({{ $c->id }})"
+                                    wire:confirm="Setujui & aktifkan customer ini? Mereka akan bisa login ke portal."
+                                    class="p-1.5 text-green-600 hover:bg-green-50 rounded-lg transition" title="Setujui / Aktifkan">
+                                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/></svg>
+                                </button>
+                                @else
+                                <button wire:click="deactivateCustomer({{ $c->id }})"
+                                    wire:confirm="Nonaktifkan customer ini? Akses login mereka ke portal akan diblokir."
+                                    class="p-1.5 text-gray-400 hover:text-amber-600 hover:bg-amber-50 rounded-lg transition" title="Nonaktifkan akses">
+                                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M18.364 5.636L5.636 18.364M12 21a9 9 0 110-18 9 9 0 010 18z"/></svg>
+                                </button>
+                                @endif
                                 <button wire:click="quickView({{ $c->id }})" class="p-1.5 text-gray-500 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition" title="Quick View">
                                     <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"/></svg>
                                 </button>
@@ -298,11 +327,32 @@
                     </div>
                 </div>
 
+                @if($quickViewCustomer->user && ! $quickViewCustomer->user->is_active)
+                <div class="mb-4 bg-amber-50 border border-amber-200 rounded-xl p-3 flex items-center justify-between gap-3">
+                    <p class="text-sm text-amber-800">⏳ Akun ini <span class="font-bold">menunggu persetujuan</span>. Tinjau data lalu setujui jika valid.</p>
+                    <button wire:click="approveCustomer({{ $quickViewCustomer->id }})"
+                        wire:confirm="Setujui & aktifkan customer ini?"
+                        class="shrink-0 bg-green-600 hover:bg-green-700 text-white text-xs font-bold px-3 py-1.5 rounded-lg transition">Setujui</button>
+                </div>
+                @endif
+
                 {{-- Info Grid --}}
                 <div class="grid grid-cols-2 gap-4 text-sm">
                     <div>
                         <p class="text-gray-500 text-xs uppercase mb-1">Kontak</p>
                         <p class="font-semibold">{{ $quickViewCustomer->user->name ?? '-' }}</p>
+                    </div>
+                    <div>
+                        <p class="text-gray-500 text-xs uppercase mb-1">Jabatan</p>
+                        <p class="font-semibold">{{ $quickViewCustomer->position ?? '-' }}</p>
+                    </div>
+                    <div>
+                        <p class="text-gray-500 text-xs uppercase mb-1">Kebutuhan Layanan</p>
+                        <p class="font-semibold">{{ ['import'=>'Impor','export'=>'Ekspor','both'=>'Impor & Ekspor','domestic'=>'Domestik'][$quickViewCustomer->trade_type] ?? '-' }}</p>
+                    </div>
+                    <div class="col-span-2">
+                        <p class="text-gray-500 text-xs uppercase mb-1">Rencana / Komoditas</p>
+                        <p class="font-medium text-gray-700">{{ $quickViewCustomer->trade_plan ?? '-' }}</p>
                     </div>
                     <div>
                         <p class="text-gray-500 text-xs uppercase mb-1">Email</p>

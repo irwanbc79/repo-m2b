@@ -42,9 +42,57 @@
                 </div>
 
                 <div class="mb-4">
+                    <label class="block text-m2b-primary text-xs font-bold mb-2 uppercase">Jabatan / Perwakilan</label>
+                    <input class="w-full px-4 py-2 bg-gray-50 border border-blue-200 rounded-lg focus:outline-none focus:border-m2b-primary focus:ring-2 focus:ring-m2b-primary/20 transition"
+                           type="text" name="position" value="{{ old('position') }}" required placeholder="mis. Direktur / Staf Ekspor-Impor / Owner">
+                </div>
+
+                <div class="mb-4">
                     <label class="block text-m2b-primary text-xs font-bold mb-2 uppercase">Email Address</label>
-                    <input class="w-full px-4 py-2 bg-gray-50 border border-blue-200 rounded-lg focus:outline-none focus:border-m2b-primary focus:ring-2 focus:ring-m2b-primary/20 transition" 
+                    <input class="w-full px-4 py-2 bg-gray-50 border border-blue-200 rounded-lg focus:outline-none focus:border-m2b-primary focus:ring-2 focus:ring-m2b-primary/20 transition"
                            type="email" name="email" value="{{ old('email') }}" required placeholder="email@perusahaan.com">
+                </div>
+
+                <div class="mb-4">
+                    <label class="block text-m2b-primary text-xs font-bold mb-2 uppercase">Kebutuhan Layanan</label>
+                    <select class="w-full px-4 py-2 bg-gray-50 border border-blue-200 rounded-lg focus:outline-none focus:border-m2b-primary focus:ring-2 focus:ring-m2b-primary/20 transition"
+                            name="trade_type" required>
+                        <option value="" disabled {{ old('trade_type') ? '' : 'selected' }}>-- Pilih kebutuhan --</option>
+                        <option value="import" {{ old('trade_type') === 'import' ? 'selected' : '' }}>Impor</option>
+                        <option value="export" {{ old('trade_type') === 'export' ? 'selected' : '' }}>Ekspor</option>
+                        <option value="both" {{ old('trade_type') === 'both' ? 'selected' : '' }}>Impor &amp; Ekspor</option>
+                        <option value="domestic" {{ old('trade_type') === 'domestic' ? 'selected' : '' }}>Pengiriman Domestik</option>
+                    </select>
+                </div>
+
+                <div class="mb-4">
+                    <label class="block text-m2b-primary text-xs font-bold mb-2 uppercase">Rencana / Komoditas</label>
+                    <textarea class="w-full px-4 py-2 bg-gray-50 border border-blue-200 rounded-lg focus:outline-none focus:border-m2b-primary focus:ring-2 focus:ring-m2b-primary/20 transition"
+                              name="trade_plan" rows="2" required placeholder="mis. Impor mesin dari China rutin / Kirim hasil bumi antar pulau">{{ old('trade_plan') }}</textarea>
+                </div>
+
+                <div class="mb-4">
+                    <label class="block text-m2b-primary text-xs font-bold mb-2 uppercase">No. HP / WhatsApp</label>
+                    <input class="w-full px-4 py-2 bg-gray-50 border border-blue-200 rounded-lg focus:outline-none focus:border-m2b-primary focus:ring-2 focus:ring-m2b-primary/20 transition"
+                           type="text" name="phone" value="{{ old('phone') }}" required placeholder="08xxxxxxxxxx">
+                </div>
+
+                <div class="mb-4">
+                    <label class="block text-m2b-primary text-xs font-bold mb-2 uppercase">Alamat Lengkap</label>
+                    <textarea class="w-full px-4 py-2 bg-gray-50 border border-blue-200 rounded-lg focus:outline-none focus:border-m2b-primary focus:ring-2 focus:ring-m2b-primary/20 transition"
+                              name="address" rows="2" required placeholder="Jalan, nomor, kelurahan, kecamatan">{{ old('address') }}</textarea>
+                </div>
+
+                <div class="mb-4">
+                    <label class="block text-m2b-primary text-xs font-bold mb-2 uppercase">Kota</label>
+                    <input class="w-full px-4 py-2 bg-gray-50 border border-blue-200 rounded-lg focus:outline-none focus:border-m2b-primary focus:ring-2 focus:ring-m2b-primary/20 transition"
+                           type="text" name="city" value="{{ old('city') }}" required placeholder="Jakarta">
+                </div>
+
+                <div class="mb-4">
+                    <label class="block text-m2b-primary text-xs font-bold mb-2 uppercase">NPWP <span class="text-gray-400 normal-case">(opsional)</span></label>
+                    <input class="w-full px-4 py-2 bg-gray-50 border border-blue-200 rounded-lg focus:outline-none focus:border-m2b-primary focus:ring-2 focus:ring-m2b-primary/20 transition"
+                           type="text" name="npwp" value="{{ old('npwp') }}" placeholder="15 atau 16 digit angka">
                 </div>
 
                 <div class="mb-4">

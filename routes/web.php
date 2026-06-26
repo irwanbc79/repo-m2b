@@ -111,7 +111,26 @@ Route::middleware('guest')->group(function () {
             return view("auth.register-success"); }
         )->name("register.success");
         Route::post('/register', function (Request $request) {
-            $request->validate(['name' => 'required', 'company_name' => 'required', 'email' => 'required|email|unique:users', 'password' => 'required|confirmed']);
+            $request->validate([
+                'name' => 'required|string|max:150',
+                'company_name' => 'required|string|max:200',
+                'position' => 'required|string|max:100',
+                'email' => 'required|email|unique:users',
+                'phone' => ['required', 'string', 'regex:/^(\+62|62|0)8[1-9][0-9]{6,11}$/'],
+                'address' => 'required|string|min:10|max:500',
+                'city' => 'required|string|max:100',
+                'npwp' => ['nullable', 'string', 'regex:/^[0-9]{15,16}$/'],
+                'trade_type' => 'required|in:import,export,both,domestic',
+                'trade_plan' => 'required|string|min:10|max:1000',
+                'password' => 'required|confirmed|min:8',
+            ], [
+                'position.required' => 'Mohon isi jabatan Anda sebagai perwakilan perusahaan.',
+                'phone.regex' => 'Nomor HP tidak valid. Gunakan format Indonesia, contoh 08xxxxxxxxxx.',
+                'address.min' => 'Alamat terlalu pendek, mohon isi alamat lengkap.',
+                'npwp.regex'  => 'NPWP harus 15 atau 16 digit angka.',
+                'trade_type.required' => 'Pilih kebutuhan layanan Anda (Impor / Ekspor / Keduanya / Domestik).',
+                'trade_plan.required' => 'Mohon jelaskan rencana pengiriman / komoditas Anda.',
+            ]);
 
             $user = null;
             DB::transaction(function () use ($request, &$user) {
@@ -120,14 +139,20 @@ Route::middleware('guest')->group(function () {
                         'email' => $request->email,
                         'password' => Hash::make($request->password),
                         'role' => 'customer',
+                        'is_active' => false, // menunggu persetujuan admin
                     ]);
 
                     Customer::create([
                         'user_id' => $user->id,
                         'customer_code' => Customer::generateCustomerCode(),
                         'company_name' => $request->company_name,
-                        'address' => '-',
-                        'city' => 'Indonesia'
+                        'position' => $request->position,
+                        'phone' => $request->phone,
+                        'address' => $request->address,
+                        'city' => $request->city,
+                        'npwp' => $request->npwp,
+                        'trade_type' => $request->trade_type,
+                        'trade_plan' => $request->trade_plan,
                     ]);
                 }
                 );
@@ -208,6 +233,10 @@ Route::middleware('guest')->group(function () {
 // --- GOOGLE OAUTH ROUTES ---
 Route::get('auth/google', [\App\Http\Controllers\Auth\GoogleAuthController::class, 'redirectToGoogle'])->name('login.google');
 Route::get('auth/google/callback', [\App\Http\Controllers\Auth\GoogleAuthController::class, 'handleGoogleCallback'])->name('login.google.callback');
+
+// Lengkapi data untuk pendaftar Google baru (akun dibuat setelah data valid diisi)
+Route::get('register/complete', [\App\Http\Controllers\Auth\GoogleAuthController::class, 'showCompleteProfile'])->name('register.complete');
+Route::post('register/complete', [\App\Http\Controllers\Auth\GoogleAuthController::class, 'storeCompleteProfile'])->name('register.complete.store')->middleware('throttle:10,1');
 
 
 // --- AUTH COMMON ---
