@@ -8,6 +8,7 @@ use App\Models\User;
 use App\Models\Customer;
 use App\Models\Shipment;
 use App\Models\Invoice;
+use App\Models\MoraLeadNotification;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Auth;
@@ -302,6 +303,61 @@ class CustomerManagement extends Component
             $customer->user->update(['is_active' => false]);
             session()->flash('message', 'Customer "' . ($customer->company_name ?: $customer->user->name) . '" dinonaktifkan.');
         }
+    }
+
+    /**
+     * Dorong customer (mis. signup portal yang belum jelas rencananya) ke
+     * papan MORA Leads agar bisa di-follow-up & dikualifikasi tim sales.
+     */
+    public function convertToLead($id)
+    {
+        $customer = Customer::with('user')->find($id);
+        if (! $customer || ! $customer->user) {
+            session()->flash('error', 'Customer tidak ditemukan.');
+            return;
+        }
+
+        $email = $customer->user->email;
+
+        // Cegah duplikat: sudah pernah didorong jadi lead dari portal
+        $exists = MoraLeadNotification::where('source', 'portal_signup')
+            ->where('email', $email)
+            ->exists();
+        if ($exists) {
+            session()->flash('error', 'Customer ini sudah ada di papan MORA Leads.');
+            return;
+        }
+
+        // Map kebutuhan layanan customer -> service_interest lead
+        $serviceMap = [
+            'import' => 'import',
+            'export' => 'export',
+            'both' => 'other',
+            'domestic' => 'door_to_door',
+        ];
+        $service = $serviceMap[$customer->trade_type] ?? null;
+
+        MoraLeadNotification::create([
+            'name' => $customer->user->name ?: ($customer->company_name ?: 'Customer'),
+            'phone' => $customer->phone ?: '-',
+            'email' => $email,
+            'company' => $customer->company_name ?: null,
+            'source' => 'portal_signup',
+            'score' => 'cold',
+            'service_interest' => $service,
+            'summary' => trim(($customer->trade_plan ?: 'Signup portal via Google, rencana belum diketahui — perlu kualifikasi kebutuhan.')
+                . ($customer->city ? ' | Kota: ' . $customer->city : '')),
+            'status' => 'new',
+            'read_at' => now(),
+            'assigned_to' => auth()->id(),
+            'sales_notes' => [[
+                'date' => now()->toIso8601String(),
+                'user' => auth()->user()?->name ?? 'System',
+                'text' => 'Didorong dari Manage Customers (signup portal) untuk kualifikasi follow-up.',
+            ]],
+        ]);
+
+        session()->flash('message', 'Customer "' . ($customer->company_name ?: $customer->user->name) . '" berhasil ditambahkan ke MORA Leads untuk follow-up.');
     }
 
     public function quickView($id)

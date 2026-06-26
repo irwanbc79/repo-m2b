@@ -137,4 +137,31 @@ class CustomerRegistrationFlowTest extends TestCase
 
         $this->assertTrue((bool) $pending->fresh()->is_active);
     }
+
+    /** Admin dapat mendorong customer ke MORA Leads (sekali, tanpa duplikat). */
+    public function test_admin_can_convert_customer_to_mora_lead(): void
+    {
+        $admin = User::factory()->create(['role' => 'admin']);
+        $u = User::factory()->create(['role' => 'customer', 'name' => 'Tommy Hu', 'email' => 'tommy@example.com']);
+        $customer = Customer::create([
+            'user_id' => $u->id,
+            'customer_code' => Customer::generateCustomerCode(),
+            'company_name' => 'Tommy Trading',
+            'trade_type' => 'domestic',
+        ]);
+
+        $component = Livewire::actingAs($admin)->test(CustomerManagement::class);
+        $component->call('convertToLead', $customer->id);
+
+        $this->assertDatabaseHas('mora_lead_notifications', [
+            'email' => 'tommy@example.com',
+            'source' => 'portal_signup',
+            'status' => 'new',
+            'service_interest' => 'door_to_door',
+        ]);
+
+        // Panggilan kedua tidak boleh menduplikasi
+        $component->call('convertToLead', $customer->id);
+        $this->assertEquals(1, \App\Models\MoraLeadNotification::where('email', 'tommy@example.com')->count());
+    }
 }
