@@ -6397,6 +6397,10 @@
       background-color: var(--color-amber-600);
     }
 
+    .hover\:bg-amber-700:hover {
+      background-color: var(--color-amber-700);
+    }
+
     .hover\:bg-black:hover {
       background-color: var(--color-black);
     }

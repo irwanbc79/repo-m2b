@@ -86,10 +86,22 @@ class MoraLeadNotification extends Model
     {
         $serviceName = $service ? $service : 'Layanan Logistik';
         return [
-            'intro' => "Halo Kak {$name}, terima kasih telah menghubungi M2B Logistics. Saya Sales Rep M2B, ada yang bisa kami bantu terkait kebutuhan logistiknya?",
+            'intro' => "Halo Kak {$name}, terima kasih telah menghubungi M2B Logistics. Saya dari Tim M2B Logistics, ada yang bisa kami bantu terkait kebutuhan logistiknya?",
+            // Untuk lead dari pendaftaran portal (mereka mendaftar sendiri, bukan menghubungi kita)
+            'portal' => "Halo Kak {$name}, terima kasih sudah mendaftar di Portal M2B Logistics. Saya dari Tim M2B Logistics. Boleh kami bantu kebutuhan impor / ekspor / pengiriman domestiknya? Boleh dibantu info rute asal-tujuan dan jenis barangnya ya.",
             'service' => "Halo Kak {$name}, saya melihat Kakak tertarik dengan layanan *{$serviceName}* di M2B Logistics. Boleh tahu detail rencana pengirimannya (seperti rute asal-tujuan dan jenis barang)?",
             'followup' => "Halo Kak {$name}, sekadar follow-up apakah penawaran harga kami kemarin sudah sempat dibaca? Jika ada yang perlu ditanyakan atau disesuaikan, silakan berkabar ya. Terima kasih!",
             'deal' => "Halo Kak {$name}, terima kasih atas kepercayaan memilih M2B Logistics. Kami sedang mempersiapkan instruksi kerja selanjutnya. Mohon ditunggu ya."
         ];
+    }
+
+    /**
+     * Apakah lead punya nomor HP valid untuk di-follow-up via WhatsApp.
+     * Signup portal (login Google) sering tanpa HP (phone = '-').
+     */
+    public function hasValidPhone(): bool
+    {
+        $digits = preg_replace('/[^0-9]/', '', (string) $this->phone);
+        return strlen($digits) >= 8;
     }
 }

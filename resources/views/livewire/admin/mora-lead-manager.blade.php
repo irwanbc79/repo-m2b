@@ -154,6 +154,8 @@
                                         <span class="text-[10px] bg-green-50 text-green-600 font-bold px-2 py-0.5 rounded-full">🟢 CS WhatsApp</span>
                                     @elseif($lead->source === 'cs_form_telegram')
                                         <span class="text-[10px] bg-sky-50 text-sky-600 font-bold px-2 py-0.5 rounded-full">🔵 CS Telegram</span>
+                                    @elseif($lead->source === 'portal_signup')
+                                        <span class="text-[10px] bg-indigo-50 text-indigo-600 font-bold px-2 py-0.5 rounded-full">🌐 Portal Signup</span>
                                     @else
                                         <span class="text-[10px] bg-slate-50 text-slate-600 font-bold px-2 py-0.5 rounded-full">📋 Form</span>
                                     @endif
@@ -261,7 +263,7 @@
                             </div>
                             <div>
                                 <span class="text-gray-400 block text-[9px] uppercase font-bold">Sumber Lead</span>
-                                <span class="font-bold text-gray-800 block capitalize">{{ $selectedLead->source === 'mora_chat' ? 'Mora Chat' : ($selectedLead->source === 'manual' ? 'Manual' : ($selectedLead->source === 'cs_form_whatsapp' ? 'CS WhatsApp' : ($selectedLead->source === 'cs_form_telegram' ? 'CS Telegram' : 'CS Form'))) }}</span>
+                                <span class="font-bold text-gray-800 block capitalize">{{ $selectedLead->source === 'mora_chat' ? 'Mora Chat' : ($selectedLead->source === 'manual' ? 'Manual' : ($selectedLead->source === 'cs_form_whatsapp' ? 'CS WhatsApp' : ($selectedLead->source === 'cs_form_telegram' ? 'CS Telegram' : ($selectedLead->source === 'portal_signup' ? 'Portal Signup' : 'CS Form')))) }}</span>
                             </div>
                             @if($selectedLead->product_links)
                             <div class="col-span-2 border-t border-gray-200/50 pt-2 mt-1">
@@ -278,10 +280,12 @@
                         </div>
 
                         <div class="flex gap-2 mt-2 pt-2 border-t border-gray-200/60">
+                            @if($selectedLead->hasValidPhone())
                             <a href="{{ $whatsappUrl }}" target="_blank"
                                 class="flex-1 flex items-center justify-center gap-1.5 bg-emerald-500 hover:bg-emerald-600 text-white text-xs font-bold py-2 rounded-lg transition shadow-sm">
                                 💬 WhatsApp Chat
                             </a>
+                            @endif
                             @if($selectedLead->email)
                                 <a href="mailto:{{ $selectedLead->email }}"
                                     class="flex-1 flex items-center justify-center gap-1.5 bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-bold py-2 rounded-lg transition border border-slate-200">
@@ -331,14 +335,18 @@
                         </div>
                     </div>
 
-                    {{-- WhatsApp Assistant Replies --}}
+                    @if($selectedLead->hasValidPhone())
+                    {{-- WhatsApp Assistant Replies (lead punya nomor HP) --}}
                     <div class="bg-indigo-50/50 rounded-xl p-3 border border-indigo-100 space-y-2">
                         <label class="text-[10px] font-black text-indigo-950 uppercase tracking-wide block">WhatsApp Quick Reply Assistant</label>
                         <div class="flex gap-2">
                             <select wire:model.live="selectedTemplateKey"
                                 class="text-xs border border-indigo-200 rounded-lg p-2 flex-1 focus:outline-none bg-white">
                                 <option value="">-- Pilih Template Pesan --</option>
-                                <option value="intro">👋 Perkenalan CS</option>
+                                <option value="intro">👋 Perkenalan</option>
+                                @if($selectedLead->source === 'portal_signup')
+                                <option value="portal">🌐 Sambutan Daftar Portal</option>
+                                @endif
                                 <option value="service">📦 Layanan Tertarik</option>
                                 <option value="followup">⏰ Follow-up Penawaran</option>
                                 <option value="deal">🎉 Konfirmasi Deal</option>
@@ -351,6 +359,24 @@
                             @endif
                         </div>
                     </div>
+                    @else
+                    {{-- Tidak ada nomor HP (mis. signup portal via Google) -> follow-up via Email --}}
+                    <div class="bg-amber-50 rounded-xl p-3 border border-amber-200 space-y-2">
+                        <label class="text-[10px] font-black text-amber-800 uppercase tracking-wide block">Follow-up via Email</label>
+                        <p class="text-[11px] text-amber-700 leading-relaxed">Lead ini belum punya nomor WhatsApp. Kirim email onboarding untuk meminta rencana &amp; nomor WA aktif.</p>
+                        @if($selectedLead->email)
+                        <button wire:click="sendFollowupEmail"
+                            wire:confirm="Kirim email follow-up ke {{ $selectedLead->email }}?"
+                            wire:loading.attr="disabled"
+                            class="w-full bg-amber-600 hover:bg-amber-700 text-white text-xs font-bold px-3 py-2 rounded-lg transition disabled:opacity-50">
+                            <span wire:loading.remove wire:target="sendFollowupEmail">✉️ Kirim Email Follow-up ke {{ $selectedLead->email }}</span>
+                            <span wire:loading wire:target="sendFollowupEmail">Mengirim…</span>
+                        </button>
+                        @else
+                        <p class="text-[11px] text-red-600 font-semibold">Lead ini juga tidak punya email — perlu data kontak manual.</p>
+                        @endif
+                    </div>
+                    @endif
 
                     {{-- Sales interaction Notes (Timeline) --}}
                     <div class="space-y-3">

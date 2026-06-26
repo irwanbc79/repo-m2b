@@ -3,9 +3,13 @@
 namespace Tests\Feature;
 
 use App\Livewire\Admin\CustomerManagement;
+use App\Livewire\Admin\MoraLeadManager;
+use App\Mail\LeadFollowupMail;
 use App\Models\Customer;
+use App\Models\MoraLeadNotification;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\Mail;
 use Livewire\Livewire;
 use Tests\TestCase;
 
@@ -163,5 +167,46 @@ class CustomerRegistrationFlowTest extends TestCase
         // Panggilan kedua tidak boleh menduplikasi
         $component->call('convertToLead', $customer->id);
         $this->assertEquals(1, \App\Models\MoraLeadNotification::where('email', 'tommy@example.com')->count());
+    }
+
+    /** Lead tanpa HP valid: hasValidPhone() false; dengan HP: true. */
+    public function test_lead_has_valid_phone_helper(): void
+    {
+        $noPhone = new MoraLeadNotification(['phone' => '-']);
+        $withPhone = new MoraLeadNotification(['phone' => '081234567890']);
+
+        $this->assertFalse($noPhone->hasValidPhone());
+        $this->assertTrue($withPhone->hasValidPhone());
+    }
+
+    /** Follow-up via email mengirim mail + menandai lead 'contacted'. */
+    public function test_send_followup_email_for_phoneless_lead(): void
+    {
+        Mail::fake();
+        $admin = User::factory()->create(['role' => 'admin']);
+        $lead = MoraLeadNotification::create([
+            'name' => 'Clara Oke',
+            'phone' => '-',
+            'email' => 'clara@example.com',
+            'source' => 'portal_signup',
+            'score' => 'cold',
+            'status' => 'new',
+        ]);
+
+        Livewire::actingAs($admin)
+            ->test(MoraLeadManager::class)
+            ->call('selectLead', $lead->id)
+            ->call('sendFollowupEmail');
+
+        Mail::assertSent(LeadFollowupMail::class, fn ($m) => $m->hasTo('clara@example.com'));
+        $this->assertEquals('contacted', $lead->fresh()->status);
+    }
+
+    /** Template 'portal' tersedia untuk sambutan signup portal. */
+    public function test_portal_signup_wa_template_exists(): void
+    {
+        $templates = MoraLeadNotification::getWaTemplates('Clara');
+        $this->assertArrayHasKey('portal', $templates);
+        $this->assertStringContainsString('mendaftar di Portal M2B', $templates['portal']);
     }
 }

@@ -150,6 +150,47 @@ class MoraLeadManager extends Component
         session()->flash('message', 'Lead updated successfully.');
     }
 
+    /**
+     * Follow-up via email untuk lead tanpa nomor HP valid (mis. signup portal
+     * via Google). Mengirim email onboarding minta rencana + nomor WhatsApp.
+     */
+    public function sendFollowupEmail(): void
+    {
+        if (! $this->selectedLeadId) return;
+
+        $lead = MoraLeadNotification::find($this->selectedLeadId);
+        if (! $lead) return;
+
+        if (empty($lead->email) || ! filter_var($lead->email, FILTER_VALIDATE_EMAIL)) {
+            session()->flash('error', 'Lead ini tidak punya email yang valid untuk follow-up.');
+            return;
+        }
+
+        try {
+            \Mail::to($lead->email)->send(new \App\Mail\LeadFollowupMail($lead));
+        } catch (\Throwable $e) {
+            session()->flash('error', 'Gagal mengirim email: ' . $e->getMessage());
+            return;
+        }
+
+        // Catat di jurnal interaksi sales + tandai dihubungi
+        $notes = $lead->sales_notes ?? [];
+        $notes[] = [
+            'date' => now()->toIso8601String(),
+            'user' => auth()->user()?->name ?? 'System',
+            'text' => 'Email follow-up dikirim ke ' . $lead->email . ' (minta rencana + nomor WhatsApp).',
+        ];
+        $lead->update([
+            'sales_notes' => $notes,
+            'status' => $lead->status === 'new' ? 'contacted' : $lead->status,
+            'read_at' => $lead->read_at ?? now(),
+        ]);
+
+        $this->selectLead($this->selectedLeadId);
+        $this->refreshStats();
+        session()->flash('message', 'Email follow-up berhasil dikirim ke ' . $lead->email . '.');
+    }
+
     public function markRead(int $id): void
     {
         MoraLeadNotification::find($id)?->markRead();
