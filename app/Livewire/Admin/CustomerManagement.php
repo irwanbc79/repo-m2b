@@ -377,8 +377,18 @@ class CustomerManagement extends Component
 
             session()->flash('message', 'Customer berhasil dihapus permanen.');
             $this->cancelDelete();
+        } catch (\Illuminate\Database\QueryException $e) {
+            // 23000 = integrity constraint violation (foreign key) — user ini
+            // tertaut ke data sistem lain (mis. jurnal/kas yang ia buat).
+            if ($e->getCode() === '23000') {
+                session()->flash('error', 'GAGAL: Customer ini tertaut ke data sistem (mis. jurnal/kas/akuntansi yang dibuat akun ini) sehingga tidak bisa dihapus permanen. Sebaiknya NONAKTIFKAN saja akunnya.');
+            } else {
+                session()->flash('error', 'Terjadi kesalahan database: ' . $e->getMessage());
+            }
+            $this->cancelDelete();
         } catch (\Exception $e) {
             session()->flash('error', 'Terjadi kesalahan sistem: ' . $e->getMessage());
+            $this->cancelDelete();
         }
     }
 
