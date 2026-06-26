@@ -82,6 +82,8 @@
     </div>
     <div class="footer">
         © 2025 PT. Mora Multi Berkah — All Rights Reserved.
+        <span class="mx-1">&middot;</span>
+        Powered by: <a href="https://morabangun.com" target="_blank" style="color:inherit;text-decoration:underline;">morabangun.com</a>
     </div>
     <!-- JS -->
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>

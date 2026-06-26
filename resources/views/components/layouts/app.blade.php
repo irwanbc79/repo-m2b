@@ -52,8 +52,10 @@
     </main>
 
     {{-- Footer (opsional) --}}
-    <footer class="text-xs text-gray-500 text-center py-6">
-        &copy; {{ date('Y') }} {{ config('app.name') }}. All rights reserved.
+    <footer class="text-xs text-gray-500 text-center py-6 flex flex-col sm:flex-row justify-center items-center gap-2">
+        <span>&copy; {{ date('Y') }} {{ config('app.name') }}. All rights reserved.</span>
+        <span class="hidden sm:inline">&middot;</span>
+        <span>Powered by: <a href="https://morabangun.com" target="_blank" class="hover:text-gray-700 underline">morabangun.com</a></span>
     </footer>
 
     {{-- App JS (alpine, app.js, dll) --}}
