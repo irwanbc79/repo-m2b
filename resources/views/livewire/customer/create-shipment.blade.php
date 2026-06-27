@@ -7,6 +7,23 @@
         <a href="{{ route('customer.shipments.index') }}" class="text-gray-500 hover:text-gray-700 text-sm font-medium">&larr; Cancel & Back</a>
     </div>
 
+    {{-- Pengingat kontekstual: data perusahaan belum lengkap saat booking --}}
+    @php($__bookCust = auth()->user()?->customer)
+    @if($__bookCust && ($__bookDq = $__bookCust->dataQuality())['level'] !== 'good')
+    <div class="rounded-xl border {{ $__bookDq['level'] === 'bad' ? 'bg-red-50 border-red-200' : 'bg-amber-50 border-amber-200' }} p-4 flex items-start gap-3">
+        <svg class="w-6 h-6 shrink-0 mt-0.5 {{ $__bookDq['level'] === 'bad' ? 'text-red-500' : 'text-amber-500' }}" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01M5.07 19h13.86c1.54 0 2.5-1.67 1.73-3L13.73 4a2 2 0 00-3.46 0L3.34 16c-.77 1.33.19 3 1.73 3z"/></svg>
+        <div class="flex-1">
+            <p class="text-sm font-bold {{ $__bookDq['level'] === 'bad' ? 'text-red-800' : 'text-amber-800' }}">Data perusahaan Anda belum lengkap</p>
+            <p class="text-xs {{ $__bookDq['level'] === 'bad' ? 'text-red-700' : 'text-amber-700' }} mt-0.5">
+                Booking tetap bisa dikirim, tetapi shipment <strong>tidak dapat diproses ke dokumen kepabeanan/invoice</strong> sampai data perusahaan (nama resmi, NPWP, alamat) lengkap &amp; benar.
+            </p>
+            <a href="{{ route('customer.profile') }}" class="inline-flex items-center gap-1 mt-2 text-white text-xs font-bold px-3 py-1.5 rounded-lg transition {{ $__bookDq['level'] === 'bad' ? 'bg-red-600 hover:bg-red-700' : 'bg-amber-500 hover:bg-amber-600' }}">
+                👤 Lengkapi Data Dulu
+            </a>
+        </div>
+    </div>
+    @endif
+
     <div class="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
         <div class="p-6 md:p-8 space-y-6">
             

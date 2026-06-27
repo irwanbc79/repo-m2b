@@ -29,6 +29,7 @@ class ShipmentManagement extends Component
     public $filterServiceType = '';
     public $filterShipmentType = '';
     public $filterLaneStatus = '';
+    public $filterCustomerData = ''; // '' | 'attention' = shipment milik customer yg datanya perlu dilengkapi
     public $filterDateFrom = '';
     public $filterDateTo = '';
     public $sortField = 'created_at';
@@ -86,13 +87,14 @@ class ShipmentManagement extends Component
     public $printDoAlamatBongkar = '';
     public $printDoNamaPenerima = '';
 
-    protected $queryString = ['search', 'filterStatus', 'filterCustomer', 'filterServiceType', 'filterLaneStatus', 'sortField', 'sortDirection'];
+    protected $queryString = ['search', 'filterStatus', 'filterCustomer', 'filterServiceType', 'filterLaneStatus', 'filterCustomerData', 'sortField', 'sortDirection'];
 
     public function updatingSearch() { $this->resetPage(); }
     public function updatingFilterStatus() { $this->resetPage(); }
     public function updatingFilterCustomer() { $this->resetPage(); }
     public function updatingFilterServiceType() { $this->resetPage(); }
     public function updatingFilterLaneStatus() { $this->resetPage(); }
+    public function updatingFilterCustomerData() { $this->resetPage(); }
 
     public function updatedSelectAll($value)
     {
@@ -169,6 +171,11 @@ class ShipmentManagement extends Component
             })
             ->when($this->filterLaneStatus, function($q) {
                 $q->where('lane_status', $this->filterLaneStatus);
+            })
+            ->when($this->filterCustomerData === 'attention', function($q) {
+                $q->whereHas('customer', function($c) {
+                    $c->needsAttention();
+                });
             })
             ->when($this->filterDateFrom, function($q) {
                 $q->whereDate('created_at', '>=', $this->filterDateFrom);
