@@ -26,6 +26,9 @@ class ShipmentDetail extends Component
     public $allPublicDocs;
     public $currentDocIndex = 0;
 
+    // Pesan / diskusi shipment
+    public $newMessage = '';
+
     public function mount($id)
     {
         // LOGIC KEAMANAN PINTAR:
@@ -36,10 +39,37 @@ class ShipmentDetail extends Component
         if (Auth::user()->role === 'customer') {
             $query->where('customer_id', Auth::user()->customer->id);
         }
-        
+
         // 3. Jika ADMIN, loloskan saja (Bisa lihat semua shipment)
 
         $this->shipment = $query->firstOrFail();
+
+        // Tandai pesan dari admin sebagai sudah dibaca saat customer membuka detail.
+        if (Auth::user()->role === 'customer') {
+            $this->shipment->messages()->unreadForCustomer()->update(['read_at' => now()]);
+        }
+    }
+
+    /**
+     * Customer mengirim pertanyaan/pesan tentang shipment ini.
+     */
+    public function sendMessage()
+    {
+        $this->validate(
+            ['newMessage' => 'required|string|max:2000'],
+            ['newMessage.required' => 'Pesan tidak boleh kosong.']
+        );
+
+        $this->shipment->messages()->create([
+            'customer_id' => $this->shipment->customer_id,
+            'sender_type' => 'customer',
+            'sender_id'   => Auth::id(),
+            'body'        => trim($this->newMessage),
+        ]);
+
+        $this->newMessage = '';
+        $this->shipment->load('messages.sender');
+        session()->flash('msg_sent', 'Pesan terkirim. Tim M2B akan membalas secepatnya.');
     }
 
     // === METHOD PREVIEW DOCUMENT (BARU - adopsi dari admin) ===
