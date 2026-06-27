@@ -316,4 +316,110 @@ class CustomerRegistrationFlowTest extends TestCase
             ->assertSee('Doyyan xD')
             ->assertDontSee('PT Lengkap Sentosa');
     }
+
+    /** Melengkapi profil menstempel profile_completed_at (utk notif admin). */
+    public function test_completing_profile_stamps_completed_at(): void
+    {
+        $user = User::factory()->create(['role' => 'customer']);
+        $customer = Customer::create([
+            'user_id' => $user->id,
+            'customer_code' => Customer::generateCustomerCode(),
+            'company_name' => 'Doyyan xD',
+        ]);
+
+        Livewire::actingAs($user)
+            ->test(\App\Livewire\Customer\Profile::class)
+            ->set('company_name', 'PT Doyyan Sejahtera')
+            ->set('npwp', '123456789012345')
+            ->set('phone', '081234567890')
+            ->set('address', 'Jl. Merdeka No. 1')
+            ->set('city', 'Jakarta')
+            ->call('updateProfile')
+            ->assertHasNoErrors();
+
+        $this->assertNotNull($customer->fresh()->profile_completed_at);
+    }
+
+    /** Admin bisa "Lihat sebagai customer" (impersonate) lalu kembali. */
+    public function test_admin_can_impersonate_and_return(): void
+    {
+        $admin = User::factory()->create(['role' => 'admin']);
+        $custUser = User::factory()->create(['role' => 'customer', 'is_active' => true]);
+        $customer = Customer::create([
+            'user_id' => $custUser->id,
+            'customer_code' => Customer::generateCustomerCode(),
+            'company_name' => 'PT Preview',
+        ]);
+
+        $this->actingAs($admin)
+            ->get(route('admin.customers.impersonate', $customer->id))
+            ->assertRedirect(route('customer.dashboard'));
+        $this->assertEquals($admin->id, session('impersonator_id'));
+
+        $this->get(route('impersonate.stop'))
+            ->assertRedirect(route('admin.customers.index'));
+        $this->assertNull(session('impersonator_id'));
+    }
+
+    /** Non-admin tidak boleh impersonate. */
+    public function test_non_admin_cannot_impersonate(): void
+    {
+        $custUser = User::factory()->create(['role' => 'customer', 'is_active' => true]);
+        $customer = Customer::create([
+            'user_id' => $custUser->id,
+            'customer_code' => Customer::generateCustomerCode(),
+            'company_name' => 'PT X',
+        ]);
+
+        $this->actingAs($custUser)
+            ->get(route('admin.customers.impersonate', $customer->id))
+            ->assertForbidden();
+    }
+
+    /** Customer menutup banner -> profile_reminder_dismissed_at tercatat. */
+    public function test_customer_can_dismiss_reminder(): void
+    {
+        $user = User::factory()->create(['role' => 'customer', 'is_active' => true]);
+        $customer = Customer::create([
+            'user_id' => $user->id,
+            'customer_code' => Customer::generateCustomerCode(),
+            'company_name' => 'Doyyan xD',
+        ]);
+
+        $this->actingAs($user)
+            ->post(route('customer.profile-reminder.dismiss'))
+            ->assertNoContent();
+
+        $this->assertNotNull($customer->fresh()->profile_reminder_dismissed_at);
+    }
+
+    /** Kunjungan portal saat data belum lengkap menstempel "seen". */
+    public function test_visiting_portal_marks_reminder_seen(): void
+    {
+        $user = User::factory()->create(['role' => 'customer', 'is_active' => true]);
+        $customer = Customer::create([
+            'user_id' => $user->id,
+            'customer_code' => Customer::generateCustomerCode(),
+            'company_name' => 'Doyyan xD',
+        ]);
+
+        $this->assertNull($customer->profile_reminder_seen_at);
+
+        $this->actingAs($user)->get(route('customer.dashboard'))->assertOk();
+
+        $this->assertNotNull($customer->fresh()->profile_reminder_seen_at);
+    }
+
+    /** reminderStatus() merangkum siklus banner untuk badge admin. */
+    public function test_reminder_status_labels(): void
+    {
+        $unseen = new Customer(['company_name' => 'Doyyan xD']);
+        $this->assertEquals('unseen', $unseen->reminderStatus()['level']);
+
+        $seen = new Customer(['company_name' => 'Doyyan xD', 'profile_reminder_seen_at' => now()]);
+        $this->assertEquals('seen', $seen->reminderStatus()['level']);
+
+        $done = new Customer(['company_name' => 'PT Lengkap', 'profile_completed_at' => now()]);
+        $this->assertEquals('done', $done->reminderStatus()['level']);
+    }
 }

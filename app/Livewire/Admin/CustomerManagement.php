@@ -119,6 +119,9 @@ class CustomerManagement extends Component
             'total_credit_limit' => Customer::sum('credit_limit'),
             'vip_count' => Customer::where('business_type', 'VIP')->count(),
             'needs_attention' => Customer::needsAttention()->count(),
+            'recently_completed' => Customer::whereNotNull('profile_completed_at')
+                ->where('profile_completed_at', '>=', $now->copy()->subDays(7))
+                ->count(),
             ];
         });
     }
@@ -590,6 +593,10 @@ class CustomerManagement extends Component
             })
             ->when($this->filterQuality === 'attention', function ($query) {
                 $query->needsAttention();
+            })
+            ->when($this->filterQuality === 'completed', function ($query) {
+                $query->whereNotNull('profile_completed_at')
+                    ->where('profile_completed_at', '>=', now()->subDays(7));
             })
             ->when($this->filterStatus !== '', function ($query) {
                 $active = $this->filterStatus === 'active';

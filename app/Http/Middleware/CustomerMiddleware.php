@@ -17,8 +17,11 @@ class CustomerMiddleware
 
         $user = Auth::user();
 
+        $isImpersonating = $request->session()->has('impersonator_id');
+
         // Akun nonaktif / menunggu persetujuan admin tidak boleh masuk portal.
-        if (! $user->is_active) {
+        // Kecuali admin yang sedang impersonate (preview) -> tetap boleh lihat.
+        if (! $user->is_active && ! $isImpersonating) {
             Auth::logout();
             $request->session()->invalidate();
             $request->session()->regenerateToken();
@@ -33,9 +36,21 @@ class CustomerMiddleware
         $primaryRole = $user->getPrimaryRole();
         $isCustomer = $primaryRole === 'customer' || $user->hasRole('customer');
 
-        if (!$isCustomer) {
+        if (!$isCustomer && ! $isImpersonating) {
             // Non-customer yang coba akses customer portal -> redirect ke admin
             return redirect('/admin/dashboard');
+        }
+
+        // Catat bahwa customer "melihat" banner pengingat (kunjungan portal saat
+        // data belum lengkap). Hanya untuk customer asli, bukan saat impersonate.
+        if (! $isImpersonating) {
+            $customer = $user->customer;
+            if ($customer
+                && ! $customer->profile_reminder_seen_at
+                && ! $customer->profile_completed_at
+                && $customer->dataQuality()['level'] !== 'good') {
+                $customer->forceFill(['profile_reminder_seen_at' => now()])->save();
+            }
         }
 
         return $next($request);
