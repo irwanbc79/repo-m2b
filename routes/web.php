@@ -349,6 +349,8 @@ Route::middleware(['auth', 'admin'])->prefix('admin')->name('admin.')->group(fun
         // Lihat sebagai customer (impersonate, admin level saja)
         Route::get('/customers/{customer}/impersonate', [\App\Http\Controllers\Admin\ImpersonationController::class, 'start'])
             ->name('customers.impersonate');
+        // Inbox pesan customer (diskusi per shipment)
+        Route::get('/customer-messages', \App\Livewire\Admin\CustomerMessages::class)->name('customer-messages');
         Route::get('/users', UserManagement::class)->name('users.index');
         Route::get('/user-requests', UserRequestManager::class)->name('user-requests.index');
         Route::get('/reports', Reports::class)->name('reports');

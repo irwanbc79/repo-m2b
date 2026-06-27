@@ -106,6 +106,16 @@
                     📦 Manage Shipments
                 </a>
 
+                @php $custMsgUnread = \App\Models\ShipmentMessage::unreadForAdmin()->count(); @endphp
+                <a href="{{ route('admin.customer-messages') }}" class="flex items-center px-4 py-3 text-sm font-medium rounded-lg transition-colors {{ request()->routeIs('admin.customer-messages') ? 'bg-m2b-accent text-white' : 'hover:bg-gray-800 text-gray-300' }}">
+                    <span class="flex-1">💬 Pesan Customer</span>
+                    @if($custMsgUnread > 0)
+                        <span class="ml-2 min-w-5 h-5 px-1.5 bg-red-500 text-white text-[10px] font-black rounded-full flex items-center justify-center animate-pulse">
+                            {{ $custMsgUnread > 9 ? '9+' : $custMsgUnread }}
+                        </span>
+                    @endif
+                </a>
+
                 <a href="{{ route('admin.calculator') }}" class="flex items-center px-4 py-3 text-sm font-medium rounded-lg transition-colors {{ request()->routeIs('admin.calculator') ? 'bg-m2b-accent text-white' : 'hover:bg-gray-800 text-gray-300' }}">
                     🧮 Kalkulator Pabean
                 </a>

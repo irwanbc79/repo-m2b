@@ -335,6 +335,14 @@ class Shipment extends Model
     }
 
     /**
+     * Percakapan pesan customer <-> admin untuk shipment ini.
+     */
+    public function messages(): HasMany
+    {
+        return $this->hasMany(ShipmentMessage::class)->orderBy('created_at', 'asc');
+    }
+
+    /**
      * Get latest status
      */
     public function latestStatus(): HasMany

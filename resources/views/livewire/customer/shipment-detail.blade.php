@@ -233,6 +233,62 @@
     </div>
 
     {{-- ============================================ --}}
+    {{-- DISKUSI / TANYA SHIPMENT --}}
+    {{-- ============================================ --}}
+    <div class="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
+        <div class="bg-m2b-primary text-white px-6 py-4 flex items-center gap-2">
+            <span class="text-lg">💬</span>
+            <div>
+                <h3 class="font-bold text-sm">Tanya / Diskusi Shipment</h3>
+                <p class="text-[11px] text-blue-200">Punya pertanyaan tentang shipment ini? Kirim pesan ke tim M2B.</p>
+            </div>
+        </div>
+
+        <div class="p-6">
+            @if (session()->has('msg_sent'))
+            <div class="mb-4 p-3 bg-green-50 border border-green-200 text-green-700 rounded-lg text-sm flex items-center gap-2">
+                <span>✅</span> {{ session('msg_sent') }}
+            </div>
+            @endif
+
+            {{-- Thread --}}
+            <div class="space-y-3 max-h-96 overflow-y-auto mb-4 pr-1">
+                @forelse($shipment->messages as $msg)
+                <div class="flex {{ $msg->sender_type === 'customer' ? 'justify-end' : 'justify-start' }}">
+                    <div class="max-w-[80%]">
+                        <div class="rounded-2xl px-4 py-2.5 text-sm {{ $msg->sender_type === 'customer' ? 'bg-blue-600 text-white rounded-br-sm' : 'bg-gray-100 text-gray-800 rounded-bl-sm' }}">
+                            {!! nl2br(e($msg->body)) !!}
+                        </div>
+                        <p class="text-[10px] text-gray-400 mt-1 {{ $msg->sender_type === 'customer' ? 'text-right' : 'text-left' }}">
+                            {{ $msg->sender_type === 'customer' ? 'Anda' : '🏢 Tim M2B' }} • {{ $msg->created_at->diffForHumans() }}
+                        </p>
+                    </div>
+                </div>
+                @empty
+                <div class="text-center py-8 text-gray-400">
+                    <div class="text-3xl mb-2">💬</div>
+                    <p class="text-sm">Belum ada percakapan. Mulai tanyakan apa pun tentang shipment ini.</p>
+                </div>
+                @endforelse
+            </div>
+
+            {{-- Form --}}
+            <form wire:submit.prevent="sendMessage" class="flex items-end gap-2">
+                <div class="flex-1">
+                    <textarea wire:model="newMessage" rows="2" placeholder="Tulis pertanyaan Anda… (mis. perkiraan tiba, status dokumen)"
+                        class="w-full border-gray-300 rounded-xl text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500"></textarea>
+                    @error('newMessage') <span class="text-red-500 text-xs">{{ $message }}</span> @enderror
+                </div>
+                <button type="submit" wire:loading.attr="disabled"
+                    class="bg-blue-600 hover:bg-blue-700 text-white font-bold px-5 py-2.5 rounded-xl transition shrink-0 disabled:opacity-50">
+                    <span wire:loading.remove wire:target="sendMessage">Kirim</span>
+                    <span wire:loading wire:target="sendMessage">…</span>
+                </button>
+            </form>
+        </div>
+    </div>
+
+    {{-- ============================================ --}}
     {{-- MODAL PREVIEW DOCUMENT (BARU - adopsi dari admin) --}}
     {{-- ============================================ --}}
     <div 

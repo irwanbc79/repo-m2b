@@ -39,7 +39,14 @@
                     <tr class="hover:bg-blue-50 transition duration-150">
                         {{-- Ref No & Route --}}
                         <td class="px-6 py-4">
-                            <div class="font-bold text-m2b-primary text-base">{{ $shipment->awb_number }}</div>
+                            <div class="font-bold text-m2b-primary text-base flex items-center gap-2">
+                                {{ $shipment->awb_number }}
+                                @if(($shipment->unread_admin_count ?? 0) > 0)
+                                <span class="inline-flex items-center gap-1 bg-red-500 text-white text-[10px] font-bold px-2 py-0.5 rounded-full animate-pulse" title="Ada balasan baru dari tim M2B">
+                                    💬 {{ $shipment->unread_admin_count }} balasan
+                                </span>
+                                @endif
+                            </div>
                             <div class="text-xs text-gray-500 mt-1 flex items-center gap-1">
                                 <span>{{ $shipment->origin }}</span>
                                 <svg class="w-3 h-3 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 8l4 4m0 0l-4 4m4-4H3"></path></svg>

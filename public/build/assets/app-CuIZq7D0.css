@@ -1543,6 +1543,10 @@
     max-height: 40vh;
   }
 
+  .max-h-\[55vh\] {
+    max-height: 55vh;
+  }
+
   .max-h-\[60vh\] {
     max-height: 60vh;
   }
@@ -1845,6 +1849,10 @@
 
   .max-w-\[45\%\] {
     max-width: 45%;
+  }
+
+  .max-w-\[75\%\] {
+    max-width: 75%;
   }
 
   .max-w-\[80\%\] {
@@ -2478,8 +2486,16 @@
     border-bottom-right-radius: var(--radius-lg);
   }
 
+  .rounded-br-sm {
+    border-bottom-right-radius: var(--radius-sm);
+  }
+
   .rounded-bl-lg {
     border-bottom-left-radius: var(--radius-lg);
+  }
+
+  .rounded-bl-sm {
+    border-bottom-left-radius: var(--radius-sm);
   }
 
   .border {
