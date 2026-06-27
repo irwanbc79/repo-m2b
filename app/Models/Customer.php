@@ -10,7 +10,42 @@ class Customer extends Model
     use HasFactory;
 
     // Guarded kosong = Semua kolom boleh diisi (Aman untuk Mass Assignment)
-    protected $guarded = []; 
+    protected $guarded = [];
+
+    protected $casts = [
+        'profile_reminder_seen_at' => 'datetime',
+        'profile_reminder_dismissed_at' => 'datetime',
+        'profile_completed_at' => 'datetime',
+    ];
+
+    /**
+     * Status siklus pengingat data untuk admin (lihat di Manage Customers).
+     * Mengembalikan label + warna yang merangkum reaksi customer terhadap banner.
+     *
+     * @return array{label:string, level:string}|null  null jika data sudah lengkap & lama
+     */
+    public function reminderStatus(): ?array
+    {
+        // Sudah lengkap -> tampilkan badge "baru dilengkapi" bila masih hangat (7 hari).
+        if ($this->profile_completed_at) {
+            if ($this->profile_completed_at->gt(now()->subDays(7))) {
+                return ['label' => 'Baru dilengkapi', 'level' => 'done'];
+            }
+            return null; // sudah lengkap & lama -> tidak perlu badge
+        }
+
+        if ($this->dataQuality()['level'] === 'good') {
+            return null; // lengkap tapi belum ter-stempel (mis. diisi admin) -> abaikan
+        }
+
+        if ($this->profile_reminder_dismissed_at) {
+            return ['label' => 'Ditutup customer', 'level' => 'dismissed'];
+        }
+        if ($this->profile_reminder_seen_at) {
+            return ['label' => 'Sudah lihat', 'level' => 'seen'];
+        }
+        return ['label' => 'Belum lihat', 'level' => 'unseen'];
+    }
 
     // Relasi ke User (Login) - LEGACY: untuk backward compatibility
     public function user()

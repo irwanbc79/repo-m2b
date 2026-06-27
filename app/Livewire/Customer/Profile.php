@@ -104,6 +104,13 @@ class Profile extends Component
             $customer->address = $this->address;
             $customer->city = $this->city;
             $customer->warehouse_address = $this->warehouse_address;
+
+            // Stempel saat profil pertama kali mencapai status lengkap/valid.
+            // Dipakai admin untuk notifikasi "baru dilengkapi".
+            if (! $customer->profile_completed_at && $customer->dataQuality()['level'] === 'good') {
+                $customer->profile_completed_at = now();
+            }
+
             $customer->save();
         }
 

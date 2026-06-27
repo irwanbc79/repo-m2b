@@ -32,6 +32,20 @@
     </div>
     @endif
 
+    {{-- Notifikasi: customer baru melengkapi data (7 hari terakhir) --}}
+    @if(($stats['recently_completed'] ?? 0) > 0 && $filterQuality !== 'completed')
+    <div class="bg-green-50 border border-green-300 text-green-800 px-4 py-3 rounded-xl shadow-sm flex items-center gap-3">
+        <svg class="w-6 h-6 shrink-0 text-green-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+        <div class="flex-1">
+            <p class="text-sm font-semibold">🎉 {{ $stats['recently_completed'] }} customer baru melengkapi datanya (7 hari terakhir).</p>
+            <p class="text-xs text-green-700">Profil mereka kini valid & siap untuk dokumen pabean / invoice.</p>
+        </div>
+        <button wire:click="$set('filterQuality', 'completed')" class="shrink-0 bg-green-600 hover:bg-green-700 text-white text-xs font-bold px-3 py-1.5 rounded-lg transition">
+            Lihat
+        </button>
+    </div>
+    @endif
+
     {{-- Stats Cards --}}
     <div class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4">
         <div class="bg-white rounded-xl p-4 shadow-sm border border-gray-100">
@@ -138,6 +152,7 @@
                     <select wire:model.live="filterQuality" class="text-sm border-gray-300 rounded-lg focus:ring-blue-500 py-2">
                         <option value="">Semua Kualitas Data</option>
                         <option value="attention">⚠️ Perlu Dilengkapi</option>
+                        <option value="completed">✅ Baru Dilengkapi</option>
                     </select>
 
                     <select wire:model.live="perPage" class="text-sm border-gray-300 rounded-lg focus:ring-blue-500 py-2">
@@ -231,6 +246,24 @@
                                 </span>
                                 @endif
                             </div>
+                            @php($rs = $c->reminderStatus())
+                            @if($rs)
+                            <span class="inline-flex items-center gap-1 text-[10px] font-semibold px-1.5 py-0.5 rounded mt-1
+                                @switch($rs['level'])
+                                    @case('done') bg-green-100 text-green-700 @break
+                                    @case('dismissed') bg-orange-100 text-orange-700 @break
+                                    @case('seen') bg-blue-100 text-blue-700 @break
+                                    @default bg-gray-100 text-gray-500
+                                @endswitch">
+                                @switch($rs['level'])
+                                    @case('done') ✅ @break
+                                    @case('dismissed') 🔕 @break
+                                    @case('seen') 👁️ @break
+                                    @default ⏳
+                                @endswitch
+                                {{ $rs['label'] }}
+                            </span>
+                            @endif
                             @if($c->trade_type)
                             <span class="text-[10px] font-semibold text-indigo-600 uppercase">
                                 {{ ['import'=>'Impor','export'=>'Ekspor','both'=>'Impor & Ekspor','domestic'=>'Domestik'][$c->trade_type] ?? $c->trade_type }}
@@ -291,6 +324,13 @@
                                     class="p-1.5 text-orange-500 hover:text-orange-600 hover:bg-orange-50 rounded-lg transition" title="Jadikan MORA Lead">
                                     <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"/></svg>
                                 </button>
+                                @if($c->user)
+                                <a href="{{ route('admin.customers.impersonate', $c->id) }}"
+                                    onclick="return confirm('Buka portal sebagai customer ini? Anda akan masuk mode pratinjau dan bisa kembali kapan saja.')"
+                                    class="p-1.5 text-purple-600 hover:bg-purple-50 rounded-lg transition" title="Lihat sebagai customer">
+                                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17.982 18.725A7.488 7.488 0 0012 15.75a7.488 7.488 0 00-5.982 2.975m11.963 0a9 9 0 10-11.963 0m11.963 0A8.966 8.966 0 0112 21a8.966 8.966 0 01-5.982-2.275M15 9.75a3 3 0 11-6 0 3 3 0 016 0z"/></svg>
+                                </a>
+                                @endif
                                 <button wire:click="quickView({{ $c->id }})" class="p-1.5 text-gray-500 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition" title="Quick View">
                                     <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"/></svg>
                                 </button>

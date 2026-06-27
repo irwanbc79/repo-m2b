@@ -306,7 +306,15 @@ Route::middleware(['auth', 'customer'])->prefix('customer')->name('customer.')->
 
     // Penawaran (Quotation) Customer
     Route::get('/quotations', \App\Livewire\Customer\QuotationList::class)->name('quotations');
+
+    // Tutup banner pengingat lengkapi data ("Ingatkan nanti")
+    Route::post('/profile-reminder/dismiss', [\App\Http\Controllers\Customer\ProfileReminderController::class, 'dismiss'])
+        ->name('profile-reminder.dismiss');
 });
+
+// Berhenti impersonate — harus bisa diakses saat login sebagai customer.
+Route::get('/impersonate/stop', [\App\Http\Controllers\Admin\ImpersonationController::class, 'stop'])
+    ->middleware('auth')->name('impersonate.stop');
 
 // Public: Approval quotation via token (tanpa login)
 Route::get('/quotation/approve/{token}', [\App\Http\Controllers\QuotationApprovalController::class, 'show'])
@@ -338,6 +346,9 @@ Route::middleware(['auth', 'admin'])->prefix('admin')->name('admin.')->group(fun
         )->name('shipments.print-do');
 
         Route::get('/customers', CustomerManagement::class)->name('customers.index');
+        // Lihat sebagai customer (impersonate, admin level saja)
+        Route::get('/customers/{customer}/impersonate', [\App\Http\Controllers\Admin\ImpersonationController::class, 'start'])
+            ->name('customers.impersonate');
         Route::get('/users', UserManagement::class)->name('users.index');
         Route::get('/user-requests', UserRequestManager::class)->name('user-requests.index');
         Route::get('/reports', Reports::class)->name('reports');

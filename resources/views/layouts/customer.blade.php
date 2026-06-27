@@ -106,6 +106,18 @@
 
         {{-- MAIN CONTENT --}}
         <main class="flex-1 flex flex-col min-h-screen w-0 overflow-hidden bg-slate-50">
+            {{-- Bar impersonation: admin sedang "Lihat sebagai customer" --}}
+            @if(session()->has('impersonator_id'))
+            <div class="bg-purple-700 text-white px-4 py-2 flex items-center justify-between gap-3 text-sm shrink-0">
+                <span class="flex items-center gap-2">
+                    <span>👁️</span>
+                    Mode pratinjau — Anda melihat portal sebagai <strong>{{ auth()->user()->customer->company_name ?? auth()->user()->name }}</strong>
+                </span>
+                <a href="{{ route('impersonate.stop') }}" class="bg-white/20 hover:bg-white/30 transition rounded-lg px-3 py-1 font-bold shrink-0">
+                    ← Kembali ke Admin
+                </a>
+            </div>
+            @endif
             @php
                 $usdRate = \Illuminate\Support\Facades\Cache::remember('customer_usd_rate_header', 21600, function () {
                     return \App\Models\TaxExchangeRate::where('currency_code', 'USD')
@@ -181,14 +193,14 @@
                                     <span>👤</span> Lengkapi Sekarang
                                 </a>
                                 <button type="button"
-                                        @click="show = false; sessionStorage.setItem('m2b_profile_reminder', 'hidden')"
+                                        @click="show = false; sessionStorage.setItem('m2b_profile_reminder', 'hidden'); fetch('{{ route('customer.profile-reminder.dismiss') }}', { method: 'POST', headers: { 'X-CSRF-TOKEN': '{{ csrf_token() }}' } })"
                                         class="text-xs font-medium {{ $__dq['level'] === 'bad' ? 'text-red-600 hover:text-red-800' : 'text-amber-600 hover:text-amber-800' }}">
                                     Ingatkan nanti
                                 </button>
                             </div>
                         </div>
                         <button type="button"
-                                @click="show = false; sessionStorage.setItem('m2b_profile_reminder', 'hidden')"
+                                @click="show = false; sessionStorage.setItem('m2b_profile_reminder', 'hidden'); fetch('{{ route('customer.profile-reminder.dismiss') }}', { method: 'POST', headers: { 'X-CSRF-TOKEN': '{{ csrf_token() }}' } })"
                                 class="shrink-0 {{ $__dq['level'] === 'bad' ? 'text-red-400 hover:text-red-600' : 'text-amber-400 hover:text-amber-600' }}"
                                 title="Tutup">
                             <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
