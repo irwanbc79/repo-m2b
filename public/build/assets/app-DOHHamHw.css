@@ -6778,6 +6778,10 @@
       color: var(--color-amber-600);
     }
 
+    .hover\:text-amber-800:hover {
+      color: var(--color-amber-800);
+    }
+
     .hover\:text-black:hover {
       color: var(--color-black);
     }
