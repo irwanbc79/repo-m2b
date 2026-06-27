@@ -34,8 +34,9 @@
                 <div class="p-6">
                     <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
                         <div>
-                            <label class="block text-xs font-bold text-gray-500 uppercase tracking-wide mb-1">Nama Perusahaan</label>
-                            <p class="text-gray-800 font-semibold">{{ $company_name }}</p>
+                            <label class="block text-xs font-bold text-gray-500 uppercase tracking-wide mb-1">Nama Perusahaan <span class="text-red-500">*</span></label>
+                            <input type="text" wire:model="company_name" placeholder="mis. PT Maju Bersama" class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 font-semibold">
+                            @error('company_name') <span class="text-red-500 text-xs">{{ $message }}</span> @enderror
                         </div>
                         <div>
                             <label class="block text-xs font-bold text-gray-500 uppercase tracking-wide mb-1">NPWP Perusahaan</label>
@@ -43,11 +44,13 @@
                         </div>
                         <div class="md:col-span-2">
                             <label class="block text-xs font-bold text-gray-500 uppercase tracking-wide mb-1">Alamat Lengkap (Kantor)</label>
-                            <p class="text-gray-800">{{ $address ?? '-' }}</p>
+                            <textarea wire:model="address" rows="2" placeholder="Jl. Nama Jalan No. xx, Kelurahan, Kecamatan" class="w-full border border-gray-300 rounded-lg px-4 py-2 focus:ring-2 focus:ring-blue-500 focus:border-blue-500"></textarea>
+                            @error('address') <span class="text-red-500 text-xs">{{ $message }}</span> @enderror
                         </div>
                         <div>
                             <label class="block text-xs font-bold text-gray-500 uppercase tracking-wide mb-1">Kota / Wilayah</label>
-                            <p class="text-gray-800">{{ $city ?? '-' }}</p>
+                            <input type="text" wire:model="city" placeholder="mis. Jakarta" class="w-full border border-gray-300 rounded-lg px-4 py-2 focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
+                            @error('city') <span class="text-red-500 text-xs">{{ $message }}</span> @enderror
                         </div>
                         <div>
                             <label class="block text-xs font-bold text-gray-500 uppercase tracking-wide mb-1">No. Telepon / HP PIC</label>

@@ -18,6 +18,20 @@
     </div>
     @endif
 
+    {{-- Banner: data perlu dilengkapi --}}
+    @if(($stats['needs_attention'] ?? 0) > 0 && $filterQuality !== 'attention')
+    <div class="bg-amber-50 border border-amber-300 text-amber-800 px-4 py-3 rounded-xl shadow-sm flex items-center gap-3">
+        <svg class="w-6 h-6 shrink-0 text-amber-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01M5.07 19h13.86c1.54 0 2.5-1.67 1.73-3L13.73 4a2 2 0 00-3.46 0L3.34 16c-.77 1.33.19 3 1.73 3z"/></svg>
+        <div class="flex-1">
+            <p class="text-sm font-semibold">{{ $stats['needs_attention'] }} customer datanya belum lengkap / perlu diverifikasi.</p>
+            <p class="text-xs text-amber-700">Nama perusahaan tidak jelas atau NPWP/telepon/alamat kosong — belum bisa dipakai untuk dokumen pabean & invoice.</p>
+        </div>
+        <button wire:click="showNeedsAttention" class="shrink-0 bg-amber-500 hover:bg-amber-600 text-white text-xs font-bold px-3 py-1.5 rounded-lg transition">
+            Tampilkan
+        </button>
+    </div>
+    @endif
+
     {{-- Stats Cards --}}
     <div class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4">
         <div class="bg-white rounded-xl p-4 shadow-sm border border-gray-100">
@@ -121,6 +135,11 @@
                         <option value="active">✓ Aktif</option>
                     </select>
 
+                    <select wire:model.live="filterQuality" class="text-sm border-gray-300 rounded-lg focus:ring-blue-500 py-2">
+                        <option value="">Semua Kualitas Data</option>
+                        <option value="attention">⚠️ Perlu Dilengkapi</option>
+                    </select>
+
                     <select wire:model.live="perPage" class="text-sm border-gray-300 rounded-lg focus:ring-blue-500 py-2">
                         <option value="10">10/hal</option>
                         <option value="25">25/hal</option>
@@ -197,10 +216,19 @@
                             @endif
                         </td>
                         <td class="px-4 py-3">
+                            @php($dq = $c->dataQuality())
                             <div class="font-semibold text-gray-800 flex items-center gap-2">
                                 {{ $c->company_name }}
                                 @if($c->user && ! $c->user->is_active)
                                 <span class="text-[10px] font-bold px-1.5 py-0.5 rounded-full bg-amber-100 text-amber-700 border border-amber-200">PENDING</span>
+                                @endif
+                                @if($dq['level'] !== 'good')
+                                <span title="{{ implode(' • ', $dq['issues']) }}"
+                                    class="inline-flex items-center gap-1 text-[10px] font-bold px-1.5 py-0.5 rounded-full border cursor-help
+                                    {{ $dq['level'] === 'bad' ? 'bg-red-100 text-red-700 border-red-200' : 'bg-yellow-100 text-yellow-700 border-yellow-200' }}">
+                                    <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01M5.07 19h13.86c1.54 0 2.5-1.67 1.73-3L13.73 4a2 2 0 00-3.46 0L3.34 16c-.77 1.33.19 3 1.73 3z"/></svg>
+                                    {{ $dq['score'] }}%
+                                </span>
                                 @endif
                             </div>
                             @if($c->trade_type)
