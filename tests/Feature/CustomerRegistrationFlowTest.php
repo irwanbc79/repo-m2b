@@ -209,4 +209,111 @@ class CustomerRegistrationFlowTest extends TestCase
         $this->assertArrayHasKey('portal', $templates);
         $this->assertStringContainsString('mendaftar di Portal M2B', $templates['portal']);
     }
+
+    /** Heuristik nama: placeholder/iseng terdeteksi, nama sah lolos. */
+    public function test_suspect_company_name_detection(): void
+    {
+        $this->assertTrue((new Customer(['company_name' => 'Doyyan xD']))->hasSuspectName());
+        $this->assertTrue((new Customer(['company_name' => 'test']))->hasSuspectName());
+        $this->assertTrue((new Customer(['company_name' => 'PT']))->hasSuspectName());
+        $this->assertTrue((new Customer(['company_name' => 'CV Maju 🚀']))->hasSuspectName());
+
+        $this->assertFalse((new Customer(['company_name' => 'PT Funda Konstruksi Engineering']))->hasSuspectName());
+        $this->assertFalse((new Customer(['company_name' => 'Koperasi Tani Sejahtera']))->hasSuspectName());
+    }
+
+    /** Skor kualitas: profil lengkap mendekati 100, profil minim jatuh rendah. */
+    public function test_data_quality_score(): void
+    {
+        $lengkap = new Customer([
+            'company_name' => 'PT Maju Jaya',
+            'npwp' => '123456789012345',
+            'phone' => '081234567890',
+            'address' => 'Jl. Merdeka No. 1',
+            'city' => 'Jakarta',
+            'trade_type' => 'import',
+            'position' => 'Direktur',
+            'business_type' => 'VIP',
+        ]);
+        $this->assertEquals('good', $lengkap->dataQuality()['level']);
+        $this->assertGreaterThanOrEqual(75, $lengkap->dataQuality()['score']);
+
+        $minim = new Customer(['company_name' => 'Doyyan xD']);
+        $this->assertEquals('bad', $minim->dataQuality()['level']);
+        $this->assertNotEmpty($minim->dataQuality()['issues']);
+    }
+
+    /** Customer bisa melengkapi data perusahaan sendiri -> skor naik jadi 'good'. */
+    public function test_customer_can_complete_own_company_data(): void
+    {
+        $user = User::factory()->create(['role' => 'customer']);
+        $customer = Customer::create([
+            'user_id' => $user->id,
+            'customer_code' => Customer::generateCustomerCode(),
+            'company_name' => 'Doyyan xD',
+        ]);
+
+        Livewire::actingAs($user)
+            ->test(\App\Livewire\Customer\Profile::class)
+            ->set('company_name', 'PT Doyyan Sejahtera')
+            ->set('npwp', '123456789012345')
+            ->set('phone', '081234567890')
+            ->set('address', 'Jl. Merdeka No. 1, Jakarta Pusat')
+            ->set('city', 'Jakarta')
+            ->call('updateProfile')
+            ->assertHasNoErrors();
+
+        $fresh = $customer->fresh();
+        $this->assertEquals('PT Doyyan Sejahtera', $fresh->company_name);
+        $this->assertEquals('good', $fresh->dataQuality()['level']);
+    }
+
+    /** Nama perusahaan asal isi ditolak saat customer simpan profil. */
+    public function test_customer_profile_rejects_suspect_company_name(): void
+    {
+        $user = User::factory()->create(['role' => 'customer']);
+        Customer::create([
+            'user_id' => $user->id,
+            'customer_code' => Customer::generateCustomerCode(),
+            'company_name' => 'PT Lama Valid',
+        ]);
+
+        Livewire::actingAs($user)
+            ->test(\App\Livewire\Customer\Profile::class)
+            ->set('company_name', 'Doyyan xD')
+            ->call('updateProfile')
+            ->assertHasErrors('company_name');
+    }
+
+    /** Scope needsAttention + filter Livewire hanya menampilkan data bermasalah. */
+    public function test_needs_attention_filter_excludes_complete_customers(): void
+    {
+        $admin = User::factory()->create(['role' => 'admin']);
+
+        $bad = User::factory()->create(['role' => 'customer']);
+        Customer::create([
+            'user_id' => $bad->id,
+            'customer_code' => Customer::generateCustomerCode(),
+            'company_name' => 'Doyyan xD', // tanpa npwp/phone/address
+        ]);
+
+        $good = User::factory()->create(['role' => 'customer']);
+        Customer::create([
+            'user_id' => $good->id,
+            'customer_code' => Customer::generateCustomerCode(),
+            'company_name' => 'PT Lengkap Sentosa',
+            'npwp' => '123456789012345',
+            'phone' => '081234567890',
+            'address' => 'Jl. Lengkap No. 9',
+            'city' => 'Surabaya',
+        ]);
+
+        $this->assertEquals(1, Customer::needsAttention()->count());
+
+        Livewire::actingAs($admin)
+            ->test(CustomerManagement::class)
+            ->set('filterQuality', 'attention')
+            ->assertSee('Doyyan xD')
+            ->assertDontSee('PT Lengkap Sentosa');
+    }
 }

@@ -74,11 +74,22 @@ class Profile extends Component
     {
         $this->validate([
             'name' => 'required|min:3',
+            'company_name' => [
+                'required', 'string', 'min:3', 'max:200',
+                // Tolak nama placeholder/asal isi (mis. "Doyyan xD", "test").
+                function ($attribute, $value, $fail) {
+                    if ((new Customer(['company_name' => $value]))->hasSuspectName()) {
+                        $fail('Nama perusahaan terlihat belum valid. Mohon isi nama resmi badan usaha (mis. PT/CV/UD …).');
+                    }
+                },
+            ],
             'phone' => 'nullable|string|max:20',
             'npwp' => 'nullable|string|max:30',
             'address' => 'nullable|string|max:500',
             'city' => 'nullable|string|max:100',
             'warehouse_address' => 'nullable|string|max:500',
+        ], [
+            'company_name.required' => 'Nama perusahaan wajib diisi.',
         ]);
 
         $user = Auth::user();
@@ -87,8 +98,9 @@ class Profile extends Component
 
         $customer = Customer::where('user_id', $user->id)->first();
         if ($customer) {
+            $customer->company_name = $this->company_name;
             $customer->phone = $this->phone;
-        $customer->npwp = $this->npwp;
+            $customer->npwp = $this->npwp;
             $customer->address = $this->address;
             $customer->city = $this->city;
             $customer->warehouse_address = $this->warehouse_address;

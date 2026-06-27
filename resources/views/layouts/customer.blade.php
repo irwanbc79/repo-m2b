@@ -148,6 +148,55 @@
             </header>
 
             <div class="flex-1 overflow-x-hidden overflow-y-auto p-6 w-full">
+                {{-- Soft-gate: pengingat lengkapi data perusahaan --}}
+                @php
+                    $__cust = auth()->user()?->customer;
+                    $__dq = $__cust ? $__cust->dataQuality() : null;
+                @endphp
+                @if($__dq && $__dq['level'] !== 'good' && ! request()->routeIs('customer.profile'))
+                <div x-data="{ show: sessionStorage.getItem('m2b_profile_reminder') !== 'hidden' }"
+                     x-show="show" x-cloak
+                     class="mb-6 rounded-xl border {{ $__dq['level'] === 'bad' ? 'bg-red-50 border-red-200' : 'bg-amber-50 border-amber-200' }} p-4 shadow-sm">
+                    <div class="flex items-start gap-3">
+                        <div class="shrink-0 mt-0.5 {{ $__dq['level'] === 'bad' ? 'text-red-500' : 'text-amber-500' }}">
+                            <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01M5.07 19h13.86c1.54 0 2.5-1.67 1.73-3L13.73 4a2 2 0 00-3.46 0L3.34 16c-.77 1.33.19 3 1.73 3z"/></svg>
+                        </div>
+                        <div class="flex-1 min-w-0">
+                            <p class="text-sm font-bold {{ $__dq['level'] === 'bad' ? 'text-red-800' : 'text-amber-800' }}">
+                                Lengkapi data perusahaan Anda
+                            </p>
+                            <p class="text-xs {{ $__dq['level'] === 'bad' ? 'text-red-700' : 'text-amber-700' }} mt-0.5">
+                                Data yang lengkap & benar diperlukan untuk pengurusan dokumen kepabeanan dan penerbitan invoice. Mohon lengkapi:
+                            </p>
+                            <div class="flex flex-wrap gap-1.5 mt-2">
+                                @foreach(array_slice($__dq['issues'], 0, 5) as $__issue)
+                                <span class="inline-flex items-center text-[11px] font-medium px-2 py-0.5 rounded-full bg-white border {{ $__dq['level'] === 'bad' ? 'border-red-200 text-red-700' : 'border-amber-200 text-amber-700' }}">
+                                    {{ $__issue }}
+                                </span>
+                                @endforeach
+                            </div>
+                            <div class="flex items-center gap-3 mt-3">
+                                <a href="{{ route('customer.profile') }}"
+                                   class="inline-flex items-center gap-1.5 text-white text-xs font-bold px-3 py-1.5 rounded-lg transition {{ $__dq['level'] === 'bad' ? 'bg-red-600 hover:bg-red-700' : 'bg-amber-500 hover:bg-amber-600' }}">
+                                    <span>👤</span> Lengkapi Sekarang
+                                </a>
+                                <button type="button"
+                                        @click="show = false; sessionStorage.setItem('m2b_profile_reminder', 'hidden')"
+                                        class="text-xs font-medium {{ $__dq['level'] === 'bad' ? 'text-red-600 hover:text-red-800' : 'text-amber-600 hover:text-amber-800' }}">
+                                    Ingatkan nanti
+                                </button>
+                            </div>
+                        </div>
+                        <button type="button"
+                                @click="show = false; sessionStorage.setItem('m2b_profile_reminder', 'hidden')"
+                                class="shrink-0 {{ $__dq['level'] === 'bad' ? 'text-red-400 hover:text-red-600' : 'text-amber-400 hover:text-amber-600' }}"
+                                title="Tutup">
+                            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
+                        </button>
+                    </div>
+                </div>
+                @endif
+
                 {{ $slot }}
             </div>
         </main>

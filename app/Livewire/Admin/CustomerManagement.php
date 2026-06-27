@@ -24,6 +24,7 @@ class CustomerManagement extends Component
     public $filterCity = '';
     public $filterStatus = '';
     public $filterTag = '';
+    public $filterQuality = ''; // '' | 'attention' = data perlu dilengkapi/diverifikasi
     public $sortField = 'created_at';
     public $sortDirection = 'desc';
     public $perPage = 25;
@@ -53,7 +54,7 @@ class CustomerManagement extends Component
     // Available Tags
     public $availableTags = ['VIP', 'Regular', 'New', 'Priority', 'Inactive'];
 
-    protected $queryString = ['search', 'filterCity', 'filterStatus', 'sortField', 'sortDirection'];
+    protected $queryString = ['search', 'filterCity', 'filterStatus', 'filterQuality', 'sortField', 'sortDirection'];
 
     public function updatingSearch()
     {
@@ -67,6 +68,21 @@ class CustomerManagement extends Component
 
     public function updatingFilterStatus()
     {
+        $this->resetPage();
+    }
+
+    public function updatingFilterQuality()
+    {
+        $this->resetPage();
+    }
+
+    /**
+     * Shortcut dari banner peringatan: tampilkan hanya customer yang datanya
+     * perlu dilengkapi.
+     */
+    public function showNeedsAttention()
+    {
+        $this->filterQuality = 'attention';
         $this->resetPage();
     }
 
@@ -102,6 +118,7 @@ class CustomerManagement extends Component
             'cities' => Customer::distinct('city')->whereNotNull('city')->count(),
             'total_credit_limit' => Customer::sum('credit_limit'),
             'vip_count' => Customer::where('business_type', 'VIP')->count(),
+            'needs_attention' => Customer::needsAttention()->count(),
             ];
         });
     }
@@ -570,6 +587,9 @@ class CustomerManagement extends Component
             })
             ->when($this->filterTag, function ($query) {
                 $query->where('business_type', $this->filterTag);
+            })
+            ->when($this->filterQuality === 'attention', function ($query) {
+                $query->needsAttention();
             })
             ->when($this->filterStatus !== '', function ($query) {
                 $active = $this->filterStatus === 'active';
