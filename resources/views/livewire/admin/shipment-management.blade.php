@@ -97,6 +97,11 @@
                         <option value="red">🟥 Jalur Merah</option>
                     </select>
 
+                    <select wire:model.live="filterCustomerData" class="px-4 py-2.5 border border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500 text-sm">
+                        <option value="">Semua Data Customer</option>
+                        <option value="attention">⚠️ Customer Perlu Dilengkapi</option>
+                    </select>
+
                     <select wire:model.live="perPage" class="px-4 py-2.5 border border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500 text-sm">
                         <option value="10">10</option>
                         <option value="25">25</option>
@@ -163,7 +168,17 @@
                             <p class="text-xs text-gray-400">{{ $shipment->created_at->format('d M Y') }}</p>
                         </td>
                         <td class="px-4 py-3">
-                            <p class="font-medium text-gray-800">{{ $shipment->customer->company_name ?? 'N/A' }}</p>
+                            <div class="flex items-center gap-1.5">
+                                <p class="font-medium text-gray-800">{{ $shipment->customer->company_name ?? 'N/A' }}</p>
+                                @if($shipment->customer && ($dq = $shipment->customer->dataQuality())['level'] !== 'good')
+                                <span title="Data customer perlu dilengkapi: {{ implode(' • ', $dq['issues']) }}"
+                                    class="inline-flex items-center gap-0.5 text-[10px] font-bold px-1.5 py-0.5 rounded-full border cursor-help shrink-0
+                                    {{ $dq['level'] === 'bad' ? 'bg-red-100 text-red-700 border-red-200' : 'bg-yellow-100 text-yellow-700 border-yellow-200' }}">
+                                    <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01M5.07 19h13.86c1.54 0 2.5-1.67 1.73-3L13.73 4a2 2 0 00-3.46 0L3.34 16c-.77 1.33.19 3 1.73 3z"/></svg>
+                                    {{ $dq['score'] }}%
+                                </span>
+                                @endif
+                            </div>
                             <p class="text-xs text-gray-500">{{ $shipment->customer->customer_code ?? '' }}</p>
                         </td>
                         <td class="px-4 py-3">

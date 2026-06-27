@@ -410,6 +410,44 @@ class CustomerRegistrationFlowTest extends TestCase
         $this->assertNotNull($customer->fresh()->profile_reminder_seen_at);
     }
 
+    /** Filter Manage Shipments menyaring shipment milik customer berdata buruk. */
+    public function test_shipment_filter_by_customer_data_quality(): void
+    {
+        $admin = User::factory()->create(['role' => 'admin']);
+
+        $badUser = User::factory()->create(['role' => 'customer']);
+        $badCust = Customer::create([
+            'user_id' => $badUser->id,
+            'customer_code' => Customer::generateCustomerCode(),
+            'company_name' => 'Doyyan xD',
+        ]);
+        \App\Models\Shipment::create([
+            'customer_id' => $badCust->id, 'awb_number' => 'AWB-BAD-1',
+            'shipment_type' => 'sea', 'service_type' => 'import',
+            'origin' => 'Shanghai', 'destination' => 'Surabaya', 'status' => 'pending',
+        ]);
+
+        $goodUser = User::factory()->create(['role' => 'customer']);
+        $goodCust = Customer::create([
+            'user_id' => $goodUser->id,
+            'customer_code' => Customer::generateCustomerCode(),
+            'company_name' => 'PT Lengkap Sentosa',
+            'npwp' => '123456789012345', 'phone' => '081234567890',
+            'address' => 'Jl. Lengkap No. 9', 'city' => 'Surabaya',
+        ]);
+        \App\Models\Shipment::create([
+            'customer_id' => $goodCust->id, 'awb_number' => 'AWB-GOOD-1',
+            'shipment_type' => 'sea', 'service_type' => 'import',
+            'origin' => 'Tokyo', 'destination' => 'Jakarta', 'status' => 'pending',
+        ]);
+
+        Livewire::actingAs($admin)
+            ->test(\App\Livewire\Admin\ShipmentManagement::class)
+            ->set('filterCustomerData', 'attention')
+            ->assertSee('Doyyan xD')
+            ->assertDontSee('PT Lengkap Sentosa');
+    }
+
     /** reminderStatus() merangkum siklus banner untuk badge admin. */
     public function test_reminder_status_labels(): void
     {
