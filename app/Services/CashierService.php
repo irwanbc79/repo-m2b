@@ -209,11 +209,23 @@ class CashierService
         if ($cashTransaction->invoice_id) {
             $invoice = Invoice::find($cashTransaction->invoice_id);
             if ($invoice && $invoice->status === 'unpaid') {
-                $invoice->update([
-                    'status' => 'paid',
-                    'payment_date' => $cashTransaction->transaction_date,
-                    'payment_proof' => $cashTransaction->proof_file,
-                ]);
+                if ($invoice->payments()->exists()) {
+                    // Ada record InvoicePayment → status harus mengikuti total
+                    // pembayaran riil (partial/paid), jangan dipaksa 'paid'
+                    // saat baru cicilan sebagian.
+                    $invoice->recalculateTotalPaid();
+                    if ($cashTransaction->proof_file && !$invoice->payment_proof) {
+                        $invoice->update(['payment_proof' => $cashTransaction->proof_file]);
+                    }
+                } else {
+                    // Cash transaction manual tanpa record payment (mis. dari
+                    // SimpleCashier) — pertahankan perilaku lama.
+                    $invoice->update([
+                        'status' => 'paid',
+                        'payment_date' => $cashTransaction->transaction_date,
+                        'payment_proof' => $cashTransaction->proof_file,
+                    ]);
+                }
             }
         }
 
