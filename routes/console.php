@@ -44,3 +44,10 @@ Schedule::command('cache:clear')
 Schedule::command('email:cleanup')
     ->dailyAt('02:30')
     ->timezone('Asia/Jakarta');
+
+// 5. Integritas pembukuan – Setiap hari jam 07:00 WIB
+// Deteksi dini payment/job cost yang gagal buat CashTransaction+jurnal
+// (bug seperti enum cost_category tidak boleh senyap berminggu-minggu lagi).
+Schedule::command('finance:check-integrity --notify')
+    ->dailyAt('07:00')
+    ->timezone('Asia/Jakarta');
