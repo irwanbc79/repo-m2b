@@ -108,6 +108,42 @@ class CashierInvoiceStatusTest extends TestCase
         $this->assertSame('paid', $invoice->fresh()->status);
     }
 
+    public function test_dua_cicilan_di_invoice_sama_masing_masing_punya_cash_transaction(): void
+    {
+        // Regression: index server-local uniq_cash_invoice (UNIQUE invoice_id)
+        // dulu memblokir cash transaction untuk cicilan ke-2.
+        $invoice = $this->makeInvoice(10_000_000);
+        $cashier = app(CashierService::class);
+
+        foreach ([4_000_000, 6_000_000] as $amount) {
+            $payment = InvoicePayment::create([
+                'invoice_id' => $invoice->id,
+                'amount' => $amount,
+                'payment_date' => now()->toDateString(),
+                'payment_method' => 'transfer',
+                'recorded_by' => $this->admin->id,
+            ]);
+
+            $cashier->processPayment([
+                'type' => 'in',
+                'category' => 'payment_from_customer',
+                'amount' => $amount,
+                'transaction_date' => now()->toDateString(),
+                'invoice_id' => $invoice->id,
+                'invoice_payment_id' => $payment->id,
+                'customer_id' => $invoice->customer_id,
+                'description' => 'Cicilan',
+            ]);
+        }
+
+        $this->assertSame(
+            2,
+            \App\Models\CashTransaction::where('invoice_id', $invoice->id)->count(),
+            'Kedua cicilan harus punya cash transaction masing-masing'
+        );
+        $this->assertSame('paid', $invoice->fresh()->status);
+    }
+
     public function test_cash_transaction_manual_tanpa_payment_record_tetap_menandai_paid(): void
     {
         $invoice = $this->makeInvoice(1_000_000);

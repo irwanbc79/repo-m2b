@@ -210,24 +210,25 @@ class CashierService
         // Update Invoice status if payment is for invoice
         if ($cashTransaction->invoice_id) {
             $invoice = Invoice::find($cashTransaction->invoice_id);
-            if ($invoice && $invoice->status === 'unpaid') {
-                if ($invoice->payments()->exists()) {
-                    // Ada record InvoicePayment → status harus mengikuti total
-                    // pembayaran riil (partial/paid), jangan dipaksa 'paid'
-                    // saat baru cicilan sebagian.
+            if ($invoice && $invoice->payments()->exists()) {
+                // Ada record InvoicePayment → status mengikuti total pembayaran
+                // riil (partial/paid), jangan dipaksa 'paid' saat baru cicilan
+                // sebagian. Berlaku juga saat status masih 'partial' agar
+                // pelunasan cicilan terakhir naik ke 'paid'.
+                if (in_array($invoice->status, ['unpaid', 'partial'], true)) {
                     $invoice->recalculateTotalPaid();
                     if ($cashTransaction->proof_file && !$invoice->payment_proof) {
                         $invoice->update(['payment_proof' => $cashTransaction->proof_file]);
                     }
-                } else {
-                    // Cash transaction manual tanpa record payment (mis. dari
-                    // SimpleCashier) — pertahankan perilaku lama.
-                    $invoice->update([
-                        'status' => 'paid',
-                        'payment_date' => $cashTransaction->transaction_date,
-                        'payment_proof' => $cashTransaction->proof_file,
-                    ]);
                 }
+            } elseif ($invoice && $invoice->status === 'unpaid') {
+                // Cash transaction manual tanpa record payment (mis. dari
+                // SimpleCashier) — pertahankan perilaku lama.
+                $invoice->update([
+                    'status' => 'paid',
+                    'payment_date' => $cashTransaction->transaction_date,
+                    'payment_proof' => $cashTransaction->proof_file,
+                ]);
             }
         }
 
