@@ -41,6 +41,13 @@ enote_*.sql
 /-
 /description_en
 /description_id
+/hs_code,
+/id,
+/jobCosts
+/lane_status
+/no_reply,
+/subject,
+*.corrupted
 # Claude/Agent files
 /.claude/
 /PRPs/

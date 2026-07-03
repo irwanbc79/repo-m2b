@@ -504,7 +504,7 @@ class JobCostingManager extends Component
                         app(CashierService::class)->processPayment([
                             'type'             => 'out',
                             'category'         => 'payment_to_vendor',
-                            'cost_category'    => 'payment_to_vendor',
+                            'cost_category'    => 'shipment',
                             'counterpart_type' => 'vendor',
                             'amount'           => $jobCost->amount,
                             'transaction_date' => $jobCost->date_paid ?? now()->toDateString(),

@@ -14,6 +14,7 @@ class ExampleTest extends TestCase
     {
         $response = $this->get('/');
 
-        $response->assertStatus(200);
+        // Root portal me-redirect guest (bukan 200 langsung).
+        $response->assertRedirect();
     }
 }

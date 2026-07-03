@@ -163,12 +163,41 @@ class CashierService
             'description' => $data['description'] ?? '',
             'proof_file' => $data['proof_file'] ?? null,
             'counterpart_type' => $data['counterpart_type'] ?? null,
-            'cost_category' => $data['cost_category'] ?? $data['category'] ?? null,
+            'cost_category' => $this->normalizeCostCategory($data),
             'journal_id' => $journal->id,
             'is_posted' => true,
             'posted_at' => now(),
             'created_by' => Auth::id(),
         ]);
+    }
+
+    /**
+     * Kolom cash_transactions.cost_category = enum('shipment','overhead','other').
+     * Nilai kategori akuntansi (payment_from_customer, payment_to_vendor, dll)
+     * hanya dipakai untuk penentuan akun — di luar enum insert akan gagal
+     * (SQLSTATE 01000 Data truncated) dan seluruh transaksi ikut rollback.
+     */
+    protected function normalizeCostCategory(array $data): ?string
+    {
+        $category = $data['cost_category'] ?? $data['category'] ?? null;
+
+        if (in_array($category, ['shipment', 'overhead', 'other'], true)) {
+            return $category;
+        }
+
+        $type = (stripos($data['type'] ?? $data['transaction_type'] ?? 'in', 'in') !== false) ? 'in' : 'out';
+        if ($type === 'in') {
+            return null; // uang masuk bukan biaya
+        }
+
+        if (!empty($data['shipment_id']) || !empty($data['job_cost_id'])) {
+            return 'shipment';
+        }
+
+        return match ($category) {
+            'operational_expense' => 'overhead',
+            default => 'other',
+        };
     }
 
     /**
