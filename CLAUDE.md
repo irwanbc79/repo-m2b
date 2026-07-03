@@ -37,3 +37,6 @@
 - `php artisan finance:check-integrity` — cek payment/job cost tanpa CashTransaction (terjadwal harian 07:00 WIB + email)
 - `php artisan cashier:backfill-payments --dry-run` — tambal payment tanpa pembukuan
 - Health endpoint: `https://portal.m2b.co.id/up`
+
+## Deploy & kredensial
+- Remote git di server memakai deploy key read-only `~/.ssh/id_ed25519_repo_m2b` (host alias `github.com-repo-m2b`), BUKAN token. Backup URL lama ada di `~/.repo_m2b_origin_backup_*`.
