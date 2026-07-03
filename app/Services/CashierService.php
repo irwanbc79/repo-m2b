@@ -106,11 +106,17 @@ class CashierService
      */
     protected function createJournal(array $data, array $accounts)
     {
-        // Generate journal number
+        // Generate journal number — sequence dicari dari nomor jurnal dengan
+        // prefix tanggal transaksi yang sama, BUKAN dari created_at. (Dulu:
+        // whereDate(created_at) + nomor dari transaction_date → jurnal
+        // backdate bertabrakan nomor dengan jurnal lama.)
         $date = Carbon::parse($data['transaction_date'] ?? now());
-        $lastJournal = Journal::whereDate('created_at', $date)->orderBy('created_at', 'desc')->first();
-        $sequence = $lastJournal ? intval(substr($lastJournal->journal_number, -4)) + 1 : 1;
-        $journalNumber = 'JV-' . $date->format('Ymd') . '-' . str_pad($sequence, 4, '0', STR_PAD_LEFT);
+        $prefix = 'JV-' . $date->format('Ymd') . '-';
+        $lastNumber = Journal::where('journal_number', 'like', $prefix . '%')
+            ->orderByDesc('journal_number')
+            ->value('journal_number');
+        $sequence = $lastNumber ? intval(substr($lastNumber, -4)) + 1 : 1;
+        $journalNumber = $prefix . str_pad($sequence, 4, '0', STR_PAD_LEFT);
         
         // Create Journal
         $journal = Journal::create([

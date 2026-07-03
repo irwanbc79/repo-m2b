@@ -18,6 +18,14 @@ return new class extends Migration
 {
     public function up(): void
     {
+        // MySQL menolak drop index yang menopang FK invoice_id — sediakan
+        // index biasa sebagai pengganti DULU, baru drop yang unique.
+        Schema::table('cash_transactions', function (Blueprint $table) {
+            if (!Schema::hasIndex('cash_transactions', 'idx_cash_invoice')) {
+                $table->index('invoice_id', 'idx_cash_invoice');
+            }
+        });
+
         Schema::table('cash_transactions', function (Blueprint $table) {
             if (Schema::hasIndex('cash_transactions', 'uniq_cash_invoice')) {
                 $table->dropUnique('uniq_cash_invoice');
