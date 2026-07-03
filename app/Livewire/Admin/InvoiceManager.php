@@ -776,7 +776,6 @@ class InvoiceManager extends Component
                         app(CashierService::class)->processPayment([
                             'type'               => 'in',
                             'category'           => 'payment_from_customer',
-                            'cost_category'      => 'payment_from_customer',
                             'counterpart_type'   => 'customer',
                             'amount'             => $this->amount,
                             'transaction_date'   => $this->payment_date,

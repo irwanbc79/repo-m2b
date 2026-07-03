@@ -143,6 +143,29 @@ class CustomsCalculator extends Component
 
     public function toggleBreakdown() { $this->showBreakdown = !$this->showBreakdown; }
 
+    public function copyToClipboard()
+    {
+        $text = "=== SIMULASI PUNGUTAN IMPOR ===\n";
+        $text .= "Tanggal: " . now()->format('d/m/Y H:i') . "\n\n";
+        $text .= "NILAI BARANG:\n";
+        $text .= "{$this->mata_uang} " . number_format($this->nilai_barang, 2) . "\n";
+        $text .= "Kurs: Rp " . number_format($this->kurs, 2) . "\n";
+        $text .= "Nilai Pabean: Rp " . number_format($this->nilai_pabean, 0) . "\n\n";
+        $text .= "TARIF:\n";
+        $text .= "BM: {$this->tarif_bm}% | PPN: {$this->tarif_ppn}% | PPnBM: {$this->tarif_ppnbm}% | PPh: {$this->tarif_pph}%\n\n";
+        $text .= "HASIL PUNGUTAN:\n";
+        $text .= "Bea Masuk: Rp " . number_format($this->bayar_bm, 0) . "\n";
+        $text .= "PPN Impor: Rp " . number_format($this->bayar_ppn, 0) . "\n";
+        $text .= "PPnBM: Rp " . number_format($this->bayar_ppnbm, 0) . "\n";
+        $text .= "PPh Impor: Rp " . number_format($this->bayar_pph, 0) . "\n";
+        $text .= "================================\n";
+        $text .= "TOTAL: Rp " . number_format($this->total_pungutan, 0) . "\n";
+
+        // Nama event harus 'copy-text' — listener Alpine di view memakai
+        // x-on:copy-text.window (dash-case, tanpa modifier .camel).
+        $this->dispatch('copy-text', text: $text);
+    }
+
     public function saveToHistory()
     {
         if ($this->total_pungutan <= 0) return;

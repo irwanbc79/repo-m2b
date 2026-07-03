@@ -263,7 +263,8 @@ class CustomsCalculator extends Component
         $text .= "================================\n";
         $text .= "TOTAL: Rp " . number_format($this->total_pungutan, 0) . "\n";
 
-        $this->dispatch('copyText', text: $text);
+        // Nama event harus 'copy-text' — listener Alpine memakai x-on:copy-text.window.
+        $this->dispatch('copy-text', text: $text);
     }
 
     public function resetCalculator()
