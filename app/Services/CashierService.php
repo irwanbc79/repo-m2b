@@ -117,7 +117,7 @@ class CashierService
             'journal_number' => $journalNumber,
             'transaction_date' => $data['transaction_date'] ?? now(),
             'description' => $data['description'] ?? 'Cash Transaction',
-            'created_by' => Auth::id(),
+            'created_by' => $data['created_by'] ?? Auth::id() ?? 1,
         ]);
         
         // Create Journal Entries (Debit & Credit)
@@ -167,7 +167,9 @@ class CashierService
             'journal_id' => $journal->id,
             'is_posted' => true,
             'posted_at' => now(),
-            'created_by' => Auth::id(),
+            // Kolom NOT NULL di prod; dari console Auth::id() null → fallback
+            // user sistem #1 (konsisten dgn AccountingService).
+            'created_by' => $data['created_by'] ?? Auth::id() ?? 1,
         ]);
     }
 
@@ -318,7 +320,7 @@ class CashierService
                         'vendor_id' => $cashTransaction->vendor_id,
                         'status' => 'paid',
                         'date_paid' => $cashTransaction->transaction_date,
-                        'created_by' => Auth::id(),
+                        'created_by' => $data['created_by'] ?? Auth::id() ?? 1,
                     ]);
                 }
             }

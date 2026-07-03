@@ -102,6 +102,9 @@ class BackfillPaymentCashTransactions extends Command
                     'customer_id'        => $payment->invoice->customer_id ?? null,
                     'proof_file'         => $payment->proof_file,
                     'description'        => 'Pelunasan ' . ($payment->invoice->invoice_number ?? ('invoice #' . $payment->invoice_id)) . ' (backfill)',
+                    // NOT NULL di prod; dari console Auth::id() null →
+                    // pakai pencatat payment asli (audit trail akurat).
+                    'created_by'         => $payment->recorded_by ?? 1,
                 ]);
 
                 // processPayment bisa memaksa invoice unpaid → paid;
@@ -203,6 +206,7 @@ class BackfillPaymentCashTransactions extends Command
                     'journal_id' => $journal->id,
                     'is_posted' => true,
                     'posted_at' => now(),
+                    'created_by' => $payment->recorded_by ?? 1,
                 ]);
 
                 $success++;

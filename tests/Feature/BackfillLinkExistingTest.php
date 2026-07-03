@@ -90,6 +90,7 @@ class BackfillLinkExistingTest extends TestCase
         $this->assertSame($this->bank->id, $tx->account_id);
         $this->assertSame($this->piutang->id, $tx->counter_account_id);
         $this->assertNull($tx->cost_category);
+        $this->assertSame($this->admin->id, $tx->created_by, 'created_by harus terisi (NOT NULL di prod)');
         $this->assertSame($journalCountBefore, Journal::count(), 'TIDAK boleh ada jurnal baru');
     }
 
