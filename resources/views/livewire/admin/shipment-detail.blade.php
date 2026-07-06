@@ -170,10 +170,11 @@
                             <div class="overflow-hidden flex-1">
                                 <p class="text-sm font-bold text-gray-700 truncate group-hover:text-blue-800">{{ $doc->description }}</p>
                                 <p class="text-[10px] text-gray-400 uppercase mt-0.5">{{ pathinfo($doc->filename, PATHINFO_EXTENSION) }} • {{ $doc->created_at->format('d M H:i') }}</p>
-                            </div>
-                            <div class="flex gap-1">
-                                <button wire:click="viewDocument({{ $doc->id }})" class="p-1.5 text-blue-500 hover:bg-blue-100 rounded"><svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"></path><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"></path></svg></button>
-                                <button wire:click="deleteDocument({{ $doc->id }})" wire:confirm="Hapus dokumen ini?" class="p-1.5 text-red-500 hover:bg-red-100 rounded"><svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path></svg></button>
+                                <div class="flex gap-1">
+                                    <button wire:click="viewDocument({{ $doc->id }})" title="Lihat Dokumen" class="p-1.5 text-blue-500 hover:bg-blue-100 rounded"><svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"></path><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"></path></svg></button>
+                                    <button wire:click="openRenameModal({{ $doc->id }})" title="Ubah Nama Dokumen" class="p-1.5 text-amber-600 hover:bg-amber-100 rounded"><svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z"></path></svg></button>
+                                    <button wire:click="deleteDocument({{ $doc->id }})" wire:confirm="Hapus dokumen ini?" title="Hapus Dokumen" class="p-1.5 text-red-500 hover:bg-red-100 rounded"><svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path></svg></button>
+                                </div>
                             </div>
                         </div>
                         @endforeach
@@ -244,7 +245,10 @@
                                     @if(in_array(strtolower(pathinfo($doc->filename, PATHINFO_EXTENSION)), ['jpg','jpeg','png','webp']))<img src="{{ route('document.view', $doc->id) }}" class="w-full h-full object-cover" alt="Evidence">@else<div class="w-full h-full flex items-center justify-center text-gray-400"><svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 21h10a2 2 0 002-2V9.414a1 1 0 00-.293-.707l-5.414-5.414A1 1 0 0012.586 3H7a2 2 0 00-2 2v14a2 2 0 002 2z"></path></svg></div>@endif
                                     <button wire:click="viewInternalDoc({{ $doc->id }})" class="absolute inset-0 bg-black/0 group-hover:bg-black/20 transition flex items-center justify-center"><svg class="w-6 h-6 text-white opacity-0 group-hover:opacity-100 drop-shadow-lg" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"></path><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"></path></svg></button>
                                 </div>
-                                <p class="text-[9px] font-bold text-purple-900 leading-tight truncate" title="{{ $doc->description }}">{{ $doc->description }}</p>
+                                <div class="flex items-center justify-between gap-1 mt-1">
+                                    <p class="text-[9px] font-bold text-purple-900 leading-tight truncate flex-1" title="{{ $doc->description }}">{{ $doc->description }}</p>
+                                    <button wire:click="openRenameModal({{ $doc->id }})" title="Ubah Nama Dokumen" class="text-amber-600 hover:text-amber-800 transition"><svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z"></path></svg></button>
+                                </div>
                                 <button wire:click="deleteDocument({{ $doc->id }})" wire:confirm="Hapus?" class="absolute top-1 right-1 bg-red-500 text-white rounded-full p-0.5 opacity-0 group-hover:opacity-100 transition shadow-sm hover:bg-red-600"><svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg></button>
                             </div>
                             @endforeach
@@ -428,6 +432,50 @@
     </div>
     @endif
     
+    {{-- MODAL RENAME DOKUMEN --}}
+    @if($showRenameModal)
+    <div class="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4 backdrop-blur-sm">
+        <div class="bg-white p-6 rounded-xl w-full max-w-md shadow-2xl animate-fade-in-up border-t-4 border-amber-500" style="position: relative; z-index: 10;">
+            <div class="flex justify-between items-center mb-4 border-b pb-3">
+                <div class="flex items-center gap-2">
+                    <div class="bg-amber-100 text-amber-700 p-1.5 rounded-lg">
+                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z"></path></svg>
+                    </div>
+                    <h3 class="font-bold text-lg text-gray-800">Ubah Nama Dokumen</h3>
+                </div>
+                <button wire:click="closeRenameModal" class="text-gray-400 hover:text-red-500 text-xl font-bold">&times;</button>
+            </div>
+            <div class="space-y-4">
+                <div>
+                    <label class="block text-xs font-bold text-gray-600 uppercase mb-1">Nama / Deskripsi Dokumen</label>
+                    <input type="text" wire:model="editingDocDescription" placeholder="Contoh: Bill of Lading, SPPB..." class="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:ring-amber-500 focus:border-amber-500">
+                    @error('editingDocDescription') <span class="text-red-500 text-[10px] mt-1 block">{{ $message }}</span> @enderror
+                </div>
+                <div>
+                    <label class="block text-xs font-bold text-gray-600 uppercase mb-1">Nama File Download</label>
+                    <div class="flex rounded-lg shadow-sm">
+                        <input type="text" wire:model="editingDocFilename" placeholder="nama_file" class="w-full border border-gray-300 rounded-l-lg px-3 py-2 text-sm focus:ring-amber-500 focus:border-amber-500">
+                        @if($editingDocExtension)
+                        <span class="inline-flex items-center px-3 rounded-r-lg border border-l-0 border-gray-300 bg-gray-100 text-gray-500 text-xs font-mono font-bold">
+                            {{ $editingDocExtension }}
+                        </span>
+                        @endif
+                    </div>
+                    @error('editingDocFilename') <span class="text-red-500 text-[10px] mt-1 block">{{ $message }}</span> @enderror
+                    <p class="text-[10px] text-gray-400 mt-1">Ekstensi file fisik asli akan tetap dipertahankan secara aman.</p>
+                </div>
+            </div>
+            <div class="mt-6 flex justify-end gap-2 pt-4 border-t">
+                <button wire:click="closeRenameModal" class="px-4 py-2 bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-lg text-sm font-bold transition">Batal</button>
+                <button wire:click="updateDocumentName" wire:loading.attr="disabled" class="px-4 py-2 bg-amber-600 hover:bg-amber-700 text-white rounded-lg text-sm font-bold transition flex items-center gap-1">
+                    <span wire:loading.remove wire:target="updateDocumentName">Simpan Perubahan</span>
+                    <span wire:loading wire:target="updateDocumentName">Menyimpan...</span>
+                </button>
+            </div>
+        </div>
+    </div>
+    @endif
+
     {{-- MODAL INTERNAL UPLOAD (Diperbaiki agar menggunakan 'file_upload' dan 'doc_type') --}}
     @if($showInternalModal)
     <div class="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4 backdrop-blur-sm">

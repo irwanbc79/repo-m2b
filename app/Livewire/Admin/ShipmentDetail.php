@@ -38,6 +38,13 @@ class ShipmentDetail extends Component
     public $custom_description = '';
     public $showInternalModal = false;
 
+    // Modal Rename Document Properties
+    public $showRenameModal = false;
+    public $editingDocId = null;
+    public $editingDocDescription = '';
+    public $editingDocFilename = '';
+    public $editingDocExtension = '';
+
     public function mount($id)
     {
         // Pastikan relasi customer dan user terload
@@ -242,6 +249,68 @@ class ShipmentDetail extends Component
         $doc->delete();
         $this->shipment->refresh();
         session()->flash('message', 'Dokumen dihapus.');
+    }
+
+    public function openRenameModal($id)
+    {
+        $doc = Document::findOrFail($id);
+        $this->editingDocId = $doc->id;
+        $this->editingDocDescription = $doc->description ?? '';
+
+        $pathInfo = pathinfo($doc->filename);
+        $this->editingDocFilename = $pathInfo['filename'] ?? '';
+        $this->editingDocExtension = isset($pathInfo['extension']) && !empty($pathInfo['extension']) ? '.' . $pathInfo['extension'] : '';
+
+        $this->showRenameModal = true;
+    }
+
+    public function closeRenameModal()
+    {
+        $this->showRenameModal = false;
+        $this->editingDocId = null;
+        $this->editingDocDescription = '';
+        $this->editingDocFilename = '';
+        $this->editingDocExtension = '';
+    }
+
+    public function updateDocumentName()
+    {
+        $this->validate([
+            'editingDocDescription' => 'required|string|max:255',
+            'editingDocFilename' => 'required|string|max:255',
+        ]);
+
+        if (!$this->editingDocId) {
+            return;
+        }
+
+        $doc = Document::findOrFail($this->editingDocId);
+        $oldDesc = $doc->description;
+        $ext = ltrim($this->editingDocExtension, '.');
+        $rawFilename = trim($this->editingDocFilename);
+
+        if (!empty($ext)) {
+            $cleanFilenameBase = preg_replace('/\.' . preg_quote($ext, '/') . '$/i', '', $rawFilename);
+            $newFilename = $cleanFilenameBase . $this->editingDocExtension;
+        } else {
+            $newFilename = $rawFilename;
+        }
+
+        $doc->update([
+            'description' => trim($this->editingDocDescription),
+            'filename' => $newFilename,
+        ]);
+
+        ActivityLog::record(
+            'Shipment',
+            'RENAME DOCUMENT',
+            $this->shipment->awb_number,
+            "Mengubah nama dokumen ID {$doc->id} dari '{$oldDesc}' menjadi '{$this->editingDocDescription}' (file: {$newFilename})"
+        );
+
+        $this->closeRenameModal();
+        $this->shipment->refresh();
+        session()->flash('message', 'Nama dokumen berhasil diperbarui.');
     }
 
 
