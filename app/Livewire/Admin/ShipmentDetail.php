@@ -273,6 +273,21 @@ class ShipmentDetail extends Component
         $this->editingDocExtension = '';
     }
 
+    public function selectDocPreset($preset)
+    {
+        if (empty($preset)) return;
+
+        $this->editingDocDescription = $preset;
+
+        // Auto format filename suggestion if current filename is default/email attachment
+        $currentLower = strtolower($this->editingDocFilename);
+        if (empty($this->editingDocFilename) || str_contains($currentLower, 'email_attachment') || str_contains($currentLower, 'attachment') || str_contains($currentLower, 'internal')) {
+            $cleanRef = str_replace(['/', '\\', ' '], '-', $this->shipment->awb_number ?? '');
+            $slug = strtoupper(str_replace(' ', '_', preg_replace('/[^A-Za-z0-9 ]/', '', $preset)));
+            $this->editingDocFilename = $slug . '_' . $cleanRef;
+        }
+    }
+
     public function updateDocumentName()
     {
         $this->validate([
@@ -307,6 +322,10 @@ class ShipmentDetail extends Component
             $this->shipment->awb_number,
             "Mengubah nama dokumen ID {$doc->id} dari '{$oldDesc}' menjadi '{$this->editingDocDescription}' (file: {$newFilename})"
         );
+
+        if ($this->previewDoc && $this->previewDoc->id == $doc->id) {
+            $this->previewDoc = $doc->fresh();
+        }
 
         $this->closeRenameModal();
         $this->shipment->refresh();

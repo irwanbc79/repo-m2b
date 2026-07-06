@@ -435,39 +435,102 @@
     {{-- MODAL RENAME DOKUMEN --}}
     @if($showRenameModal)
     <div class="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4 backdrop-blur-sm">
-        <div class="bg-white p-6 rounded-xl w-full max-w-md shadow-2xl animate-fade-in-up border-t-4 border-amber-500" style="position: relative; z-index: 10;">
+        <div class="bg-white p-6 rounded-xl w-full max-w-lg shadow-2xl animate-fade-in-up border-t-4 border-amber-500" style="position: relative; z-index: 10;">
             <div class="flex justify-between items-center mb-4 border-b pb-3">
                 <div class="flex items-center gap-2">
-                    <div class="bg-amber-100 text-amber-700 p-1.5 rounded-lg">
+                    <div class="bg-amber-100 text-amber-700 p-2 rounded-lg">
                         <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z"></path></svg>
                     </div>
-                    <h3 class="font-bold text-lg text-gray-800">Ubah Nama Dokumen</h3>
+                    <div>
+                        <h3 class="font-bold text-lg text-gray-800">Ubah Nama / Label Dokumen</h3>
+                        <p class="text-xs text-gray-500">Pilih rekomendasi jenis dokumen atau ketik nama custom</p>
+                    </div>
                 </div>
-                <button wire:click="closeRenameModal" class="text-gray-400 hover:text-red-500 text-xl font-bold">&times;</button>
+                <button wire:click="closeRenameModal" class="text-gray-400 hover:text-red-500 text-xl font-bold p-1">&times;</button>
             </div>
+            
             <div class="space-y-4">
+                {{-- QUICK PRESETS / REKOMENDASI KATEGORI DOKUMEN --}}
                 <div>
-                    <label class="block text-xs font-bold text-gray-600 uppercase mb-1">Nama / Deskripsi Dokumen</label>
-                    <input type="text" wire:model="editingDocDescription" placeholder="Contoh: Bill of Lading, SPPB..." class="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:ring-amber-500 focus:border-amber-500">
+                    <label class="block text-xs font-bold text-amber-800 uppercase mb-1.5 flex items-center gap-1">
+                        <svg class="w-3.5 h-3.5 text-amber-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-6z"></path></svg>
+                        Pilihan Cepat Jenis Dokumen (Quick Select)
+                    </label>
+                    <div class="flex flex-wrap gap-1.5 p-2 bg-amber-50/70 border border-amber-200/60 rounded-xl">
+                        @foreach([
+                            'Bill of Lading', 'Commercial Invoice', 'Packing List',
+                            'SPPB', 'Manifest / BC 1.1', 'Billing Pungutan', 'SPJM',
+                            'NPE', 'COO', 'BPOM', 'Sertifikat Fumigasi'
+                        ] as $preset)
+                            <button type="button" 
+                                wire:click="selectDocPreset('{{ $preset }}')" 
+                                class="text-xs px-2.5 py-1 rounded-lg border transition font-medium {{ $editingDocDescription === $preset ? 'bg-amber-600 text-white border-amber-600 shadow-sm' : 'bg-white text-amber-900 border-amber-200 hover:bg-amber-100 hover:border-amber-300' }}">
+                                {{ $preset }}
+                            </button>
+                        @endforeach
+                    </div>
+                </div>
+
+                {{-- DROPDOWN SEMUA JENIS DOKUMEN --}}
+                <div>
+                    <label class="block text-xs font-bold text-gray-600 uppercase mb-1">Pilih dari Daftar Jenis Dokumen</label>
+                    <select wire:change="selectDocPreset($event.target.value)" class="w-full border-gray-300 rounded-lg text-xs focus:ring-amber-500 focus:border-amber-500 bg-white py-2">
+                        <option value="">-- Pilih Rekomendasi Jenis Dokumen --</option>
+                        <optgroup label="Dokumen Utama (Memicu Status)">
+                            <option value="Manifest / BC 1.1">Manifest / BC 1.1</option>
+                            <option value="Billing Pungutan">Billing Pungutan</option>
+                            <option value="SPJM">SPJM</option>
+                            <option value="SPPB">SPPB</option>
+                            <option value="SP2">SP2 / Surat Jalan</option>
+                            <option value="NPE">NPE (Ekspor)</option>
+                        </optgroup>
+                        <optgroup label="Dokumen Umum">
+                            <option value="Bill of Lading">Bill of Lading (BL)</option>
+                            <option value="Commercial Invoice">Commercial Invoice</option>
+                            <option value="Packing List">Packing List</option>
+                        </optgroup>
+                        <optgroup label="Dokumen Pendukung">
+                            <option value="COO">COO (Certificate of Origin)</option>
+                            <option value="SKA">SKA (Surat Keterangan Asal)</option>
+                            <option value="BPOM">BPOM</option>
+                            <option value="Persetujuan Ekspor">Persetujuan Ekspor</option>
+                            <option value="Persetujuan Impor">Persetujuan Impor</option>
+                            <option value="Sertifikat Fumigasi">Sertifikat Fumigasi</option>
+                            <option value="Sertifikat Karantina">Sertifikat Karantina</option>
+                            <option value="Form E">Form E</option>
+                            <option value="Form D">Form D</option>
+                            <option value="Laporan Surveyor">Laporan Surveyor</option>
+                            <option value="Foto Dokumentasi">Foto Dokumentasi</option>
+                        </optgroup>
+                    </select>
+                </div>
+
+                {{-- TEXT INPUT FIELD UNTUK NAMA/DESKRIPSI --}}
+                <div>
+                    <label class="block text-xs font-bold text-gray-700 uppercase mb-1">Label / Deskripsi Dokumen (Yang Tampil di Portal)</label>
+                    <input type="text" wire:model="editingDocDescription" placeholder="Contoh: Bill of Lading - BL#123456" class="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:ring-amber-500 focus:border-amber-500 font-medium">
                     @error('editingDocDescription') <span class="text-red-500 text-[10px] mt-1 block">{{ $message }}</span> @enderror
                 </div>
+
+                {{-- NAMA FILE DOWNLOAD --}}
                 <div>
-                    <label class="block text-xs font-bold text-gray-600 uppercase mb-1">Nama File Download</label>
+                    <label class="block text-xs font-bold text-gray-700 uppercase mb-1">Nama File Saat Di-download</label>
                     <div class="flex rounded-lg shadow-sm">
-                        <input type="text" wire:model="editingDocFilename" placeholder="nama_file" class="w-full border border-gray-300 rounded-l-lg px-3 py-2 text-sm focus:ring-amber-500 focus:border-amber-500">
+                        <input type="text" wire:model="editingDocFilename" placeholder="nama_file" class="w-full border border-gray-300 rounded-l-lg px-3 py-2 text-sm focus:ring-amber-500 focus:border-amber-500 font-mono text-xs">
                         @if($editingDocExtension)
-                        <span class="inline-flex items-center px-3 rounded-r-lg border border-l-0 border-gray-300 bg-gray-100 text-gray-500 text-xs font-mono font-bold">
+                        <span class="inline-flex items-center px-3 rounded-r-lg border border-l-0 border-gray-300 bg-gray-100 text-gray-600 text-xs font-mono font-bold">
                             {{ $editingDocExtension }}
                         </span>
                         @endif
                     </div>
                     @error('editingDocFilename') <span class="text-red-500 text-[10px] mt-1 block">{{ $message }}</span> @enderror
-                    <p class="text-[10px] text-gray-400 mt-1">Ekstensi file fisik asli akan tetap dipertahankan secara aman.</p>
+                    <p class="text-[10px] text-gray-400 mt-1">💡 Ekstensi file asli di server tetap aman & tidak akan rusak.</p>
                 </div>
             </div>
+
             <div class="mt-6 flex justify-end gap-2 pt-4 border-t">
                 <button wire:click="closeRenameModal" class="px-4 py-2 bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-lg text-sm font-bold transition">Batal</button>
-                <button wire:click="updateDocumentName" wire:loading.attr="disabled" class="px-4 py-2 bg-amber-600 hover:bg-amber-700 text-white rounded-lg text-sm font-bold transition flex items-center gap-1">
+                <button wire:click="updateDocumentName" wire:loading.attr="disabled" class="px-5 py-2 bg-amber-600 hover:bg-amber-700 text-white rounded-lg text-sm font-bold transition flex items-center gap-1.5 shadow-md">
                     <span wire:loading.remove wire:target="updateDocumentName">Simpan Perubahan</span>
                     <span wire:loading wire:target="updateDocumentName">Menyimpan...</span>
                 </button>
@@ -537,7 +600,13 @@ style="display: none;">
                 </button>
                 @if($previewDoc)
                     <div>
-                        <h3 class="text-white font-bold text-lg">{{ $previewDoc->description }}</h3>
+                        <div class="flex items-center gap-3">
+                            <h3 class="text-white font-bold text-lg">{{ $previewDoc->description }}</h3>
+                            <button wire:click="openRenameModal({{ $previewDoc->id }})" title="Ubah Nama Dokumen" class="bg-amber-500/20 hover:bg-amber-500/40 text-amber-300 px-2.5 py-1 rounded-md transition text-xs font-bold flex items-center gap-1.5 border border-amber-500/30 shadow-sm">
+                                <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z"></path></svg>
+                                Rename
+                            </button>
+                        </div>
                         <p class="text-gray-400 text-sm">{{ $previewDoc->filename }} • {{ number_format($previewDoc->file_size / 1024, 1) }} KB</p>
                     </div>
                 @endif
