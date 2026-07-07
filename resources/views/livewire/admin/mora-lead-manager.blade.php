@@ -420,8 +420,10 @@
                                         <div class="flex justify-end">
                                             <div class="max-w-[80%]">
                                                 <span class="text-[8px] text-right text-gray-400 block font-semibold mb-0.5">Pengunjung</span>
-                                                <div class="bg-indigo-600 text-white text-xs px-3 py-2 rounded-2xl rounded-tr-sm leading-relaxed shadow-sm">
-                                                    {{ $msg['content'] ?? '' }}
+                                                <div class="bg-indigo-600 text-white text-xs px-3.5 py-2.5 rounded-2xl rounded-tr-sm leading-relaxed shadow-sm">
+                                                    <div class="mora-chat-markdown text-white">
+                                                        {!! Illuminate\Support\Str::markdown(e($msg['content'] ?? '')) !!}
+                                                    </div>
                                                 </div>
                                             </div>
                                         </div>
@@ -429,8 +431,10 @@
                                         <div class="flex justify-start">
                                             <div class="max-w-[80%]">
                                                 <span class="text-[8px] text-gray-400 block font-semibold mb-0.5">🤖 MORA AI</span>
-                                                <div class="bg-white border border-gray-200 text-gray-700 text-xs px-3 py-2 rounded-2xl rounded-tl-sm leading-relaxed shadow-sm">
-                                                    {{ $msg['content'] ?? '' }}
+                                                <div class="bg-white border border-gray-200 text-gray-700 text-xs px-3.5 py-2.5 rounded-2xl rounded-tl-sm leading-relaxed shadow-sm">
+                                                    <div class="mora-chat-markdown text-gray-700">
+                                                        {!! Illuminate\Support\Str::markdown(e($msg['content'] ?? '')) !!}
+                                                    </div>
                                                 </div>
                                             </div>
                                         </div>

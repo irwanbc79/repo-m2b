@@ -12,3 +12,35 @@
     --color-m2b-secondary: #1e3a8a;
     --color-m2b-accent: #B91C1C;
 }
+
+/* Chat Transcript Markdown Styles */
+.mora-chat-markdown {
+    font-size: 0.75rem; /* text-xs */
+    line-height: 1.6;
+}
+.mora-chat-markdown p {
+    margin-bottom: 0.5rem;
+}
+.mora-chat-markdown p:last-child {
+    margin-bottom: 0;
+}
+.mora-chat-markdown strong {
+    font-weight: 800;
+    color: inherit;
+}
+.mora-chat-markdown ul {
+    list-style-type: disc;
+    padding-left: 1.25rem;
+    margin-bottom: 0.5rem;
+}
+.mora-chat-markdown ol {
+    list-style-type: decimal;
+    padding-left: 1.25rem;
+    margin-bottom: 0.5rem;
+}
+.mora-chat-markdown li {
+    margin-bottom: 0.25rem;
+}
+.mora-chat-markdown li:last-child {
+    margin-bottom: 0;
+}
