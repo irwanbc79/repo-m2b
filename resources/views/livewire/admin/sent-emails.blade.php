@@ -72,6 +72,12 @@
                             <td class="py-2 text-gray-500">Kepada</td>
                             <td class="py-2 font-medium">{{ $selectedEmail->to_email }}</td>
                         </tr>
+                        @if($selectedEmail->cc_email)
+                        <tr class="border-b">
+                            <td class="py-2 text-gray-500">Cc</td>
+                            <td class="py-2">{{ $selectedEmail->cc_email }}</td>
+                        </tr>
+                        @endif
                         <tr class="border-b">
                             <td class="py-2 text-gray-500">Subject</td>
                             <td class="py-2">{{ $selectedEmail->subject }}</td>

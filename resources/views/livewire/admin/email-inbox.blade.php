@@ -133,6 +133,9 @@
                         <button wire:click="openReplyModal" class="bg-green-600 text-white px-5 py-3 rounded-xl font-black text-xs uppercase tracking-widest hover:bg-green-700 transition shadow-xl shadow-green-100 flex items-center gap-2">
                             ✉️ Reply
                         </button>
+                        <button wire:click="openForwardModal" class="bg-indigo-600 text-white px-5 py-3 rounded-xl font-black text-xs uppercase tracking-widest hover:bg-indigo-700 transition shadow-xl shadow-indigo-100 flex items-center gap-2">
+                            ➡️ Forward
+                        </button>
                         <button wire:click="$set('showConvertModal', true)" class="bg-blue-600 text-white px-5 py-3 rounded-xl font-black text-xs uppercase tracking-widest hover:bg-blue-700 transition shadow-xl shadow-blue-100 flex items-center gap-2">
                             📦 Convert to Shipment
                         </button>
@@ -417,18 +420,31 @@
             <div class="inline-block align-bottom bg-white rounded-3xl text-left overflow-hidden shadow-2xl transform transition-all sm:max-w-2xl sm:w-full relative z-[10000]">
                 <div class="bg-white">
                     <div class="px-8 py-6 border-b border-gray-50 flex justify-between items-center bg-gray-50/50">
-                        <h3 class="font-black text-gray-800 uppercase text-sm tracking-widest">✉️ Reply Email</h3>
+                        <h3 class="font-black text-gray-800 uppercase text-sm tracking-widest">
+                            @if($emailMode === 'reply') ✉️ Reply Email @else ➡️ Forward Email @endif
+                        </h3>
                         <button wire:click="closeReplyModal" class="text-gray-400 hover:text-red-500 transition-colors text-2xl leading-none">&times;</button>
                     </div>
                     <form wire:submit.prevent="sendReply">
                         <div class="p-8 space-y-6">
                             <div>
                                 <label class="block text-[10px] font-black text-gray-400 uppercase tracking-widest mb-2 ml-1">To</label>
-                                <input type="email" wire:model="replyTo" readonly class="w-full border-gray-200 rounded-xl text-sm font-bold bg-gray-50 py-3 px-4">
+                                @if($emailMode === 'reply')
+                                    <input type="email" wire:model="replyTo" readonly class="w-full border-gray-200 rounded-xl text-sm font-bold bg-gray-50 py-3 px-4">
+                                @else
+                                    <input type="email" wire:model="replyTo" class="w-full border-gray-200 rounded-xl text-sm font-bold focus:ring-blue-500 focus:border-blue-500 py-3 px-4" placeholder="recipient@example.com">
+                                    @error('replyTo') <span class="text-xs text-red-500 mt-1">{{ $message }}</span> @enderror
+                                @endif
+                            </div>
+                            <div>
+                                <label class="block text-[10px] font-black text-gray-400 uppercase tracking-widest mb-2 ml-1">Cc</label>
+                                <input type="text" wire:model="replyCc" class="w-full border-gray-200 rounded-xl text-sm font-bold focus:ring-blue-500 focus:border-blue-500 py-3 px-4" placeholder="cc1@example.com, cc2@example.com">
+                                @error('replyCc') <span class="text-xs text-red-500 mt-1">{{ $message }}</span> @enderror
                             </div>
                             <div>
                                 <label class="block text-[10px] font-black text-gray-400 uppercase tracking-widest mb-2 ml-1">Subject</label>
                                 <input type="text" wire:model="replySubject" class="w-full border-gray-200 rounded-xl text-sm font-bold focus:ring-blue-500 focus:border-blue-500 py-3 px-4">
+                                @error('replySubject') <span class="text-xs text-red-500 mt-1">{{ $message }}</span> @enderror
                             </div>
                             <!-- Template Selector -->
                             <div class="bg-gradient-to-r from-blue-50 to-indigo-50 rounded-xl p-4 border border-blue-100">
@@ -455,15 +471,33 @@
                                 </div>
                             </div>
 
+                            @if($emailMode === 'forward' && $selectedEmail && count($selectedEmail['attachments'] ?? []) > 0)
+                            <div>
+                                <label class="block text-[10px] font-black text-gray-400 uppercase tracking-widest mb-2 ml-1">📎 Attachments to Forward</label>
+                                <div class="border border-gray-200 rounded-xl overflow-hidden bg-white max-h-32 overflow-y-auto divide-y divide-gray-100">
+                                    @foreach($selectedEmail['attachments'] as $index => $attachment)
+                                    <label class="flex items-center px-4 py-2.5 hover:bg-blue-50 cursor-pointer transition-colors group">
+                                        <input type="checkbox" wire:model="forwardAttachments" value="{{ $index }}" class="w-4 h-4 text-blue-600 border-gray-300 rounded focus:ring-blue-500">
+                                        <span class="ml-3 text-xs font-bold text-gray-800 truncate">{{ $attachment['filename'] }}</span>
+                                        <span class="ml-auto text-xs text-gray-400 font-medium">{{ number_format(($attachment['size'] ?? 0) / 1024, 1) }} KB</span>
+                                    </label>
+                                    @endforeach
+                                </div>
+                                <p class="text-[10px] text-gray-400 mt-1 ml-1">Semua lampiran secara default akan ikut dikirimkan saat di-forward.</p>
+                            </div>
+                            @endif
+
                             <div>
                                 <label class="block text-[10px] font-black text-gray-400 uppercase tracking-widest mb-2 ml-1">Message</label>
-                                <textarea wire:model="replyBody" rows="10" class="w-full border-gray-200 rounded-xl text-sm focus:ring-blue-500 focus:border-blue-500 py-3 px-4" placeholder="Type your reply here..."></textarea>
+                                <textarea wire:model="replyBody" rows="10" class="w-full border-gray-200 rounded-xl text-sm focus:ring-blue-500 focus:border-blue-500 py-3 px-4" placeholder="Type your message here..."></textarea>
                                 @error('replyBody') <span class="text-xs text-red-500 mt-1">{{ $message }}</span> @enderror
                             </div>
                         </div>
                         <div class="px-8 py-5 bg-gray-50 flex justify-end gap-3 border-t border-gray-100">
                             <button type="button" wire:click="closeReplyModal" class="px-6 py-2.5 text-xs font-black text-gray-400 uppercase tracking-widest hover:text-gray-600 transition-all">Cancel</button>
-                            <button type="submit" class="px-8 py-2.5 bg-green-600 text-white rounded-xl font-black text-xs uppercase tracking-widest shadow-lg shadow-green-100 hover:bg-green-700 transition-all">Send Reply</button>
+                            <button type="submit" class="px-8 py-2.5 bg-green-600 text-white rounded-xl font-black text-xs uppercase tracking-widest shadow-lg shadow-green-100 hover:bg-green-700 transition-all">
+                                @if($emailMode === 'reply') Send Reply @else Send Forward @endif
+                            </button>
                         </div>
                     </form>
                 </div>

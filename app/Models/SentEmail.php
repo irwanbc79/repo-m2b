@@ -9,6 +9,7 @@ class SentEmail extends Model
     protected $fillable = [
         'mailbox',
         'to_email', 
+        'cc_email',
         'subject',
         'body',
         'user_id',

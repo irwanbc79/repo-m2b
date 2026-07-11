@@ -396,11 +396,14 @@ class EmailInbox extends Component
     }
 
     public $showReplyModal = false;
+    public $emailMode = 'reply'; // 'reply' or 'forward'
     public $replyTo = "";
+    public $replyCc = "";
     public $replySubject = "";
     public $replyBody = "";
     public $selectedTemplate = "";
     public $templateLang = "ID";
+    public $forwardAttachments = []; // indices of attachments of original email to forward
 
     public function getTemplatesProperty()
     {
@@ -445,19 +448,55 @@ class EmailInbox extends Component
     {
         if (!$this->selectedEmail) return;
         
+        $this->emailMode = 'reply';
         $this->replyTo = $this->selectedEmail['from'];
+        $this->replyCc = '';
         $this->replySubject = 'Re: ' . $this->selectedEmail['subject'];
         $this->replyBody = '';
+        $this->forwardAttachments = [];
+        $this->showReplyModal = true;
+    }
+
+    public function openForwardModal()
+    {
+        if (!$this->selectedEmail) return;
+        
+        $this->emailMode = 'forward';
+        $this->replyTo = '';
+        $this->replyCc = '';
+        $this->replySubject = 'Fwd: ' . $this->selectedEmail['subject'];
+        $this->replyBody = '';
+        
+        // Auto-select all attachments for forwarding
+        $this->forwardAttachments = [];
+        if (isset($this->selectedEmail['attachments'])) {
+            $this->forwardAttachments = array_map('strval', array_keys($this->selectedEmail['attachments']));
+        }
+        
         $this->showReplyModal = true;
     }
 
     public function sendReply()
     {
-        $this->validate([
+        $rules = [
             'replyTo' => 'required|email',
             'replySubject' => 'required|string',
             'replyBody' => 'required|string|min:5',
-        ]);
+        ];
+
+        $this->validate($rules);
+
+        // Parse and validate CC
+        $ccEmails = [];
+        if (!empty($this->replyCc)) {
+            $ccEmails = array_filter(array_map('trim', preg_split('/[,;]/', $this->replyCc)));
+            foreach ($ccEmails as $email) {
+                if (!filter_var($email, FILTER_VALIDATE_EMAIL)) {
+                    $this->addError('replyCc', "Format email '{$email}' tidak valid.");
+                    return;
+                }
+            }
+        }
 
         // Mapping mailbox ke email address
         $mailboxEmails = [
@@ -474,18 +513,66 @@ class EmailInbox extends Component
         $fromName = 'M2B - ' . ucfirst($this->activeAccount);
 
         try {
-            \Log::info('Sending reply email', [
+            \Log::info('Sending email via livewire inbox', [
+                'mode' => $this->emailMode,
                 'to' => $this->replyTo,
+                'cc' => $ccEmails,
                 'from' => $fromEmail,
                 'subject' => $this->replySubject,
                 'mailbox' => $this->activeAccount,
                 'user' => auth()->user()->name ?? 'unknown'
             ]);
 
-            \Mail::raw($this->replyBody, function($message) use ($fromEmail, $fromName) {
+            // Construct HTML body with original email content
+            $originalEmail = DB::table('emails')->where('id', $this->selectedEmail['db_id'])->first();
+            $htmlBody = nl2br(e($this->replyBody));
+
+            if ($originalEmail) {
+                $headerLabel = $this->emailMode === 'forward' ? 'Forwarded Message' : 'Original Message';
+                $htmlBody .= '<br><br>';
+                $htmlBody .= '<div style="border-left: 2px solid #cbd5e1; padding-left: 1rem; margin-top: 1.5rem; color: #475569; font-family: system-ui, -apple-system, sans-serif;">';
+                $htmlBody .= '<p style="margin: 0 0 0.5rem 0; font-size: 0.875rem;"><strong>----- ' . $headerLabel . ' -----</strong></p>';
+                $htmlBody .= '<p style="margin: 0; font-size: 0.875rem;"><strong>From:</strong> ' . e($originalEmail->from_name) . ' &lt;' . e($originalEmail->from_email) . '&gt;</p>';
+                $htmlBody .= '<p style="margin: 0; font-size: 0.875rem;"><strong>Date:</strong> ' . Carbon::parse($originalEmail->email_date)->format('d M Y H:i') . '</p>';
+                $htmlBody .= '<p style="margin: 0; font-size: 0.875rem;"><strong>Subject:</strong> ' . e($originalEmail->subject) . '</p>';
+                $htmlBody .= '<p style="margin: 0; font-size: 0.875rem;"><strong>To:</strong> ' . e($fromEmail) . '</p>';
+                $htmlBody .= '<br>';
+                $htmlBody .= $originalEmail->body;
+                $htmlBody .= '</div>';
+            }
+
+            \Mail::html($htmlBody, function($message) use ($fromEmail, $fromName, $ccEmails) {
                 $message->to($this->replyTo)
                     ->subject($this->replySubject)
-                    ->from(config("mail.from.address"), $fromName)->replyTo($fromEmail, $fromName);
+                    ->from(config("mail.from.address"), $fromName)
+                    ->replyTo($fromEmail, $fromName);
+                
+                if (!empty($ccEmails)) {
+                    $message->cc($ccEmails);
+                }
+
+                // Attach files if in forward mode and attachments are selected
+                if ($this->emailMode === 'forward' && !empty($this->forwardAttachments) && isset($this->selectedEmail['attachments'])) {
+                    foreach ($this->selectedEmail['attachments'] as $idx => $att) {
+                        if (in_array((string)$idx, $this->forwardAttachments)) {
+                            $path = $att['file_path'] ?? null;
+                            $filename = $att['filename'] ?? 'attachment';
+                            $mime = $att['mime_type'] ?? 'application/octet-stream';
+
+                            if ($path && Storage::disk('public')->exists($path)) {
+                                $message->attach(Storage::disk('public')->path($path), [
+                                    'as' => $filename,
+                                    'mime' => $mime,
+                                ]);
+                            } elseif ($path && Storage::disk('local')->exists($path)) {
+                                $message->attach(Storage::disk('local')->path($path), [
+                                    'as' => $filename,
+                                    'mime' => $mime,
+                                ]);
+                            }
+                        }
+                    }
+                }
             });
 
             \Log::info('Email sent successfully, saving to database');
@@ -494,6 +581,7 @@ class EmailInbox extends Component
             \App\Models\SentEmail::create([
                 'mailbox' => $this->activeAccount,
                 'to_email' => $this->replyTo,
+                'cc_email' => !empty($this->replyCc) ? $this->replyCc : null,
                 'subject' => $this->replySubject,
                 'body' => $this->replyBody,
                 'user_id' => auth()->id(),
@@ -502,24 +590,25 @@ class EmailInbox extends Component
 
             \Log::info('Email saved to sent_emails');
             
-            session()->flash('message', 'Reply berhasil dikirim ke ' . $this->replyTo);
+            $msgType = $this->emailMode === 'forward' ? 'Forward' : 'Reply';
+            session()->flash('message', "{$msgType} berhasil dikirim ke " . $this->replyTo);
             $this->showReplyModal = false;
-            $this->reset(['replyTo', 'replySubject', 'replyBody']);
+            $this->reset(['replyTo', 'replyCc', 'replySubject', 'replyBody', 'forwardAttachments', 'emailMode']);
             
         } catch (\Exception $e) {
-            \Log::error('Failed to send reply email', [
+            \Log::error('Failed to send email', [
                 'error' => $e->getMessage(),
                 'to' => $this->replyTo,
                 'mailbox' => $this->activeAccount
             ]);
-            session()->flash('error', 'Gagal mengirim reply: ' . $e->getMessage());
+            session()->flash('error', 'Gagal mengirim email: ' . $e->getMessage());
         }
     }
 
     public function closeReplyModal()
     {
         $this->showReplyModal = false;
-        $this->reset(['replyTo', 'replySubject', 'replyBody']);
+        $this->reset(['replyTo', 'replyCc', 'replySubject', 'replyBody', 'forwardAttachments', 'emailMode']);
     }
 
 
