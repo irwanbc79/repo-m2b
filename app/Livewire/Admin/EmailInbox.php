@@ -512,68 +512,78 @@ class EmailInbox extends Component
         $fromEmail = $mailboxEmails[$this->activeAccount] ?? config('mail.from.address');
         $fromName = 'M2B - ' . ucfirst($this->activeAccount);
 
-        try {
-            \Log::info('Sending email via livewire inbox', [
-                'mode' => $this->emailMode,
-                'to' => $this->replyTo,
-                'cc' => $ccEmails,
-                'from' => $fromEmail,
-                'subject' => $this->replySubject,
-                'mailbox' => $this->activeAccount,
-                'user' => auth()->user()->name ?? 'unknown'
-            ]);
+        // Construct HTML body with original email content
+        $originalEmail = DB::table('emails')->where('id', $this->selectedEmail['db_id'])->first();
+        $htmlBody = nl2br(e($this->replyBody));
 
-            // Construct HTML body with original email content
-            $originalEmail = DB::table('emails')->where('id', $this->selectedEmail['db_id'])->first();
-            $htmlBody = nl2br(e($this->replyBody));
+        if ($originalEmail) {
+            $headerLabel = $this->emailMode === 'forward' ? 'Forwarded Message' : 'Original Message';
+            $htmlBody .= '<br><br>';
+            $htmlBody .= '<div style="border-left: 2px solid #cbd5e1; padding-left: 1rem; margin-top: 1.5rem; color: #475569; font-family: system-ui, -apple-system, sans-serif;">';
+            $htmlBody .= '<p style="margin: 0 0 0.5rem 0; font-size: 0.875rem;"><strong>----- ' . $headerLabel . ' -----</strong></p>';
+            $htmlBody .= '<p style="margin: 0; font-size: 0.875rem;"><strong>From:</strong> ' . e($originalEmail->from_name) . ' &lt;' . e($originalEmail->from_email) . '&gt;</p>';
+            $htmlBody .= '<p style="margin: 0; font-size: 0.875rem;"><strong>Date:</strong> ' . Carbon::parse($originalEmail->email_date)->format('d M Y H:i') . '</p>';
+            $htmlBody .= '<p style="margin: 0; font-size: 0.875rem;"><strong>Subject:</strong> ' . e($originalEmail->subject) . '</p>';
+            $htmlBody .= '<p style="margin: 0; font-size: 0.875rem;"><strong>To:</strong> ' . e($fromEmail) . '</p>';
+            $htmlBody .= '<br>';
+            $htmlBody .= $originalEmail->body;
+            $htmlBody .= '</div>';
+        }
 
-            if ($originalEmail) {
-                $headerLabel = $this->emailMode === 'forward' ? 'Forwarded Message' : 'Original Message';
-                $htmlBody .= '<br><br>';
-                $htmlBody .= '<div style="border-left: 2px solid #cbd5e1; padding-left: 1rem; margin-top: 1.5rem; color: #475569; font-family: system-ui, -apple-system, sans-serif;">';
-                $htmlBody .= '<p style="margin: 0 0 0.5rem 0; font-size: 0.875rem;"><strong>----- ' . $headerLabel . ' -----</strong></p>';
-                $htmlBody .= '<p style="margin: 0; font-size: 0.875rem;"><strong>From:</strong> ' . e($originalEmail->from_name) . ' &lt;' . e($originalEmail->from_email) . '&gt;</p>';
-                $htmlBody .= '<p style="margin: 0; font-size: 0.875rem;"><strong>Date:</strong> ' . Carbon::parse($originalEmail->email_date)->format('d M Y H:i') . '</p>';
-                $htmlBody .= '<p style="margin: 0; font-size: 0.875rem;"><strong>Subject:</strong> ' . e($originalEmail->subject) . '</p>';
-                $htmlBody .= '<p style="margin: 0; font-size: 0.875rem;"><strong>To:</strong> ' . e($fromEmail) . '</p>';
-                $htmlBody .= '<br>';
-                $htmlBody .= $originalEmail->body;
-                $htmlBody .= '</div>';
-            }
+        $sentWithCustom = false;
+        
+        // Ambil konfigurasi SMTP default untuk disalin (host, port, encryption, dll)
+        $smtpConfig = config('mail.mailers.smtp');
+        $imapConfig = config("imap.accounts.{$this->activeAccount}");
 
-            \Mail::html($htmlBody, function($message) use ($fromEmail, $fromName, $ccEmails) {
-                $message->to($this->replyTo)
-                    ->subject($this->replySubject)
-                    ->from(config("mail.from.address"), $fromName)
-                    ->replyTo($fromEmail, $fromName);
+        if ($imapConfig && !empty($imapConfig['username']) && !empty($imapConfig['password']) && $smtpConfig) {
+            try {
+                \Log::info("Mencoba mengirim email via SMTP Dinamis: {$fromEmail}");
                 
-                if (!empty($ccEmails)) {
-                    $message->cc($ccEmails);
-                }
+                // Konfigurasi mailer dinamis dengan username & password dari mailbox aktif
+                config([
+                    'mail.mailers.dynamic_smtp' => array_merge($smtpConfig, [
+                        'username' => $imapConfig['username'],
+                        'password' => $imapConfig['password'],
+                    ])
+                ]);
 
-                // Attach files if in forward mode and attachments are selected
-                if ($this->emailMode === 'forward' && !empty($this->forwardAttachments) && isset($this->selectedEmail['attachments'])) {
-                    foreach ($this->selectedEmail['attachments'] as $idx => $att) {
-                        if (in_array((string)$idx, $this->forwardAttachments)) {
-                            $path = $att['file_path'] ?? null;
-                            $filename = $att['filename'] ?? 'attachment';
-                            $mime = $att['mime_type'] ?? 'application/octet-stream';
-
-                            if ($path && Storage::disk('public')->exists($path)) {
-                                $message->attach(Storage::disk('public')->path($path), [
-                                    'as' => $filename,
-                                    'mime' => $mime,
-                                ]);
-                            } elseif ($path && Storage::disk('local')->exists($path)) {
-                                $message->attach(Storage::disk('local')->path($path), [
-                                    'as' => $filename,
-                                    'mime' => $mime,
-                                ]);
-                            }
-                        }
+                \Mail::mailer('dynamic_smtp')->html($htmlBody, function($message) use ($fromEmail, $fromName, $ccEmails) {
+                    $message->to($this->replyTo)
+                        ->subject($this->replySubject)
+                        ->from($fromEmail, $fromName); // Dari email aktif (misal sales@m2b.co.id)
+                    
+                    if (!empty($ccEmails)) {
+                        $message->cc($ccEmails);
                     }
-                }
-            });
+                    
+                    $this->attachForwardedFiles($message);
+                });
+
+                $sentWithCustom = true;
+                \Log::info("Email berhasil dikirim via SMTP Dinamis: {$fromEmail}");
+            } catch (\Exception $e) {
+                \Log::warning("Gagal mengirim menggunakan SMTP Dinamis untuk {$this->activeAccount}, menggunakan fallback default: " . $e->getMessage());
+            }
+        }
+
+        try {
+            if (!$sentWithCustom) {
+                \Log::info("Mengirim email menggunakan fallback default mailer (no-reply)");
+                
+                \Mail::html($htmlBody, function($message) use ($fromEmail, $fromName, $ccEmails) {
+                    $message->to($this->replyTo)
+                        ->subject($this->replySubject)
+                        ->from(config("mail.from.address"), $fromName)
+                        ->replyTo($fromEmail, $fromName);
+                    
+                    if (!empty($ccEmails)) {
+                        $message->cc($ccEmails);
+                    }
+                    
+                    $this->attachForwardedFiles($message);
+                });
+            }
 
             \Log::info('Email sent successfully, saving to database');
 
@@ -602,6 +612,32 @@ class EmailInbox extends Component
                 'mailbox' => $this->activeAccount
             ]);
             session()->flash('error', 'Gagal mengirim email: ' . $e->getMessage());
+        }
+    }
+
+    protected function attachForwardedFiles($message)
+    {
+        // Attach files if in forward mode and attachments are selected
+        if ($this->emailMode === 'forward' && !empty($this->forwardAttachments) && isset($this->selectedEmail['attachments'])) {
+            foreach ($this->selectedEmail['attachments'] as $idx => $att) {
+                if (in_array((string)$idx, $this->forwardAttachments)) {
+                    $path = $att['file_path'] ?? null;
+                    $filename = $att['filename'] ?? 'attachment';
+                    $mime = $att['mime_type'] ?? 'application/octet-stream';
+
+                    if ($path && Storage::disk('public')->exists($path)) {
+                        $message->attach(Storage::disk('public')->path($path), [
+                            'as' => $filename,
+                            'mime' => $mime,
+                        ]);
+                    } elseif ($path && Storage::disk('local')->exists($path)) {
+                        $message->attach(Storage::disk('local')->path($path), [
+                            'as' => $filename,
+                            'mime' => $mime,
+                        ]);
+                    }
+                }
+            }
         }
     }
 
