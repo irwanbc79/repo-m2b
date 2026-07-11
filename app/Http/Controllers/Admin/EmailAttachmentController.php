@@ -74,10 +74,49 @@ class EmailAttachmentController extends Controller
                 . '<p style="font-size:12px;margin:0">Email mungkin belum tersinkron. '
                 . 'Klik <b>Sync Now</b> lalu buka kembali email ini.</p></div>';
         } else {
-            $html = trim((string) $email->body) !== ''
-                ? $email->body
-                : '<p style="font-family:system-ui,sans-serif;color:#9ca3af;padding:1.5rem">'
+            $rawBody = trim((string) $email->body);
+            if ($rawBody === '') {
+                $html = '<p style="font-family:system-ui,sans-serif;color:#9ca3af;padding:1.5rem">'
                     . '(Konten email kosong)</p>';
+            } else {
+                // Cek apakah isi email berupa HTML atau plain text
+                $hasHtmlTags = preg_match("/<[a-z][\s\S]*>/i", $rawBody);
+                
+                if (!$hasHtmlTags) {
+                    // Plain text: bungkus dengan pre-wrap dan styling modern
+                    $html = '<div style="white-space: pre-wrap; font-family: system-ui, -apple-system, BlinkMacSystemFont, \'Segoe UI\', Roboto, sans-serif; font-size: 14px; line-height: 1.6; color: #374151; padding: 1.5rem; word-break: break-word;">' 
+                        . e($rawBody) 
+                        . '</div>';
+                } else {
+                    // HTML: Inject CSS global untuk menormalkan tampilan
+                    $styleBlock = '<style>
+                        body {
+                            font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+                            font-size: 14px;
+                            line-height: 1.6;
+                            color: #374151;
+                            padding: 1.5rem;
+                            margin: 0;
+                            word-break: break-word;
+                        }
+                        img {
+                            max-width: 100% !important;
+                            height: auto !important;
+                        }
+                        table {
+                            max-width: 100% !important;
+                            width: 100% !important;
+                            border-collapse: collapse !important;
+                        }
+                    </style>';
+                    
+                    if (str_contains(strtolower($rawBody), '</head>')) {
+                        $html = str_ireplace('</head>', $styleBlock . '</head>', $rawBody);
+                    } else {
+                        $html = $styleBlock . $rawBody;
+                    }
+                }
+            }
         }
 
         // Header anti-cache: cegah LiteSpeed menyajikan body/404 basi dari cache.
