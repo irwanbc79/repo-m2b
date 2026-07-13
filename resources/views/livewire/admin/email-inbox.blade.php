@@ -116,39 +116,43 @@
         {{-- 3. EMAIL CONTENT --}}
         <div class="flex-1 flex flex-col bg-white overflow-hidden shadow-inner">
             @if($selectedEmail)
-                <div class="p-8 border-b border-gray-100 bg-white shrink-0 shadow-sm z-10 flex justify-between items-start">
-                    <div>
-                        <h2 class="text-2xl font-black text-gray-900 leading-tight mb-4">{{ $selectedEmail['subject'] }}</h2>
-                        <div class="flex items-center gap-4">
-                            <div class="w-12 h-12 rounded-2xl bg-blue-600 flex items-center justify-center text-white font-black text-xl shadow-lg shrink-0">
+                <div class="p-6 border-b border-gray-100 bg-white shrink-0 shadow-sm z-10">
+                    {{-- Subjek (lebar penuh) --}}
+                    <h2 class="text-xl font-black text-gray-900 leading-tight mb-4">{{ $selectedEmail['subject'] }}</h2>
+
+                    {{-- Baris: pengirim (kiri) + toolbar aksi (kanan, boleh turun baris) --}}
+                    <div class="flex items-center justify-between gap-4 flex-wrap">
+                        <div class="flex items-center gap-3 min-w-0">
+                            <div class="w-11 h-11 rounded-2xl bg-blue-600 flex items-center justify-center text-white font-black text-lg shadow-lg shrink-0">
                                 {{ strtoupper(substr($selectedEmail['name'] ?? 'U', 0, 1)) }}
                             </div>
-                            <div>
-                                <p class="text-base font-bold text-gray-900">{{ $selectedEmail['name'] }}</p>
-                                <p class="text-xs text-gray-400 italic font-medium tracking-tight">&lt;{{ $selectedEmail['from'] }}&gt; • {{ $selectedEmail['date'] }}</p>
+                            <div class="min-w-0">
+                                <p class="text-sm font-bold text-gray-900 truncate">{{ $selectedEmail['name'] }}</p>
+                                <p class="text-xs text-gray-400 italic font-medium tracking-tight truncate">&lt;{{ $selectedEmail['from'] }}&gt; • {{ $selectedEmail['date'] }}</p>
                             </div>
                         </div>
-                    </div>
-                    <div class="flex gap-3">
-                        <button type="button"
-                            data-preview-url="{{ route('admin.inbox.body', $selectedEmail['db_id']) }}?v=2"
-                            data-preview-subject="{{ $selectedEmail['subject'] }}"
-                            data-preview-from="{{ $selectedEmail['from'] }}"
-                            data-preview-date="{{ $selectedEmail['date'] }}"
-                            onclick="openEmailPreviewFromEl(this)"
-                            class="bg-slate-800 text-white px-5 py-3 rounded-xl font-black text-xs uppercase tracking-widest hover:bg-slate-900 transition shadow-xl shadow-slate-200 flex items-center gap-2"
-                            title="Perbesar isi email (layar penuh) — bisa langsung Print">
-                            ⛶ Perbesar
-                        </button>
-                        <button wire:click="openReplyModal" class="bg-green-600 text-white px-5 py-3 rounded-xl font-black text-xs uppercase tracking-widest hover:bg-green-700 transition shadow-xl shadow-green-100 flex items-center gap-2">
-                            ✉️ Reply
-                        </button>
-                        <button wire:click="openForwardModal" class="bg-indigo-600 text-white px-5 py-3 rounded-xl font-black text-xs uppercase tracking-widest hover:bg-indigo-700 transition shadow-xl shadow-indigo-100 flex items-center gap-2">
-                            ➡️ Forward
-                        </button>
-                        <button wire:click="$set('showConvertModal', true)" class="bg-blue-600 text-white px-5 py-3 rounded-xl font-black text-xs uppercase tracking-widest hover:bg-blue-700 transition shadow-xl shadow-blue-100 flex items-center gap-2">
-                            📦 Convert to Shipment
-                        </button>
+
+                        <div class="flex flex-wrap items-center gap-2">
+                            <button type="button"
+                                data-preview-url="{{ route('admin.inbox.body', $selectedEmail['db_id']) }}?v=2"
+                                data-preview-subject="{{ $selectedEmail['subject'] }}"
+                                data-preview-from="{{ $selectedEmail['from'] }}"
+                                data-preview-date="{{ $selectedEmail['date'] }}"
+                                onclick="openEmailPreviewFromEl(this)"
+                                class="bg-slate-800 text-white px-4 py-2.5 rounded-xl font-black text-[11px] uppercase tracking-widest hover:bg-slate-900 transition shadow-lg shadow-slate-200 flex items-center gap-1.5 whitespace-nowrap shrink-0"
+                                title="Perbesar isi email (layar penuh) — bisa langsung Print">
+                                ⛶ Perbesar
+                            </button>
+                            <button wire:click="openReplyModal" class="bg-green-600 text-white px-4 py-2.5 rounded-xl font-black text-[11px] uppercase tracking-widest hover:bg-green-700 transition shadow-lg shadow-green-100 flex items-center gap-1.5 whitespace-nowrap shrink-0">
+                                ✉️ Reply
+                            </button>
+                            <button wire:click="openForwardModal" class="bg-indigo-600 text-white px-4 py-2.5 rounded-xl font-black text-[11px] uppercase tracking-widest hover:bg-indigo-700 transition shadow-lg shadow-indigo-100 flex items-center gap-1.5 whitespace-nowrap shrink-0">
+                                ➡️ Forward
+                            </button>
+                            <button wire:click="$set('showConvertModal', true)" title="Convert to Shipment" class="bg-blue-600 text-white px-4 py-2.5 rounded-xl font-black text-[11px] uppercase tracking-widest hover:bg-blue-700 transition shadow-lg shadow-blue-100 flex items-center gap-1.5 whitespace-nowrap shrink-0">
+                                📦 Convert
+                            </button>
+                        </div>
                     </div>
                 </div>
                 
