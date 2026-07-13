@@ -130,6 +130,16 @@
                         </div>
                     </div>
                     <div class="flex gap-3">
+                        <button type="button"
+                            data-preview-url="{{ route('admin.inbox.body', $selectedEmail['db_id']) }}?v=2"
+                            data-preview-subject="{{ $selectedEmail['subject'] }}"
+                            data-preview-from="{{ $selectedEmail['from'] }}"
+                            data-preview-date="{{ $selectedEmail['date'] }}"
+                            onclick="openEmailPreviewFromEl(this)"
+                            class="bg-slate-800 text-white px-5 py-3 rounded-xl font-black text-xs uppercase tracking-widest hover:bg-slate-900 transition shadow-xl shadow-slate-200 flex items-center gap-2"
+                            title="Perbesar isi email (layar penuh) — bisa langsung Print">
+                            ⛶ Perbesar
+                        </button>
                         <button wire:click="openReplyModal" class="bg-green-600 text-white px-5 py-3 rounded-xl font-black text-xs uppercase tracking-widest hover:bg-green-700 transition shadow-xl shadow-green-100 flex items-center gap-2">
                             ✉️ Reply
                         </button>
@@ -143,7 +153,18 @@
                 </div>
                 
                 <div class="flex-1 overflow-y-auto p-8 bg-gray-50/30">
-                    <div class="bg-white p-4 rounded-2xl shadow-sm border border-gray-100 min-h-full">
+                    <div class="relative bg-white p-4 rounded-2xl shadow-sm border border-gray-100 min-h-full group">
+                        {{-- Tombol perbesar melayang di pojok kartu isi email --}}
+                        <button type="button"
+                            data-preview-url="{{ route('admin.inbox.body', $selectedEmail['db_id']) }}?v=2"
+                            data-preview-subject="{{ $selectedEmail['subject'] }}"
+                            data-preview-from="{{ $selectedEmail['from'] }}"
+                            data-preview-date="{{ $selectedEmail['date'] }}"
+                            onclick="openEmailPreviewFromEl(this)"
+                            class="absolute top-3 right-3 z-20 flex items-center gap-1.5 bg-white/90 backdrop-blur border border-gray-200 text-gray-500 hover:text-slate-900 hover:border-slate-300 hover:shadow-md px-3 py-1.5 rounded-lg text-[11px] font-black uppercase tracking-widest transition opacity-60 group-hover:opacity-100"
+                            title="Perbesar isi email (layar penuh)">
+                            ⛶ Perbesar
+                        </button>
                         {{-- IFRAME FOR EMAIL BODY --}}
                         <iframe
                             src="{{ route('admin.inbox.body', $selectedEmail['db_id']) }}?v=2"
@@ -516,6 +537,34 @@
             <div class="flex-1 overflow-auto bg-gray-100 p-6" id="previewContent"></div>
         </div>
     </div>
+
+    {{-- FULLSCREEN EMAIL PREVIEW MODAL --}}
+    <div id="emailPreviewModal" class="fixed inset-0 bg-slate-900/80 z-[10001] hidden items-center justify-center p-4 backdrop-blur-sm" onclick="if(event.target === this) closeEmailPreview()">
+        <div class="bg-white rounded-3xl shadow-2xl w-[96vw] h-[95vh] max-w-[1600px] flex flex-col overflow-hidden animate-zoom-in" style="position: relative; z-index: 10;">
+            {{-- Header modal --}}
+            <div class="flex items-start justify-between gap-4 px-8 py-5 border-b border-gray-100 shrink-0 bg-white">
+                <div class="min-w-0">
+                    <h3 class="font-black text-gray-900 text-lg leading-tight truncate" id="emailPreviewSubject">Isi Email</h3>
+                    <p class="text-xs text-gray-400 italic font-medium mt-1 truncate" id="emailPreviewMeta"></p>
+                </div>
+                <div class="flex items-center gap-3 shrink-0">
+                    <button type="button" onclick="printEmailPreview()"
+                        class="bg-blue-600 text-white px-5 py-2.5 rounded-xl font-black text-xs uppercase tracking-widest hover:bg-blue-700 transition shadow-lg shadow-blue-100 flex items-center gap-2">
+                        🖨️ Print
+                    </button>
+                    <button type="button" onclick="closeEmailPreview()"
+                        class="bg-gray-100 text-gray-500 hover:bg-red-50 hover:text-red-500 w-10 h-10 rounded-xl font-black text-2xl leading-none flex items-center justify-center transition" title="Tutup (Esc)">&times;</button>
+                </div>
+            </div>
+            {{-- Isi email --}}
+            <div class="flex-1 overflow-auto bg-gray-50 p-6">
+                <div class="bg-white rounded-2xl shadow-sm border border-gray-100 max-w-5xl mx-auto min-h-full">
+                    <iframe id="emailPreviewFrame" src="about:blank" class="w-full border-0 rounded-2xl"
+                        onload="fitEmailPreviewFrame(this)" style="min-height: calc(95vh - 160px);"></iframe>
+                </div>
+            </div>
+        </div>
+    </div>
 </div>
 
 <script>
@@ -545,4 +594,72 @@ function closePreviewModal() {
     modal.classList.remove('flex');
     document.body.style.overflow = '';
 }
+
+/* ===== Fullscreen Email Preview + Print ===== */
+function openEmailPreviewFromEl(el) {
+    openEmailPreview(el.dataset.previewUrl, el.dataset.previewSubject || 'Isi Email', el.dataset.previewFrom || '', el.dataset.previewDate || '');
+}
+
+function openEmailPreview(url, subject, from, date) {
+    const modal = document.getElementById('emailPreviewModal');
+    const frame = document.getElementById('emailPreviewFrame');
+    document.getElementById('emailPreviewSubject').textContent = subject;
+    document.getElementById('emailPreviewMeta').textContent = [from ? '<' + from + '>' : '', date].filter(Boolean).join('  •  ');
+    frame.dataset.subject = subject;
+    frame.dataset.from = from;
+    frame.dataset.date = date;
+    frame.src = url;
+    modal.classList.remove('hidden');
+    modal.classList.add('flex');
+    document.body.style.overflow = 'hidden';
+}
+
+function fitEmailPreviewFrame(frame) {
+    try { frame.contentWindow.document.body.style.overflow = 'auto'; } catch (e) {}
+}
+
+function closeEmailPreview() {
+    const modal = document.getElementById('emailPreviewModal');
+    const frame = document.getElementById('emailPreviewFrame');
+    modal.classList.add('hidden');
+    modal.classList.remove('flex');
+    frame.src = 'about:blank';
+    document.body.style.overflow = '';
+}
+
+function printEmailPreview() {
+    const frame = document.getElementById('emailPreviewFrame');
+    try {
+        const win = frame.contentWindow;
+        const doc = win.document;
+        // Sisipkan kop (subjek + pengirim + tanggal) khusus untuk cetakan
+        let header = doc.getElementById('__m2b_print_header');
+        if (!header) {
+            header = doc.createElement('div');
+            header.id = '__m2b_print_header';
+            header.style.cssText = 'font-family: Arial, Helvetica, sans-serif; border-bottom:2px solid #0f172a; margin:0 0 16px; padding:0 0 12px;';
+            header.innerHTML =
+                '<h2 style="margin:0 0 6px; font-size:18px; color:#0f172a;">' + (frame.dataset.subject || '') + '</h2>' +
+                '<div style="font-size:12px; color:#64748b;">' +
+                    (frame.dataset.from ? '&lt;' + frame.dataset.from + '&gt;' : '') +
+                    (frame.dataset.date ? ' &bull; ' + frame.dataset.date : '') +
+                '</div>';
+            doc.body.insertBefore(header, doc.body.firstChild);
+        }
+        win.onafterprint = function () { header.remove(); win.onafterprint = null; };
+        win.focus();
+        win.print();
+    } catch (e) {
+        // Fallback bila iframe tak bisa diakses langsung
+        window.open(frame.src, '_blank');
+    }
+}
+
+// Tutup modal preview email dengan tombol Esc
+document.addEventListener('keydown', function (e) {
+    if (e.key === 'Escape') {
+        const modal = document.getElementById('emailPreviewModal');
+        if (modal && !modal.classList.contains('hidden')) closeEmailPreview();
+    }
+});
 </script>
