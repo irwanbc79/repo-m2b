@@ -30,7 +30,8 @@ class CheckFinanceIntegrity extends Command
 {
     protected $signature = 'finance:check-integrity
         {--since= : Batas tanggal terlama yang diperiksa untuk JOB COST (default env FINANCE_INTEGRITY_SINCE atau 2026-06-01, untuk mengecualikan backlog legacy). Pembayaran invoice selalu diperiksa penuh.}
-        {--notify : Kirim email cross-check ke finance bila ada temuan}';
+        {--notify : Kirim email cross-check ke finance bila ada temuan}
+        {--digest : Kirim juga email ringkasan "semua aman" saat TIDAK ada temuan (untuk heartbeat berkala)}';
 
     protected $description = 'Cek payment/job cost yang belum punya CashTransaction, kirim email cross-check ke finance bila ada';
 
@@ -65,6 +66,26 @@ class CheckFinanceIntegrity extends Command
 
         if ($orphanPayments->isEmpty() && $orphanJobCosts->isEmpty()) {
             $this->info('OK — semua pembayaran invoice & job cost (sejak ' . $jobCostFloor->format('Y-m-d') . ') sudah terbukukan.');
+
+            if ($this->option('notify') && $this->option('digest')) {
+                $recipient = env('FINANCE_ALERT_EMAIL', 'finance@m2b.co.id');
+                if ($recipient) {
+                    $body = "PORTAL M2B — RINGKASAN PEMBUKUAN\n" . str_repeat('=', 42) . "\n\n"
+                        . "✅ Buku kas AMAN. Semua pembayaran invoice sudah terbukukan, dan tidak ada\n"
+                        . "job cost (sejak {$jobCostFloor->format('Y-m-d')}) yang tertinggal.\n\n"
+                        . "Tidak ada tindakan yang diperlukan. Ringkasan ini dikirim berkala sebagai\n"
+                        . "pengingat bahwa pemantauan integritas pembukuan berjalan normal.\n";
+                    try {
+                        Mail::raw($body, function ($message) use ($recipient) {
+                            $message->to($recipient)->subject('[Portal M2B] ✅ Buku kas aman — semua transaksi terbukukan');
+                        });
+                        $this->info("Ringkasan digest dikirim ke {$recipient}");
+                    } catch (\Throwable $e) {
+                        Log::error('[finance:check-integrity] gagal kirim digest: ' . $e->getMessage());
+                    }
+                }
+            }
+
             return self::SUCCESS;
         }
 

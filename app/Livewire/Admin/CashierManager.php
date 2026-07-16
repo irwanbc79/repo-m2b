@@ -166,11 +166,26 @@ class CashierManager extends Component
      * RENDER
      * =========================
      */
+    /**
+     * Pembayaran invoice yang SUDAH tercatat tapi BELUM masuk buku kas —
+     * panel cross-check kasir (senada dengan monitor finance:check-integrity).
+     */
+    public function getUnbookedPaymentsProperty()
+    {
+        $bookedIds = CashTransaction::whereNotNull('invoice_payment_id')->pluck('invoice_payment_id');
+
+        return \App\Models\InvoicePayment::with(['invoice', 'recorder'])
+            ->whereNotIn('id', $bookedIds)
+            ->orderByDesc('payment_date')
+            ->get();
+    }
+
     public function render()
     {
         return view('livewire.admin.cashier-manager', [
-            'cashAccounts' => $this->cashAccounts,
-            'invoices'     => $this->invoices,
+            'cashAccounts'     => $this->cashAccounts,
+            'invoices'         => $this->invoices,
+            'unbookedPayments' => $this->unbookedPayments,
         ]);
     }
 }

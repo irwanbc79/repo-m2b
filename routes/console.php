@@ -51,3 +51,10 @@ Schedule::command('email:cleanup')
 Schedule::command('finance:check-integrity --notify')
     ->dailyAt('07:00')
     ->timezone('Asia/Jakarta');
+
+// Heartbeat mingguan: kirim ringkasan "semua aman" ke finance tiap Senin 07:05
+// (membangun kebiasaan cek tanpa email harian yang melelahkan). Pindah ke
+// harian cukup ganti weeklyOn → dailyAt bila Direktur menghendaki.
+Schedule::command('finance:check-integrity --notify --digest')
+    ->weeklyOn(1, '07:05')
+    ->timezone('Asia/Jakarta');

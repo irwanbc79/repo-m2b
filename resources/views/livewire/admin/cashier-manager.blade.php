@@ -9,6 +9,38 @@
     @endif
 
     {{-- =======================
+        CROSS-CHECK: pembayaran belum terbukukan
+    ======================== --}}
+    @if ($unbookedPayments->count() > 0)
+        <div class="bg-amber-50 border border-amber-300 rounded-xl shadow-sm p-5" style="border-left: 4px solid #d97706;">
+            <div class="flex items-center justify-between mb-2 gap-3 flex-wrap">
+                <h3 class="font-black text-amber-800 text-sm uppercase tracking-wide flex items-center gap-2">
+                    <span>⚠️</span> Belum Terbukukan — perlu cross-check
+                </h3>
+                <span class="text-xs font-bold text-amber-800 bg-amber-100 px-2.5 py-1 rounded-full whitespace-nowrap">
+                    {{ $unbookedPayments->count() }} transaksi · Rp {{ number_format($unbookedPayments->sum('amount'), 0, ',', '.') }}
+                </span>
+            </div>
+            <p class="text-xs text-amber-700 mb-3">
+                Pembayaran ini sudah dicatat Invoicing tapi belum masuk buku kas. Kasir: cocokkan mutasi bank, lalu bukukan.
+            </p>
+            <div class="divide-y divide-amber-200">
+                @foreach ($unbookedPayments as $up)
+                    <div class="flex items-center justify-between py-2 text-sm gap-3">
+                        <div class="min-w-0">
+                            <span class="font-bold text-gray-800">{{ $up->invoice->invoice_number ?? 'Invoice #' . $up->invoice_id }}</span>
+                            <span class="text-gray-400 text-xs ml-2">
+                                {{ optional($up->payment_date)->format('d M Y') }} · dicatat: {{ $up->recorder->name ?? 'user #' . $up->recorded_by }}
+                            </span>
+                        </div>
+                        <span class="font-black text-amber-800 tabular-nums whitespace-nowrap">Rp {{ number_format($up->amount, 0, ',', '.') }}</span>
+                    </div>
+                @endforeach
+            </div>
+        </div>
+    @endif
+
+    {{-- =======================
         FORM KAS
     ======================== --}}
     <div class="bg-white rounded-xl shadow border border-gray-200 p-6">
