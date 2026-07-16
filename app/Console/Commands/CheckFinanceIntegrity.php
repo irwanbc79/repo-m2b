@@ -2,6 +2,7 @@
 
 namespace App\Console\Commands;
 
+use App\Models\Invoice;
 use App\Models\InvoicePayment;
 use App\Models\JobCost;
 use Carbon\Carbon;
@@ -37,9 +38,13 @@ class CheckFinanceIntegrity extends Command
 
     public function handle(): int
     {
-        // Batas untuk JOB COST: kecualikan backlog legacy (134 job cost Jan–Mei
-        // 2026, era sebelum auto-cash-tx job cost). Pembayaran invoice TIDAK
-        // dibatasi tanggal — sudah bersih (0), jadi temuan apa pun = nyata.
+        // Batas FOKUS: Direktur menetapkan mulai 1 Jan 2026 (transaksi Des 2025
+        // ditunda sbg opening balance). Dipakai utk cek invoice quick-pay lama.
+        $focusFloor = Carbon::parse('2026-01-01')->startOfDay();
+
+        // Batas JOB COST: kecualikan backlog legacy yg menunggu keputusan Direktur
+        // (env FINANCE_INTEGRITY_SINCE, default 2026-06-01). Pakai date_paid
+        // (tanggal bayar RIIL), BUKAN updated_at yg bisa jauh setelahnya.
         $jobCostFloor = Carbon::parse(
             $this->option('since') ?: env('FINANCE_INTEGRITY_SINCE', '2026-06-01')
         )->startOfDay();
@@ -55,16 +60,26 @@ class CheckFinanceIntegrity extends Command
             ->orderBy('payment_date')
             ->get();
 
+        // Blind spot quick-pay: invoice 'paid' TANPA InvoicePayment DAN tanpa
+        // CashTransaction. Dibatasi periode fokus (Des 2025 dikecualikan).
+        $cashTxInvoiceIds  = DB::table('cash_transactions')->whereNotNull('invoice_id')->pluck('invoice_id');
+        $paymentInvoiceIds = DB::table('invoice_payments')->distinct()->pluck('invoice_id');
+        $orphanPaidInvoices = Invoice::where('status', 'paid')
+            ->where('invoice_date', '>=', $focusFloor)
+            ->whereNotIn('id', $cashTxInvoiceIds)
+            ->whereNotIn('id', $paymentInvoiceIds)
+            ->get();
+
         $cashTxJobCostIds = DB::table('cash_transactions')
             ->whereNotNull('job_cost_id')
             ->pluck('job_cost_id');
 
         $orphanJobCosts = JobCost::where('status', 'paid')
-            ->where('updated_at', '>=', $jobCostFloor)
+            ->where('date_paid', '>=', $jobCostFloor)
             ->whereNotIn('id', $cashTxJobCostIds)
             ->get();
 
-        if ($orphanPayments->isEmpty() && $orphanJobCosts->isEmpty()) {
+        if ($orphanPayments->isEmpty() && $orphanJobCosts->isEmpty() && $orphanPaidInvoices->isEmpty()) {
             $this->info('OK — semua pembayaran invoice & job cost (sejak ' . $jobCostFloor->format('Y-m-d') . ') sudah terbukukan.');
 
             if ($this->option('notify') && $this->option('digest')) {
@@ -110,8 +125,18 @@ class CheckFinanceIntegrity extends Command
             );
         }
 
-        $total = count($paymentLines) + count($jobCostLines);
-        $report = $this->buildReport($paymentLines, $jobCostLines, $total);
+        $paidInvoiceLines = [];
+        foreach ($orphanPaidInvoices as $inv) {
+            $paidInvoiceLines[] = sprintf(
+                'Invoice %s — Rp %s (%s) — LUNAS tapi belum ada catatan kas (quick-pay lama)',
+                $inv->invoice_number ?? ('#' . $inv->id),
+                number_format((float) $inv->grand_total, 0, ',', '.'),
+                optional($inv->invoice_date)->format('Y-m-d')
+            );
+        }
+
+        $total = count($paymentLines) + count($jobCostLines) + count($paidInvoiceLines);
+        $report = $this->buildReport($paymentLines, $jobCostLines, $paidInvoiceLines, $total);
 
         $this->error($report);
         Log::error('[finance:check-integrity] ' . $total . ' transaksi belum terbukukan (lihat email cross-check)');
@@ -137,7 +162,7 @@ class CheckFinanceIntegrity extends Command
     /**
      * Susun email sebagai alat cross-check Invoicing ↔ Kasir.
      */
-    protected function buildReport(array $paymentLines, array $jobCostLines, int $total): string
+    protected function buildReport(array $paymentLines, array $jobCostLines, array $paidInvoiceLines, int $total): string
     {
         $out = "PORTAL M2B — CROSS-CHECK PEMBUKUAN\n";
         $out .= str_repeat('=', 42) . "\n\n";
@@ -146,6 +171,9 @@ class CheckFinanceIntegrity extends Command
 
         if ($paymentLines) {
             $out .= "PEMBAYARAN INVOICE (uang masuk):\n- " . implode("\n- ", $paymentLines) . "\n\n";
+        }
+        if ($paidInvoiceLines) {
+            $out .= "INVOICE LUNAS TANPA CATATAN KAS (quick-pay lama):\n- " . implode("\n- ", $paidInvoiceLines) . "\n\n";
         }
         if ($jobCostLines) {
             $out .= "JOB COST / BIAYA (uang keluar):\n- " . implode("\n- ", $jobCostLines) . "\n\n";

@@ -552,56 +552,20 @@ class InvoiceManager extends Component
         $this->quick_payment_proof = null;
         $this->isPaymentModalOpen = true;
     }
+    /**
+     * DEPRECATED & DINONAKTIFKAN (2026-07-16).
+     * Jalur "quick pay" lama ini menandai invoice LUNAS + membuat jurnal via
+     * AccountingService TANPA membuat InvoicePayment/CashTransaction → menciptakan
+     * blind spot pembukuan (mis. 10 invoice Des 2025 tak masuk buku kas, tak
+     * terpantau monitor). Sudah tidak ter-wire di UI; dijadikan no-op agar tak
+     * bisa mengembalikan blind spot bila tak sengaja dipanggil lagi.
+     * Gunakan savePaymentNew() yang mencatat InvoicePayment + CashTransaction.
+     */
     public function savePayment()
     {
-        $this->validate([
-            "payment_date" => "required|date",
-            "payment_method" => "required",
-            "quick_payment_proof" => "nullable|file|mimes:jpeg,png,jpg,pdf|max:10240"
-        ]);
-
-        $inv = Invoice::find($this->editingId);
-        if ($inv) {
-            DB::beginTransaction();
-            try {
-                $data = [
-                    "status" => "paid",
-                    "payment_date" => $this->payment_date,
-                    "notes" => $inv->notes . "\n[LUNAS: " . $this->payment_method . "]"
-                ];
-
-                if ($this->quick_payment_proof) {
-                    if ($inv->payment_proof && Storage::disk("public")->exists($inv->payment_proof)) {
-                        Storage::disk("public")->delete($inv->payment_proof);
-                    }
-                    $filename = "PAY_" . str_replace(["/", "\\"], "-", $inv->invoice_number) . "_" . time() . "." . $this->quick_payment_proof->getClientOriginalExtension();
-                    $path = $this->quick_payment_proof->storeAs("payments", $filename, "public");
-                    $data["payment_proof"] = $path;
-                }
-
-                $inv->update($data);
-
-                // AUTO JOURNAL: Buat jurnal pembayaran otomatis
-                $journal = AccountingService::createJournalFromPayment($inv, "1103");
-
-                DB::commit();
-
-                $this->flushInvoiceDashboardCache();
-
-                if ($journal) {
-                    session()->flash("message", "Pembayaran dicatat! Jurnal " . $journal->journal_number . " otomatis dibuat.");
-                }
-                else {
-                    session()->flash("message", "Pembayaran dicatat! (Jurnal tidak dibuat - cek log)");
-                }
-            }
-            catch (\Exception $e) {
-                DB::rollBack();
-                session()->flash("error", "Gagal mencatat pembayaran: " . $e->getMessage());
-            }
-        }
+        \Log::warning('InvoiceManager::savePayment() dipanggil — sudah dinonaktifkan; gunakan savePaymentNew().');
+        session()->flash("error", "Metode pembayaran lama sudah dinonaktifkan. Gunakan tombol Catat Pembayaran.");
         $this->isPaymentModalOpen = false;
-        $this->reset("quick_payment_proof");
     }
     public function closePaymentModal()
     {
