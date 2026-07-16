@@ -189,6 +189,55 @@ class Shipment extends Model
     }
 
     /**
+     * Milestone TERJAUH berdasarkan dokumen yang ada (single source of truth).
+     * Dokumen menyimpan tipe di kolom `description` (prefix), dicocokkan dgn
+     * getDocumentTriggers. Return kunci status (mis. 'billing_issued') atau null.
+     */
+    public function computeMilestoneFromDocuments(): ?string
+    {
+        $triggers = self::getDocumentTriggers($this->service_type);
+        $flow = self::getStatusFlow($this->service_type);
+        $descs = ($this->relationLoaded('documents') ? $this->documents : $this->documents()->get())
+            ->pluck('description')->filter();
+
+        $best = null;
+        $bestOrder = 0.0;
+        foreach ($triggers as $docType => $statusKey) {
+            if ($descs->contains(fn ($d) => stripos($d, $docType) === 0)) {
+                $order = (float) ($flow[$statusKey]['order'] ?? 0);
+                if ($order > $bestOrder) {
+                    $bestOrder = $order;
+                    $best = $statusKey;
+                }
+            }
+        }
+
+        return $best;
+    }
+
+    /**
+     * Urutan (order) sebuah status untuk perbandingan maju/mundur.
+     * Mendukung alias operasional (pending/in_progress/dll) di luar flow.
+     */
+    public function statusOrder(?string $status = null): float
+    {
+        $status = $status ?? $this->status;
+        $flow = self::getStatusFlow($this->service_type);
+        if (isset($flow[$status])) {
+            return (float) ($flow[$status]['order'] ?? 0);
+        }
+
+        return match ($status) {
+            'pending'             => 1.0,
+            'in_progress'         => 2.0,
+            'in_transit'          => 3.0,
+            'completed'           => 999.0,
+            'cancel', 'cancelled' => -1.0,
+            default               => 0.0,
+        };
+    }
+
+    /**
      * Get current step number berdasarkan status
      */
     public function getCurrentStep(): int

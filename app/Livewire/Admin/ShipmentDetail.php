@@ -152,29 +152,34 @@ class ShipmentDetail extends Component
             'uploaded_at' => now(),
         ]);
 
-        // --- AUTOMATION TRIGGER: HANYA DOKUMEN UTAMA ---
-        if (strtolower($this->shipment->service_type) == 'import') {
-            // EXACT MATCH - Hanya dokumen utama yang trigger status
-            if ($this->doc_type === 'Billing Pungutan') {
-                $this->shipment->update(['lane_status' => 'green', 'status' => 'customs_released']);
-                ActivityLog::record('Shipment', 'AUTO STATUS', $this->shipment->awb_number, "Auto: Green Lane - Billing Pungutan uploaded");
+        // --- AUTO STATUS dari dokumen (pakai mapping RESMI getDocumentTriggers,
+        //     tidak lagi hardcode; hanya MAJU, tak pernah mundur/melompat) ---
+        $triggers = Shipment::getDocumentTriggers($this->shipment->service_type);
+        if (isset($triggers[$this->doc_type])
+            && !in_array($this->shipment->status, ['completed', 'cancel', 'cancelled'], true)) {
+
+            $target  = $triggers[$this->doc_type];
+            $updates = [];
+
+            // Hanya set status bila milestone dokumen ini >= status sekarang
+            // (mis. Billing Pungutan → billing_issued, BUKAN customs_released).
+            if ($this->shipment->statusOrder($target) >= $this->shipment->statusOrder()) {
+                $updates['status'] = $target;
             }
-            elseif ($this->doc_type === 'SPJM') {
-                $this->shipment->update(['lane_status' => 'red', 'status' => 'customs_released']);
-                ActivityLog::record('Shipment', 'AUTO STATUS', $this->shipment->awb_number, "Auto: Red Lane - SPJM uploaded");
+
+            // Deteksi jalur (khusus import): Billing Pungutan = hijau, SPJM = merah.
+            if (strtolower($this->shipment->service_type) === 'import') {
+                if ($this->doc_type === 'Billing Pungutan')      $updates['lane_status'] = 'green';
+                elseif ($this->doc_type === 'SPJM')              $updates['lane_status'] = 'red';
             }
-            elseif ($this->doc_type === 'SPPB') {
-                $this->shipment->update(['status' => 'customs_released']);
-                ActivityLog::record('Shipment', 'AUTO STATUS', $this->shipment->awb_number, "Auto: Customs Released - SPPB uploaded");
+
+            if (!empty($updates)) {
+                $this->shipment->update($updates);
+                ActivityLog::record('Shipment', 'AUTO STATUS', $this->shipment->awb_number,
+                    "Auto dari upload {$this->doc_type} → " . ($updates['status'] ?? $this->shipment->status));
             }
         }
-        elseif (strtolower($this->shipment->service_type) == 'export') {
-            if ($this->doc_type === 'NPE') {
-                $this->shipment->update(['status' => 'on_board']);
-                ActivityLog::record('Shipment', 'AUTO STATUS', $this->shipment->awb_number, "Auto: On Board - NPE uploaded");
-            }
-        }
-        
+
         if ($this->shipment->status == 'pending') {
             $this->shipment->update(['status' => 'in_progress']);
         }
