@@ -58,3 +58,10 @@ Schedule::command('finance:check-integrity --notify')
 Schedule::command('finance:check-integrity --notify --digest')
     ->weeklyOn(1, '07:05')
     ->timezone('Asia/Jakarta');
+
+// 6. Robot Accountant – briefing accounting harian ke owner, tiap 07:15 WIB.
+// Co-pilot selama belum ada staf accounting: rangkum kas, piutang, item
+// belum terbukukan, red-flag. Terpisah dari finance:check-integrity (→ finance@).
+Schedule::command('finance:daily-briefing --send')
+    ->dailyAt('07:15')
+    ->timezone('Asia/Jakarta');
