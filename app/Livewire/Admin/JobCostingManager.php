@@ -292,6 +292,10 @@ class JobCostingManager extends Component
             
             // Get stats
             $stats = $this->getStats();
+
+            // Job cost yg sudah punya CashTransaction (tandai mana yg perlu "Bukukan")
+            $bookedJobCostIds = CashTransaction::whereNotNull('job_cost_id')
+                ->pluck('job_cost_id')->all();
             
             // Get COA accounts
             $expenseAccounts = Account::where(function($q) {
@@ -312,7 +316,8 @@ class JobCostingManager extends Component
                 'vendors', 
                 'stats',
                 'expenseAccounts',
-                'cashAccounts'
+                'cashAccounts',
+                'bookedJobCostIds'
             ))->layout('layouts.admin');
             
         } catch (Exception $e) {
@@ -325,14 +330,66 @@ class JobCostingManager extends Component
                 'stats' => $this->getStats(),
                 'expenseAccounts' => collect(),
                 'cashAccounts' => collect(),
+                'bookedJobCostIds' => [],
             ])->layout('layouts.admin');
+        }
+    }
+
+    /**
+     * Bukukan job cost LUNAS yang belum punya CashTransaction (legacy quick-pay).
+     * Idempotent (guard cash tx). Menghormati keputusan Direktur: hanya
+     * date_paid >= 2026-01-01 — Des 2025 ditunda sbg opening balance.
+     * Memakai jalur yang sama dgn auto-book (CashierService::processPayment):
+     * Debit Biaya Operasional, Kredit Bank.
+     */
+    public function bukukan($costId)
+    {
+        $cost = JobCost::find($costId);
+        if (!$cost || $cost->status !== 'paid') {
+            session()->flash('error', 'Biaya tidak ditemukan atau belum berstatus Lunas.');
+            return;
+        }
+        if (CashTransaction::where('job_cost_id', $cost->id)->exists()) {
+            session()->flash('message', 'Biaya ini sudah terbukukan.');
+            return;
+        }
+        $datePaid = $cost->date_paid ? \Carbon\Carbon::parse($cost->date_paid)->format('Y-m-d') : null;
+        if (!$datePaid || $datePaid < '2026-01-01') {
+            session()->flash('error', 'Biaya periode Desember 2025 ditunda (opening balance) — tidak dibukukan lewat sini.');
+            return;
+        }
+
+        try {
+            app(CashierService::class)->processPayment([
+                'type'             => 'out',
+                'category'         => 'payment_to_vendor',
+                'cost_category'    => 'shipment',
+                'counterpart_type' => 'vendor',
+                'amount'           => $cost->amount,
+                'transaction_date' => $datePaid,
+                'job_cost_id'      => $cost->id,
+                'vendor_id'        => $cost->vendor_id,
+                'shipment_id'      => $cost->shipment_id,
+                'proof_file'       => $cost->proof_file,
+                'description'      => ($cost->description ?: 'Job Cost #' . $cost->id) . ' (dibukukan)',
+                'created_by'       => auth()->id(),
+            ]);
+            session()->flash('message', 'Biaya berhasil dibukukan ke kas & jurnal.');
+        } catch (\Throwable $e) {
+            Log::error('JobCostingManager::bukukan gagal untuk job_cost #' . $cost->id . ': ' . $e->getMessage());
+            session()->flash('error', 'Gagal membukukan: ' . $e->getMessage());
+        }
+
+        if ($this->shipmentIdForCost) {
+            $this->selectedShipment = Shipment::with(['jobCosts.vendor', 'jobCosts.account', 'invoices'])
+                ->find($this->shipmentIdForCost);
         }
     }
 
     // =========================================
     // MODAL MANAGEMENT
     // =========================================
-    
+
     public function manageCosts($shipmentId)
     {
         try {

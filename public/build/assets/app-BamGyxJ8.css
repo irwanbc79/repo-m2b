@@ -5955,6 +5955,10 @@
     finance: check-integrity;
   }
 
+  .\[finance\:daily-briefing\] {
+    finance: daily-briefing;
+  }
+
   .\[wire\:model\=\"\'\+i\+\'\"\] {
     wire: model= "'+i+'";
   }
@@ -6731,6 +6735,10 @@
 
     .hover\:bg-orange-100:hover {
       background-color: var(--color-orange-100);
+    }
+
+    .hover\:bg-orange-200:hover {
+      background-color: var(--color-orange-200);
     }
 
     .hover\:bg-orange-500:hover {

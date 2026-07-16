@@ -378,8 +378,16 @@
                                                         title="Bayar via Kasir">
                                                         <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 9V7a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2m2 4h10a2 2 0 002-2v-6a2 2 0 00-2-2H9a2 2 0 00-2 2v6a2 2 0 002 2zm7-5a2 2 0 11-4 0 2 2 0 014 0z"></path></svg>
                                                     </a>
+                                                @elseif(!in_array($cost->id, $bookedJobCostIds ?? []) && $cost->date_paid && \Carbon\Carbon::parse($cost->date_paid)->format('Y-m-d') >= '2026-01-01')
+                                                    {{-- LUNAS tapi belum masuk buku kas → tombol Bukukan (staf) --}}
+                                                    <button wire:click="bukukan({{ $cost->id }})"
+                                                        wire:confirm="Bukukan biaya ini ke kas & jurnal? Pastikan sesuai bukti bayar."
+                                                        class="bg-orange-100 text-orange-700 hover:bg-orange-200 transition px-2 py-1 rounded text-[10px] font-bold uppercase tracking-wide flex items-center gap-1"
+                                                        title="Belum masuk buku kas — klik untuk membukukan">
+                                                        📕 Bukukan
+                                                    </button>
                                                 @else
-                                                    <span class="text-green-500 p-1" title="Sudah Lunas">
+                                                    <span class="text-green-500 p-1" title="Sudah Lunas & terbukukan">
                                                         <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
                                                     </span>
                                                 @endif
