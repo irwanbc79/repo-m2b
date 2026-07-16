@@ -165,6 +165,9 @@
                 <a href="{{ route('admin.job-costing.index') }}" class="flex items-center px-4 py-3 text-sm font-medium rounded-lg transition-colors {{ request()->routeIs('admin.job-costing*') ? 'bg-m2b-accent text-white' : 'hover:bg-gray-800 text-gray-300' }}">
                     💼 Job Costing
                 </a>
+                <a href="{{ route('admin.profit-report') }}" class="flex items-center px-4 py-3 text-sm font-medium rounded-lg transition-colors {{ request()->routeIs('admin.profit-report*') ? 'bg-m2b-accent text-white' : 'hover:bg-gray-800 text-gray-300' }}">
+                    📈 Laba per Shipment
+                </a>
                 @unless(auth()->user()->hasRole('auditor'))
                 <a href="{{ route('admin.petty-cash') }}" class="flex items-center px-4 py-3 text-sm font-medium rounded-lg transition-colors {{ request()->routeIs('admin.petty-cash*') ? 'bg-m2b-accent text-white' : 'hover:bg-gray-800 text-gray-300' }}">
                     💰 Kas Kecil

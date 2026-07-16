@@ -1968,12 +1968,20 @@
     min-width: 150px;
   }
 
+  .min-w-\[200px\] {
+    min-width: 200px;
+  }
+
   .min-w-\[300px\] {
     min-width: 300px;
   }
 
   .min-w-\[700px\] {
     min-width: 700px;
+  }
+
+  .min-w-\[820px\] {
+    min-width: 820px;
   }
 
   .min-w-full {
