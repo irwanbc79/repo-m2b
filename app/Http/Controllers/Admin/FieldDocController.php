@@ -43,7 +43,8 @@ class FieldDocController extends Controller
         $dateTo       = $request->input('date_to', '');
 
         $shipmentsQuery = Shipment::withCount('fieldPhotos')
-            ->with(['customer'])
+            ->withMax('fieldPhotos as last_photo_at', 'created_at')
+            ->with(['customer', 'latestFieldPhoto'])
             ->whereHas('fieldPhotos', function ($q) use ($dateFrom, $dateTo) {
                 if ($dateFrom) $q->whereDate('created_at', '>=', $dateFrom);
                 if ($dateTo)   $q->whereDate('created_at', '<=', $dateTo);
@@ -57,7 +58,9 @@ class FieldDocController extends Controller
             })
             ->when($serviceType,  fn($q) => $q->where('service_type',  $serviceType))
             ->when($shipmentType, fn($q) => $q->where('shipment_type', $shipmentType))
-            ->orderBy('updated_at', 'desc');
+            // Urut berdasar waktu FOTO terbaru (bukan updated_at shipment) agar
+            // shipment dgn foto baru naik ke atas.
+            ->orderByDesc('last_photo_at');
 
         $recentShipments = $shipmentsQuery->paginate(20)->withQueryString();
 

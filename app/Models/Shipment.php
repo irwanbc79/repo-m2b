@@ -6,6 +6,7 @@ use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Database\Eloquent\Relations\HasOne;
 
 class Shipment extends Model
 {
@@ -316,6 +317,16 @@ class Shipment extends Model
     public function fieldPhotos(): HasMany
     {
         return $this->hasMany(FieldPhoto::class);
+    }
+
+    /**
+     * Foto lapangan TERBARU (untuk thumbnail dashboard). Tanpa ini,
+     * fieldPhotos->first() mengambil foto tertua → thumbnail tak pernah
+     * berubah walau ada upload baru.
+     */
+    public function latestFieldPhoto(): HasOne
+    {
+        return $this->hasOne(FieldPhoto::class)->latestOfMany();
     }
 
     /**

@@ -110,8 +110,8 @@
             <a href="{{ route('admin.field-docs.gallery', $shipment->awb_number ?: $shipment->id) }}"
                class="flex items-center px-6 py-4 hover:bg-gray-50 transition">
                 <div class="w-16 h-16 bg-gray-100 rounded-lg overflow-hidden flex-shrink-0">
-                    @if($shipment->fieldPhotos && $shipment->fieldPhotos->first())
-                    <img src="{{ asset('storage/' . ($shipment->fieldPhotos->first()->thumbnail_path ?? $shipment->fieldPhotos->first()->file_path)) }}"
+                    @if($shipment->latestFieldPhoto)
+                    <img src="{{ asset('storage/' . ($shipment->latestFieldPhoto->thumbnail_path ?? $shipment->latestFieldPhoto->file_path)) }}"
                          alt="Preview"
                          class="w-full h-full object-cover"
                          onerror="this.parentElement.innerHTML='<div class=\'w-full h-full flex items-center justify-center text-gray-400 text-2xl\'>📷</div>'">

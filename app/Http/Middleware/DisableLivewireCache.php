@@ -17,9 +17,12 @@ class DisableLivewireCache
         // - lw-update     : route update Livewire custom (hasil override)
         // - admin/inbox/* : body email (iframe), attachment, download
         //   -> mencegah LiteSpeed menyajikan 404/konten basi di dalam iframe inbox
+        // - admin/field-docs* : dashboard dokumentasi lapangan; foto baru staf
+        //   harus langsung tampil, jangan tersaji basi dari cache.
         $noCache = $request->is('livewire/*')
             || $request->is('lw-update')
-            || $request->is('admin/inbox/*');
+            || $request->is('admin/inbox/*')
+            || $request->is('admin/field-docs*');
 
         if ($noCache) {
             $response->headers->set('Cache-Control', 'no-store, no-cache, must-revalidate, max-age=0');
