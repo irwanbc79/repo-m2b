@@ -279,6 +279,41 @@
 
     </div>
 
+    {{-- ===== EDUKASI: Perkiraan Izin/Lartas (read-only, bila tim M2B sudah menganalisa) ===== --}}
+    @if($this->lartas && count($this->lartas->recommendations ?? []) > 0)
+    @php $la = $this->lartas; @endphp
+    <div class="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
+        <div class="px-5 py-4 border-b border-gray-100 bg-gradient-to-r from-violet-50 to-white flex items-center gap-2">
+            <span class="text-lg">🧭</span>
+            <div>
+                <h3 class="font-bold text-gray-800 text-sm">Perkiraan Izin/Lartas untuk Barang Anda</h3>
+                <p class="text-[11px] text-gray-500">Berdasarkan HS code <span class="font-mono font-bold">{{ $la->hs_code }}</span> — untuk membantu Anda menyiapkan dokumen lebih awal.</p>
+            </div>
+        </div>
+        <div class="p-5">
+            <div class="bg-amber-50 border border-amber-200 rounded-lg px-3 py-2.5 mb-3 flex items-start gap-2">
+                <span class="text-amber-500 text-sm">⚠️</span>
+                <p class="text-[11px] leading-relaxed text-amber-800"><strong>Ini perkiraan awal (dibantu AI), bukan keputusan final.</strong> Peraturan bisa berubah. Tim M2B akan mengonfirmasi dokumen yang benar-benar diperlukan. Cek juga <a href="https://insw.go.id/intr" target="_blank" rel="noopener" class="font-bold underline text-amber-900">INSW</a>.</p>
+            </div>
+            @if($la->summary)<p class="text-sm text-gray-700 mb-3 whitespace-pre-line">{{ $la->summary }}</p>@endif
+            <div class="grid sm:grid-cols-2 gap-2">
+                @foreach($la->recommendations as $rec)
+                    @php $lk = $rec['likelihood'] ?? 'sedang'; $lkBadge = $lk==='tinggi' ? 'bg-red-100 text-red-700' : ($lk==='rendah' ? 'bg-slate-100 text-slate-500' : 'bg-amber-100 text-amber-700'); @endphp
+                    <div class="border border-gray-100 rounded-lg p-3">
+                        <div class="flex items-center gap-2 flex-wrap">
+                            <span class="font-semibold text-gray-800 text-sm">{{ $rec['doc_type'] }}</span>
+                            <span class="text-[9px] font-bold px-1.5 py-0.5 rounded uppercase {{ $lkBadge }}">{{ $lk }}</span>
+                        </div>
+                        @if(!empty($rec['instansi']))<p class="text-[10px] text-gray-400 mt-0.5">{{ $rec['instansi'] }}</p>@endif
+                        @if(!empty($rec['reason']))<p class="text-xs text-gray-500 mt-1">{{ $rec['reason'] }}</p>@endif
+                    </div>
+                @endforeach
+            </div>
+            <p class="text-[10px] text-gray-400 mt-3">Punya pertanyaan soal dokumen ini? Kirim lewat kolom diskusi di bawah — tim M2B siap membantu. 🙂</p>
+        </div>
+    </div>
+    @endif
+
     {{-- ============================================ --}}
     {{-- DISKUSI / TANYA SHIPMENT --}}
     {{-- ============================================ --}}

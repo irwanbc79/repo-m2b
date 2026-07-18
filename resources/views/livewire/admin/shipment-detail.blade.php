@@ -237,6 +237,76 @@
             </div>
             @endif
 
+            {{-- ===== AI LARTAS (F4) — rekomendasi izin/lartas berbasis HS code ===== --}}
+            <div class="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
+                <div class="flex items-center gap-3 flex-wrap mb-1">
+                    <h3 class="font-bold text-gray-800 flex items-center gap-2">🤖 Analisa Lartas <span class="text-[10px] font-bold bg-violet-100 text-violet-700 px-2 py-0.5 rounded-full uppercase tracking-wide">AI · beta</span></h3>
+                    <div class="ml-auto flex items-center gap-2">
+                        @if($this->lartasConfigured)
+                            <button wire:click="analisaLartas" wire:loading.attr="disabled" wire:target="analisaLartas"
+                                class="text-xs font-bold bg-violet-600 text-white px-3 py-2 rounded-lg hover:bg-violet-700 transition disabled:opacity-50">
+                                <span wire:loading.remove wire:target="analisaLartas">{{ $this->lartas ? '↻ Analisa Ulang' : '✨ Analisa Sekarang' }}</span>
+                                <span wire:loading wire:target="analisaLartas">Menganalisa…</span>
+                            </button>
+                        @endif
+                    </div>
+                </div>
+                <p class="text-xs text-gray-500 mb-3">Perkiraan izin/lartas dari HS code <span class="font-mono font-bold text-gray-700">{{ $shipment->hs_code ?: '(belum diisi)' }}</span> untuk mempercepat penyiapan dokumen. Bukan keputusan final.</p>
+
+                @if(session()->has('lartas_error'))
+                    <div class="mb-3 bg-red-50 border border-red-200 text-red-700 text-sm px-3 py-2 rounded-lg">⚠️ {{ session('lartas_error') }}</div>
+                @endif
+
+                @if(!$this->lartasConfigured)
+                    <div class="bg-slate-50 border border-slate-200 text-slate-500 text-xs px-3 py-3 rounded-lg">
+                        Fitur AI belum aktif. Admin perlu mengisi salah satu API key AI (<span class="font-mono">ANTHROPIC/OPENAI/DEEPSEEK/GEMINI</span>) di server untuk mengaktifkan.
+                    </div>
+                @elseif($this->lartas)
+                    @php $la = $this->lartas; $recs = $la->recommendations ?? []; @endphp
+                    {{-- Disclaimer wajib --}}
+                    <div class="bg-amber-50 border border-amber-200 rounded-lg px-3 py-2.5 mb-3 flex items-start gap-2">
+                        <span class="text-amber-500 text-sm">⚠️</span>
+                        <p class="text-[11px] leading-relaxed text-amber-800">
+                            <strong>Rekomendasi awal AI — keputusan tetap di tim M2B.</strong> Peraturan lartas dinamis dan bisa berubah sewaktu-waktu. Selalu verifikasi ke sumber resmi.
+                            <a href="https://insw.go.id/intr" target="_blank" rel="noopener" class="font-bold underline text-amber-900 hover:text-amber-700 whitespace-nowrap">🔗 Cek di INSW</a>
+                        </p>
+                    </div>
+
+                    @if($la->summary)<p class="text-sm text-gray-700 mb-3 whitespace-pre-line">{{ $la->summary }}</p>@endif
+                    @if(count($recs) === 0)
+                        <div class="text-xs text-emerald-700 bg-emerald-50 border border-emerald-200 rounded-lg px-3 py-2 mb-2">✓ Tidak terdeteksi izin/lartas khusus untuk HS ini (tetap verifikasi ke INSW).</div>
+                    @endif
+
+                    <div class="space-y-2">
+                        @foreach($recs as $rec)
+                            @php
+                                $lk = $rec['likelihood'] ?? 'sedang';
+                                $lkBadge = $lk==='tinggi' ? 'bg-red-100 text-red-700' : ($lk==='rendah' ? 'bg-slate-100 text-slate-500' : 'bg-amber-100 text-amber-700');
+                            @endphp
+                            <div class="border border-gray-100 rounded-lg p-3">
+                                <div class="flex items-start gap-2 flex-wrap">
+                                    <span class="font-semibold text-gray-800 text-sm">{{ $rec['doc_type'] }}</span>
+                                    <span class="text-[9px] font-bold px-1.5 py-0.5 rounded uppercase {{ $lkBadge }}">kemungkinan {{ $lk }}</span>
+                                    @if(!($rec['in_catalog'] ?? false))<span class="text-[9px] font-bold bg-slate-100 text-slate-400 px-1.5 py-0.5 rounded">di luar katalog</span>@endif
+                                    @if(!empty($rec['instansi']))<span class="text-[10px] text-gray-400">· {{ $rec['instansi'] }}</span>@endif
+                                </div>
+                                @if(!empty($rec['reason']))<p class="text-xs text-gray-500 mt-1">{{ $rec['reason'] }}</p>@endif
+                                <div class="flex gap-3 mt-2">
+                                    <button wire:click="mintaLartasKeCustomer(@js($rec['doc_type']))" class="text-[10px] font-bold text-blue-600 hover:underline">📨 Minta ke Customer</button>
+                                    <button wire:click="tambahLartasKeChecklist(@js($rec['doc_type']))" class="text-[10px] font-bold text-slate-600 hover:underline">+ Tambah ke Checklist</button>
+                                </div>
+                            </div>
+                        @endforeach
+                    </div>
+
+                    <p class="text-[10px] text-gray-400 mt-3">Dianalisa {{ optional($la->generated_at)->format('d M Y H:i') }} · {{ $la->model }}{{ $la->hs_code && $la->hs_code !== $shipment->hs_code ? ' · ⚠️ HS berubah sejak analisa — disarankan analisa ulang' : '' }}</p>
+                @else
+                    <div class="bg-violet-50/50 border border-violet-100 text-slate-600 text-xs px-3 py-3 rounded-lg">
+                        Klik <strong>Analisa Sekarang</strong> untuk perkiraan izin/lartas berdasarkan HS code. Rekomendasi bisa langsung diminta ke customer atau ditambahkan ke checklist.
+                    </div>
+                @endif
+            </div>
+
             <div class="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
                 <h3 class="font-bold text-gray-800 mb-4 flex items-center gap-2">
                     <svg class="w-5 h-5 text-m2b-primary" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path></svg>
