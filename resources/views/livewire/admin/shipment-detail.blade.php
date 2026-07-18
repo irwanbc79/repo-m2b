@@ -165,7 +165,10 @@
                         <div class="w-28 h-2 bg-gray-100 rounded-full overflow-hidden"><div class="h-full bg-emerald-500" style="width: {{ $rd['percent'] }}%"></div></div>
                         <span class="font-bold text-emerald-700">{{ $rd['fulfilled'] }}/{{ $rd['total'] }} wajib · {{ $rd['percent'] }}%</span>
                     </div>
-                    <button wire:click="openDocReqModal" class="ml-auto text-xs font-bold bg-blue-600 text-white px-3 py-2 rounded-lg hover:bg-blue-700 transition">📨 Minta Dokumen</button>
+                    <div class="ml-auto flex items-center gap-2">
+                        <button wire:click="cocokkanUlang" wire:loading.attr="disabled" class="text-xs font-bold text-slate-600 bg-slate-100 px-3 py-2 rounded-lg hover:bg-slate-200 transition" title="Cocokkan ulang dokumen yang sudah di-upload ke checklist">🔄 Cocokkan ulang</button>
+                        <button wire:click="openDocReqModal" class="text-xs font-bold bg-blue-600 text-white px-3 py-2 rounded-lg hover:bg-blue-700 transition">📨 Minta Dokumen</button>
+                    </div>
                 </div>
                 <div class="divide-y divide-gray-100 border border-gray-100 rounded-lg overflow-hidden">
                     @forelse($this->checklist as $req)
@@ -181,15 +184,18 @@
                                 <span class="font-semibold text-gray-800">{{ $req->doc_type }}</span>
                                 @if($req->is_mandatory)<span class="ml-1 text-[9px] font-bold bg-red-50 text-red-600 px-1.5 py-0.5 rounded">WAJIB</span>@endif
                                 <span class="ml-1 text-[9px] font-bold px-1.5 py-0.5 rounded {{ $req->responsibility==='customer' ? 'bg-blue-50 text-blue-600' : 'bg-gray-100 text-gray-500' }}">{{ $req->responsibility==='customer' ? 'CUSTOMER' : 'M2B' }}</span>
-                                @if($req->fulfilled_by_role)<span class="ml-1 text-[9px] font-bold bg-emerald-50 text-emerald-700 px-1.5 py-0.5 rounded">upload {{ $req->fulfilled_by_role }}</span>@endif
+                                @if($req->fulfilled_by_role)<span class="ml-1 text-[9px] font-bold bg-emerald-50 text-emerald-700 px-1.5 py-0.5 rounded">{{ $req->fulfilled_by_role === 'manual' ? 'ditandai manual' : 'upload '.$req->fulfilled_by_role }}</span>@endif
                                 @if($req->due_date && $st!=='fulfilled')<span class="ml-1 text-[10px] text-amber-600">tenggat {{ \Carbon\Carbon::parse($req->due_date)->format('d M') }}</span>@endif
                             </div>
                             <span class="text-[10px] font-bold px-2 py-0.5 rounded-full {{ $badge[0] }} whitespace-nowrap">{{ $badge[1] }}</span>
                             @if($st!=='fulfilled')
                                 <div class="flex gap-2 shrink-0">
+                                    <button wire:click="tandaiLengkap({{ $req->id }})" class="text-[10px] font-bold text-emerald-600 hover:underline whitespace-nowrap" title="Tandai dokumen ini sudah ada (verifikasi manual)">Sudah Ada</button>
                                     @unless($req->is_mandatory)<button wire:click="tetapkanWajib({{ $req->id }})" class="text-[10px] font-bold text-blue-600 hover:underline whitespace-nowrap">Wajibkan</button>@endunless
                                     <button wire:click="waiveRequirement({{ $req->id }})" class="text-[10px] text-gray-400 hover:text-gray-600">Abaikan</button>
                                 </div>
+                            @else
+                                <button wire:click="batalkanLengkap({{ $req->id }})" class="text-[10px] text-gray-400 hover:text-red-500 shrink-0" title="Batalkan status lengkap">Batalkan</button>
                             @endif
                         </div>
                     @empty

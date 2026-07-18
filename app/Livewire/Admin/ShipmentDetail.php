@@ -135,6 +135,33 @@ class ShipmentDetail extends Component
             ->where('id', $reqId)->where('status', '!=', 'fulfilled')->delete();
     }
 
+    /** Tandai "Sudah Ada" secara manual (verifikasi staf). */
+    public function tandaiLengkap($reqId)
+    {
+        $req = \App\Models\DocumentRequirement::where('shipment_id', $this->shipment->id)->find($reqId);
+        if ($req) {
+            app(\App\Services\DocumentChecklistService::class)->markFulfilledManual($req, Auth::id());
+            session()->flash('message', "'{$req->doc_type}' ditandai sudah ada (verifikasi manual).");
+        }
+    }
+
+    /** Batalkan status lengkap → kembali belum. */
+    public function batalkanLengkap($reqId)
+    {
+        $req = \App\Models\DocumentRequirement::where('shipment_id', $this->shipment->id)->find($reqId);
+        if ($req && $req->status === 'fulfilled') {
+            app(\App\Services\DocumentChecklistService::class)->revertFulfillment($req);
+        }
+    }
+
+    /** Cocokkan ulang seluruh dokumen shipment ke checklist. */
+    public function cocokkanUlang()
+    {
+        $this->shipment->load('documents');
+        $n = app(\App\Services\DocumentChecklistService::class)->rescanShipment($this->shipment);
+        session()->flash('message', "Cocokkan ulang selesai — {$n} dokumen tercocokkan ke checklist.");
+    }
+
     public function edit()
     {
         $this->form = $this->shipment->only([

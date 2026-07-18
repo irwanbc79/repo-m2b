@@ -104,8 +104,9 @@ class DocumentChecklistService
      */
     public function autoFulfillOnUpload(Document $doc, string $role = 'admin', bool $createIfMissing = false): ?DocumentRequirement
     {
-        $desc = (string) $doc->description;
-        if ($desc === '') {
+        $descL = strtolower((string) $doc->description);
+        $fileL = strtolower((string) $doc->filename);
+        if ($descL === '' && $fileL === '') {
             return null;
         }
 
@@ -116,7 +117,14 @@ class DocumentChecklistService
 
         foreach ($reqs as $req) {
             foreach ($this->namesFor($req->doc_type) as $name) {
-                if (stripos($desc, $name) === 0) {
+                $n = strtolower(trim($name));
+                if ($n === '') {
+                    continue;
+                }
+                $nFile = str_replace([' ', '/'], '_', $n); // nama file admin: BILL_OF_LADING_...
+                // Cocok bila deskripsi ATAU nama file MENGANDUNG nama/alias (bukan cuma
+                // diawali) — menangkap "Email Attachment: Invoice.pdf", "BPN_xxx", dll.
+                if (str_contains($descL, $n) || str_contains($fileL, $n) || str_contains($fileL, $nFile)) {
                     $req->update([
                         'status'                => 'fulfilled',
                         'fulfilled_document_id' => $doc->id,
@@ -127,7 +135,42 @@ class DocumentChecklistService
             }
         }
 
-        return null; // tak ada requirement cocok — biarkan (baseline yg seed, bukan tiap upload)
+        return null; // tak ada requirement cocok — biarkan
+    }
+
+    /** Cocokkan ulang SELURUH dokumen shipment ke checklist (setelah upgrade matching). */
+    public function rescanShipment(Shipment $shipment): int
+    {
+        $count = 0;
+        foreach ($shipment->documents as $doc) {
+            $role = ($doc->document_type ?? '') === 'customer_upload' ? 'customer' : 'admin';
+            if ($this->autoFulfillOnUpload($doc, $role)) {
+                $count++;
+            }
+        }
+        return $count;
+    }
+
+    /** Tandai lengkap MANUAL (verifikasi staf); opsional tautkan dokumen. */
+    public function markFulfilledManual(DocumentRequirement $req, ?int $userId = null, ?int $documentId = null): void
+    {
+        $req->update([
+            'status'                => 'fulfilled',
+            'fulfilled_by_role'     => 'manual',
+            'fulfilled_document_id' => $documentId,
+            'confirmed_by'          => $userId ?? 1,
+            'confirmed_at'          => now(),
+        ]);
+    }
+
+    /** Batalkan pemenuhan → kembali pending. */
+    public function revertFulfillment(DocumentRequirement $req): void
+    {
+        $req->update([
+            'status'                => 'pending',
+            'fulfilled_document_id' => null,
+            'fulfilled_by_role'     => null,
+        ]);
     }
 
     /** Skor kesiapan: berbasis dokumen WAJIB (bila ada), fallback semua. */

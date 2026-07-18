@@ -40,7 +40,7 @@ class DocumentTypeSeeder extends Seeder
             ['Billing Pungutan', [], 'kepabeanan', 'import', null, 'shipment', 'internal', 'selalu', true, false, false],
             ['SPJM', ['Surat Pemberitahuan Jalur Merah'], 'kepabeanan', 'import', null, 'shipment', 'internal', 'kondisional', true, false, false],
             ['SPPB', ['Surat Persetujuan Pengeluaran Barang'], 'kepabeanan', 'import', null, 'shipment', 'internal', 'selalu', true, false, false],
-            ['Bukti Bayar BM/PDRI', ['SSPCP'], 'kepabeanan', 'import', null, 'shipment', 'customer', 'selalu', false, false, false],
+            ['Bukti Bayar BM/PDRI', ['SSPCP', 'BPN', 'Bukti Transfer', 'Bukti Bayar', 'Bukti Pembayaran'], 'kepabeanan', 'import', null, 'shipment', 'customer', 'selalu', false, false, false],
             ['Faktur Pajak', [], 'kepabeanan', 'import', null, 'shipment', 'internal', 'situasional', false, false, false],
             ['BC 3.0', ['PEB', 'Pemberitahuan Ekspor Barang'], 'kepabeanan', 'export', null, 'shipment', 'internal', 'selalu', true, false, false],
             ['NPE', ['Nota Pelayanan Ekspor'], 'kepabeanan', 'export', null, 'shipment', 'internal', 'selalu', true, false, false],
