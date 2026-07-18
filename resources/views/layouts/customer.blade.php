@@ -40,9 +40,23 @@
                 </a>
 
                 {{-- Shipments --}}
+                @php
+                    $docReqBadge = 0;
+                    try {
+                        if (auth()->user()?->customer) {
+                            $docReqBadge = \App\Models\DocumentRequirement::query()
+                                ->whereHas('shipment', fn ($q) => $q->where('customer_id', auth()->user()->customer->id))
+                                ->where('status', 'requested')
+                                ->count();
+                        }
+                    } catch (\Throwable $e) { $docReqBadge = 0; }
+                @endphp
                 <a href="{{ route('customer.shipments.index') }}" class="flex items-center px-4 py-3 text-sm font-medium rounded-lg {{ request()->routeIs('customer.shipments.index') ? 'bg-m2b-accent text-white' : 'hover:bg-blue-900 text-gray-300' }}">
                     <span class="text-lg mr-3">📦</span>
                     Shipments
+                    @if($docReqBadge > 0)
+                        <span class="ml-auto inline-flex items-center justify-center min-w-5 h-5 px-1.5 rounded-full bg-m2b-accent text-white text-[10px] font-black animate-pulse" title="{{ $docReqBadge }} dokumen diminta tim M2B">{{ $docReqBadge }}</span>
+                    @endif
                 </a>
 
                 {{-- Create Booking --}}

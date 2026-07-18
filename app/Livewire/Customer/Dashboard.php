@@ -21,7 +21,8 @@ class Dashboard extends Component
                     'active' => 0,
                     'completed' => 0
                 ],
-                'shipments' => []
+                'shipments' => [],
+                'docRequests' => collect(),
             ])->layout('layouts.customer');
         }
 
@@ -35,9 +36,25 @@ class Dashboard extends Component
         // Ambil 5 Shipment Terakhir
         $shipments = $user->customer->shipments()->latest()->take(5)->get();
 
+        // Dokumen yang DIMINTA staf M2B (belum dipenuhi) — lintas semua shipment.
+        // Aditif & aman: bila tabel belum ada, kembalikan koleksi kosong.
+        $docRequests = collect();
+        try {
+            $docRequests = \App\Models\DocumentRequirement::query()
+                ->whereHas('shipment', fn ($q) => $q->where('customer_id', $user->customer->id))
+                ->where('status', 'requested')
+                ->with('shipment:id,awb_number')
+                ->orderByRaw('due_date IS NULL, due_date ASC')
+                ->get()
+                ->groupBy('shipment_id');
+        } catch (\Throwable $e) {
+            \Log::warning('Dashboard docRequests gagal: ' . $e->getMessage());
+        }
+
         return view('livewire.customer.dashboard', [
             'stats' => $stats,
-            'shipments' => $shipments
+            'shipments' => $shipments,
+            'docRequests' => $docRequests,
         ])->layout('layouts.customer');
     }
 }

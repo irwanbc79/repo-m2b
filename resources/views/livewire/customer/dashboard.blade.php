@@ -13,6 +13,66 @@
         </div>
     </div>
 
+    {{-- ⚠️ NOTIFIKASI KUAT: Dokumen yang diminta staf M2B (lintas semua shipment) --}}
+    @php $totalReq = $docRequests->flatten()->count(); @endphp
+    @if($totalReq > 0)
+    <div class="relative overflow-hidden rounded-xl border-2 border-red-300 bg-gradient-to-r from-red-50 via-white to-white shadow-md ring-1 ring-red-100">
+        <div class="absolute left-0 top-0 bottom-0 w-1.5 bg-m2b-accent animate-pulse"></div>
+        <div class="p-5 md:p-6">
+            <div class="flex items-start gap-4">
+                <div class="shrink-0 relative">
+                    <span class="absolute -right-1 -top-1 flex h-5 w-5">
+                        <span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-red-400 opacity-75"></span>
+                        <span class="relative inline-flex items-center justify-center rounded-full h-5 w-5 bg-m2b-accent text-white text-[10px] font-black">{{ $totalReq }}</span>
+                    </span>
+                    <div class="p-3 bg-red-100 rounded-xl text-m2b-accent">
+                        <svg class="w-7 h-7" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9"></path></svg>
+                    </div>
+                </div>
+                <div class="flex-1 min-w-0">
+                    <h3 class="text-lg font-black text-red-800 flex items-center gap-2 flex-wrap">
+                        Tim M2B menunggu dokumen dari Anda
+                    </h3>
+                    <p class="text-sm text-red-700/90 mt-0.5">Ada <span class="font-bold">{{ $totalReq }} dokumen</span> yang diminta agar proses pengiriman Anda dapat berlanjut. Mohon segera dilengkapi. 🙏</p>
+
+                    <div class="mt-4 space-y-3">
+                        @foreach($docRequests as $shipmentId => $reqs)
+                            @php $sh = $reqs->first()->shipment; @endphp
+                            <div class="bg-white rounded-lg border border-red-100 p-3.5">
+                                <div class="flex items-center justify-between gap-3 flex-wrap">
+                                    <span class="font-black text-m2b-primary text-sm font-mono">{{ $sh->awb_number ?? 'Shipment #'.$shipmentId }}</span>
+                                    <a href="{{ route('customer.shipment.show', $shipmentId) }}"
+                                       class="inline-flex items-center gap-1.5 bg-m2b-accent hover:bg-red-700 text-white text-xs font-bold px-3.5 py-2 rounded-lg transition shadow-sm">
+                                        Lengkapi Sekarang
+                                        <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"></path></svg>
+                                    </a>
+                                </div>
+                                <ul class="mt-2.5 flex flex-wrap gap-2">
+                                    @foreach($reqs as $req)
+                                        <li class="inline-flex items-center gap-1.5 bg-red-50 border border-red-200 text-red-800 text-xs font-semibold px-2.5 py-1 rounded-full">
+                                            <svg class="w-3 h-3 text-m2b-accent" fill="currentColor" viewBox="0 0 20 20"><path d="M4 3a2 2 0 00-2 2v10a2 2 0 002 2h12a2 2 0 002-2V7a2 2 0 00-2-2h-6L8 3H4z"/></svg>
+                                            {{ $req->doc_type }}
+                                            @if($req->due_date)
+                                                <span class="text-[10px] font-bold {{ \Carbon\Carbon::parse($req->due_date)->isPast() ? 'text-red-600' : 'text-red-500/80' }}">
+                                                    • tenggat {{ \Carbon\Carbon::parse($req->due_date)->format('d M') }}
+                                                </span>
+                                            @endif
+                                        </li>
+                                    @endforeach
+                                </ul>
+                                @php $notes = $reqs->pluck('note')->filter()->unique(); @endphp
+                                @if($notes->isNotEmpty())
+                                    <p class="mt-2 text-xs text-gray-500 italic">📝 {{ $notes->implode(' · ') }}</p>
+                                @endif
+                            </div>
+                        @endforeach
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    @endif
+
     {{-- Statistik Cards --}}
     <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
         {{-- Total --}}
