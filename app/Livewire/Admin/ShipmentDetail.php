@@ -139,7 +139,7 @@ class ShipmentDetail extends Component
         
         $path = $this->file_upload->storeAs('documents/' . ($isInternal ? 'internal' : 'public'), $filename, 'public');
 
-        Document::create([
+        $document = Document::create([
             'shipment_id' => $this->shipment->id,
             'document_type' => $isInternal ? 'internal_evidence' : 'admin_upload',
             'filename' => $filename,
@@ -151,6 +151,14 @@ class ShipmentDetail extends Component
             'mime_type' => $this->file_upload->getMimeType(),
             'uploaded_at' => now(),
         ]);
+
+        // Auto-fulfill checklist dokumen (ADITIF; dibungkus try/catch agar tak
+        // pernah mengganggu flow upload lama). Role admin krn ini sisi admin.
+        try {
+            app(\App\Services\DocumentChecklistService::class)->autoFulfillOnUpload($document, 'admin');
+        } catch (\Throwable $e) {
+            \Log::warning('autoFulfillOnUpload gagal utk document #' . $document->id . ': ' . $e->getMessage());
+        }
 
         // --- AUTO STATUS dari dokumen (pakai mapping RESMI getDocumentTriggers,
         //     tidak lagi hardcode; hanya MAJU, tak pernah mundur/melompat) ---
