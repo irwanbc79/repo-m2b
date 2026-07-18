@@ -3045,6 +3045,10 @@
     border-color: #0000;
   }
 
+  .border-violet-100 {
+    border-color: var(--color-violet-100);
+  }
+
   .border-white {
     border-color: var(--color-white);
   }
@@ -3931,6 +3935,20 @@
     background-color: #0000;
   }
 
+  .bg-violet-50\/50 {
+    background-color: #f5f3ff80;
+  }
+
+  @supports (color: color-mix(in lab, red, red)) {
+    .bg-violet-50\/50 {
+      background-color: color-mix(in oklab, var(--color-violet-50) 50%, transparent);
+    }
+  }
+
+  .bg-violet-100 {
+    background-color: var(--color-violet-100);
+  }
+
   .bg-violet-600 {
     background-color: var(--color-violet-600);
   }
@@ -4193,6 +4211,11 @@
 
   .from-slate-50 {
     --tw-gradient-from: var(--color-slate-50);
+    --tw-gradient-stops: var(--tw-gradient-via-stops, var(--tw-gradient-position), var(--tw-gradient-from) var(--tw-gradient-from-position), var(--tw-gradient-to) var(--tw-gradient-to-position));
+  }
+
+  .from-violet-50 {
+    --tw-gradient-from: var(--color-violet-50);
     --tw-gradient-stops: var(--tw-gradient-via-stops, var(--tw-gradient-position), var(--tw-gradient-from) var(--tw-gradient-from-position), var(--tw-gradient-to) var(--tw-gradient-to-position));
   }
 
@@ -5389,6 +5412,10 @@
 
   .text-violet-400 {
     color: var(--color-violet-400);
+  }
+
+  .text-violet-700 {
+    color: var(--color-violet-700);
   }
 
   .text-white {
@@ -6911,6 +6938,10 @@
       background-color: var(--color-teal-800);
     }
 
+    .hover\:bg-violet-700:hover {
+      background-color: var(--color-violet-700);
+    }
+
     .hover\:bg-white:hover {
       background-color: var(--color-white);
     }
@@ -7006,6 +7037,10 @@
 
     .hover\:text-amber-600:hover {
       color: var(--color-amber-600);
+    }
+
+    .hover\:text-amber-700:hover {
+      color: var(--color-amber-700);
     }
 
     .hover\:text-amber-800:hover {

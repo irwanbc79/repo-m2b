@@ -51,6 +51,9 @@ class ShipmentDetail extends Component
     public $req_note = '';
     public $req_due = '';
 
+    // AI Lartas (F4)
+    public $showLartasPanel = false;
+
     public function mount($id)
     {
         // Pastikan relasi customer dan user terload
@@ -160,6 +163,56 @@ class ShipmentDetail extends Component
         $this->shipment->load('documents');
         $n = app(\App\Services\DocumentChecklistService::class)->rescanShipment($this->shipment);
         session()->flash('message', "Cocokkan ulang selesai — {$n} dokumen tercocokkan ke checklist.");
+    }
+
+    // ===== AI Lartas (F4) =====
+    public function getLartasConfiguredProperty(): bool
+    {
+        return app(\App\Services\LartasAiService::class)->isConfigured();
+    }
+
+    /** Hasil analisa tersimpan (bila ada). */
+    public function getLartasProperty()
+    {
+        try {
+            return \App\Models\LartasAnalysis::where('shipment_id', $this->shipment->id)->first();
+        } catch (\Throwable $e) {
+            return null;
+        }
+    }
+
+    /** Jalankan analisa AI lartas (staf yang memicu; hasil disimpan). */
+    public function analisaLartas()
+    {
+        try {
+            $analysis = app(\App\Services\LartasAiService::class)->analyze($this->shipment, Auth::id());
+            $this->showLartasPanel = true;
+            ActivityLog::record('Shipment', 'ANALISA LARTAS (AI)', $this->shipment->awb_number, "HS {$this->shipment->hs_code}");
+            $n = count($analysis->recommendations ?? []);
+            session()->flash('message', "Analisa lartas AI selesai — {$n} rekomendasi. Ingat: rekomendasi awal, keputusan tetap di tim.");
+        } catch (\Throwable $e) {
+            session()->flash('lartas_error', $e->getMessage());
+        }
+    }
+
+    /** Rekomendasi AI → minta ke customer (jadi WAJIB + notifikasi kuat). */
+    public function mintaLartasKeCustomer($docType)
+    {
+        $note = 'Perkiraan izin/lartas dari analisa AI — mohon konfirmasi & lengkapi bila berlaku.';
+        app(\App\Services\DocumentChecklistService::class)->requestFromCustomer(
+            $this->shipment, $docType, $note, null, Auth::id()
+        );
+        ActivityLog::record('Shipment', 'MINTA DOKUMEN', $this->shipment->awb_number, "Minta '{$docType}' (rekomendasi AI) ke customer");
+        session()->flash('message', "Permintaan '{$docType}' dikirim ke customer.");
+    }
+
+    /** Rekomendasi AI → tambah ke checklist (belum tentu wajib; keputusan staf). */
+    public function tambahLartasKeChecklist($docType)
+    {
+        app(\App\Services\DocumentChecklistService::class)->addRequirement(
+            $this->shipment, $docType, ['source' => 'ai-lartas', 'responsibility' => 'customer']
+        );
+        session()->flash('message', "'{$docType}' ditambahkan ke checklist.");
     }
 
     public function edit()

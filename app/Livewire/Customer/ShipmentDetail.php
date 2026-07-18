@@ -91,6 +91,16 @@ class ShipmentDetail extends Component
         }
     }
 
+    /** Hasil analisa lartas (read-only, edukasi) bila staf sudah menjalankannya. */
+    public function getLartasProperty()
+    {
+        try {
+            return \App\Models\LartasAnalysis::where('shipment_id', $this->shipment->id)->first();
+        } catch (\Throwable $e) {
+            return null;
+        }
+    }
+
     /** Opsi jenis dokumen di form upload = yang diminta + umum. */
     public function getUploadOptionsProperty()
     {

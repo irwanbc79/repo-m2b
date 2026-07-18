@@ -50,4 +50,32 @@ return [
         'portal_secret' => env('MORA_PORTAL_WEBHOOK_SECRET'),
     ],
 
+    // ===== AI Lartas (F4) — HYBRID multi-provider =====
+    // Isi salah satu / beberapa key. Sistem auto-pakai provider yang tersedia
+    // (urutan 'order'), dengan fallback bila satu gagal. Degrade aman bila kosong.
+    'ai_lartas' => [
+        // 'auto' = pilih provider pertama yang ada key-nya (urutan di bawah).
+        // Atau paksa: 'anthropic' | 'openai' | 'gemini' | 'deepseek'.
+        'provider' => env('AI_LARTAS_PROVIDER', 'auto'),
+        'order'    => ['anthropic', 'openai', 'gemini', 'deepseek'],
+        'fallback' => (bool) env('AI_LARTAS_FALLBACK', true),
+    ],
+
+    'anthropic' => [
+        'key'   => env('ANTHROPIC_API_KEY'),
+        'model' => env('ANTHROPIC_MODEL', 'claude-sonnet-5'),
+    ],
+    'openai' => [
+        'key'   => env('OPENAI_API_KEY'),
+        'model' => env('OPENAI_MODEL', 'gpt-4o-mini'),
+    ],
+    'gemini' => [
+        'key'   => env('GEMINI_API_KEY'),
+        'model' => env('GEMINI_MODEL', 'gemini-2.5-flash'),
+    ],
+    'deepseek' => [
+        'key'   => env('DEEPSEEK_API_KEY'),
+        'model' => env('DEEPSEEK_MODEL', 'deepseek-chat'),
+    ],
+
 ];
