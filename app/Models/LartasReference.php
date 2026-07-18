@@ -9,6 +9,9 @@ use Illuminate\Database\Eloquent\Model;
  */
 class LartasReference extends Model
 {
+    /** Ambang "perlu ditinjau ulang" (hari). Peraturan lartas dinamis. */
+    public const STALE_DAYS = 90;
+
     protected $fillable = [
         'hs_code', 'trade_flow', 'is_free', 'izin_names', 'izin_code',
         'komoditi_group', 'regulation', 'description', 'keterangan',
@@ -48,5 +51,25 @@ class LartasReference extends Model
             ->sortByDesc(fn ($r) => strlen($r->_norm));
 
         return $all->first();
+    }
+
+    /** Umur data (hari) sejak terakhir dicek; null bila belum pernah. */
+    public function ageDays(): ?int
+    {
+        return $this->checked_at ? (int) $this->checked_at->diffInDays(now()) : null;
+    }
+
+    /** Perlu ditinjau ulang? (belum pernah dicek atau melewati ambang). */
+    public function isStale(): bool
+    {
+        return is_null($this->checked_at) || $this->checked_at->lt(now()->subDays(self::STALE_DAYS));
+    }
+
+    /** Scope: referensi yang perlu ditinjau ulang. */
+    public function scopeStale($query)
+    {
+        return $query->where(function ($q) {
+            $q->whereNull('checked_at')->orWhere('checked_at', '<', now()->subDays(self::STALE_DAYS));
+        });
     }
 }

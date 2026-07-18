@@ -357,6 +357,7 @@ Route::middleware(['auth', 'admin'])->prefix('admin')->name('admin.')->group(fun
         Route::get('/profile', \App\Livewire\Admin\AdminProfile::class)->name('profile');
         Route::get('/invoices', InvoiceManager::class)->name('invoices.index');
         Route::get('/products', \App\Livewire\Admin\ProductManager::class)->name('products');
+        Route::get('/lartas-references', \App\Livewire\Admin\LartasReferences::class)->name('lartas-references');
         Route::get('/quotations', QuotationManager::class)->name('quotations.index');
         Route::get('/vendors', VendorManagement::class)->name('vendors.index');
         Route::get('/job-costing', JobCostingManager::class)->name('job-costing.index');

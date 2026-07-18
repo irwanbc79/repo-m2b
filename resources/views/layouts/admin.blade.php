@@ -176,6 +176,9 @@
                 <a href="{{ route('admin.products') }}" class="flex items-center px-4 py-3 text-sm font-medium rounded-lg transition-colors {{ request()->routeIs('admin.products*') ? 'bg-m2b-accent text-white' : 'hover:bg-gray-800 text-gray-300' }}">
                     🛍️ Master Product/Service
                 </a>
+                <a href="{{ route('admin.lartas-references') }}" class="flex items-center px-4 py-3 text-sm font-medium rounded-lg transition-colors {{ request()->routeIs('admin.lartas-references') ? 'bg-m2b-accent text-white' : 'hover:bg-gray-800 text-gray-300' }}">
+                    🧭 Referensi Lartas
+                </a>
                 @endunless
                 @endif
                 @endif
