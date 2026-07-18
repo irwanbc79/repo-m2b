@@ -329,6 +329,32 @@ class ShipmentDetail extends Component
         session()->flash('message', "Referensi INSW untuk HS {$hs} tersimpan. Ini kini jadi acuan otoritatif.");
     }
 
+    /** 1-klik: tandai HS ini BEBAS lartas untuk arah shipment (kasus paling umum). */
+    public function tandaiBebasLartas()
+    {
+        $hs = trim((string) $this->shipment->hs_code);
+        if ($hs === '') {
+            session()->flash('lartas_error', 'HS code belum diisi pada shipment ini.');
+            return;
+        }
+        $flow = $this->tradeFlow();
+        \App\Models\LartasReference::updateOrCreate(
+            ['hs_code' => $hs, 'trade_flow' => $flow],
+            [
+                'is_free'     => true,
+                'izin_names'  => null,
+                'izin_code'   => null,
+                'doc_types'   => [],
+                'description' => 'Ditandai bebas lartas oleh staf (verifikasi INSW).',
+                'source'      => 'INSW/INTR',
+                'checked_by'  => Auth::id(),
+                'checked_at'  => now(),
+            ]
+        );
+        ActivityLog::record('Shipment', 'REKAM LARTAS INSW', $this->shipment->awb_number, "HS {$hs} ({$flow}) = bebas lartas");
+        session()->flash('message', "HS {$hs} ({$flow}) ditandai BEBAS lartas — jadi acuan otoritatif.");
+    }
+
     /** Referensi INSW → minta dokumen ter-mapping ke customer sekaligus. */
     public function mintaSemuaDariReferensi()
     {

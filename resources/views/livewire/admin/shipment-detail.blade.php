@@ -255,7 +255,11 @@
                             <span class="text-[10px] font-black bg-emerald-600 text-white px-2 py-0.5 rounded-full uppercase tracking-wide">✓ Data INSW</span>
                             <span class="text-[10px] text-emerald-700">Sumber otoritatif · direkam {{ optional($ref->checked_at)->format('d M Y') }}</span>
                             @if($ref->hs_code !== $shipment->hs_code)<span class="text-[10px] text-amber-600">(berlaku utk HS {{ $ref->hs_code }})</span>@endif
+                            @if($ref->isStale())<span class="text-[10px] font-bold bg-amber-100 text-amber-700 px-2 py-0.5 rounded-full">⏳ perlu ditinjau ({{ $ref->ageDays() }} hari)</span>@endif
                         </div>
+                        @if($ref->isStale())
+                            <div class="bg-amber-50 border border-amber-200 rounded-lg px-3 py-2 mb-2 text-[11px] text-amber-800">⚠️ Data ini direkam {{ $ref->ageDays() }} hari lalu. Peraturan lartas bisa berubah (bebas↔wajib) — <strong>disarankan cek ulang di INSW</strong> lalu klik "Rekam data INSW" untuk memperbarui.</div>
+                        @endif
                         @if($ref->is_free)
                             <p class="text-sm font-bold text-emerald-800">Barang BEBAS lartas — tidak ada izin khusus.</p>
                         @else
@@ -278,7 +282,13 @@
                     </div>
                 @else
                     <div class="bg-amber-50 border border-amber-200 text-amber-800 text-xs px-3 py-2.5 rounded-lg mb-4">
-                        Belum ada data INSW terekam untuk HS ini. <a href="https://insw.go.id/intr" target="_blank" rel="noopener" class="font-bold underline">Cek di INSW/INTR</a> lalu klik <strong>📝 Rekam data INSW</strong> agar jadi acuan otoritatif (lebih tepat dari perkiraan AI).
+                        <p>Belum ada data INSW terekam untuk HS ini. <a href="https://insw.go.id/intr" target="_blank" rel="noopener" class="font-bold underline">Cek di INSW/INTR</a> lalu rekam agar jadi acuan otoritatif (lebih tepat dari perkiraan AI).</p>
+                        @if($shipment->hs_code)
+                        <div class="mt-2 flex items-center gap-2 flex-wrap">
+                            <button wire:click="tandaiBebasLartas" class="text-[11px] font-bold bg-emerald-600 text-white px-2.5 py-1.5 rounded-lg hover:bg-emerald-700 transition">✓ Tandai bebas lartas ({{ $shipment->service_type ?: 'import' }})</button>
+                            <span class="text-[10px] text-amber-600">— bila di INSW ternyata tidak ada izin</span>
+                        </div>
+                        @endif
                     </div>
                 @endif
 
