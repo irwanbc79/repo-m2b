@@ -387,6 +387,14 @@ class Shipment extends Model
     }
 
     /**
+     * Item checklist kelengkapan dokumen (F1/F2).
+     */
+    public function documentRequirements(): HasMany
+    {
+        return $this->hasMany(DocumentRequirement::class, 'shipment_id');
+    }
+
+    /**
      * Relationship to Shipment Statuses (tracking history)
      */
     public function statuses(): HasMany

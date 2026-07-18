@@ -76,6 +76,39 @@
         </div>
     @endif
 
+    {{-- ⚠️ NOTIFIKASI KUAT: dokumen yang diminta staf M2B untuk shipment INI --}}
+    @php $reqDocs = $this->myRequirements->where('status', 'requested'); @endphp
+    @if($reqDocs->isNotEmpty())
+    <div class="relative overflow-hidden rounded-xl border-2 border-red-300 bg-gradient-to-r from-red-50 via-white to-white shadow-md ring-1 ring-red-100">
+        <div class="absolute left-0 top-0 bottom-0 w-1.5 bg-m2b-accent animate-pulse"></div>
+        <div class="p-5 flex items-start gap-4">
+            <div class="shrink-0 p-3 bg-red-100 rounded-xl text-m2b-accent">
+                <svg class="w-7 h-7" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9"></path></svg>
+            </div>
+            <div class="flex-1 min-w-0">
+                <h3 class="text-base font-black text-red-800">Tim M2B meminta {{ $reqDocs->count() }} dokumen dari Anda</h3>
+                <p class="text-sm text-red-700/90 mt-0.5">Mohon segera dilengkapi agar proses pengiriman dapat berlanjut. 🙏</p>
+                <ul class="mt-3 flex flex-wrap gap-2">
+                    @foreach($reqDocs as $req)
+                        <li class="inline-flex items-center gap-1.5 bg-white border border-red-200 text-red-800 text-xs font-semibold px-2.5 py-1.5 rounded-lg shadow-sm">
+                            <span class="w-2 h-2 rounded-full bg-m2b-accent"></span>
+                            {{ $req->doc_type }}
+                            @if($req->due_date)
+                                <span class="text-[10px] font-bold {{ \Carbon\Carbon::parse($req->due_date)->isPast() ? 'text-red-600' : 'text-red-500/80' }}">• tenggat {{ \Carbon\Carbon::parse($req->due_date)->format('d M Y') }}</span>
+                            @endif
+                            <button type="button" wire:click="pilihUntukUpload({{ $req->id }})" class="ml-1 text-m2b-primary hover:text-m2b-accent underline decoration-dotted">Upload</button>
+                        </li>
+                    @endforeach
+                </ul>
+                @php $notes = $reqDocs->pluck('note')->filter()->unique(); @endphp
+                @if($notes->isNotEmpty())
+                    <p class="mt-2.5 text-xs text-gray-500 italic">📝 Catatan tim M2B: {{ $notes->implode(' · ') }}</p>
+                @endif
+            </div>
+        </div>
+    </div>
+    @endif
+
     {{-- KARTU 1: VISUAL TRACKER (Separuh Atas) --}}
     <div class="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
         <div class="bg-m2b-primary p-6 text-white flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
@@ -172,7 +205,7 @@
 
         {{-- KOLOM KANAN: FORM UPLOAD (FITUR BARU) --}}
         <div class="lg:col-span-1">
-            <div class="bg-blue-50 rounded-xl shadow-sm border border-blue-100 p-6 sticky top-6">
+            <div id="upload-form" x-data x-init="$wire.on('scroll-to-upload', () => { $el.scrollIntoView({ behavior: 'smooth', block: 'center' }); $el.classList.add('ring-2','ring-m2b-accent'); setTimeout(() => $el.classList.remove('ring-2','ring-m2b-accent'), 2000); })" class="bg-blue-50 rounded-xl shadow-sm border border-blue-100 p-6 sticky top-6 transition-all">
                 <div class="flex items-center gap-2 mb-4 text-blue-900 border-b border-blue-200 pb-3">
                     <div class="bg-blue-600 text-white p-1.5 rounded">
                         <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12"></path></svg>

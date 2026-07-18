@@ -42,7 +42,10 @@ class ShipmentList extends Component
                       ->orWhere('service_type', 'like', $term);
             }
         })
-        ->withCount(['messages as unread_admin_count' => fn ($q) => $q->unreadForCustomer()])
+        ->withCount([
+            'messages as unread_admin_count' => fn ($q) => $q->unreadForCustomer(),
+            'documentRequirements as doc_requested_count' => fn ($q) => $q->where('status', 'requested'),
+        ])
         ->latest()
         ->paginate(25);
 

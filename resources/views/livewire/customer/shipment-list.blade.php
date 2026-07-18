@@ -46,6 +46,11 @@
                                     💬 {{ $shipment->unread_admin_count }} balasan
                                 </span>
                                 @endif
+                                @if(($shipment->doc_requested_count ?? 0) > 0)
+                                <span class="inline-flex items-center gap-1 bg-m2b-accent text-white text-[10px] font-bold px-2 py-0.5 rounded-full animate-pulse" title="Tim M2B meminta dokumen dari Anda">
+                                    📄 {{ $shipment->doc_requested_count }} dokumen diminta
+                                </span>
+                                @endif
                             </div>
                             <div class="text-xs text-gray-500 mt-1 flex items-center gap-1">
                                 <span>{{ $shipment->origin }}</span>
