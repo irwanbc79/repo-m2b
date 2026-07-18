@@ -14,11 +14,19 @@ return new class extends Migration
 {
     public function up(): void
     {
+        // Hanya MySQL yang punya ENUM ketat. SQLite (lokal/test) bertipe dinamis —
+        // kolom status sudah menerima teks apa pun, jadi tak perlu ALTER.
+        if (DB::getDriverName() !== 'mysql') {
+            return;
+        }
         DB::statement("ALTER TABLE `shipments` MODIFY `status` VARCHAR(50) NOT NULL DEFAULT 'pending'");
     }
 
     public function down(): void
     {
+        if (DB::getDriverName() !== 'mysql') {
+            return;
+        }
         // Normalisasi nilai di luar enum lama agar tak gagal saat revert.
         DB::statement("UPDATE `shipments` SET `status` = 'in_progress'
             WHERE `status` NOT IN ('pending','in_progress','customs_released','on_board','completed','cancel')");
