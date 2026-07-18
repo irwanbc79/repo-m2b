@@ -315,43 +315,49 @@
                     </div>
                 @elseif($this->lartas)
                     @php $la = $this->lartas; $recs = $la->recommendations ?? []; @endphp
-                    {{-- Disclaimer wajib --}}
-                    <div class="bg-amber-50 border border-amber-200 rounded-lg px-3 py-2.5 mb-3 flex items-start gap-2">
-                        <span class="text-amber-500 text-sm">⚠️</span>
-                        <p class="text-[11px] leading-relaxed text-amber-800">
-                            <strong>Rekomendasi awal AI — keputusan tetap di tim M2B.</strong> Peraturan lartas dinamis dan bisa berubah sewaktu-waktu. Selalu verifikasi ke sumber resmi.
-                            <a href="https://insw.go.id/intr" target="_blank" rel="noopener" class="font-bold underline text-amber-900 hover:text-amber-700 whitespace-nowrap">🔗 Cek di INSW</a>
-                        </p>
-                    </div>
-
-                    @if($la->summary)<p class="text-sm text-gray-700 mb-3 whitespace-pre-line">{{ $la->summary }}</p>@endif
                     @if(count($recs) === 0)
-                        <div class="text-xs text-emerald-700 bg-emerald-50 border border-emerald-200 rounded-lg px-3 py-2 mb-2">✓ Tidak terdeteksi izin/lartas khusus untuk HS ini (tetap verifikasi ke INSW).</div>
-                    @endif
-
-                    <div class="space-y-2">
-                        @foreach($recs as $rec)
-                            @php
-                                $lk = $rec['likelihood'] ?? 'sedang';
-                                $lkBadge = $lk==='tinggi' ? 'bg-red-100 text-red-700' : ($lk==='rendah' ? 'bg-slate-100 text-slate-500' : 'bg-amber-100 text-amber-700');
-                            @endphp
-                            <div class="border border-gray-100 rounded-lg p-3">
-                                <div class="flex items-start gap-2 flex-wrap">
-                                    <span class="font-semibold text-gray-800 text-sm">{{ $rec['doc_type'] }}</span>
-                                    <span class="text-[9px] font-bold px-1.5 py-0.5 rounded uppercase {{ $lkBadge }}">kemungkinan {{ $lk }}</span>
-                                    @if(!($rec['in_catalog'] ?? false))<span class="text-[9px] font-bold bg-slate-100 text-slate-400 px-1.5 py-0.5 rounded">di luar katalog</span>@endif
-                                    @if(!empty($rec['instansi']))<span class="text-[10px] text-gray-400">· {{ $rec['instansi'] }}</span>@endif
-                                </div>
-                                @if(!empty($rec['reason']))<p class="text-xs text-gray-500 mt-1">{{ $rec['reason'] }}</p>@endif
-                                <div class="flex gap-3 mt-2">
-                                    <button wire:click="mintaLartasKeCustomer(@js($rec['doc_type']))" class="text-[10px] font-bold text-blue-600 hover:underline">📨 Minta ke Customer</button>
-                                    <button wire:click="tambahLartasKeChecklist(@js($rec['doc_type']))" class="text-[10px] font-bold text-slate-600 hover:underline">+ Tambah ke Checklist</button>
-                                </div>
+                        <div class="text-xs text-emerald-700 bg-emerald-50 border border-emerald-200 rounded-lg px-3 py-2">✓ AI tidak mendeteksi izin/lartas khusus untuk HS ini (tetap verifikasi & rekam dari INSW).</div>
+                        @if($la->summary)<p class="text-xs text-gray-500 mt-2 whitespace-pre-line">{{ $la->summary }}</p>@endif
+                    @else
+                    <div x-data="{ openAi: false }">
+                        <button type="button" @click="openAi = !openAi" class="w-full flex items-center justify-between gap-2 text-left bg-violet-50/50 border border-violet-100 rounded-lg px-3 py-2.5 hover:bg-violet-50 transition">
+                            <span class="text-xs text-slate-600">🤖 AI memberi <strong>{{ count($recs) }} perkiraan</strong> — <span class="text-amber-700 font-semibold">sering lebih banyak dari kenyataan; utamakan Rekam data INSW</span></span>
+                            <span class="text-[10px] font-bold text-violet-600 whitespace-nowrap" x-text="openAi ? 'Sembunyikan ▲' : 'Lihat perkiraan ▾'"></span>
+                        </button>
+                        <div x-show="openAi" x-transition x-cloak class="mt-3">
+                            <div class="bg-amber-50 border border-amber-200 rounded-lg px-3 py-2.5 mb-3 flex items-start gap-2">
+                                <span class="text-amber-500 text-sm">⚠️</span>
+                                <p class="text-[11px] leading-relaxed text-amber-800">
+                                    <strong>Rekomendasi awal AI — keputusan tetap di tim M2B.</strong> AI cenderung menyarankan lebih dari kenyataan. Selalu verifikasi & rekam dari sumber resmi.
+                                    <a href="https://insw.go.id/intr" target="_blank" rel="noopener" class="font-bold underline text-amber-900 hover:text-amber-700 whitespace-nowrap">🔗 Cek di INSW</a>
+                                </p>
                             </div>
-                        @endforeach
+                            @if($la->summary)<p class="text-sm text-gray-700 mb-3 whitespace-pre-line">{{ $la->summary }}</p>@endif
+                            <div class="space-y-2">
+                                @foreach($recs as $rec)
+                                    @php
+                                        $lk = $rec['likelihood'] ?? 'sedang';
+                                        $lkBadge = $lk==='tinggi' ? 'bg-red-100 text-red-700' : ($lk==='rendah' ? 'bg-slate-100 text-slate-500' : 'bg-amber-100 text-amber-700');
+                                    @endphp
+                                    <div class="border border-gray-100 rounded-lg p-3">
+                                        <div class="flex items-start gap-2 flex-wrap">
+                                            <span class="font-semibold text-gray-800 text-sm">{{ $rec['doc_type'] }}</span>
+                                            <span class="text-[9px] font-bold px-1.5 py-0.5 rounded uppercase {{ $lkBadge }}">kemungkinan {{ $lk }}</span>
+                                            @if(!($rec['in_catalog'] ?? false))<span class="text-[9px] font-bold bg-slate-100 text-slate-400 px-1.5 py-0.5 rounded">di luar katalog</span>@endif
+                                            @if(!empty($rec['instansi']))<span class="text-[10px] text-gray-400">· {{ $rec['instansi'] }}</span>@endif
+                                        </div>
+                                        @if(!empty($rec['reason']))<p class="text-xs text-gray-500 mt-1">{{ $rec['reason'] }}</p>@endif
+                                        <div class="flex gap-3 mt-2">
+                                            <button wire:click="mintaLartasKeCustomer(@js($rec['doc_type']))" class="text-[10px] font-bold text-blue-600 hover:underline">📨 Minta ke Customer</button>
+                                            <button wire:click="tambahLartasKeChecklist(@js($rec['doc_type']))" class="text-[10px] font-bold text-slate-600 hover:underline">+ Tambah ke Checklist</button>
+                                        </div>
+                                    </div>
+                                @endforeach
+                            </div>
+                            <p class="text-[10px] text-gray-400 mt-3">Dianalisa {{ optional($la->generated_at)->format('d M Y H:i') }} · {{ $la->model }}{{ $la->hs_code && $la->hs_code !== $shipment->hs_code ? ' · ⚠️ HS berubah sejak analisa — disarankan analisa ulang' : '' }}</p>
+                        </div>
                     </div>
-
-                    <p class="text-[10px] text-gray-400 mt-3">Dianalisa {{ optional($la->generated_at)->format('d M Y H:i') }} · {{ $la->model }}{{ $la->hs_code && $la->hs_code !== $shipment->hs_code ? ' · ⚠️ HS berubah sejak analisa — disarankan analisa ulang' : '' }}</p>
+                    @endif
                 @else
                     <div class="bg-violet-50/50 border border-violet-100 text-slate-600 text-xs px-3 py-3 rounded-lg">
                         Klik <strong>Analisa Sekarang</strong> untuk perkiraan izin/lartas berdasarkan HS code. Rekomendasi bisa langsung diminta ke customer atau ditambahkan ke checklist.
