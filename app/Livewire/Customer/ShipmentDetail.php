@@ -101,6 +101,18 @@ class ShipmentDetail extends Component
         }
     }
 
+    /** Referensi INSW otoritatif (bila staf sudah merekam) — didahulukan atas AI. */
+    public function getLartasReferenceProperty()
+    {
+        try {
+            $flow = strtolower($this->shipment->service_type ?: 'import');
+            $flow = in_array($flow, ['import', 'export'], true) ? $flow : 'import';
+            return \App\Models\LartasReference::lookup($this->shipment->hs_code, $flow);
+        } catch (\Throwable $e) {
+            return null;
+        }
+    }
+
     /** Opsi jenis dokumen di form upload = yang diminta + umum. */
     public function getUploadOptionsProperty()
     {
