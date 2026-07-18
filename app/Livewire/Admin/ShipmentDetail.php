@@ -54,6 +54,17 @@ class ShipmentDetail extends Component
     // AI Lartas (F4)
     public $showLartasPanel = false;
 
+    // Referensi Lartas INSW (grounding #2)
+    public $showRekamInsw = false;
+    public $ref_is_free = false;
+    public $ref_izin_names = '';
+    public $ref_izin_code = '';
+    public $ref_komoditi_group = '';
+    public $ref_regulation = '';
+    public $ref_description = '';
+    public $ref_keterangan = '';
+    public $ref_doc_types = [];
+
     public function mount($id)
     {
         // Pastikan relasi customer dan user terload
@@ -90,6 +101,16 @@ class ShipmentDetail extends Component
         return \App\Models\DocumentType::active()->shipmentLevel()
             ->forService($this->shipment->service_type ?? 'import')
             ->orderBy('category')->orderBy('sort_order')
+            ->pluck('doc_type')->unique()->values();
+    }
+
+    /** Opsi dokumen kategori lartas (untuk pemetaan referensi INSW). */
+    public function getLartasDocOptionsProperty()
+    {
+        return \App\Models\DocumentType::active()
+            ->where('category', 'lartas')
+            ->forService($this->shipment->service_type ?? 'import')
+            ->orderBy('sort_order')
             ->pluck('doc_type')->unique()->values();
     }
 
@@ -213,6 +234,112 @@ class ShipmentDetail extends Component
             $this->shipment, $docType, ['source' => 'ai-lartas', 'responsibility' => 'customer']
         );
         session()->flash('message', "'{$docType}' ditambahkan ke checklist.");
+    }
+
+    // ===== Referensi Lartas INSW (grounding #2, sumber otoritatif) =====
+    protected function tradeFlow(): string
+    {
+        $s = strtolower($this->shipment->service_type ?: 'import');
+        return in_array($s, ['import', 'export'], true) ? $s : 'import';
+    }
+
+    /** Referensi INSW tersimpan untuk HS shipment ini (otoritatif). */
+    public function getLartasReferenceProperty()
+    {
+        try {
+            return \App\Models\LartasReference::lookup($this->shipment->hs_code, $this->tradeFlow());
+        } catch (\Throwable $e) {
+            return null;
+        }
+    }
+
+    /** #1 M2B Memory: shipment lain ber-HS sama & dokumen lartas yang pernah dipakai. */
+    public function getLartasMemoryProperty()
+    {
+        try {
+            $hs = trim((string) $this->shipment->hs_code);
+            if ($hs === '') return null;
+
+            $ids = \App\Models\Shipment::where('hs_code', $hs)
+                ->where('id', '!=', $this->shipment->id)
+                ->pluck('id');
+            if ($ids->isEmpty()) return null;
+
+            // Kategori lartas dari katalog untuk memfilter dokumen yang relevan.
+            $lartasNames = \App\Models\DocumentType::where('category', 'lartas')->pluck('doc_type');
+            $docs = \App\Models\DocumentRequirement::whereIn('shipment_id', $ids)
+                ->where('status', 'fulfilled')
+                ->whereIn('doc_type', $lartasNames)
+                ->pluck('doc_type')->unique()->values();
+
+            return ['count' => $ids->count(), 'docs' => $docs];
+        } catch (\Throwable $e) {
+            return null;
+        }
+    }
+
+    public function openRekamInsw()
+    {
+        $ref = $this->lartasReference;
+        $this->ref_is_free       = $ref->is_free ?? false;
+        $this->ref_izin_names    = $ref->izin_names ?? '';
+        $this->ref_izin_code     = $ref->izin_code ?? '';
+        $this->ref_komoditi_group = $ref->komoditi_group ?? '';
+        $this->ref_regulation    = $ref->regulation ?? '';
+        $this->ref_description   = $ref->description ?? '';
+        $this->ref_keterangan    = $ref->keterangan ?? '';
+        $this->ref_doc_types     = $ref->doc_types ?? [];
+        $this->showRekamInsw = true;
+    }
+
+    public function simpanRekamInsw()
+    {
+        $hs = trim((string) $this->shipment->hs_code);
+        if ($hs === '') {
+            session()->flash('lartas_error', 'HS code belum diisi pada shipment ini.');
+            $this->showRekamInsw = false;
+            return;
+        }
+
+        $this->validate([
+            'ref_izin_names'  => 'nullable|string|max:255',
+            'ref_izin_code'   => 'nullable|string|max:60',
+            'ref_regulation'  => 'nullable|string|max:255',
+            'ref_doc_types'   => 'array',
+        ]);
+
+        \App\Models\LartasReference::updateOrCreate(
+            ['hs_code' => $hs, 'trade_flow' => $this->tradeFlow()],
+            [
+                'is_free'        => (bool) $this->ref_is_free,
+                'izin_names'     => $this->ref_izin_names ?: null,
+                'izin_code'      => $this->ref_izin_code ?: null,
+                'komoditi_group' => $this->ref_komoditi_group ?: null,
+                'regulation'     => $this->ref_regulation ?: null,
+                'description'    => $this->ref_description ?: null,
+                'keterangan'     => $this->ref_keterangan ?: null,
+                'doc_types'      => array_values(array_filter($this->ref_doc_types)),
+                'source'         => 'INSW/INTR',
+                'checked_by'     => Auth::id(),
+                'checked_at'     => now(),
+            ]
+        );
+        ActivityLog::record('Shipment', 'REKAM LARTAS INSW', $this->shipment->awb_number, "HS {$hs}");
+        $this->showRekamInsw = false;
+        session()->flash('message', "Referensi INSW untuk HS {$hs} tersimpan. Ini kini jadi acuan otoritatif.");
+    }
+
+    /** Referensi INSW → minta dokumen ter-mapping ke customer sekaligus. */
+    public function mintaSemuaDariReferensi()
+    {
+        $ref = $this->lartasReference;
+        if (! $ref || empty($ref->doc_types)) return;
+        $svc = app(\App\Services\DocumentChecklistService::class);
+        foreach ($ref->doc_types as $dt) {
+            $svc->requestFromCustomer($this->shipment, $dt, 'Wajib per data INSW (' . ($ref->izin_names ?: $ref->izin_code) . ')', null, Auth::id());
+        }
+        ActivityLog::record('Shipment', 'MINTA DOKUMEN', $this->shipment->awb_number, 'Minta dokumen lartas per referensi INSW');
+        session()->flash('message', 'Dokumen sesuai referensi INSW diminta ke customer.');
     }
 
     public function edit()

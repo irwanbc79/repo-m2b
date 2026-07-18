@@ -237,21 +237,73 @@
             </div>
             @endif
 
-            {{-- ===== AI LARTAS (F4) — rekomendasi izin/lartas berbasis HS code ===== --}}
+            {{-- ===== LARTAS & IZIN — referensi INSW (otoritatif) + perkiraan AI ===== --}}
             <div class="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
-                <div class="flex items-center gap-3 flex-wrap mb-1">
-                    <h3 class="font-bold text-gray-800 flex items-center gap-2">🤖 Analisa Lartas <span class="text-[10px] font-bold bg-violet-100 text-violet-700 px-2 py-0.5 rounded-full uppercase tracking-wide">AI · beta</span></h3>
+                <div class="flex items-center gap-3 flex-wrap mb-3">
+                    <h3 class="font-bold text-gray-800 flex items-center gap-2">🧭 Lartas &amp; Izin</h3>
+                    <span class="text-xs text-gray-400">HS <span class="font-mono font-bold text-gray-600">{{ $shipment->hs_code ?: '(belum diisi)' }}</span> · {{ ucfirst($shipment->service_type ?: 'import') }}</span>
+                    <div class="ml-auto">
+                        <button wire:click="openRekamInsw" class="text-xs font-bold bg-emerald-600 text-white px-3 py-2 rounded-lg hover:bg-emerald-700 transition">📝 Rekam data INSW</button>
+                    </div>
+                </div>
+
+                {{-- TIER 1: Referensi INSW (otoritatif) --}}
+                @if($this->lartasReference)
+                    @php $ref = $this->lartasReference; @endphp
+                    <div class="border-2 border-emerald-200 bg-emerald-50/50 rounded-xl p-4 mb-4">
+                        <div class="flex items-center gap-2 mb-2 flex-wrap">
+                            <span class="text-[10px] font-black bg-emerald-600 text-white px-2 py-0.5 rounded-full uppercase tracking-wide">✓ Data INSW</span>
+                            <span class="text-[10px] text-emerald-700">Sumber otoritatif · direkam {{ optional($ref->checked_at)->format('d M Y') }}</span>
+                            @if($ref->hs_code !== $shipment->hs_code)<span class="text-[10px] text-amber-600">(berlaku utk HS {{ $ref->hs_code }})</span>@endif
+                        </div>
+                        @if($ref->is_free)
+                            <p class="text-sm font-bold text-emerald-800">Barang BEBAS lartas — tidak ada izin khusus.</p>
+                        @else
+                            <div class="grid sm:grid-cols-2 gap-x-6 gap-y-1 text-sm">
+                                @if($ref->izin_names)<div><span class="text-gray-500">Izin:</span> <span class="font-semibold text-gray-800">{{ $ref->izin_names }}</span></div>@endif
+                                @if($ref->izin_code)<div><span class="text-gray-500">Kode Izin:</span> <span class="font-mono">{{ $ref->izin_code }}</span></div>@endif
+                                @if($ref->komoditi_group)<div><span class="text-gray-500">Komoditi:</span> {{ $ref->komoditi_group }}</div>@endif
+                                @if($ref->regulation)<div><span class="text-gray-500">Regulasi:</span> {{ $ref->regulation }}</div>@endif
+                            </div>
+                            @if($ref->description)<p class="text-xs text-gray-500 mt-2">{{ $ref->description }}</p>@endif
+                            @if(!empty($ref->doc_types))
+                                <div class="mt-3 flex items-center gap-2 flex-wrap">
+                                    <span class="text-xs text-gray-500">Dokumen wajib:</span>
+                                    @foreach($ref->doc_types as $dt)<span class="text-[11px] font-semibold bg-white border border-emerald-200 text-emerald-800 px-2 py-0.5 rounded">{{ $dt }}</span>@endforeach
+                                    <button wire:click="mintaSemuaDariReferensi" class="text-[11px] font-bold text-blue-600 hover:underline ml-1">📨 Minta semua ke customer</button>
+                                </div>
+                            @endif
+                        @endif
+                        <p class="text-[10px] text-gray-400 mt-2"><a href="https://insw.go.id/intr" target="_blank" rel="noopener" class="underline">🔗 Cek/perbarui di INSW</a> · klik "Rekam data INSW" untuk memperbarui.</p>
+                    </div>
+                @else
+                    <div class="bg-amber-50 border border-amber-200 text-amber-800 text-xs px-3 py-2.5 rounded-lg mb-4">
+                        Belum ada data INSW terekam untuk HS ini. <a href="https://insw.go.id/intr" target="_blank" rel="noopener" class="font-bold underline">Cek di INSW/INTR</a> lalu klik <strong>📝 Rekam data INSW</strong> agar jadi acuan otoritatif (lebih tepat dari perkiraan AI).
+                    </div>
+                @endif
+
+                {{-- #1 M2B MEMORY --}}
+                @if($this->lartasMemory && $this->lartasMemory['docs']->isNotEmpty())
+                    <div class="bg-blue-50 border border-blue-100 rounded-lg px-3 py-2.5 mb-4 text-xs text-blue-800">
+                        🧠 <strong>Pengalaman M2B:</strong> HS ini pernah ditangani {{ $this->lartasMemory['count'] }}× — dokumen lartas yang dulu dipakai:
+                        @foreach($this->lartasMemory['docs'] as $d)<span class="font-semibold">{{ $d }}</span>@if(!$loop->last), @endif @endforeach.
+                    </div>
+                @endif
+
+                {{-- TIER 2: Perkiraan AI (sekunder) --}}
+                <div class="flex items-center gap-3 flex-wrap mb-1 border-t border-gray-100 pt-4">
+                    <h4 class="font-bold text-gray-700 text-sm flex items-center gap-2">🤖 Perkiraan awal <span class="text-[10px] font-bold bg-violet-100 text-violet-700 px-2 py-0.5 rounded-full uppercase tracking-wide">AI · sekunder</span></h4>
                     <div class="ml-auto flex items-center gap-2">
                         @if($this->lartasConfigured)
                             <button wire:click="analisaLartas" wire:loading.attr="disabled" wire:target="analisaLartas"
                                 class="text-xs font-bold bg-violet-600 text-white px-3 py-2 rounded-lg hover:bg-violet-700 transition disabled:opacity-50">
-                                <span wire:loading.remove wire:target="analisaLartas">{{ $this->lartas ? '↻ Analisa Ulang' : '✨ Analisa Sekarang' }}</span>
+                                <span wire:loading.remove wire:target="analisaLartas">{{ $this->lartas ? '↻ Analisa Ulang' : '✨ Analisa dgn AI' }}</span>
                                 <span wire:loading wire:target="analisaLartas">Menganalisa…</span>
                             </button>
                         @endif
                     </div>
                 </div>
-                <p class="text-xs text-gray-500 mb-3">Perkiraan izin/lartas dari HS code <span class="font-mono font-bold text-gray-700">{{ $shipment->hs_code ?: '(belum diisi)' }}</span> untuk mempercepat penyiapan dokumen. Bukan keputusan final.</p>
+                <p class="text-xs text-gray-500 mb-3">Bantuan awal AI bila data INSW belum direkam — <strong>wajib diverifikasi ke INSW</strong>, bukan keputusan final.</p>
 
                 @if(session()->has('lartas_error'))
                     <div class="mb-3 bg-red-50 border border-red-200 text-red-700 text-sm px-3 py-2 rounded-lg">⚠️ {{ session('lartas_error') }}</div>
@@ -306,6 +358,45 @@
                     </div>
                 @endif
             </div>
+
+            {{-- MODAL REKAM DATA INSW --}}
+            @if($showRekamInsw)
+            <div class="fixed inset-0 z-[9999] flex items-center justify-center p-4">
+                <div class="fixed inset-0 bg-slate-900/50 backdrop-blur-sm" wire:click="$set('showRekamInsw', false)"></div>
+                <div class="relative bg-white rounded-2xl shadow-2xl w-full max-w-lg p-6 max-h-[90vh] overflow-y-auto" style="position:relative; z-index:10;">
+                    <h3 class="font-black text-gray-800 mb-1">📝 Rekam Data INSW — HS {{ $shipment->hs_code }}</h3>
+                    <p class="text-xs text-gray-500 mb-4">Salin dari <a href="https://insw.go.id/intr" target="_blank" rel="noopener" class="text-blue-600 underline">insw.go.id/intr</a> ({{ ucfirst($shipment->service_type ?: 'import') }}). Data ini jadi acuan otoritatif, mengalahkan perkiraan AI.</p>
+                    <form wire:submit.prevent="simpanRekamInsw" class="space-y-3">
+                        <label class="flex items-center gap-2 text-sm">
+                            <input type="checkbox" wire:model="ref_is_free" class="rounded border-gray-300 text-emerald-600">
+                            <span class="font-semibold text-emerald-700">Barang BEBAS lartas (tidak ada izin)</span>
+                        </label>
+                        <div class="grid grid-cols-2 gap-3">
+                            <div><label class="text-[11px] font-bold text-gray-500 uppercase">Nama Izin</label><input wire:model="ref_izin_names" class="w-full border-gray-200 rounded-lg text-sm mt-1" placeholder="KT.2, KT.9, SP-5 atau KT-13"></div>
+                            <div><label class="text-[11px] font-bold text-gray-500 uppercase">Kode Izin</label><input wire:model="ref_izin_code" class="w-full border-gray-200 rounded-lg text-sm mt-1" placeholder="940"></div>
+                        </div>
+                        <div><label class="text-[11px] font-bold text-gray-500 uppercase">Komoditi</label><input wire:model="ref_komoditi_group" class="w-full border-gray-200 rounded-lg text-sm mt-1" placeholder="Tumbuhan"></div>
+                        <div><label class="text-[11px] font-bold text-gray-500 uppercase">Regulasi</label><input wire:model="ref_regulation" class="w-full border-gray-200 rounded-lg text-sm mt-1" placeholder="PP 14 Tahun 2002 Tentang Karantina Tumbuhan"></div>
+                        <div><label class="text-[11px] font-bold text-gray-500 uppercase">Deskripsi (opsional)</label><textarea wire:model="ref_description" rows="2" class="w-full border-gray-200 rounded-lg text-sm mt-1"></textarea></div>
+                        <div>
+                            <label class="text-[11px] font-bold text-gray-500 uppercase">Dokumen wajib (petakan ke katalog)</label>
+                            <div class="mt-1 grid grid-cols-2 gap-1.5 max-h-40 overflow-y-auto border border-gray-100 rounded-lg p-2">
+                                @foreach($this->lartasDocOptions as $opt)
+                                    <label class="flex items-center gap-1.5 text-xs">
+                                        <input type="checkbox" wire:model="ref_doc_types" value="{{ $opt }}" class="rounded border-gray-300 text-emerald-600">
+                                        <span>{{ $opt }}</span>
+                                    </label>
+                                @endforeach
+                            </div>
+                        </div>
+                        <div class="flex gap-2 justify-end pt-2">
+                            <button type="button" wire:click="$set('showRekamInsw', false)" class="px-4 py-2 text-xs font-bold text-gray-500 hover:text-gray-700">Batal</button>
+                            <button type="submit" class="px-4 py-2 text-xs font-bold bg-emerald-600 text-white rounded-lg hover:bg-emerald-700">Simpan Referensi</button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+            @endif
 
             <div class="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
                 <h3 class="font-bold text-gray-800 mb-4 flex items-center gap-2">

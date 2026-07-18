@@ -279,8 +279,37 @@
 
     </div>
 
-    {{-- ===== EDUKASI: Perkiraan Izin/Lartas (read-only, bila tim M2B sudah menganalisa) ===== --}}
-    @if($this->lartas && count($this->lartas->recommendations ?? []) > 0)
+    {{-- ===== IZIN/LARTAS: referensi INSW (otoritatif) didahulukan atas perkiraan AI ===== --}}
+    @if($this->lartasReference)
+    @php $ref = $this->lartasReference; @endphp
+    <div class="bg-white rounded-2xl shadow-sm border border-emerald-100 overflow-hidden">
+        <div class="px-5 py-4 border-b border-emerald-100 bg-gradient-to-r from-emerald-50 to-white flex items-center gap-2">
+            <span class="text-lg">✅</span>
+            <div>
+                <h3 class="font-bold text-gray-800 text-sm">Izin/Lartas untuk Barang Anda <span class="text-[10px] font-black bg-emerald-600 text-white px-2 py-0.5 rounded-full uppercase">data INSW</span></h3>
+                <p class="text-[11px] text-gray-500">HS <span class="font-mono font-bold">{{ $ref->hs_code }}</span> · sumber resmi INSW, diverifikasi tim M2B {{ optional($ref->checked_at)->format('d M Y') }}.</p>
+            </div>
+        </div>
+        <div class="p-5">
+            @if($ref->is_free)
+                <p class="text-sm font-semibold text-emerald-800">✓ Barang Anda tidak memerlukan izin lartas khusus. (Tetap ikuti arahan tim M2B.)</p>
+            @else
+                <div class="grid sm:grid-cols-2 gap-x-6 gap-y-1 text-sm">
+                    @if($ref->izin_names)<div><span class="text-gray-500">Izin yang diperlukan:</span> <span class="font-semibold text-gray-800">{{ $ref->izin_names }}</span></div>@endif
+                    @if($ref->komoditi_group)<div><span class="text-gray-500">Kelompok komoditi:</span> {{ $ref->komoditi_group }}</div>@endif
+                    @if($ref->regulation)<div class="sm:col-span-2"><span class="text-gray-500">Dasar aturan:</span> {{ $ref->regulation }}</div>@endif
+                </div>
+                @if(!empty($ref->doc_types))
+                    <div class="mt-3 flex items-center gap-2 flex-wrap">
+                        <span class="text-xs text-gray-500">Dokumen yang perlu disiapkan:</span>
+                        @foreach($ref->doc_types as $dt)<span class="text-[11px] font-semibold bg-emerald-50 border border-emerald-200 text-emerald-800 px-2 py-0.5 rounded">{{ $dt }}</span>@endforeach
+                    </div>
+                @endif
+            @endif
+            <p class="text-[11px] text-gray-400 mt-3">Ada pertanyaan? Kirim lewat diskusi di bawah — tim M2B siap membantu. 🙂</p>
+        </div>
+    </div>
+    @elseif($this->lartas && count($this->lartas->recommendations ?? []) > 0)
     @php $la = $this->lartas; @endphp
     <div class="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
         <div class="px-5 py-4 border-b border-gray-100 bg-gradient-to-r from-violet-50 to-white flex items-center gap-2">
