@@ -188,11 +188,10 @@
                         <label class="block text-xs font-bold text-gray-500 uppercase mb-1">Jenis Dokumen</label>
                         <select wire:model="doc_type" class="w-full border-blue-200 rounded-lg text-sm focus:ring-blue-500 focus:border-blue-500 bg-white">
                             <option value="">-- Pilih Jenis --</option>
-                            <option value="Invoice">Commercial Invoice</option>
-                            <option value="Packing List">Packing List</option>
-                            <option value="Bill of Lading">Bill of Lading (BL) / AWB</option>
-                            <option value="Bukti Bayar">Bukti Transfer</option>
-                            <option value="Lainnya">Dokumen Lainnya</option>
+                            @foreach($this->uploadOptions as $opt)
+                                <option value="{{ $opt }}">{{ $opt }}</option>
+                            @endforeach
+                            <option value="Dokumen Pendukung Lainnya">Dokumen Lainnya</option>
                         </select>
                         @error('doc_type') <span class="text-red-500 text-xs">{{ $message }}</span> @enderror
                     </div>
@@ -214,18 +213,33 @@
                     </button>
                 </div>
 
-                {{-- List Wajib --}}
+                {{-- Kelengkapan Dokumen (dinamis) --}}
                 <div class="mt-6 pt-4 border-t border-blue-200">
-                    <p class="text-[10px] font-bold text-gray-500 uppercase mb-2">Dokumen Wajib:</p>
-                    <ul class="text-xs text-gray-600 space-y-1 list-disc pl-4">
-                        <li>Commercial Invoice</li>
-                        <li>Packing List</li>
-                        @if(strtolower($shipment->service_type) == 'export')
-                            <li>Shipping Instruction (SI)</li>
-                        @else
-                            <li>Bill of Lading (BL) / AWB</li>
-                        @endif
-                    </ul>
+                    @php $rd = $this->readiness; @endphp
+                    <div class="flex items-center gap-2 mb-3">
+                        <p class="text-[10px] font-bold text-gray-500 uppercase">Kelengkapan Dokumen</p>
+                        <div class="flex-1 h-1.5 bg-gray-100 rounded-full overflow-hidden"><div class="h-full bg-emerald-500 transition-all" style="width: {{ $rd['percent'] }}%"></div></div>
+                        <span class="text-[10px] font-bold text-emerald-700">{{ $rd['percent'] }}%</span>
+                    </div>
+                    <div class="space-y-1.5">
+                        @forelse($this->myRequirements as $req)
+                            <div class="flex items-center gap-2 text-xs">
+                                @if($req->status === 'fulfilled')
+                                    <span class="text-green-600">✓</span>
+                                    <span class="text-gray-400 line-through truncate">{{ $req->doc_type }}</span>
+                                @else
+                                    <span class="{{ $req->is_mandatory ? 'text-red-500' : 'text-gray-300' }}">○</span>
+                                    <span class="text-gray-700 font-medium truncate">{{ $req->doc_type }}</span>
+                                    @if($req->is_mandatory)<span class="text-[8px] font-bold bg-red-50 text-red-600 px-1 rounded shrink-0">WAJIB</span>@endif
+                                    @if($req->due_date)<span class="text-[9px] text-amber-600 shrink-0">s/d {{ \Carbon\Carbon::parse($req->due_date)->format('d M') }}</span>@endif
+                                    <button wire:click="pilihUntukUpload({{ $req->id }})" class="ml-auto text-[10px] font-bold text-blue-600 hover:underline shrink-0">Upload</button>
+                                @endif
+                            </div>
+                        @empty
+                            <p class="text-[10px] text-gray-400 italic">Belum ada daftar dokumen.</p>
+                        @endforelse
+                    </div>
+                    <p class="text-[9px] text-gray-400 mt-2">Dokumen bertanda <span class="text-red-600 font-bold">WAJIB</span> diminta tim M2B. Klik "Upload" untuk mengunggah.</p>
                 </div>
             </div>
         </div>

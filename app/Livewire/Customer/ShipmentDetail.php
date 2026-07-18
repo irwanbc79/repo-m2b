@@ -48,6 +48,55 @@ class ShipmentDetail extends Component
         if (Auth::user()->role === 'customer') {
             $this->shipment->messages()->unreadForCustomer()->update(['read_at' => now()]);
         }
+
+        // Bangun checklist dokumen sekali (aditif; aman bila tabel belum ada).
+        try {
+            if (\App\Models\DocumentRequirement::where('shipment_id', $this->shipment->id)->doesntExist()) {
+                app(\App\Services\DocumentChecklistService::class)->buildForShipment($this->shipment);
+            }
+        } catch (\Throwable $e) {
+            \Log::warning('buildForShipment (customer) gagal: ' . $e->getMessage());
+        }
+    }
+
+    // ===== Kelengkapan Dokumen (F2) =====
+    public function getReadinessProperty()
+    {
+        try {
+            return app(\App\Services\DocumentChecklistService::class)->readinessScore($this->shipment);
+        } catch (\Throwable $e) {
+            return ['total' => 0, 'fulfilled' => 0, 'pending' => 0, 'percent' => 100];
+        }
+    }
+
+    /** Dokumen yang perlu DILENGKAPI CUSTOMER (tanggung jawab customer, belum lengkap). */
+    public function getMyRequirementsProperty()
+    {
+        return \App\Models\DocumentRequirement::where('shipment_id', $this->shipment->id)
+            ->where('responsibility', 'customer')
+            ->where('status', '!=', 'waived')
+            ->orderByRaw("CASE WHEN status='fulfilled' THEN 1 ELSE 0 END")
+            ->orderByDesc('is_mandatory')
+            ->orderBy('doc_type')
+            ->get();
+    }
+
+    /** Pilih dokumen ini untuk di-upload (pra-isi form upload). */
+    public function pilihUntukUpload($reqId)
+    {
+        $req = \App\Models\DocumentRequirement::where('shipment_id', $this->shipment->id)->find($reqId);
+        if ($req) {
+            $this->doc_type = $req->doc_type;
+            $this->dispatch('scroll-to-upload');
+        }
+    }
+
+    /** Opsi jenis dokumen di form upload = yang diminta + umum. */
+    public function getUploadOptionsProperty()
+    {
+        $needed = $this->myRequirements->where('status', '!=', 'fulfilled')->pluck('doc_type');
+        $common = collect(['Invoice', 'Packing List', 'Bill of Lading', 'Bukti Bayar BM/PDRI']);
+        return $needed->merge($common)->unique()->values();
     }
 
     /**
@@ -118,7 +167,7 @@ class ShipmentDetail extends Component
         
         $path = $this->file_upload->storeAs('documents/customer_uploads', $filename, 'public');
 
-        Document::create([
+        $document = Document::create([
             'shipment_id' => $this->shipment->id,
             'document_type' => 'customer_upload',
             'filename' => $filename,
@@ -129,6 +178,13 @@ class ShipmentDetail extends Component
             'file_size' => $this->file_upload->getSize(),
             'mime_type' => $this->file_upload->getMimeType(),
             'uploaded_at' => now()]);
+
+        // Auto-fulfill checklist (role customer) — ADITIF, aman via try/catch.
+        try {
+            app(\App\Services\DocumentChecklistService::class)->autoFulfillOnUpload($document, 'customer');
+        } catch (\Throwable $e) {
+            \Log::warning('autoFulfillOnUpload (customer) gagal: ' . $e->getMessage());
+        }
 
         $this->reset(['file_upload', 'doc_type', 'custom_note']);
         $this->shipment->refresh(); 
