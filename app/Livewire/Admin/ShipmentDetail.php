@@ -45,10 +45,94 @@ class ShipmentDetail extends Component
     public $editingDocFilename = '';
     public $editingDocExtension = '';
 
+    // Checklist Dokumen (F1)
+    public $showDocReqModal = false;
+    public $req_doc_type = '';
+    public $req_note = '';
+    public $req_due = '';
+
     public function mount($id)
     {
         // Pastikan relasi customer dan user terload
         $this->shipment = Shipment::with('customer.user')->findOrFail($id);
+
+        // Bangun checklist dokumen sekali (aditif; aman bila tabel belum ada).
+        try {
+            if (\App\Models\DocumentRequirement::where('shipment_id', $this->shipment->id)->doesntExist()) {
+                app(\App\Services\DocumentChecklistService::class)->buildForShipment($this->shipment);
+            }
+        } catch (\Throwable $e) {
+            \Log::warning('buildForShipment gagal: ' . $e->getMessage());
+        }
+    }
+
+    // ===== Checklist Dokumen =====
+    public function getChecklistProperty()
+    {
+        return \App\Models\DocumentRequirement::where('shipment_id', $this->shipment->id)
+            ->orderByDesc('is_mandatory')->orderBy('doc_type')->get();
+    }
+
+    public function getReadinessProperty()
+    {
+        try {
+            return app(\App\Services\DocumentChecklistService::class)->readinessScore($this->shipment);
+        } catch (\Throwable $e) {
+            return ['total' => 0, 'fulfilled' => 0, 'pending' => 0, 'percent' => 100];
+        }
+    }
+
+    public function getDocTypeOptionsProperty()
+    {
+        return \App\Models\DocumentType::active()->shipmentLevel()
+            ->forService($this->shipment->service_type ?? 'import')
+            ->orderBy('category')->orderBy('sort_order')
+            ->pluck('doc_type')->unique()->values();
+    }
+
+    public function openDocReqModal()
+    {
+        $this->reset(['req_doc_type', 'req_note', 'req_due']);
+        $this->showDocReqModal = true;
+    }
+
+    public function mintaDokumen()
+    {
+        $this->validate([
+            'req_doc_type' => 'required|string',
+            'req_note'     => 'nullable|string|max:500',
+            'req_due'      => 'nullable|date',
+        ]);
+
+        app(\App\Services\DocumentChecklistService::class)->requestFromCustomer(
+            $this->shipment, $this->req_doc_type, $this->req_note ?: null, $this->req_due ?: null, Auth::id()
+        );
+        ActivityLog::record('Shipment', 'MINTA DOKUMEN', $this->shipment->awb_number, "Minta '{$this->req_doc_type}' ke customer");
+        $this->showDocReqModal = false;
+        session()->flash('message', "Permintaan dokumen '{$this->req_doc_type}' dikirim ke customer.");
+    }
+
+    public function tetapkanWajib($reqId)
+    {
+        $req = \App\Models\DocumentRequirement::where('shipment_id', $this->shipment->id)->find($reqId);
+        if ($req) {
+            app(\App\Services\DocumentChecklistService::class)->confirmMandatory($req, Auth::id());
+            session()->flash('message', "'{$req->doc_type}' ditetapkan sebagai wajib.");
+        }
+    }
+
+    public function waiveRequirement($reqId)
+    {
+        $req = \App\Models\DocumentRequirement::where('shipment_id', $this->shipment->id)->find($reqId);
+        if ($req && $req->status !== 'fulfilled') {
+            $req->update(['status' => 'waived', 'is_mandatory' => false]);
+        }
+    }
+
+    public function hapusRequirement($reqId)
+    {
+        \App\Models\DocumentRequirement::where('shipment_id', $this->shipment->id)
+            ->where('id', $reqId)->where('status', '!=', 'fulfilled')->delete();
     }
 
     public function edit()

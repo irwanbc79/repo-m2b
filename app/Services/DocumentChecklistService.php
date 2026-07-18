@@ -67,8 +67,9 @@ class DocumentChecklistService
     }
 
     /** Minta dokumen ke customer (status=requested + wajib, dgn jejak). */
-    public function requestFromCustomer(Shipment $shipment, string $docType, ?string $note, ?string $dueDate, int $userId): DocumentRequirement
+    public function requestFromCustomer(Shipment $shipment, string $docType, ?string $note, ?string $dueDate, ?int $userId = null): DocumentRequirement
     {
+        $uid = $userId ?? 1; // fallback user sistem (konsisten dgn service lain)
         $req = $this->addRequirement($shipment, $docType, ['source' => 'manual']);
         $req->update([
             'responsibility' => 'customer',
@@ -76,9 +77,9 @@ class DocumentChecklistService
             'status'         => $req->status === 'fulfilled' ? 'fulfilled' : 'requested',
             'note'           => $note,
             'due_date'       => $dueDate,
-            'requested_by'   => $userId,
+            'requested_by'   => $uid,
             'requested_at'   => now(),
-            'confirmed_by'   => $userId,
+            'confirmed_by'   => $uid,
             'confirmed_at'   => now(),
         ]);
 
@@ -86,11 +87,11 @@ class DocumentChecklistService
     }
 
     /** Tetapkan sebuah requirement jadi WAJIB (keputusan manusia). */
-    public function confirmMandatory(DocumentRequirement $req, int $userId): DocumentRequirement
+    public function confirmMandatory(DocumentRequirement $req, ?int $userId = null): DocumentRequirement
     {
         $req->update([
             'is_mandatory' => true,
-            'confirmed_by' => $userId,
+            'confirmed_by' => $userId ?? 1,
             'confirmed_at' => now(),
         ]);
 

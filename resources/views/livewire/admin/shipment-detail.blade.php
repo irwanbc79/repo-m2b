@@ -155,6 +155,82 @@
     <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
         {{-- KOLOM KIRI: DOKUMEN --}}
         <div class="lg:col-span-2 space-y-6" id="documents"> {{-- Menambahkan ID untuk tautan dari halaman Manage --}}
+
+            {{-- ===== CHECKLIST DOKUMEN (aditif) ===== --}}
+            <div class="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
+                <div class="flex items-center gap-3 flex-wrap mb-3">
+                    <h3 class="font-bold text-gray-800 flex items-center gap-2">📋 Checklist Dokumen</h3>
+                    @php $rd = $this->readiness; @endphp
+                    <div class="flex items-center gap-2 text-xs">
+                        <div class="w-28 h-2 bg-gray-100 rounded-full overflow-hidden"><div class="h-full bg-emerald-500" style="width: {{ $rd['percent'] }}%"></div></div>
+                        <span class="font-bold text-emerald-700">{{ $rd['fulfilled'] }}/{{ $rd['total'] }} wajib · {{ $rd['percent'] }}%</span>
+                    </div>
+                    <button wire:click="openDocReqModal" class="ml-auto text-xs font-bold bg-blue-600 text-white px-3 py-2 rounded-lg hover:bg-blue-700 transition">📨 Minta Dokumen</button>
+                </div>
+                <div class="divide-y divide-gray-100 border border-gray-100 rounded-lg overflow-hidden">
+                    @forelse($this->checklist as $req)
+                        @php
+                            $st = $req->status;
+                            $badge = $st==='fulfilled' ? ['bg-green-100 text-green-700','✓ Lengkap']
+                                : ($st==='requested' ? ['bg-amber-100 text-amber-700','⏳ Diminta']
+                                : ($st==='waived' ? ['bg-gray-100 text-gray-400','— Diabaikan']
+                                : ['bg-slate-100 text-slate-500','✗ Belum ada']));
+                        @endphp
+                        <div class="flex items-center gap-3 px-3 py-2.5 text-sm {{ $st==='waived' ? 'opacity-60' : '' }}">
+                            <div class="flex-1 min-w-0">
+                                <span class="font-semibold text-gray-800">{{ $req->doc_type }}</span>
+                                @if($req->is_mandatory)<span class="ml-1 text-[9px] font-bold bg-red-50 text-red-600 px-1.5 py-0.5 rounded">WAJIB</span>@endif
+                                <span class="ml-1 text-[9px] font-bold px-1.5 py-0.5 rounded {{ $req->responsibility==='customer' ? 'bg-blue-50 text-blue-600' : 'bg-gray-100 text-gray-500' }}">{{ $req->responsibility==='customer' ? 'CUSTOMER' : 'M2B' }}</span>
+                                @if($req->fulfilled_by_role)<span class="ml-1 text-[9px] font-bold bg-emerald-50 text-emerald-700 px-1.5 py-0.5 rounded">upload {{ $req->fulfilled_by_role }}</span>@endif
+                                @if($req->due_date && $st!=='fulfilled')<span class="ml-1 text-[10px] text-amber-600">tenggat {{ \Carbon\Carbon::parse($req->due_date)->format('d M') }}</span>@endif
+                            </div>
+                            <span class="text-[10px] font-bold px-2 py-0.5 rounded-full {{ $badge[0] }} whitespace-nowrap">{{ $badge[1] }}</span>
+                            @if($st!=='fulfilled')
+                                <div class="flex gap-2 shrink-0">
+                                    @unless($req->is_mandatory)<button wire:click="tetapkanWajib({{ $req->id }})" class="text-[10px] font-bold text-blue-600 hover:underline whitespace-nowrap">Wajibkan</button>@endunless
+                                    <button wire:click="waiveRequirement({{ $req->id }})" class="text-[10px] text-gray-400 hover:text-gray-600">Abaikan</button>
+                                </div>
+                            @endif
+                        </div>
+                    @empty
+                        <div class="px-3 py-6 text-center text-gray-400 text-sm italic">Belum ada item checklist.</div>
+                    @endforelse
+                </div>
+                <p class="text-[10px] text-gray-400 mt-2">Dokumen yang di-upload otomatis tercentang. "Wajibkan" = jadikan syarat yang harus dipenuhi customer.</p>
+            </div>
+
+            {{-- MODAL MINTA DOKUMEN --}}
+            @if($showDocReqModal)
+            <div class="fixed inset-0 z-[9999] flex items-center justify-center p-4">
+                <div class="fixed inset-0 bg-slate-900/50 backdrop-blur-sm" wire:click="$set('showDocReqModal', false)"></div>
+                <div class="relative bg-white rounded-2xl shadow-2xl w-full max-w-md p-6" style="position:relative; z-index:10;">
+                    <h3 class="font-black text-gray-800 mb-4">📨 Minta Dokumen ke Customer</h3>
+                    <form wire:submit.prevent="mintaDokumen" class="space-y-3">
+                        <div>
+                            <label class="text-xs font-bold text-gray-500 uppercase tracking-wide">Jenis Dokumen</label>
+                            <select wire:model="req_doc_type" class="w-full border-gray-200 rounded-lg text-sm mt-1 focus:ring-blue-500 focus:border-blue-500">
+                                <option value="">— Pilih —</option>
+                                @foreach($this->docTypeOptions as $opt)<option value="{{ $opt }}">{{ $opt }}</option>@endforeach
+                            </select>
+                            @error('req_doc_type')<span class="text-xs text-red-500">{{ $message }}</span>@enderror
+                        </div>
+                        <div>
+                            <label class="text-xs font-bold text-gray-500 uppercase tracking-wide">Catatan (opsional)</label>
+                            <textarea wire:model="req_note" rows="2" class="w-full border-gray-200 rounded-lg text-sm mt-1 focus:ring-blue-500 focus:border-blue-500" placeholder="Mohon kirim…"></textarea>
+                        </div>
+                        <div>
+                            <label class="text-xs font-bold text-gray-500 uppercase tracking-wide">Tenggat (opsional)</label>
+                            <input type="date" wire:model="req_due" class="w-full border-gray-200 rounded-lg text-sm mt-1 focus:ring-blue-500 focus:border-blue-500">
+                        </div>
+                        <div class="flex gap-2 justify-end pt-2">
+                            <button type="button" wire:click="$set('showDocReqModal', false)" class="px-4 py-2 text-xs font-bold text-gray-500 hover:text-gray-700">Batal</button>
+                            <button type="submit" class="px-4 py-2 text-xs font-bold bg-blue-600 text-white rounded-lg hover:bg-blue-700">Kirim Permintaan</button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+            @endif
+
             <div class="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
                 <h3 class="font-bold text-gray-800 mb-4 flex items-center gap-2">
                     <svg class="w-5 h-5 text-m2b-primary" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path></svg>
