@@ -143,6 +143,8 @@ ATURAN KETAT:
 - Peraturan Lartas SANGAT DINAMIS. JANGAN mengklaim kepastian. Nyatakan tingkat kemungkinan secara jujur (banyak kasus hanya "sedang"/"rendah").
 - Jangan mengarang nomor peraturan spesifik. Boleh menyebut instansi/kementerian penerbit secara umum.
 - Petakan rekomendasi ke KATALOG DOKUMEN M2B berikut jika sesuai (pakai nama persis; set in_catalog=true). Jika ada izin relevan di luar katalog, boleh usulkan dengan in_catalog=false.
+- WAJIB sesuaikan rekomendasi & alasan SPESIFIK dengan ARAH ({$arah}). Untuk EKSPOR fokus pada dokumen ekspor (mis. Phytosanitary/Karantina ekspor, LS ekspor, COO/SKA, PE, Fumigasi) — JANGAN pakai logika impor. Untuk IMPOR fokus pada izin impor. Jika sebuah dokumen relevan hanya pada arah tertentu, jangan bawa ke arah yang lain.
+- Bila HS code KURANG DARI 6 DIGIT atau deskripsi komoditas KOSONG: turunkan tingkat keyakinan, JANGAN memaksakan rekomendasi spesifik, dan TEGASKAN di "hs_note" bahwa HS perlu dilengkapi ke 6-8 digit / komoditas perlu diisi agar akurat (persyaratan lartas sering berbeda antar subpos).
 - Fokus HANYA pada izin/lartas (bukan invoice/packing list/BL biasa).
 - Jawab dalam Bahasa Indonesia yang ringkas dan jelas.
 
