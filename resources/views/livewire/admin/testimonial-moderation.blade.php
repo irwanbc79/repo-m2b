@@ -117,11 +117,15 @@
                     <div class="flex items-start justify-between gap-4">
                         <div class="flex-1">
                             {{-- Rating --}}
-                            <div class="flex gap-0.5 mb-2">
-                                @for($i = 1; $i <= 5; $i++)
-                                    <span class="{{ $i <= $t->rating ? 'text-yellow-400' : 'text-gray-200' }}">★</span>
-                                @endfor
-                            </div>
+                            @if($t->isFilled())
+                                <div class="flex gap-0.5 mb-2">
+                                    @for($i = 1; $i <= 5; $i++)
+                                        <span class="{{ $i <= $t->rating ? 'text-yellow-400' : 'text-gray-200' }}">★</span>
+                                    @endfor
+                                </div>
+                            @else
+                                <div class="mb-2"><span class="inline-flex items-center gap-1 text-[11px] font-semibold text-gray-400 bg-gray-100 px-2 py-0.5 rounded-full">☆ Belum diisi customer</span></div>
+                            @endif
                             {{-- Konten --}}
                             <p class="text-gray-800 text-sm leading-relaxed mb-3 italic">"{{ $t->content ?: '(Belum diisi)' }}"</p>
                             {{-- Author --}}

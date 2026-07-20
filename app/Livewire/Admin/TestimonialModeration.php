@@ -84,6 +84,13 @@ class TestimonialModeration extends Component
     public function approve($id)
     {
         $t = Testimonial::findOrFail($id);
+
+        // Jangan setujui testimoni tanpa isi (hanya rating tidak cukup).
+        if (! $t->isFilled()) {
+            session()->flash('error', 'Testimoni belum ada isinya — minta customer mengisi dulu (Kirim Ulang Undangan) atau tulis via "Tulis Sendiri" sebelum menyetujui.');
+            return;
+        }
+
         $t->update([
             'status'      => 'approved',
             'approved_by' => Auth::id(),
