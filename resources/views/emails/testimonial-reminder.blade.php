@@ -25,7 +25,7 @@
         <td style="background: linear-gradient(135deg, #eff6ff 0%, #dbeafe 100%); padding: 36px 30px; text-align: center; border-bottom: 3px solid #3b82f6;">
             <div style="font-size: 52px; margin-bottom: 12px;">💬</div>
             <h1 style="font-size: 22px; font-weight: 800; color: #1e3a5f; margin: 0 0 10px;">
-                {{ $lang === 'en' ? 'We'd Love to Hear From You!' : 'Pendapat Anda Sangat Berarti!' }}
+                {{ $lang === 'en' ? "We'd Love to Hear From You!" : 'Pendapat Anda Sangat Berarti!' }}
             </h1>
             <p style="font-size: 15px; color: #374151; line-height: 1.6; margin: 0;">
                 {{ $lang === 'en'
