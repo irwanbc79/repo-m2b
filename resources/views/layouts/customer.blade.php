@@ -100,6 +100,12 @@
                     Laporan
                 </a>
 
+                {{-- Testimoni --}}
+                <a href="{{ route('customer.testimonial') }}" class="flex items-center px-4 py-3 text-sm font-medium rounded-lg {{ request()->routeIs('customer.testimonial') ? 'bg-m2b-accent text-white' : 'hover:bg-blue-900 text-gray-300' }}">
+                    <span class="text-lg mr-3">⭐</span>
+                    Testimoni
+                </a>
+
                 {{-- My Profile --}}
                 <a href="{{ route('customer.profile') }}" class="flex items-center px-4 py-3 text-sm font-medium rounded-lg {{ request()->routeIs('customer.profile') ? 'bg-m2b-accent text-white' : 'hover:bg-blue-900 text-gray-300' }}">
                     <span class="text-lg mr-3">👤</span>

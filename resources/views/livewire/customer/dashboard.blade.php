@@ -13,6 +13,25 @@
         </div>
     </div>
 
+    {{-- ⭐ Ajakan isi testimoni --}}
+    @if(($testimonialCta ?? null) === 'invite')
+    <a href="{{ route('customer.testimonial') }}" class="block group">
+        <div class="relative overflow-hidden rounded-xl border border-yellow-200 bg-gradient-to-r from-yellow-50 via-white to-white shadow-sm hover:shadow-md transition p-5 flex items-center gap-4">
+            <div class="shrink-0 text-3xl">⭐</div>
+            <div class="flex-1 min-w-0">
+                <h3 class="font-black text-gray-800">Puas dengan layanan M2B? Bagikan pengalaman Anda</h3>
+                <p class="text-sm text-gray-500">Testimoni Anda hanya butuh 1 menit — dan bisa tampil di halaman utama M2B.</p>
+            </div>
+            <span class="shrink-0 inline-flex items-center gap-1.5 bg-m2b-primary group-hover:bg-blue-900 text-white text-sm font-bold px-4 py-2 rounded-lg transition">Tulis Testimoni →</span>
+        </div>
+    </a>
+    @elseif(($testimonialCta ?? null) === 'review')
+    <div class="rounded-xl border border-blue-100 bg-blue-50/60 shadow-sm p-4 flex items-center gap-3">
+        <span class="text-xl">⏳</span>
+        <p class="text-sm text-blue-800">Terima kasih! Testimoni Anda sedang ditinjau tim M2B. <a href="{{ route('customer.testimonial') }}" class="font-bold underline">Lihat status</a></p>
+    </div>
+    @endif
+
     {{-- ⚠️ NOTIFIKASI KUAT: Dokumen yang diminta staf M2B (lintas semua shipment) --}}
     @php $totalReq = $docRequests->flatten()->count(); @endphp
     @if($totalReq > 0)

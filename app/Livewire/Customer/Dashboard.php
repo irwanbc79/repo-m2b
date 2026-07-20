@@ -23,6 +23,7 @@ class Dashboard extends Component
                 ],
                 'shipments' => [],
                 'docRequests' => collect(),
+                'testimonialCta' => null,
             ])->layout('layouts.customer');
         }
 
@@ -51,10 +52,30 @@ class Dashboard extends Component
             \Log::warning('Dashboard docRequests gagal: ' . $e->getMessage());
         }
 
+        // Ajakan isi testimoni: ada pengiriman selesai & belum ada testimoni terisi/approved.
+        $testimonialCta = null;
+        try {
+            if ($stats['completed'] > 0) {
+                $t = \App\Models\Testimonial::where('customer_id', $user->customer->id)
+                    ->where('status', '!=', 'rejected')->latest()->first();
+                if (! $t) {
+                    $testimonialCta = 'invite';        // belum ada sama sekali
+                } elseif ($t->status === 'pending' && ! $t->isFilled()) {
+                    $testimonialCta = 'invite';        // ada record kosong dari follow-up
+                } elseif ($t->status === 'pending') {
+                    $testimonialCta = 'review';        // sudah diisi, menunggu
+                }
+                // approved → tidak perlu CTA
+            }
+        } catch (\Throwable $e) {
+            \Log::warning('Dashboard testimonialCta gagal: ' . $e->getMessage());
+        }
+
         return view('livewire.customer.dashboard', [
             'stats' => $stats,
             'shipments' => $shipments,
             'docRequests' => $docRequests,
+            'testimonialCta' => $testimonialCta,
         ])->layout('layouts.customer');
     }
 }
