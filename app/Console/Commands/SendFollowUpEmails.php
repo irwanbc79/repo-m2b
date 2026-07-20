@@ -95,15 +95,14 @@ class SendFollowUpEmails extends Command
                 continue;
             }
 
-            // Throttle: sudah dapat follow-up dalam 90 hari terakhir
-            $recentFollowUp = Invoice::where('customer_id', $customerId)
+            // Kebijakan "sekali seumur hidup": skip jika customer PERNAH di-follow-up.
+            $everFollowedUp = Invoice::where('customer_id', $customerId)
                 ->whereNotNull('follow_up_sent_at')
-                ->where('follow_up_sent_at', '>=', Carbon::now()->subDays(90))
                 ->where('id', '!=', $invoice->id)
                 ->exists();
 
-            if ($recentFollowUp) {
-                $this->line("  [SKIP] Customer #{$customerId} sudah dapat follow-up dalam 90 hari terakhir.");
+            if ($everFollowedUp) {
+                $this->line("  [SKIP] Customer #{$customerId} sudah pernah di-follow-up (kebijakan sekali).");
                 continue;
             }
 

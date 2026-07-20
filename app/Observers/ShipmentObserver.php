@@ -43,14 +43,15 @@ class ShipmentObserver
             return;
         }
 
-        // Jangan kirim jika customer sudah dapat follow-up dalam 90 hari terakhir
-        $recentFollowUp = Invoice::where('customer_id', $customerId)
+        // Kebijakan "sekali seumur hidup": jangan email lagi jika customer PERNAH di-follow-up.
+        // Klien sering-shipment tidak di-spam; ajakan lanjut lewat CTA in-portal (pasif).
+        $everFollowedUp = Invoice::where('customer_id', $customerId)
             ->whereNotNull('follow_up_sent_at')
-            ->where('follow_up_sent_at', '>=', now()->subDays(90))
+            ->where('id', '!=', $invoice->id)
             ->exists();
 
-        if ($recentFollowUp) {
-            Log::info("ShipmentObserver: skip — customer {$customerId} sudah dapat follow-up dalam 90 hari terakhir.");
+        if ($everFollowedUp) {
+            Log::info("ShipmentObserver: skip — customer {$customerId} sudah pernah di-follow-up (kebijakan sekali).");
             return;
         }
 
