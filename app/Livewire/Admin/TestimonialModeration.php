@@ -3,8 +3,10 @@
 namespace App\Livewire\Admin;
 
 use App\Mail\TestimonialApprovedMail;
+use App\Mail\TestimonialReminderMail;
 use App\Models\Testimonial;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Mail;
 use Livewire\Component;
 use Livewire\WithPagination;
@@ -111,6 +113,60 @@ class TestimonialModeration extends Component
         $this->adminNote = '';
         $this->activeId  = null;
         session()->flash('message', 'Testimoni ditolak.');
+    }
+
+    /** Pastikan token aktif (regenerasi bila kosong/expired). */
+    private function ensureToken(Testimonial $t): void
+    {
+        if (empty($t->token) || $t->isExpired()) {
+            $t->update([
+                'token'            => Testimonial::generateToken(),
+                'token_expires_at' => now()->addDays(90),
+            ]);
+        }
+    }
+
+    /** Kirim ulang undangan pengisian ke SATU customer yang belum mengisi. */
+    public function resendInvitation($id)
+    {
+        $t = Testimonial::with('customer.user')->findOrFail($id);
+        $email = $t->customer?->user?->email;
+        if (! $email) {
+            session()->flash('error', 'Customer belum punya email — tidak bisa mengirim undangan.');
+            return;
+        }
+        $this->ensureToken($t);
+        try {
+            Mail::to($email)->send(new TestimonialReminderMail($t->fresh()));
+            $t->update(['reminder_sent_at' => now()]);
+            session()->flash('message', "Undangan pengisian dikirim ulang ke {$email}.");
+        } catch (\Throwable $e) {
+            Log::warning('resendInvitation gagal: ' . $e->getMessage());
+            session()->flash('error', 'Gagal mengirim email. Coba lagi.');
+        }
+    }
+
+    /** Kirim ulang undangan ke SEMUA yang belum mengisi (punya email). */
+    public function resendAllUnfilled()
+    {
+        $list = Testimonial::with('customer.user')->pending()
+            ->where(fn ($q) => $q->whereNull('content')->orWhere('content', ''))
+            ->get();
+
+        $sent = 0;
+        foreach ($list as $t) {
+            $email = $t->customer?->user?->email;
+            if (! $email) continue;
+            $this->ensureToken($t);
+            try {
+                Mail::to($email)->send(new TestimonialReminderMail($t->fresh()));
+                $t->update(['reminder_sent_at' => now()]);
+                $sent++;
+            } catch (\Throwable $e) {
+                Log::warning('resendAllUnfilled gagal utk #' . $t->id . ': ' . $e->getMessage());
+            }
+        }
+        session()->flash('message', "Undangan pengisian dikirim ulang ke {$sent} customer.");
     }
 
     public function render()

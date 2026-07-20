@@ -20,6 +20,11 @@
             {{ session('message') }}
         </div>
     @endif
+    @if(session()->has('error'))
+        <div class="bg-red-50 border border-red-200 text-red-800 px-4 py-3 rounded-lg text-sm">
+            {{ session('error') }}
+        </div>
+    @endif
 
     {{-- Status Tabs --}}
     <div class="bg-white rounded-lg shadow-sm border border-gray-200">
@@ -39,6 +44,18 @@
             </button>
             @endforeach
         </div>
+
+        {{-- Bulk: kirim ulang undangan (tab Belum Mengisi) --}}
+        @if($filterStatus === 'pending_unfilled' && $counts['pending_unfilled'] > 0)
+        <div class="bg-emerald-50 border-b border-emerald-100 px-6 py-3 flex items-center justify-between gap-3 flex-wrap">
+            <p class="text-sm text-emerald-800">📧 {{ $counts['pending_unfilled'] }} customer belum mengisi. Kirim ulang undangan agar mereka menulis testimoni <strong>otentik</strong> sendiri.</p>
+            <button wire:click="resendAllUnfilled" wire:loading.attr="disabled" wire:target="resendAllUnfilled" wire:confirm="Kirim ulang undangan pengisian ke semua {{ $counts['pending_unfilled'] }} customer yang belum mengisi?"
+                    class="px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white text-sm font-semibold rounded-lg transition whitespace-nowrap">
+                <span wire:loading.remove wire:target="resendAllUnfilled">Kirim Ulang ke Semua</span>
+                <span wire:loading wire:target="resendAllUnfilled">Mengirim…</span>
+            </button>
+        </div>
+        @endif
 
         {{-- Table --}}
         <div class="divide-y divide-gray-100">
@@ -133,9 +150,18 @@
                         <div class="flex flex-col gap-2 flex-shrink-0 w-36">
                             @if($t->status === 'pending')
                                 @if(empty($t->content))
+                                    <button wire:click="resendInvitation({{ $t->id }})" wire:loading.attr="disabled" wire:target="resendInvitation"
+                                            class="px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white text-sm rounded-lg transition font-medium text-center"
+                                            title="Kirim ulang email undangan agar customer mengisi sendiri">
+                                        📧 Kirim Ulang Undangan
+                                    </button>
+                                    @if($t->reminder_sent_at)
+                                        <span class="text-[10px] text-gray-400 text-center">terkirim {{ \Carbon\Carbon::parse($t->reminder_sent_at)->diffForHumans() }}</span>
+                                    @endif
                                     <button wire:click="startEdit({{ $t->id }})"
-                                            class="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white text-sm rounded-lg transition font-medium text-center">
-                                        ✍️ Tulis Testimoni
+                                            class="px-4 py-2 bg-blue-50 hover:bg-blue-100 text-blue-700 border border-blue-200 text-sm rounded-lg transition font-medium text-center"
+                                            title="Isi atas nama customer (fallback bila customer tak merespons)">
+                                        ✍️ Tulis Sendiri
                                     </button>
                                     @if($activeId !== $t->id)
                                         <button wire:click="$set('activeId', {{ $t->id }})"

@@ -296,6 +296,7 @@ Route::middleware(['auth', 'customer'])->prefix('customer')->name('customer.')->
     Route::get('/shipments/create', CreateShipment::class)->name('shipments.create');
     Route::get('/shipments/{id}', ShipmentDetail::class)->name('shipment.show');
     Route::get('/profile', CustomerProfile::class)->name('profile');
+    Route::get('/testimoni', \App\Livewire\Customer\TestimonialForm::class)->name('testimonial');
 
     // Fitur Tambahan Customer
     Route::get('/kurs-pajak', KursPajakPage::class)->name('kurs');
