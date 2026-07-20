@@ -20,6 +20,19 @@
             <h1 class="text-4xl font-bold text-gray-800 mb-4">Terima Kasih! 🎉</h1>
             <p class="text-xl text-gray-600 mb-6">Survey Anda telah berhasil dikirim</p>
 
+            @if(session('promoter_testimonial_token'))
+            {{-- Promoter (NPS tinggi) → ajak menulis testimoni, di momen yang pas --}}
+            <div class="bg-gradient-to-r from-yellow-50 to-amber-50 border border-amber-200 rounded-2xl p-6 mb-8">
+                <div class="text-3xl mb-2">⭐</div>
+                <h2 class="text-xl font-bold text-amber-800 mb-1">Wah, terima kasih atas penilaian tingginya!</h2>
+                <p class="text-gray-600 text-sm mb-4">Maukah Anda membagikan pengalaman singkat sebagai testimoni? Hanya 1 menit — dan bisa tampil di halaman utama M2B.</p>
+                <a href="{{ route('testimonial.form', ['token' => session('promoter_testimonial_token')]) }}"
+                   class="inline-block bg-amber-500 hover:bg-amber-600 text-white font-bold px-6 py-3 rounded-xl shadow-md transition">
+                    ✍️ Tulis Testimoni Saya
+                </a>
+            </div>
+            @endif
+
             <div class="bg-blue-50 border-l-4 border-blue-500 p-6 mb-8 text-left">
                 <p class="text-gray-700 mb-3">
                     <strong class="text-blue-700">Feedback Anda sangat berharga bagi kami!</strong>

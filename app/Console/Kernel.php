@@ -26,6 +26,9 @@ class Kernel extends ConsoleKernel
 
         // 💱 FETCH KURS PAJAK KEMENKEU (SETIAP RABU JAM 00:01 — periode baru berlaku mulai Rabu)
         $schedule->command('kurs:fetch-pajak')->weeklyOn(3, '00:01');
+
+        // 📋 SURVEY KEPUASAN TAHUNAN (AWAL TAHUN — 15 JANUARI JAM 09:00)
+        $schedule->command('survey:send-annual')->yearlyOn(1, 15, '09:00');
     }
 
     /**

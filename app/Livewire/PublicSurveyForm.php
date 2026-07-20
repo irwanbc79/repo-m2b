@@ -287,6 +287,16 @@ class PublicSurveyForm extends Component
                 ->send(new SurveySubmittedMail($survey));
         } catch (\Throwable) {}
 
+        // Close-the-loop: detractor → alert staf; promoter → ajak testimoni (in-the-moment).
+        try {
+            $promoterToken = app(\App\Services\SurveyFollowUpService::class)->process($survey);
+            if ($promoterToken) {
+                session()->flash('promoter_testimonial_token', $promoterToken);
+            }
+        } catch (\Throwable $e) {
+            \Log::warning('Survey follow-up gagal: ' . $e->getMessage());
+        }
+
         // Redirect to thank you page
         return redirect()->route('survey.thank-you');
     }
