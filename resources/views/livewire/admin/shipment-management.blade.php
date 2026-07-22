@@ -22,7 +22,7 @@
     <div class="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-8 gap-4">
         {{-- Total Card --}}
         <div wire:click="$set('filterStatus', '')" 
-             title="{{ number_format($stats['total'] ?? 0) }} Total Shipments"
+             title="{{ number_format($stats['total'] ?? 0) }} Total Shipment"
              class="cursor-pointer bg-white rounded-xl p-4 shadow-sm border border-gray-100 text-center hover:scale-[1.02] hover:shadow-md transition-all duration-200 {{ $filterStatus === '' ? 'ring-2 ring-gray-400 border-transparent' : '' }}">
             <p class="text-2xl font-black text-gray-800 tracking-tight">{{ \App\Support\NumberHelper::formatCompact($stats["total"] ?? 0) }}</p>
             <p class="text-xs font-semibold text-gray-500 mt-0.5">Total</p>
@@ -30,41 +30,41 @@
 
         {{-- Pending Card --}}
         <div wire:click="$set('filterStatus', 'pending')" 
-             title="{{ number_format($stats['pending'] ?? 0) }} Pending Shipments (Klik untuk filter)"
+             title="{{ number_format($stats['pending'] ?? 0) }} Shipment Menunggu (Klik untuk filter)"
              class="cursor-pointer bg-yellow-50 rounded-xl p-4 shadow-sm border border-yellow-100 text-center hover:scale-[1.02] hover:shadow-md transition-all duration-200 {{ $filterStatus === 'pending' ? 'ring-2 ring-yellow-400 border-transparent' : '' }}">
             <p class="text-2xl font-black text-yellow-600 tracking-tight">{{ \App\Support\NumberHelper::formatCompact($stats["pending"] ?? 0) }}</p>
-            <p class="text-xs font-semibold text-yellow-700 mt-0.5">Pending</p>
+            <p class="text-xs font-semibold text-yellow-700 mt-0.5">Menunggu</p>
         </div>
 
         {{-- In Progress Card --}}
         <div wire:click="$set('filterStatus', 'in_progress')" 
-             title="{{ number_format($stats['in_progress'] ?? 0) }} In Progress (Klik untuk filter)"
+             title="{{ number_format($stats['in_progress'] ?? 0) }} Shipment Dalam Proses (Klik untuk filter)"
              class="cursor-pointer bg-blue-50 rounded-xl p-4 shadow-sm border border-blue-100 text-center hover:scale-[1.02] hover:shadow-md transition-all duration-200 {{ $filterStatus === 'in_progress' ? 'ring-2 ring-blue-400 border-transparent' : '' }}">
             <p class="text-2xl font-black text-blue-600 tracking-tight">{{ \App\Support\NumberHelper::formatCompact($stats["in_progress"] ?? 0) }}</p>
-            <p class="text-xs font-semibold text-blue-700 mt-0.5">In Progress</p>
+            <p class="text-xs font-semibold text-blue-700 mt-0.5">Proses</p>
         </div>
 
         {{-- In Transit Card --}}
         <div wire:click="$set('filterStatus', 'in_transit')" 
-             title="{{ number_format($stats['in_transit'] ?? 0) }} In Transit (Klik untuk filter)"
+             title="{{ number_format($stats['in_transit'] ?? 0) }} Shipment Dalam Perjalanan (Klik untuk filter)"
              class="cursor-pointer bg-purple-50 rounded-xl p-4 shadow-sm border border-purple-100 text-center hover:scale-[1.02] hover:shadow-md transition-all duration-200 {{ $filterStatus === 'in_transit' ? 'ring-2 ring-purple-400 border-transparent' : '' }}">
             <p class="text-2xl font-black text-purple-600 tracking-tight">{{ \App\Support\NumberHelper::formatCompact($stats["in_transit"] ?? 0) }}</p>
-            <p class="text-xs font-semibold text-purple-700 mt-0.5">In Transit</p>
+            <p class="text-xs font-semibold text-purple-700 mt-0.5">Perjalanan</p>
         </div>
 
         {{-- Completed Card --}}
         <div wire:click="$set('filterStatus', 'completed')" 
-             title="{{ number_format($stats['completed'] ?? 0) }} Completed (Klik untuk filter)"
+             title="{{ number_format($stats['completed'] ?? 0) }} Shipment Selesai (Klik untuk filter)"
              class="cursor-pointer bg-green-50 rounded-xl p-4 shadow-sm border border-green-100 text-center hover:scale-[1.02] hover:shadow-md transition-all duration-200 {{ $filterStatus === 'completed' ? 'ring-2 ring-green-400 border-transparent' : '' }}">
             <p class="text-2xl font-black text-green-600 tracking-tight">{{ \App\Support\NumberHelper::formatCompact($stats["completed"] ?? 0) }}</p>
-            <p class="text-xs font-semibold text-green-700 mt-0.5">Completed</p>
+            <p class="text-xs font-semibold text-green-700 mt-0.5">Selesai</p>
         </div>
 
         {{-- This Month Card --}}
-        <div title="{{ number_format($stats['this_month'] ?? 0) }} Shipments dibuat bulan ini"
+        <div title="{{ number_format($stats['this_month'] ?? 0) }} Shipment dibuat bulan ini"
              class="bg-indigo-50 rounded-xl p-4 shadow-sm border border-indigo-100 text-center">
             <p class="text-2xl font-black text-indigo-600 tracking-tight">{{ \App\Support\NumberHelper::formatCompact($stats["this_month"] ?? 0) }}</p>
-            <p class="text-xs font-semibold text-indigo-700 mt-0.5">This Month</p>
+            <p class="text-xs font-semibold text-indigo-700 mt-0.5">Bulan Ini</p>
         </div>
 
         {{-- Total Ton Card --}}

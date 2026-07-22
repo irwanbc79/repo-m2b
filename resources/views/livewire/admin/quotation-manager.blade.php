@@ -23,7 +23,7 @@
     <div class="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-7 gap-4 mb-6">
         {{-- Total Card --}}
         <div wire:click="$set('filterStatus', '')"
-             title="{{ number_format($stats['total'] ?? 0) }} Total Quotations"
+             title="{{ number_format($stats['total'] ?? 0) }} Total Penawaran"
              class="cursor-pointer bg-white rounded-xl p-4 shadow-sm border border-gray-100 text-center hover:scale-[1.02] hover:shadow-md transition-all duration-200 {{ $filterStatus === '' ? 'ring-2 ring-gray-400 border-transparent' : '' }}">
             <p class="text-2xl font-black text-gray-800 tracking-tight">{{ \App\Support\NumberHelper::formatCompact($stats["total"] ?? 0) }}</p>
             <p class="text-xs font-semibold text-gray-500 mt-0.5">Total</p>
@@ -31,48 +31,48 @@
 
         {{-- Draft Card --}}
         <div wire:click="$set('filterStatus', 'draft')"
-             title="{{ number_format($stats['draft'] ?? 0) }} Draft Quotations (Klik untuk filter)"
+             title="{{ number_format($stats['draft'] ?? 0) }} Penawaran Draf (Klik untuk filter)"
              class="cursor-pointer bg-gray-50 rounded-xl p-4 shadow-sm border border-gray-200 text-center hover:scale-[1.02] hover:shadow-md transition-all duration-200 {{ $filterStatus === 'draft' ? 'ring-2 ring-gray-400 border-transparent' : '' }}">
             <p class="text-2xl font-black text-gray-600 tracking-tight">{{ \App\Support\NumberHelper::formatCompact($stats["draft"] ?? 0) }}</p>
-            <p class="text-xs font-semibold text-gray-600 mt-0.5">Draft</p>
+            <p class="text-xs font-semibold text-gray-600 mt-0.5">Draf</p>
         </div>
 
         {{-- Sent Card --}}
         <div wire:click="$set('filterStatus', 'sent')"
-             title="{{ number_format($stats['sent'] ?? 0) }} Sent Quotations (Klik untuk filter)"
+             title="{{ number_format($stats['sent'] ?? 0) }} Penawaran Terkirim (Klik untuk filter)"
              class="cursor-pointer bg-blue-50 rounded-xl p-4 shadow-sm border border-blue-100 text-center hover:scale-[1.02] hover:shadow-md transition-all duration-200 {{ $filterStatus === 'sent' ? 'ring-2 ring-blue-400 border-transparent' : '' }}">
             <p class="text-2xl font-black text-blue-600 tracking-tight">{{ \App\Support\NumberHelper::formatCompact($stats["sent"] ?? 0) }}</p>
-            <p class="text-xs font-semibold text-blue-700 mt-0.5">Sent</p>
+            <p class="text-xs font-semibold text-blue-700 mt-0.5">Terkirim</p>
         </div>
 
         {{-- Accepted Card --}}
         <div wire:click="$set('filterStatus', 'accepted')"
-             title="{{ number_format($stats['accepted'] ?? 0) }} Accepted Quotations (Klik untuk filter)"
+             title="{{ number_format($stats['accepted'] ?? 0) }} Penawaran Disetujui (Klik untuk filter)"
              class="cursor-pointer bg-green-50 rounded-xl p-4 shadow-sm border border-green-100 text-center hover:scale-[1.02] hover:shadow-md transition-all duration-200 {{ $filterStatus === 'accepted' ? 'ring-2 ring-green-400 border-transparent' : '' }}">
             <p class="text-2xl font-black text-green-600 tracking-tight">{{ \App\Support\NumberHelper::formatCompact($stats["accepted"] ?? 0) }}</p>
-            <p class="text-xs font-semibold text-green-700 mt-0.5">Accepted</p>
+            <p class="text-xs font-semibold text-green-700 mt-0.5">Disetujui</p>
         </div>
 
         {{-- Expiring Soon Card --}}
-        <div title="{{ number_format($stats['expiring_soon'] ?? 0) }} Quotations Expiring Soon"
+        <div title="{{ number_format($stats['expiring_soon'] ?? 0) }} Penawaran Hampir Kadaluarsa"
              class="bg-orange-50 rounded-xl p-4 shadow-sm border border-orange-100 text-center">
             <p class="text-2xl font-black text-orange-600 tracking-tight">{{ \App\Support\NumberHelper::formatCompact($stats["expiring_soon"] ?? 0) }}</p>
-            <p class="text-xs font-semibold text-orange-700 mt-0.5">Expiring Soon</p>
+            <p class="text-xs font-semibold text-orange-700 mt-0.5">Hampir Kadaluarsa</p>
         </div>
 
         {{-- Expired Card --}}
         <div wire:click="$set('filterStatus', 'expired')"
-             title="{{ number_format($stats['expired'] ?? 0) }} Expired Quotations (Klik untuk filter)"
+             title="{{ number_format($stats['expired'] ?? 0) }} Penawaran Kadaluarsa (Klik untuk filter)"
              class="cursor-pointer bg-red-50 rounded-xl p-4 shadow-sm border border-red-100 text-center hover:scale-[1.02] hover:shadow-md transition-all duration-200 {{ $filterStatus === 'expired' ? 'ring-2 ring-red-400 border-transparent' : '' }}">
             <p class="text-2xl font-black text-red-600 tracking-tight">{{ \App\Support\NumberHelper::formatCompact($stats["expired"] ?? 0) }}</p>
-            <p class="text-xs font-semibold text-red-700 mt-0.5">Expired</p>
+            <p class="text-xs font-semibold text-red-700 mt-0.5">Kadaluarsa</p>
         </div>
 
         {{-- Total Value Card --}}
         <div title="Total Nilai Penawaran: Rp {{ number_format($stats['total_value'] ?? 0, 0, ',', '.') }}"
              class="bg-indigo-50 rounded-xl p-4 shadow-sm border border-indigo-100 text-center">
             <p class="text-2xl font-black text-indigo-600 tracking-tight">{{ \App\Support\NumberHelper::formatCurrencyCompact($stats["total_value"] ?? 0) }}</p>
-            <p class="text-xs font-semibold text-indigo-700 mt-0.5">Total Value</p>
+            <p class="text-xs font-semibold text-indigo-700 mt-0.5">Total Nilai</p>
         </div>
     </div>
 

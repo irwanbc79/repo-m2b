@@ -28,40 +28,40 @@
 
         {{-- Unpaid Card --}}
         <div wire:click="$set('filterStatus', 'unpaid')"
-             title="{{ number_format($stats['unpaid'] ?? 0) }} Unpaid Invoice (Klik untuk filter)"
+             title="{{ number_format($stats['unpaid'] ?? 0) }} Invoice Belum Lunas (Klik untuk filter)"
              class="cursor-pointer bg-red-50 rounded-xl p-4 shadow-sm border border-red-100 text-center hover:scale-[1.02] hover:shadow-md transition-all duration-200 {{ $filterStatus === 'unpaid' ? 'ring-2 ring-red-400 border-transparent' : '' }}">
             <p class="text-2xl font-black text-red-600 tracking-tight">{{ \App\Support\NumberHelper::formatCompact($stats["unpaid"] ?? 0) }}</p>
-            <p class="text-xs font-semibold text-red-700 mt-0.5">Unpaid</p>
+            <p class="text-xs font-semibold text-red-700 mt-0.5">Belum Lunas</p>
         </div>
 
         {{-- Paid Card --}}
         <div wire:click="$set('filterStatus', 'paid')"
-             title="{{ number_format($stats['paid'] ?? 0) }} Paid Invoice (Klik untuk filter)"
+             title="{{ number_format($stats['paid'] ?? 0) }} Invoice Lunas (Klik untuk filter)"
              class="cursor-pointer bg-green-50 rounded-xl p-4 shadow-sm border border-green-100 text-center hover:scale-[1.02] hover:shadow-md transition-all duration-200 {{ $filterStatus === 'paid' ? 'ring-2 ring-green-400 border-transparent' : '' }}">
             <p class="text-2xl font-black text-green-600 tracking-tight">{{ \App\Support\NumberHelper::formatCompact($stats["paid"] ?? 0) }}</p>
-            <p class="text-xs font-semibold text-green-700 mt-0.5">Paid</p>
+            <p class="text-xs font-semibold text-green-700 mt-0.5">Lunas</p>
         </div>
 
         {{-- Overdue Card --}}
         <div wire:click="$set('filterStatus', 'overdue')"
-             title="{{ number_format($stats['overdue'] ?? 0) }} Overdue Invoice (Klik untuk filter)"
+             title="{{ number_format($stats['overdue'] ?? 0) }} Invoice Jatuh Tempo (Klik untuk filter)"
              class="cursor-pointer bg-orange-50 rounded-xl p-4 shadow-sm border border-orange-100 text-center hover:scale-[1.02] hover:shadow-md transition-all duration-200 {{ $filterStatus === 'overdue' ? 'ring-2 ring-orange-400 border-transparent' : '' }}">
             <p class="text-2xl font-black text-orange-600 tracking-tight">{{ \App\Support\NumberHelper::formatCompact($stats["overdue"] ?? 0) }}</p>
-            <p class="text-xs font-semibold text-orange-700 mt-0.5">Overdue</p>
+            <p class="text-xs font-semibold text-orange-700 mt-0.5">Jatuh Tempo</p>
         </div>
 
         {{-- Receivable Card --}}
         <div title="Total Piutang (Receivable): Rp {{ number_format($stats['total_receivable'] ?? 0, 0, ',', '.') }}"
              class="bg-yellow-50 rounded-xl p-4 shadow-sm border border-yellow-100 text-center">
             <p class="text-2xl font-black text-yellow-700 tracking-tight">{{ \App\Support\NumberHelper::formatCurrencyCompact($stats["total_receivable"] ?? 0) }}</p>
-            <p class="text-xs font-semibold text-yellow-800 mt-0.5">Receivable</p>
+            <p class="text-xs font-semibold text-yellow-800 mt-0.5">Piutang</p>
         </div>
 
         {{-- Collected Card --}}
         <div title="Total Terbayar (Collected): Rp {{ number_format($stats['total_collected'] ?? 0, 0, ',', '.') }}"
              class="bg-emerald-50 rounded-xl p-4 shadow-sm border border-emerald-100 text-center">
             <p class="text-2xl font-black text-emerald-600 tracking-tight">{{ \App\Support\NumberHelper::formatCurrencyCompact($stats["total_collected"] ?? 0) }}</p>
-            <p class="text-xs font-semibold text-emerald-700 mt-0.5">Collected</p>
+            <p class="text-xs font-semibold text-emerald-700 mt-0.5">Terbayar</p>
         </div>
 
         {{-- Request F.Pajak Card --}}
@@ -71,7 +71,7 @@
             <span class="absolute -top-2 -right-2 bg-red-500 text-white text-xs font-bold px-2 py-1 rounded-full animate-pulse">!</span>
             @endif
             <p class="text-2xl font-black text-purple-600 tracking-tight">{{ \App\Support\NumberHelper::formatCompact($stats["faktur_pajak_requests"] ?? 0) }}</p>
-            <p class="text-xs font-semibold text-purple-700 mt-0.5">Request F.Pajak</p>
+            <p class="text-xs font-semibold text-purple-700 mt-0.5">Minta F.Pajak</p>
         </div>
     </div>
 
