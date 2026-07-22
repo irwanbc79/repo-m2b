@@ -132,103 +132,123 @@
     {{-- Main Stats Cards --}}
     <div class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4">
         {{-- Total Shipments --}}
-        <div class="bg-white p-5 rounded-xl shadow-sm border border-gray-100">
+        <a href="{{ route('admin.shipments.index') }}" 
+           title="{{ number_format($mainStats['total_shipments'] ?? 0) }} Total Shipment"
+           class="bg-white p-5 rounded-xl shadow-sm border border-gray-100 hover:scale-[1.02] hover:shadow-md transition-all duration-200 block group">
             <div class="flex items-center justify-between mb-2">
-                <span class="text-xs font-bold text-gray-400 uppercase">Total Shipment</span>
-                <div class="p-2 bg-blue-100 rounded-lg">
+                <span class="text-xs font-bold text-gray-400 uppercase tracking-wider group-hover:text-blue-600 transition-colors">Total Shipment</span>
+                <div class="p-2 bg-blue-100 rounded-lg group-hover:bg-blue-200 transition-colors">
                     <svg class="w-4 h-4 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4"/></svg>
                 </div>
             </div>
-            <p class="text-2xl font-black text-gray-800">{{ $mainStats['total_shipments'] }}</p>
-            <p class="text-xs text-gray-500 mt-1">{{ $mainStats['current_shipments'] }} periode ini</p>
-        </div>
+            <p class="text-2xl font-black text-gray-800 tracking-tight">{{ \App\Support\NumberHelper::formatCompact($mainStats['total_shipments'] ?? 0) }}</p>
+            <p class="text-xs text-gray-500 mt-1">{{ \App\Support\NumberHelper::formatCompact($mainStats['current_shipments'] ?? 0) }} periode ini</p>
+        </a>
 
         {{-- Active/Pending --}}
-        <div class="bg-white p-5 rounded-xl shadow-sm border border-gray-100">
+        <a href="{{ route('admin.shipments.index') }}" 
+           title="{{ number_format($mainStats['active_shipments'] ?? 0) }} Shipment Aktif (Pending & In Transit)"
+           class="bg-white p-5 rounded-xl shadow-sm border border-gray-100 hover:scale-[1.02] hover:shadow-md transition-all duration-200 block group">
             <div class="flex items-center justify-between mb-2">
-                <span class="text-xs font-bold text-gray-400 uppercase">Active</span>
-                <div class="p-2 bg-yellow-100 rounded-lg">
+                <span class="text-xs font-bold text-gray-400 uppercase tracking-wider group-hover:text-yellow-600 transition-colors">Shipment Aktif</span>
+                <div class="p-2 bg-yellow-100 rounded-lg group-hover:bg-yellow-200 transition-colors">
                     <svg class="w-4 h-4 text-yellow-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
                 </div>
             </div>
-            <p class="text-2xl font-black text-yellow-600">{{ $mainStats['active_shipments'] }}</p>
+            <p class="text-2xl font-black text-yellow-600 tracking-tight">{{ \App\Support\NumberHelper::formatCompact($mainStats['active_shipments'] ?? 0) }}</p>
             <p class="text-xs text-gray-500 mt-1">Pending & In Transit</p>
-        </div>
+        </a>
 
         {{-- Completed --}}
-        <div class="bg-white p-5 rounded-xl shadow-sm border border-gray-100">
+        <a href="{{ route('admin.shipments.index') }}" 
+           title="{{ number_format($mainStats['completed_shipments'] ?? 0) }} Shipment Selesai"
+           class="bg-white p-5 rounded-xl shadow-sm border border-gray-100 hover:scale-[1.02] hover:shadow-md transition-all duration-200 block group">
             <div class="flex items-center justify-between mb-2">
-                <span class="text-xs font-bold text-gray-400 uppercase">Completed</span>
-                <div class="p-2 bg-green-100 rounded-lg">
+                <span class="text-xs font-bold text-gray-400 uppercase tracking-wider group-hover:text-green-600 transition-colors">Shipment Selesai</span>
+                <div class="p-2 bg-green-100 rounded-lg group-hover:bg-green-200 transition-colors">
                     <svg class="w-4 h-4 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/></svg>
                 </div>
             </div>
-            <p class="text-2xl font-black text-green-600">{{ $mainStats['completed_shipments'] }}</p>
+            <p class="text-2xl font-black text-green-600 tracking-tight">{{ \App\Support\NumberHelper::formatCompact($mainStats['completed_shipments'] ?? 0) }}</p>
             <p class="text-xs text-gray-500 mt-1">Selesai semua</p>
-        </div>
+        </a>
 
         {{-- Revenue --}}
-        <div class="bg-white p-5 rounded-xl shadow-sm border border-gray-100">
+        <div title="Total Pendapatan: Rp {{ number_format($mainStats['current_revenue'] ?? 0, 0, ',', '.') }}"
+             class="bg-white p-5 rounded-xl shadow-sm border border-gray-100">
             <div class="flex items-center justify-between mb-2">
-                <span class="text-xs font-bold text-gray-400 uppercase">Revenue</span>
+                <span class="text-xs font-bold text-gray-400 uppercase tracking-wider">Pendapatan</span>
                 <div class="p-2 bg-emerald-100 rounded-lg">
                     <svg class="w-4 h-4 text-emerald-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
                 </div>
             </div>
-            <p class="text-xl font-black text-emerald-600">{{ number_format($mainStats['current_revenue']/1000000, 1) }}jt</p>
-            @if($mainStats['revenue_growth'] != 0)
-            <p class="text-xs mt-1 {{ $mainStats['revenue_growth'] > 0 ? 'text-green-600' : 'text-red-600' }}">
+            <p class="text-xl font-black text-emerald-600 tracking-tight">{{ \App\Support\NumberHelper::formatCurrencyCompact($mainStats['current_revenue'] ?? 0) }}</p>
+            @if(($mainStats['revenue_growth'] ?? 0) != 0)
+            <p class="text-xs mt-1 font-semibold {{ $mainStats['revenue_growth'] > 0 ? 'text-green-600' : 'text-red-600' }}">
                 {{ $mainStats['revenue_growth'] > 0 ? '↑' : '↓' }} {{ abs($mainStats['revenue_growth']) }}%
             </p>
             @endif
         </div>
 
         {{-- Customers --}}
-        <div class="bg-white p-5 rounded-xl shadow-sm border border-gray-100">
+        <a href="{{ route('admin.customers.index') }}" 
+           title="{{ number_format($mainStats['total_customers'] ?? 0) }} Total Pelanggan"
+           class="bg-white p-5 rounded-xl shadow-sm border border-gray-100 hover:scale-[1.02] hover:shadow-md transition-all duration-200 block group">
             <div class="flex items-center justify-between mb-2">
-                <span class="text-xs font-bold text-gray-400 uppercase">Customers</span>
-                <div class="p-2 bg-purple-100 rounded-lg">
+                <span class="text-xs font-bold text-gray-400 uppercase tracking-wider group-hover:text-purple-600 transition-colors">Pelanggan</span>
+                <div class="p-2 bg-purple-100 rounded-lg group-hover:bg-purple-200 transition-colors">
                     <svg class="w-4 h-4 text-purple-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0z"/></svg>
                 </div>
             </div>
-            <p class="text-2xl font-black text-purple-600">{{ $mainStats['total_customers'] }}</p>
-            <p class="text-xs text-gray-500 mt-1">+{{ $mainStats['new_customers'] }} baru</p>
-        </div>
+            <p class="text-2xl font-black text-purple-600 tracking-tight">{{ \App\Support\NumberHelper::formatCompact($mainStats['total_customers'] ?? 0) }}</p>
+            <p class="text-xs text-gray-500 mt-1">+{{ $mainStats['new_customers'] ?? 0 }} baru</p>
+        </a>
 
         {{-- Vendors --}}
-        <div class="bg-white p-5 rounded-xl shadow-sm border border-gray-100">
+        <a href="{{ route('admin.vendors.index') }}" 
+           title="{{ number_format($mainStats['total_vendors'] ?? 0) }} Total Vendor"
+           class="bg-white p-5 rounded-xl shadow-sm border border-gray-100 hover:scale-[1.02] hover:shadow-md transition-all duration-200 block group">
             <div class="flex items-center justify-between mb-2">
-                <span class="text-xs font-bold text-gray-400 uppercase">Vendors</span>
-                <div class="p-2 bg-orange-100 rounded-lg">
+                <span class="text-xs font-bold text-gray-400 uppercase tracking-wider group-hover:text-orange-600 transition-colors">Vendor</span>
+                <div class="p-2 bg-orange-100 rounded-lg group-hover:bg-orange-200 transition-colors">
                     <svg class="w-4 h-4 text-orange-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4"/></svg>
                 </div>
             </div>
-            <p class="text-2xl font-black text-orange-600">{{ $mainStats['total_vendors'] }}</p>
+            <p class="text-2xl font-black text-orange-600 tracking-tight">{{ \App\Support\NumberHelper::formatCompact($mainStats['total_vendors'] ?? 0) }}</p>
             <p class="text-xs text-gray-500 mt-1">Partner aktif</p>
-        </div>
+        </a>
     </div>
 
     {{-- Financial Summary --}}
     <div class="grid grid-cols-1 md:grid-cols-4 gap-4">
-        <div class="bg-gradient-to-br from-red-500 to-red-600 p-5 rounded-xl text-white">
-            <p class="text-xs font-medium text-red-100 uppercase">Invoice Belum Lunas</p>
-            <p class="text-2xl font-black mt-1">{{ $financialStats['unpaid_invoices'] }}</p>
-            <p class="text-sm text-red-100 mt-1">IDR {{ number_format($financialStats['unpaid_amount']/1000000, 1) }} jt</p>
+        <a href="{{ route('admin.invoices.index') }}" 
+           title="Total Tagihan Belum Lunas: Rp {{ number_format($financialStats['unpaid_amount'] ?? 0, 0, ',', '.') }}"
+           class="bg-gradient-to-br from-red-500 to-red-600 p-5 rounded-xl text-white shadow-sm hover:scale-[1.02] hover:shadow-md transition-all duration-200 block">
+            <p class="text-xs font-semibold text-red-100 uppercase tracking-wider">Tagihan Belum Lunas</p>
+            <p class="text-2xl font-black mt-1 tracking-tight">{{ \App\Support\NumberHelper::formatCompact($financialStats['unpaid_invoices'] ?? 0) }}</p>
+            <p class="text-sm font-bold text-red-100 mt-1">{{ \App\Support\NumberHelper::formatCurrencyCompact($financialStats['unpaid_amount'] ?? 0) }}</p>
+        </a>
+
+        <a href="{{ route('admin.invoices.index') }}" 
+           title="Total Tagihan Jatuh Tempo: Rp {{ number_format($financialStats['overdue_amount'] ?? 0, 0, ',', '.') }}"
+           class="bg-gradient-to-br from-orange-500 to-orange-600 p-5 rounded-xl text-white shadow-sm hover:scale-[1.02] hover:shadow-md transition-all duration-200 block">
+            <p class="text-xs font-semibold text-orange-100 uppercase tracking-wider">Tagihan Jatuh Tempo</p>
+            <p class="text-2xl font-black mt-1 tracking-tight">{{ \App\Support\NumberHelper::formatCompact($financialStats['overdue_invoices'] ?? 0) }}</p>
+            <p class="text-sm font-bold text-orange-100 mt-1">{{ \App\Support\NumberHelper::formatCurrencyCompact($financialStats['overdue_amount'] ?? 0) }}</p>
+        </a>
+
+        <div title="Kas Masuk Hari Ini: Rp {{ number_format($financialStats['cash_in_today'] ?? 0, 0, ',', '.') }}"
+             class="bg-gradient-to-br from-green-500 to-green-600 p-5 rounded-xl text-white shadow-sm">
+            <p class="text-xs font-semibold text-green-100 uppercase tracking-wider">Kas Masuk Hari Ini</p>
+            <p class="text-2xl font-black mt-1 tracking-tight">{{ \App\Support\NumberHelper::formatCurrencyCompact($financialStats['cash_in_today'] ?? 0) }}</p>
+            <p class="text-xs text-green-100 mt-1">Cash In Today</p>
         </div>
-        <div class="bg-gradient-to-br from-orange-500 to-orange-600 p-5 rounded-xl text-white">
-            <p class="text-xs font-medium text-orange-100 uppercase">Invoice Overdue</p>
-            <p class="text-2xl font-black mt-1">{{ $financialStats['overdue_invoices'] }}</p>
-            <p class="text-sm text-orange-100 mt-1">IDR {{ number_format($financialStats['overdue_amount']/1000000, 1) }} jt</p>
-        </div>
-        <div class="bg-gradient-to-br from-green-500 to-green-600 p-5 rounded-xl text-white">
-            <p class="text-xs font-medium text-green-100 uppercase">Kas Masuk Hari Ini</p>
-            <p class="text-2xl font-black mt-1">IDR {{ number_format($financialStats['cash_in_today']/1000000, 1) }}jt</p>
-            <p class="text-sm text-green-100 mt-1">Cash In Today</p>
-        </div>
-        <div class="bg-gradient-to-br from-blue-500 to-blue-600 p-5 rounded-xl text-white">
-            <p class="text-xs font-medium text-blue-100 uppercase">Kas Keluar Hari Ini</p>
-            <p class="text-2xl font-black mt-1">IDR {{ number_format($financialStats['cash_out_today']/1000000, 1) }}jt</p>
-            <p class="text-sm text-blue-100 mt-1">Cash Out Today</p>
+
+        <div title="Kas Keluar Hari Ini: Rp {{ number_format($financialStats['cash_out_today'] ?? 0, 0, ',', '.') }}"
+             class="bg-gradient-to-br from-blue-500 to-blue-600 p-5 rounded-xl text-white shadow-sm">
+            <p class="text-xs font-semibold text-blue-100 uppercase tracking-wider">Kas Keluar Hari Ini</p>
+            <p class="text-2xl font-black mt-1 tracking-tight">{{ \App\Support\NumberHelper::formatCurrencyCompact($financialStats['cash_out_today'] ?? 0) }}</p>
+            <p class="text-xs text-blue-100 mt-1">Cash Out Today</p>
         </div>
     </div>
 
