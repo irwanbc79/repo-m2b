@@ -17,37 +17,61 @@
     @endif
 
     {{-- Stats Cards --}}
-    <div class="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-6 gap-4 mb-6">
-        <div class="bg-white rounded-xl p-4 shadow-sm border border-gray-100 text-center">
-            <p class="text-2xl font-black text-gray-800">{{ $stats["total"] ?? 0 }}</p>
-            <p class="text-xs text-gray-500">Total Invoice</p>
+    <div class="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-7 gap-4 mb-6">
+        {{-- Total Invoice Card --}}
+        <div wire:click="$set('filterStatus', '')"
+             title="{{ number_format($stats['total'] ?? 0) }} Total Invoice"
+             class="cursor-pointer bg-white rounded-xl p-4 shadow-sm border border-gray-100 text-center hover:scale-[1.02] hover:shadow-md transition-all duration-200 {{ $filterStatus === '' ? 'ring-2 ring-gray-400 border-transparent' : '' }}">
+            <p class="text-2xl font-black text-gray-800 tracking-tight">{{ \App\Support\NumberHelper::formatCompact($stats["total"] ?? 0) }}</p>
+            <p class="text-xs font-semibold text-gray-500 mt-0.5">Total Invoice</p>
         </div>
-        <div class="bg-red-50 rounded-xl p-4 shadow-sm border border-red-100 text-center">
-            <p class="text-2xl font-black text-red-600">{{ $stats["unpaid"] ?? 0 }}</p>
-            <p class="text-xs text-gray-500">Unpaid</p>
+
+        {{-- Unpaid Card --}}
+        <div wire:click="$set('filterStatus', 'unpaid')"
+             title="{{ number_format($stats['unpaid'] ?? 0) }} Unpaid Invoice (Klik untuk filter)"
+             class="cursor-pointer bg-red-50 rounded-xl p-4 shadow-sm border border-red-100 text-center hover:scale-[1.02] hover:shadow-md transition-all duration-200 {{ $filterStatus === 'unpaid' ? 'ring-2 ring-red-400 border-transparent' : '' }}">
+            <p class="text-2xl font-black text-red-600 tracking-tight">{{ \App\Support\NumberHelper::formatCompact($stats["unpaid"] ?? 0) }}</p>
+            <p class="text-xs font-semibold text-red-700 mt-0.5">Unpaid</p>
         </div>
-        <div class="bg-green-50 rounded-xl p-4 shadow-sm border border-green-100 text-center">
-            <p class="text-2xl font-black text-green-600">{{ $stats["paid"] ?? 0 }}</p>
-            <p class="text-xs text-gray-500">Paid</p>
+
+        {{-- Paid Card --}}
+        <div wire:click="$set('filterStatus', 'paid')"
+             title="{{ number_format($stats['paid'] ?? 0) }} Paid Invoice (Klik untuk filter)"
+             class="cursor-pointer bg-green-50 rounded-xl p-4 shadow-sm border border-green-100 text-center hover:scale-[1.02] hover:shadow-md transition-all duration-200 {{ $filterStatus === 'paid' ? 'ring-2 ring-green-400 border-transparent' : '' }}">
+            <p class="text-2xl font-black text-green-600 tracking-tight">{{ \App\Support\NumberHelper::formatCompact($stats["paid"] ?? 0) }}</p>
+            <p class="text-xs font-semibold text-green-700 mt-0.5">Paid</p>
         </div>
-        <div class="bg-orange-50 rounded-xl p-4 shadow-sm border border-orange-100 text-center">
-            <p class="text-2xl font-black text-orange-600">{{ $stats["overdue"] ?? 0 }}</p>
-            <p class="text-xs text-gray-500">Overdue</p>
+
+        {{-- Overdue Card --}}
+        <div wire:click="$set('filterStatus', 'overdue')"
+             title="{{ number_format($stats['overdue'] ?? 0) }} Overdue Invoice (Klik untuk filter)"
+             class="cursor-pointer bg-orange-50 rounded-xl p-4 shadow-sm border border-orange-100 text-center hover:scale-[1.02] hover:shadow-md transition-all duration-200 {{ $filterStatus === 'overdue' ? 'ring-2 ring-orange-400 border-transparent' : '' }}">
+            <p class="text-2xl font-black text-orange-600 tracking-tight">{{ \App\Support\NumberHelper::formatCompact($stats["overdue"] ?? 0) }}</p>
+            <p class="text-xs font-semibold text-orange-700 mt-0.5">Overdue</p>
         </div>
-        <div class="bg-yellow-50 rounded-xl p-4 shadow-sm border border-yellow-100 text-center">
-            <p class="text-lg font-black text-yellow-700">{{ number_format($stats["total_receivable"] ?? 0, 0, ",", ".") }}</p>
-            <p class="text-xs text-gray-500">Receivable</p>
+
+        {{-- Receivable Card --}}
+        <div title="Total Piutang (Receivable): Rp {{ number_format($stats['total_receivable'] ?? 0, 0, ',', '.') }}"
+             class="bg-yellow-50 rounded-xl p-4 shadow-sm border border-yellow-100 text-center">
+            <p class="text-2xl font-black text-yellow-700 tracking-tight">{{ \App\Support\NumberHelper::formatCurrencyCompact($stats["total_receivable"] ?? 0) }}</p>
+            <p class="text-xs font-semibold text-yellow-800 mt-0.5">Receivable</p>
         </div>
-        <div class="bg-emerald-50 rounded-xl p-4 shadow-sm border border-emerald-100 text-center">
-            <p class="text-lg font-black text-emerald-600">{{ number_format($stats["total_collected"] ?? 0, 0, ",", ".") }}</p>
-            <p class="text-xs text-gray-500">Collected</p>
+
+        {{-- Collected Card --}}
+        <div title="Total Terbayar (Collected): Rp {{ number_format($stats['total_collected'] ?? 0, 0, ',', '.') }}"
+             class="bg-emerald-50 rounded-xl p-4 shadow-sm border border-emerald-100 text-center">
+            <p class="text-2xl font-black text-emerald-600 tracking-tight">{{ \App\Support\NumberHelper::formatCurrencyCompact($stats["total_collected"] ?? 0) }}</p>
+            <p class="text-xs font-semibold text-emerald-700 mt-0.5">Collected</p>
         </div>
-        <div class="bg-purple-50 rounded-xl p-4 shadow-sm border border-purple-100 text-center relative">
+
+        {{-- Request F.Pajak Card --}}
+        <div title="{{ number_format($stats['faktur_pajak_requests'] ?? 0) }} Permintaan Faktur Pajak"
+             class="bg-purple-50 rounded-xl p-4 shadow-sm border border-purple-100 text-center relative">
             @if(($stats["faktur_pajak_requests"] ?? 0) > 0)
             <span class="absolute -top-2 -right-2 bg-red-500 text-white text-xs font-bold px-2 py-1 rounded-full animate-pulse">!</span>
             @endif
-            <p class="text-2xl font-black text-purple-600">{{ $stats["faktur_pajak_requests"] ?? 0 }}</p>
-            <p class="text-xs text-gray-500">Request F.Pajak</p>
+            <p class="text-2xl font-black text-purple-600 tracking-tight">{{ \App\Support\NumberHelper::formatCompact($stats["faktur_pajak_requests"] ?? 0) }}</p>
+            <p class="text-xs font-semibold text-purple-700 mt-0.5">Request F.Pajak</p>
         </div>
     </div>
 
