@@ -1,214 +1,283 @@
-<div>
-    <style>
-        @keyframes spin { to { transform: rotate(360deg); } }
-        .search-container { max-width: 1400px; margin: 0 auto; padding: 1.5rem; }
-        .header-section { background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; padding: 2rem; border-radius: 12px; margin-bottom: 2rem; }
-        .search-box { background: white; padding: 1.5rem; border-radius: 8px; box-shadow: 0 2px 4px rgba(0,0,0,0.1); margin-bottom: 2rem; }
-        .search-input { width: 100%; padding: 12px 16px; border: 2px solid #e2e8f0; border-radius: 6px; font-size: 16px; }
-        .search-input:focus { outline: none; border-color: #667eea; }
-        .btn-clear { background: #ef4444; color: white; padding: 12px 24px; border: none; border-radius: 6px; font-weight: 600; cursor: pointer; }
-        .result-card { background: white; padding: 1rem 1.5rem; border-radius: 8px; border-left: 4px solid #667eea; margin-bottom: 0.5rem; transition: all 0.2s; }
-        .result-card:hover { box-shadow: 0 4px 12px rgba(0,0,0,0.1); }
-        .result-card.selected { border-left-color: #10b981; background: #ecfdf5; }
-        .hs-code { font-family: monospace; font-size: 16px; font-weight: bold; color: #667eea; }
-        .badge { display: inline-block; padding: 3px 8px; border-radius: 4px; font-size: 11px; font-weight: 500; }
-        .badge-level { background: #e0e7ff; color: #4c51bf; }
-        .badge-chapter { background: #fef3c7; color: #92400e; margin-left: 4px; }
-        .btn-detail { background: #10b981; color: white; padding: 4px 8px; border-radius: 4px; font-size: 12px; font-weight: 600; cursor: pointer; border: none; margin-left: 8px; }
-        .btn-detail:hover { background: #059669; }
-        .hierarchy-panel { background: white; border-radius: 12px; padding: 1.5rem; margin-bottom: 1.5rem; box-shadow: 0 4px 12px rgba(0,0,0,0.1); border: 2px solid #10b981; }
-        .hierarchy-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem; padding-bottom: 1rem; border-bottom: 2px solid #e5e7eb; }
-        .hierarchy-title { font-size: 18px; font-weight: bold; color: #059669; }
-        .btn-close { background: #f3f4f6; border: none; padding: 6px 12px; border-radius: 6px; cursor: pointer; }
-        .hierarchy-section { background: #fef3c7; padding: 12px 16px; border-radius: 8px; margin-bottom: 12px; }
-        .hierarchy-chapter { background: #dbeafe; padding: 12px 16px; border-radius: 8px; margin-bottom: 12px; margin-left: 20px; }
-        .tree-item { padding: 10px 16px; border-left: 3px solid #d1d5db; margin-left: 20px; margin-bottom: 8px; background: #f9fafb; border-radius: 0 8px 8px 0; }
-        .tree-item.level-4 { border-left-color: #f59e0b; background: #fffbeb; }
-        .tree-item.level-6 { border-left-color: #3b82f6; background: #eff6ff; margin-left: 40px; }
-        .tree-item.level-8 { border-left-color: #10b981; background: #ecfdf5; margin-left: 60px; }
-        .tree-item.selected { border-left-color: #ef4444; background: #fef2f2; }
-        .tree-code { font-family: monospace; font-weight: bold; color: #374151; }
-        .tree-desc-row { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-top: 6px; font-size: 13px; }
-        .siblings-section { margin-top: 1rem; padding-top: 1rem; border-top: 1px dashed #d1d5db; }
-        .sibling-item { display: inline-block; background: #f3f4f6; padding: 4px 10px; border-radius: 4px; margin: 4px; font-size: 13px; cursor: pointer; }
-        .sibling-item:hover { background: #e5e7eb; }
-        .table-header { display: grid; grid-template-columns: 130px 1fr 1fr 80px 80px 140px; gap: 1rem; font-size: 11px; font-weight: 600; color: #6b7280; padding: 10px 16px; background: #f1f5f9; border-radius: 8px; margin-bottom: 8px; text-transform: uppercase; }
-        .table-row { display: grid; grid-template-columns: 130px 1fr 1fr 80px 80px 140px; gap: 1rem; align-items: center; }
-    </style>
-    <div class="search-container">
-        <div class="header-section">
-            <h1 style="margin: 0 0 0.5rem 0; font-size: 28px;">🔍 HS Code Explorer - BTKI 2022</h1>
-            <p style="margin: 0; opacity: 0.9;">Database {{ number_format(\DB::table('hs_codes')->count()) }} kode HS - Klik DETAIL untuk lihat hierarki klasifikasi</p>
-        <div x-data="{ showKum: false }" style="margin-top:12px;">
-            <button @click="showKum = !showKum" style="background:linear-gradient(135deg,#10b981,#059669);color:white;border:none;padding:8px 16px;border-radius:8px;cursor:pointer;font-size:13px;font-weight:600;display:flex;align-items:center;gap:6px;">
-                <span>📚</span> <span x-text="showKum ? 'Tutup KUM HS' : 'Lihat KUM HS (Ketentuan Umum Menginterpretasikan HS)'"></span>
+<div class="max-w-7xl mx-auto space-y-6 pb-12">
+    @section('header', 'HS Code Explorer BTKI 2022')
+
+    {{-- HEADER SECTION BANNER --}}
+    <div class="bg-gradient-to-r from-blue-950 via-blue-900 to-indigo-900 text-white rounded-3xl p-6 md:p-8 shadow-xl border border-blue-800/50 space-y-4">
+        <div class="flex flex-col md:flex-row md:items-center justify-between gap-4">
+            <div>
+                <h1 class="text-2xl md:text-3xl font-black tracking-tight flex items-center gap-3">
+                    <span>🔍 HS Code Explorer - BTKI 2022</span>
+                </h1>
+                <p class="text-blue-200 text-xs md:text-sm mt-1">
+                    Database {{ number_format(\DB::table('hs_codes')->count()) }} Kode HS Resmi Kepabeanan Indonesia. Dukungan pencarian 8 digit tanpa titik &amp; nama komoditas.
+                </p>
+            </div>
+            
+            {{-- KUM HS Toggle Button --}}
+            <div x-data="{ showKum: false }" class="shrink-0">
+                <button @click="showKum = !showKum" class="bg-gradient-to-r from-emerald-500 to-teal-600 hover:from-emerald-600 hover:to-teal-700 text-white text-xs font-black px-4 py-2.5 rounded-xl shadow-lg transition flex items-center gap-2">
+                    <span>📚</span>
+                    <span x-text="showKum ? 'Tutup KUM HS' : 'Lihat KUM HS (Panduan Klasifikasi)'"></span>
+                </button>
+
+                {{-- KUM HS Panel Modal / Drawer --}}
+                <div x-show="showKum" x-cloak class="mt-4 bg-emerald-950/80 backdrop-blur-md p-6 rounded-2xl border border-emerald-500/30 text-white space-y-4 shadow-2xl">
+                    <div class="flex items-center justify-between border-b border-emerald-800/60 pb-3">
+                        <h3 class="font-black text-sm text-emerald-300 uppercase tracking-wider flex items-center gap-2">
+                            <span>📚 KUM HS - Ketentuan Umum Menginterpretasikan Harmonized System</span>
+                        </h3>
+                        <button @click="showKum = false" class="text-emerald-400 hover:text-white font-bold text-lg">&times;</button>
+                    </div>
+                    <p class="text-xs text-emerald-200">Panduan resmi Bea Cukai untuk mengklasifikasikan barang secara sah ke dalam kode HS 8 digit BTKI 2022.</p>
+                    <div class="space-y-3 max-h-80 overflow-y-auto pr-2">
+                        @foreach(DB::table('hs_kum')->orderBy('rule_number')->get() as $kum)
+                        <div class="bg-white/10 rounded-xl p-4 border border-white/10" x-data="{ expanded: false }">
+                            <h4 class="font-bold text-xs text-emerald-300 mb-1">{{ $kum->title }}</h4>
+                            <div class="text-xs text-emerald-100/90 leading-relaxed">
+                                <span x-show="!expanded">{{ Str::limit($kum->content, 160) }}</span>
+                                <span x-show="expanded" x-cloak>{{ $kum->content }}</span>
+                                @if(strlen($kum->content) > 160)
+                                <button @click="expanded = !expanded" class="text-emerald-300 hover:underline text-[11px] font-bold block mt-1">
+                                    <span x-show="!expanded">Selengkapnya...</span>
+                                    <span x-show="expanded">Sembunyikan</span>
+                                </button>
+                                @endif
+                            </div>
+                        </div>
+                        @endforeach
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    {{-- SEARCH & QUICK FILTER CARD --}}
+    <div class="bg-white rounded-3xl p-6 md:p-8 shadow-sm border border-gray-200 space-y-6">
+        <div class="space-y-2">
+            <label class="block text-xs font-black uppercase text-blue-950 tracking-wider">Cari Kode HS / Nama Barang</label>
+            <div class="relative">
+                <input type="text" wire:model.live.debounce.300ms="search" class="w-full border-2 border-gray-200 rounded-2xl pl-11 pr-24 py-3.5 text-base font-medium focus:border-blue-600 focus:ring-0 transition placeholder:text-gray-400" placeholder="Ketik 8 digit (cth: 23096060 / 2309.60.60) atau nama komoditas (cth: Laptop, Genset, Sepatu)...">
+                <div class="absolute left-4 top-4 text-gray-400">
+                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path></svg>
+                </div>
+                @if($search || $selectedChapter)
+                <button wire:click="$set('search', ''); $set('selectedChapter', '')" class="absolute right-3 top-2.5 bg-red-100 hover:bg-red-200 text-red-700 font-bold px-3 py-1.5 rounded-xl text-xs transition">
+                    ✕ Clear Filter
+                </button>
+                @endif
+            </div>
+        </div>
+
+        {{-- QUICK FILTER CHAPTER CHIPS --}}
+        <div class="border-t border-gray-100 pt-4 space-y-2">
+            <span class="text-xs font-black text-blue-900 uppercase tracking-wider block">⚡ Quick Filter Bab BTKI Populer</span>
+            <div class="flex flex-wrap gap-2">
+                <button type="button" wire:click="filterByChapter('85')" class="px-3 py-2 rounded-xl text-xs font-bold transition border {{ $selectedChapter == '85' ? 'bg-blue-600 text-white border-blue-600 shadow-md' : 'bg-blue-50 text-blue-800 border-blue-200 hover:bg-blue-100' }}">
+                    ⚡ Bab 85: Elektronik &amp; HP
+                </button>
+                <button type="button" wire:click="filterByChapter('84')" class="px-3 py-2 rounded-xl text-xs font-bold transition border {{ $selectedChapter == '84' ? 'bg-blue-600 text-white border-blue-600 shadow-md' : 'bg-purple-50 text-purple-800 border-purple-200 hover:bg-purple-100' }}">
+                    ⚙️ Bab 84: Mesin &amp; Sparepart
+                </button>
+                <button type="button" wire:click="filterByChapter('39')" class="px-3 py-2 rounded-xl text-xs font-bold transition border {{ $selectedChapter == '39' ? 'bg-blue-600 text-white border-blue-600 shadow-md' : 'bg-emerald-50 text-emerald-800 border-emerald-200 hover:bg-emerald-100' }}">
+                    🧪 Bab 39: Plastik &amp; Bahan Baku
+                </button>
+                <button type="button" wire:click="filterByChapter('62')" class="px-3 py-2 rounded-xl text-xs font-bold transition border {{ $selectedChapter == '62' ? 'bg-blue-600 text-white border-blue-600 shadow-md' : 'bg-amber-50 text-amber-800 border-amber-200 hover:bg-amber-100' }}">
+                    👕 Bab 62: Pakaian &amp; Tekstil
+                </button>
+                <button type="button" wire:click="filterByChapter('87')" class="px-3 py-2 rounded-xl text-xs font-bold transition border {{ $selectedChapter == '87' ? 'bg-blue-600 text-white border-blue-600 shadow-md' : 'bg-indigo-50 text-indigo-800 border-indigo-200 hover:bg-indigo-100' }}">
+                    🚗 Bab 87: Otomotif &amp; Kendaraan
+                </button>
+                <button type="button" wire:click="filterByChapter('30')" class="px-3 py-2 rounded-xl text-xs font-bold transition border {{ $selectedChapter == '30' ? 'bg-blue-600 text-white border-blue-600 shadow-md' : 'bg-teal-50 text-teal-800 border-teal-200 hover:bg-teal-100' }}">
+                    💊 Bab 30: Farmasi &amp; Obat
+                </button>
+            </div>
+        </div>
+
+        {{-- STATUS INDICATOR --}}
+        @if($search)
+        <div class="bg-blue-50 border border-blue-200 rounded-xl p-3 text-xs text-blue-900 font-bold flex items-center justify-between">
+            <span>📌 Hasil Pencarian: "{{ $search }}" ({{ $results->total() }} kode HS ditemukan)</span>
+            <span class="text-[11px] text-blue-700">Dukungan format bertitik &amp; 8-digit murni</span>
+        </div>
+        @elseif($selectedChapter)
+        <div class="bg-emerald-50 border border-emerald-200 rounded-xl p-3 text-xs text-emerald-900 font-bold flex items-center justify-between">
+            <span>📁 Filter Bab BTKI {{ $selectedChapter }} ({{ $results->total() }} kode HS ditemukan)</span>
+        </div>
+        @endif
+    </div>
+
+    {{-- HIERARCHY CLASSIFICATION DRAWER / PANEL --}}
+    @if($selectedCode && is_array($hierarchy) && count($hierarchy) > 0)
+    <div class="bg-gradient-to-br from-emerald-50 to-teal-50 rounded-3xl p-6 border-2 border-emerald-500 shadow-xl space-y-6">
+        <div class="flex items-center justify-between border-b border-emerald-200 pb-4">
+            <h3 class="text-base font-black text-emerald-950 flex items-center gap-2">
+                <span>📊 Hierarki Klasifikasi:</span>
+                <span class="font-mono text-lg text-emerald-800 bg-white px-3 py-0.5 rounded-xl border border-emerald-300">{{ $selectedCode }}</span>
+            </h3>
+            <button wire:click="closeHierarchy" class="bg-white hover:bg-red-50 text-gray-600 hover:text-red-600 font-bold px-3 py-1.5 rounded-xl border border-gray-200 text-xs transition">
+                ✕ Tutup
             </button>
-            <div x-show="showKum" x-cloak style="background:linear-gradient(135deg,#ecfdf5,#d1fae5);padding:16px;border-radius:10px;margin-top:12px;border:2px solid #10b981;">
-                <div style="font-weight:700;color:#065f46;font-size:15px;margin-bottom:12px;">📚 KUM HS - Ketentuan Umum Menginterpretasikan Harmonized System</div>
-                <div style="font-size:12px;color:#065f46;margin-bottom:12px;">Panduan resmi untuk mengklasifikasikan barang ke dalam kode HS yang benar.</div>
-                @foreach(DB::table('hs_kum')->orderBy('rule_number')->get() as $kum)
-                <div style="background:white;padding:12px;border-radius:8px;margin-bottom:8px;border-left:3px solid #10b981;" x-data="{ expanded: false }">
-                    <div style="font-weight:600;color:#047857;font-size:13px;margin-bottom:4px;">{{ $kum->title }}</div>
-                    <div style="color:#065f46;font-size:12px;line-height:1.5;">
-                        <span x-show="!expanded">{{ Str::limit($kum->content, 150) }}</span>
-                        <span x-show="expanded" x-cloak>{{ $kum->content }}</span>
-                        @if(strlen($kum->content) > 150)
-                        <button @click="expanded = !expanded" style="background:none;border:none;color:#6b7280;font-size:12px;cursor:pointer;padding:4px 8px;margin-top:4px;">
-                            <span x-show="!expanded">Selengkapnya...</span>
-                            <span x-show="expanded">Sembunyikan</span>
-                        </button>
-                        @endif
-                    </div>
-                </div>
-                @endforeach
-            </div>
         </div>
-        </div>
-        <div class="search-box">
-            <div style="display: flex; gap: 12px; flex-wrap: wrap;">
-                <div style="flex: 1; min-width: 300px;">
-                    <input type="text" wire:model.live.debounce.300ms="search" class="search-input" placeholder="Cari kode HS (e.g. 8517.13.00) atau deskripsi barang...">
-                </div>
-                @if($search || $selectedChapter)<button wire:click="$set('search', ''); $set('selectedChapter', '')" class="btn-clear">✕ Clear Filter</button>@endif
-            </div>
 
-            {{-- QUICK CHAPTER FILTER CHIPS --}}
-            <div style="margin-top:16px; border-top:1px solid #f1f5f9; pt-12;">
-                <div style="font-size:11px; font-weight:700; color:#64748b; text-transform:uppercase; letter-spacing:0.05em; margin-bottom:8px;">⚡ Quick Filter Bab BTKI Populer:</div>
-                <div style="display:flex; flex-wrap:wrap; gap:8px;">
-                    <button type="button" wire:click="filterByChapter('85')" class="badge" style="background:{{ $selectedChapter == '85' ? '#3b82f6' : '#eff6ff' }}; color:{{ $selectedChapter == '85' ? 'white' : '#1d4ed8' }}; padding:6px 12px; border-radius:8px; font-weight:700; border:1px solid #bfdbfe; cursor:pointer;">⚡ Bab 85: Elektronik & HP</button>
-                    <button type="button" wire:click="filterByChapter('84')" class="badge" style="background:{{ $selectedChapter == '84' ? '#3b82f6' : '#eff6ff' }}; color:{{ $selectedChapter == '84' ? 'white' : '#1d4ed8' }}; padding:6px 12px; border-radius:8px; font-weight:700; border:1px solid #bfdbfe; cursor:pointer;">⚙️ Bab 84: Mesin & Sparepart</button>
-                    <button type="button" wire:click="filterByChapter('39')" class="badge" style="background:{{ $selectedChapter == '39' ? '#3b82f6' : '#eff6ff' }}; color:{{ $selectedChapter == '39' ? 'white' : '#1d4ed8' }}; padding:6px 12px; border-radius:8px; font-weight:700; border:1px solid #bfdbfe; cursor:pointer;">🧪 Bab 39: Plastik & Bahan Baku</button>
-                    <button type="button" wire:click="filterByChapter('62')" class="badge" style="background:{{ $selectedChapter == '62' ? '#3b82f6' : '#eff6ff' }}; color:{{ $selectedChapter == '62' ? 'white' : '#1d4ed8' }}; padding:6px 12px; border-radius:8px; font-weight:700; border:1px solid #bfdbfe; cursor:pointer;">👕 Bab 62: Pakaian & Tekstil</button>
-                    <button type="button" wire:click="filterByChapter('87')" class="badge" style="background:{{ $selectedChapter == '87' ? '#3b82f6' : '#eff6ff' }}; color:{{ $selectedChapter == '87' ? 'white' : '#1d4ed8' }}; padding:6px 12px; border-radius:8px; font-weight:700; border:1px solid #bfdbfe; cursor:pointer;">🚗 Bab 87: Otomotif & Kendaraan</button>
-                </div>
+        {{-- Section --}}
+        @if(isset($hierarchy['section']))
+        <div class="bg-amber-50 rounded-2xl p-4 border border-amber-200 space-y-1">
+            <div class="font-bold text-xs text-amber-900">📦 Bagian {{ $hierarchy['section']['number'] }}</div>
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-2 text-xs">
+                <span class="font-bold text-amber-950">{{ $hierarchy['section']['title_id'] }}</span>
+                <span class="text-amber-800 italic">{{ $hierarchy['section']['title_en'] }}</span>
             </div>
-
-            @if($search)<div style="margin-top: 12px; padding: 10px; background: #eff6ff; border-radius: 6px; color: #1e40af;">📌 Pencarian: "{{ $search }}" ({{ $results->total() }} hasil)</div>@endif
-            @if($selectedChapter)<div style="margin-top: 12px; padding: 10px; background: #f0fdf4; border-radius: 6px; color: #166534;">📁 Filter Bab BTKI {{ $selectedChapter }} ({{ $results->total() }} hasil)</div>@endif
         </div>
-        @if($selectedCode && is_array($hierarchy) && count($hierarchy) > 0)
-        <div class="hierarchy-panel">
-            <div class="hierarchy-header">
-                <div class="hierarchy-title">📊 Hierarki Klasifikasi: {{ $selectedCode }}</div>
-                <button wire:click="closeHierarchy" class="btn-close">✕ Tutup</button>
+        @endif
+
+        {{-- Chapter --}}
+        @if(isset($hierarchy['chapter']))
+        <div class="bg-blue-50 rounded-2xl p-4 border border-blue-200 space-y-1">
+            <div class="font-bold text-xs text-blue-900">📁 Bab {{ $hierarchy['chapter']['number'] }}</div>
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-2 text-xs">
+                <span class="font-bold text-blue-950">{{ $hierarchy['chapter']['title_id'] }}</span>
+                <span class="text-blue-800 italic">{{ $hierarchy['chapter']['title_en'] }}</span>
             </div>
-            @if(isset($hierarchy['section']))<div class="hierarchy-section"><div style="font-weight:600;color:#92400e;">📦 Bagian {{ $hierarchy['section']['number'] }}</div><div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-top:6px;font-size:14px;"><span style="color:#78350f;">{{ $hierarchy['section']['title_id'] }}</span><span style="color:#a16207;font-style:italic;">{{ $hierarchy['section']['title_en'] }}</span></div>
-                @php $sectionNotes = DB::table('hs_sections')->where('section_number', $hierarchy['section']['number'])->value('section_notes'); @endphp
-                @if($sectionNotes)<div class="section-notes" x-data="{ open: false }"><div class="section-notes-title">⚠️ Catatan Bagian:</div><div class="section-notes-content"><span x-show="!open">{{ Str::limit($sectionNotes, 150) }}</span><span x-show="open" x-cloak>{{ $sectionNotes }}</span>@if(strlen($sectionNotes) > 150)<button class="notes-toggle" @click="open = !open"><span x-show="!open">Selengkapnya...</span><span x-show="open">Sembunyikan</span></button>@endif</div></div>@endif
-            </div>@endif
-            @if(isset($hierarchy['chapter']))<div class="hierarchy-chapter"><div style="font-weight:600;color:#1e40af;">📁 Bab {{ $hierarchy['chapter']['number'] }}</div><div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-top:6px;font-size:14px;"><span style="color:#1e3a8a;">{{ $hierarchy['chapter']['title_id'] }}</span><span style="color:#3b82f6;font-style:italic;">{{ $hierarchy['chapter']['title_en'] }}</span></div>
-                @php $chapterNotes = DB::table('hs_chapters')->where('chapter_number', $hierarchy['chapter']['number'])->value('chapter_notes'); @endphp
-                @if($chapterNotes)<div class="chapter-notes" x-data="{ open: false }"><div class="chapter-notes-title">📋 Catatan Bab:</div><div class="chapter-notes-content"><span x-show="!open">{{ Str::limit($chapterNotes, 200) }}</span><span x-show="open" x-cloak>{{ $chapterNotes }}</span>@if(strlen($chapterNotes) > 200)<button class="notes-toggle" @click="open = !open"><span x-show="!open">Selengkapnya...</span><span x-show="open">Sembunyikan</span></button>@endif</div></div>@endif
-            </div>@endif
-            @if(isset($hierarchy['levels']) && count($hierarchy['levels']) > 0)
-            <div style="margin-left:20px;">
-                @foreach($hierarchy['levels'] as $level)
-                <div class="tree-item level-{{ $level['level'] }} {{ (isset($level['is_selected']) && $level['is_selected']) ? 'selected' : '' }}">
-                    <div class="tree-code">{{ $level['code'] }} <span class="badge badge-level">{{ $level['level'] }} Digit</span>@if(isset($level['is_selected']) && $level['is_selected'])<span class="badge" style="background:#fee2e2;color:#dc2626;margin-left:4px;">← Dipilih</span>@endif</div>
-                    <div class="tree-desc-row"><span style="color:#374151;">{{ $level['description_id'] ?? '-' }}</span><span style="color:#6b7280;font-style:italic;">{{ $level['description_en'] ?? '-' }}</span></div>
-                </div>
-                @endforeach
-            </div>
-            @endif
-            @if(isset($hierarchy['siblings']) && count($hierarchy['siblings']) > 0)<div class="siblings-section"><div style="font-size:14px;color:#6b7280;margin-bottom:8px;">🔗 Kode sejenis (level sama):</div>@foreach($hierarchy['siblings'] as $sib)<span class="sibling-item" wire:click="showHierarchy('{{ $sib->hs_code }}')">{{ $sib->hs_code }}</span>@endforeach</div>@endif
-            @php 
-                $explanatoryNote = $this->getExplanatoryNote($selectedCode);
-                $previewLength = 500;
-            @endphp
-            @if($explanatoryNote)
-            <div class="explanatory-section">
-                <div class="explanatory-title">📖 Catatan Penjelasan (Explanatory Notes)</div>
-                @if($explanatoryNote->note_title)<div style="font-weight:600;color:#6b21a8;margin-bottom:8px;">{{ $explanatoryNote->note_title }}</div>@endif
-                @php $fullContent = $explanatoryNote->note_content; $isLong = strlen($fullContent) > $previewLength; @endphp
-                <div class="explanatory-content" x-data="{ expanded: false }">
-                    <div x-show="!expanded">
-                        {{ $isLong ? Str::limit($fullContent, $previewLength, '...') : $fullContent }}
-                    </div>
-                    <div x-show="expanded" x-cloak style="white-space: pre-wrap;">{{ $fullContent }}</div>
-                    @if($isLong)
-                    <button @click="expanded = !expanded" style="margin-top:10px;background:#a855f7;color:white;border:none;padding:6px 14px;border-radius:6px;cursor:pointer;font-size:13px;font-weight:600;">
-                        <span x-show="!expanded">📄 Lihat Selengkapnya</span>
-                        <span x-show="expanded">📄 Sembunyikan</span>
-                    </button>
+        </div>
+        @endif
+
+        {{-- Levels Tree --}}
+        @if(isset($hierarchy['levels']) && count($hierarchy['levels']) > 0)
+        <div class="space-y-2 pl-2 md:pl-4">
+            @foreach($hierarchy['levels'] as $level)
+            <div class="p-3 rounded-xl border-l-4 {{ (isset($level['is_selected']) && $level['is_selected']) ? 'bg-red-50 border-red-500 shadow-md' : 'bg-white border-blue-400' }} space-y-1 shadow-sm">
+                <div class="flex items-center gap-2">
+                    <span class="font-mono text-xs font-black text-gray-900">{{ $level['code'] }}</span>
+                    <span class="text-[10px] bg-blue-100 text-blue-800 font-bold px-2 py-0.5 rounded">{{ $level['level'] }} Digit</span>
+                    @if(isset($level['is_selected']) && $level['is_selected'])
+                    <span class="text-[10px] bg-red-100 text-red-700 font-bold px-2 py-0.5 rounded">← Dipilih</span>
                     @endif
                 </div>
-                <div class="explanatory-source">Sumber: {{ $explanatoryNote->source ?? 'BTKI 2022' }} | Kode Referensi: {{ $explanatoryNote->hs_code }}</div>
-            </div>
-            @else
-            <div class="explanatory-section" style="background: #f3f4f6; border-left-color: #9ca3af;">
-                <div class="explanatory-title" style="color: #6b7280;">📖 Catatan Penjelasan</div>
-                <div style="color: #9ca3af; font-size: 14px;">Tidak ada catatan penjelasan untuk kode HS ini.</div>
-            </div>
-            @endif
-        </div>
-        @endif
-        <div wire:loading style="text-align:center;padding:2rem;"><div style="width:40px;height:40px;border:4px solid #e5e7eb;border-top-color:#667eea;border-radius:50%;animation:spin 0.8s linear infinite;margin:0 auto;"></div><p style="color:#6b7280;margin-top:1rem;">Memuat...</p></div>
-        <div wire:loading.remove>
-            @if($results->count() > 0)
-            <div style="margin-bottom:1rem;"><h2 style="font-size:18px;color:#374151;margin:0;">📊 Hasil Pencarian ({{ $results->total() }} kode)</h2></div>
-            <div class="table-header"><span>KODE</span><span>URAIAN (INDONESIA)</span><span>DESCRIPTION (ENGLISH)</span><span>BEA MASUK</span><span>BEA KELUAR</span><span>AKSI & INFO</span></div>
-            @foreach($results as $code)
-            <div class="result-card {{ $selectedCode == $code->hs_code ? 'selected' : '' }}">
-                <div class="table-row">
-                    <div class="hs-code">{{ $code->hs_code }}</div>
-                    <div style="color:#374151;font-size:14px;">{{ $code->description_id ?: '-' }}</div>
-                    <div style="color:#6b7280;font-size:14px;font-style:italic;">{{ $code->description_en ?: '-' }}</div>
-                    <div style="text-align:center;font-size:13px;">@if($code->hs_level == 8 && $code->import_duty)<span style="background:#dcfce7;color:#166534;padding:2px 8px;border-radius:4px;font-weight:600;">{{ $code->import_duty }}{{ is_numeric($code->import_duty) ? '%' : '' }}</span>@else<span style="color:#9ca3af;">-</span>@endif</div>
-                    <div style="text-align:center;font-size:13px;" x-data="{ showTooltip: false }">
-    @if($code->hs_level == 8 && $code->export_duty && $code->export_duty != '-')
-        @if($code->export_duty == '*)' || str_contains($code->export_duty, '*'))
-            <span @mouseenter="showTooltip = true" @mouseleave="showTooltip = false" style="background:#fef3c7;color:#92400e;padding:2px 8px;border-radius:4px;font-weight:600;cursor:help;position:relative;">
-                {{ $code->export_duty }}
-                <div x-show="showTooltip" x-cloak style="position:absolute;bottom:100%;left:50%;transform:translateX(-50%);background:#1f2937;color:white;padding:12px;border-radius:8px;width:280px;font-size:11px;font-weight:normal;text-align:left;z-index:1000;margin-bottom:8px;box-shadow:0 4px 12px rgba(0,0,0,0.3);">
-                    <div style="font-weight:600;margin-bottom:6px;">📋 Tarif Bea Keluar Khusus</div>
-                    <div style="line-height:1.5;">Tarif bersifat <b>progresif</b> atau mengikuti ketentuan PMK. Dapat berubah sesuai Harga Patokan Ekspor (HPE).</div>
-                    <a href="https://insw.go.id/intr" target="_blank" style="display:block;margin-top:8px;color:#60a5fa;text-decoration:underline;">🔗 Cek tarif resmi di INSW</a>
-                    <div style="position:absolute;bottom:-6px;left:50%;transform:translateX(-50%);border-left:6px solid transparent;border-right:6px solid transparent;border-top:6px solid #1f2937;"></div>
-                </div>
-            </span>
-        @else
-            <span style="background:#ffedd5;color:#9a3412;padding:2px 8px;border-radius:4px;font-weight:600;">{{ $code->export_duty }}{{ is_numeric($code->export_duty) ? '%' : '' }}</span>
-        @endif
-    @else
-        <span style="color:#9ca3af;">-</span>
-    @endif
-</div>
-                    <div style="display:flex;align-items:center;flex-wrap:wrap;gap:4px;">
-                        <button wire:click="showHierarchy('{{ $code->hs_code }}')" class="btn-detail" title="Lihat Detail Hierarki">👁 Detail</button>
-                        <a href="{{ route('customer.shipments.create', ['hs_code' => $code->hs_code]) }}" class="btn-detail" style="background:#3b82f6; text-decoration:none;" title="Gunakan HS Code ini di Create Booking">📦 Booking</a>
-                    </div>
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-2 text-xs">
+                    <span class="text-gray-800 font-medium">{{ $level['description_id'] ?? '-' }}</span>
+                    <span class="text-gray-500 italic">{{ $level['description_en'] ?? '-' }}</span>
                 </div>
             </div>
             @endforeach
-            <div style="margin-top:1.5rem;">{{ $results->links() }}</div>
-            @else
-            <div style="text-align:center;padding:3rem;"><div style="font-size:64px;">🔍</div><h3 style="color:#6b7280;">Tidak ada hasil ditemukan</h3><p style="color:#9ca3af;">Coba kata kunci lain</p></div>
-            @endif
         </div>
+        @endif
+
+        {{-- Explanatory Note --}}
+        @php $explanatoryNote = $this->getExplanatoryNote($selectedCode); @endphp
+        @if($explanatoryNote)
+        <div class="bg-purple-50 rounded-2xl p-5 border border-purple-200 space-y-2">
+            <h4 class="font-bold text-xs text-purple-900">📖 Catatan Penjelasan (Explanatory Notes)</h4>
+            @if($explanatoryNote->note_title)<p class="font-bold text-xs text-purple-800">{{ $explanatoryNote->note_title }}</p>@endif
+            <p class="text-xs text-purple-950 leading-relaxed whitespace-pre-wrap">{{ $explanatoryNote->note_content }}</p>
+        </div>
+        @endif
+    </div>
+    @endif
+
+    {{-- RESULTS TABLE / CARDS --}}
+    <div wire:loading class="text-center py-12">
+        <div class="animate-spin h-8 w-8 border-4 border-blue-600 border-t-transparent rounded-full mx-auto"></div>
+        <p class="text-xs text-gray-500 font-bold mt-2">Mencari database BTKI...</p>
     </div>
 
-<!-- Disclaimer Section -->
-<div style="margin-top:30px;padding:20px;background:linear-gradient(135deg,#f8fafc,#f1f5f9);border-radius:12px;border:1px solid #e2e8f0;">
-    <div style="display:flex;align-items:flex-start;gap:12px;">
-        <div style="font-size:24px;">⚠️</div>
-        <div>
-            <div style="font-weight:700;color:#334155;font-size:14px;margin-bottom:8px;">Disclaimer - Penyangkalan</div>
-            <div style="color:#64748b;font-size:12px;line-height:1.7;">
-                <p style="margin-bottom:8px;">Data tarif Bea Masuk (BM) dan Bea Keluar (BK) yang ditampilkan bersumber dari <b>BTKI 2022 (Buku Tarif Kepabeanan Indonesia)</b> dan bersifat <b>informatif</b>. Tarif dapat berubah sewaktu-waktu sesuai dengan peraturan pemerintah yang berlaku.</p>
-                <p style="margin-bottom:8px;"><b>Keterangan Simbol:</b></p>
-                <ul style="margin:0 0 8px 16px;padding:0;">
-                    <li><b>-</b> : Tidak dikenakan bea</li>
-                    <li><b>*)</b> : Tarif progresif/khusus, mengikuti ketentuan PMK dan Harga Patokan Ekspor (HPE)</li>
-                    <li><b>0%, 5%, dst</b> : Tarif bea sesuai persentase</li>
-                </ul>
-                <p style="margin-bottom:0;">Untuk informasi tarif resmi, ketentuan lartas (larangan/pembatasan), dan regulasi terkini, silakan kunjungi: 
-                    <a href="https://insw.go.id/intr" target="_blank" style="color:#2563eb;font-weight:600;text-decoration:underline;">Indonesia National Single Window (INSW)</a> | 
-                    <a href="https://www.beacukai.go.id" target="_blank" style="color:#2563eb;font-weight:600;text-decoration:underline;">Bea Cukai</a>
-                </p>
+    <div wire:loading.remove class="space-y-4">
+        @if($results->count() > 0)
+        <div class="bg-white rounded-3xl shadow-sm border border-gray-200 overflow-hidden">
+            <div class="p-4 md:p-6 bg-gray-50 border-b border-gray-200 flex items-center justify-between">
+                <h3 class="font-black text-sm text-gray-800 uppercase tracking-wider">📊 Hasil Pencarian Kode HS ({{ $results->total() }} Data)</h3>
+                <span class="text-xs text-gray-500">Klik 'Detail' untuk hierarki &amp; 'Booking' untuk order</span>
+            </div>
+
+            <div class="divide-y divide-gray-100">
+                @foreach($results as $code)
+                <div class="p-4 md:p-6 hover:bg-blue-50/50 transition flex flex-col lg:flex-row lg:items-center justify-between gap-4 {{ $selectedCode == $code->hs_code ? 'bg-emerald-50/70 border-l-4 border-emerald-500' : '' }}">
+                    
+                    {{-- HS Code & Description --}}
+                    <div class="space-y-1.5 lg:flex-1">
+                        <div class="flex items-center gap-2 flex-wrap">
+                            <span class="font-mono text-sm font-black text-blue-900 bg-blue-50 px-3 py-1 rounded-xl border border-blue-200 shadow-sm">
+                                {{ $code->hs_code }}
+                            </span>
+                            <span class="text-[10px] font-bold bg-gray-100 text-gray-700 px-2 py-0.5 rounded-lg">
+                                {{ $code->hs_level }} Digit
+                            </span>
+                            @if($code->chapter_number)
+                            <span class="text-[10px] font-bold bg-amber-100 text-amber-800 px-2 py-0.5 rounded-lg">
+                                Bab {{ $code->chapter_number }}
+                            </span>
+                            @endif
+                        </div>
+                        <p class="text-sm font-bold text-gray-800 leading-snug">{{ $code->description_id ?: '-' }}</p>
+                        @if($code->description_en)
+                        <p class="text-xs text-gray-500 italic">{{ $code->description_en }}</p>
+                        @endif
+                    </div>
+
+                    {{-- Duty Badges & Actions --}}
+                    <div class="flex items-center gap-3 shrink-0 flex-wrap border-t lg:border-t-0 pt-3 lg:pt-0 border-gray-100">
+                        {{-- Bea Masuk Badge --}}
+                        <div class="text-center px-3 py-1.5 rounded-xl border {{ ($code->hs_level == 8 && $code->import_duty) ? 'bg-emerald-50 border-emerald-200 text-emerald-800' : 'bg-gray-50 border-gray-200 text-gray-400' }}">
+                            <span class="block text-[9px] font-black uppercase tracking-wider opacity-75">Bea Masuk</span>
+                            <span class="text-xs font-black">
+                                @if($code->hs_level == 8 && $code->import_duty)
+                                {{ $code->import_duty }}{{ is_numeric($code->import_duty) ? '%' : '' }}
+                                @else
+                                -
+                                @endif
+                            </span>
+                        </div>
+
+                        {{-- Bea Keluar Badge --}}
+                        <div class="text-center px-3 py-1.5 rounded-xl border {{ ($code->hs_level == 8 && $code->export_duty && $code->export_duty != '-') ? 'bg-amber-50 border-amber-200 text-amber-800' : 'bg-gray-50 border-gray-200 text-gray-400' }}">
+                            <span class="block text-[9px] font-black uppercase tracking-wider opacity-75">Bea Keluar</span>
+                            <span class="text-xs font-black">
+                                @if($code->hs_level == 8 && $code->export_duty && $code->export_duty != '-')
+                                {{ $code->export_duty }}{{ is_numeric($code->export_duty) ? '%' : '' }}
+                                @else
+                                -
+                                @endif
+                            </span>
+                        </div>
+
+                        {{-- Action Buttons --}}
+                        <div class="flex items-center gap-2">
+                            <button wire:click="showHierarchy('{{ $code->hs_code }}')" class="bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs px-3 py-2 rounded-xl transition flex items-center gap-1 shadow-sm">
+                                👁 Detail
+                            </button>
+                            <a href="{{ route('customer.calculator', ['hs_code' => $code->hs_code]) }}" class="bg-amber-500 hover:bg-amber-600 text-white font-bold text-xs px-3 py-2 rounded-xl transition flex items-center gap-1 shadow-sm">
+                                🧮 Hitung
+                            </a>
+                            <a href="{{ route('customer.shipments.create', ['hs_code' => $code->hs_code]) }}" class="bg-blue-600 hover:bg-blue-700 text-white font-bold text-xs px-3 py-2 rounded-xl transition flex items-center gap-1 shadow-sm">
+                                📦 Booking
+                            </a>
+                        </div>
+
+                    </div>
+
+                </div>
+                @endforeach
+            </div>
+
+            <div class="p-4 bg-gray-50 border-t border-gray-200">
+                {{ $results->links() }}
             </div>
         </div>
+        @else
+        <div class="bg-white rounded-3xl p-12 text-center shadow-sm border border-gray-200 space-y-3">
+            <div class="text-5xl">🔍</div>
+            <h3 class="text-lg font-bold text-gray-700">Tidak ada kode HS ditemukan</h3>
+            <p class="text-xs text-gray-500 max-w-md mx-auto">Coba masukkan 8 digit angka murni (cth: 23096060), format bertitik (2309.60.60), atau nama komoditas lainnya.</p>
+        </div>
+        @endif
     </div>
-</div>
 
+    {{-- DISCLAIMER SECTION --}}
+    <div class="bg-gradient-to-r from-slate-50 to-blue-50 rounded-2xl p-6 border border-gray-200 text-xs text-slate-600 space-y-2">
+        <div class="flex items-center gap-2 font-bold text-slate-800">
+            <span>⚠️ Penyangkalan (Disclaimer) Tarif BTKI 2022</span>
+        </div>
+        <p class="leading-relaxed">
+            Data tarif Bea Masuk (BM) dan Bea Keluar (BK) bersumber dari Buku Tarif Kepabeanan Indonesia (BTKI 2022) dan bersifat informatif. Untuk regulasi Lartas (Larangan &amp; Pembatasan) dan tarif resmi terkini, silakan merujuk pada portal resmi <a href="https://insw.go.id/intr" target="_blank" class="text-blue-600 font-bold underline">INSW</a> dan <a href="https://www.beacukai.go.id" target="_blank" class="text-blue-600 font-bold underline">Bea Cukai DJBC</a>.
+        </p>
+    </div>
 </div>

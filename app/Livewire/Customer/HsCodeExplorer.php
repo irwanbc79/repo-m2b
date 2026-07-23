@@ -138,11 +138,30 @@ class HsCodeExplorer extends Component
         }
 
         if (!empty(trim($this->search))) {
-            $searchTerm = '%' . trim($this->search) . '%';
-            $query->where(function($q) use ($searchTerm) {
+            $raw = trim($this->search);
+            $searchTerm = '%' . $raw . '%';
+            $cleanDigits = preg_replace('/[^0-9]/', '', $raw);
+
+            $formattedDots = null;
+            if (strlen($cleanDigits) === 8) {
+                $formattedDots = substr($cleanDigits, 0, 4) . '.' . substr($cleanDigits, 4, 2) . '.' . substr($cleanDigits, 6, 2);
+            } elseif (strlen($cleanDigits) === 6) {
+                $formattedDots = substr($cleanDigits, 0, 4) . '.' . substr($cleanDigits, 4, 2);
+            } elseif (strlen($cleanDigits) === 4) {
+                $formattedDots = substr($cleanDigits, 0, 2) . '.' . substr($cleanDigits, 2, 2);
+            }
+
+            $query->where(function($q) use ($searchTerm, $cleanDigits, $formattedDots) {
                 $q->where('hs_code', 'LIKE', $searchTerm)
                   ->orWhere('description_id', 'LIKE', $searchTerm)
                   ->orWhere('description_en', 'LIKE', $searchTerm);
+
+                if (!empty($cleanDigits) && strlen($cleanDigits) >= 2) {
+                    $q->orWhereRaw("REPLACE(hs_code, '.', '') LIKE ?", ['%' . $cleanDigits . '%']);
+                }
+                if ($formattedDots) {
+                    $q->orWhere('hs_code', 'LIKE', '%' . $formattedDots . '%');
+                }
             });
         }
         
