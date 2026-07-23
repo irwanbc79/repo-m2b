@@ -249,4 +249,97 @@ class InvoiceList extends Component
         $this->previewFakturPajakPath = null;
         $this->previewFakturPajakNumber = null;
     }
+
+    // Upload Bukti Potong PPh (Customer Portal)
+    public $showBupotModal = false;
+    public $bupotInvoiceId = null;
+    public $bupotInvoice = null;
+    public $bupotNumber = '';
+    public $bupotAmount = '';
+    public $bupotDate = '';
+    public $bupotFile = null;
+
+    public function openBupotModal($invoiceId)
+    {
+        $user = Auth::user();
+        $invoice = Invoice::where('id', $invoiceId)
+            ->where(function($q) use ($user) {
+                $q->where('customer_id', $user->customer->id ?? 0)
+                  ->orWhereHas('shipment', function($sq) use ($user) {
+                      $sq->where('customer_id', $user->customer->id ?? 0);
+                  });
+            })->firstOrFail();
+
+        $this->bupotInvoiceId = $invoice->id;
+        $this->bupotInvoice = $invoice;
+        $this->bupotNumber = $invoice->bukti_potong_number ?? '';
+        $this->bupotAmount = $invoice->bukti_potong_amount ?? ($invoice->pph_amount ?? 0);
+        $this->bupotDate = $invoice->bukti_potong_date ? $invoice->bukti_potong_date->format('Y-m-d') : now()->format('Y-m-d');
+        $this->bupotFile = null;
+        $this->showBupotModal = true;
+    }
+
+    public function closeBupotModal()
+    {
+        $this->showBupotModal = false;
+        $this->bupotInvoiceId = null;
+        $this->bupotInvoice = null;
+        $this->bupotNumber = '';
+        $this->bupotAmount = '';
+        $this->bupotDate = '';
+        $this->bupotFile = null;
+    }
+
+    public function uploadBupotProof()
+    {
+        $invoice = Invoice::findOrFail($this->bupotInvoiceId);
+
+        $rules = [
+            'bupotNumber' => 'required|string|max:100',
+            'bupotAmount' => 'nullable|numeric|min:0',
+            'bupotDate' => 'nullable|date',
+        ];
+
+        if (!$invoice->bukti_potong_path || $this->bupotFile) {
+            $rules['bupotFile'] = 'required|file|mimes:pdf,jpg,jpeg,png|max:5120';
+        }
+
+        $this->validate($rules, [
+            'bupotNumber.required' => 'Nomor Bukti Potong wajib diisi',
+            'bupotFile.required' => 'File e-Bupot (PDF/Gambar) wajib diupload',
+            'bupotFile.mimes' => 'Format file harus PDF, JPG, JPEG, atau PNG',
+            'bupotFile.max' => 'Ukuran file maksimal 5MB',
+        ]);
+
+        $user = Auth::user();
+        $customerName = $user->customer->company_name ?? $user->name;
+
+        $updateData = [
+            'bukti_potong_number' => $this->bupotNumber,
+            'bukti_potong_amount' => $this->bupotAmount ? (float)$this->bupotAmount : 0,
+            'bukti_potong_date' => $this->bupotDate ?: null,
+        ];
+
+        if ($this->bupotFile) {
+            $filename = 'BUPOT_' . str_replace(['/', '\\'], '-', $invoice->invoice_number) . '_' . time() . '.' . $this->bupotFile->getClientOriginalExtension();
+            $path = $this->bupotFile->storeAs('bukti-potong', $filename, 'public');
+            $updateData['bukti_potong_path'] = $path;
+            $updateData['bukti_potong_uploaded_at'] = now();
+        }
+
+        $invoice->update($updateData);
+
+        ActivityLog::create([
+            'user_id' => $user->id,
+            'action' => 'BUKTI_POTONG_UPLOADED',
+            'model_type' => 'Invoice',
+            'model_id' => $invoice->id,
+            'description' => "📑 BUKTI POTONG PPH DITERIMA: {$customerName} mengupload e-Bupot #{$this->bupotNumber} untuk Invoice #{$invoice->invoice_number} (Rp " . number_format((float)$this->bupotAmount, 0, ',', '.') . ").",
+            'ip_address' => request()->ip(),
+            'user_agent' => request()->userAgent(),
+        ]);
+
+        $this->closeBupotModal();
+        session()->flash('success', 'Bukti Potong PPh (e-Bupot) berhasil diupload! Terima kasih telah membantu administrasi perpajakan kami.');
+    }
 }

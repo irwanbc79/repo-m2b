@@ -105,7 +105,7 @@
                         <th class="px-4 py-3 text-left font-semibold text-gray-700">Jatuh Tempo</th>
                         <th class="px-4 py-3 text-right font-semibold text-gray-700">Total</th>
                         <th class="px-4 py-3 text-center font-semibold text-gray-700">Status</th>
-                        <th class="px-4 py-3 text-center font-semibold text-gray-700">Faktur Pajak</th>
+                        <th class="px-4 py-3 text-center font-semibold text-gray-700">Dokumen Pajak</th>
                         <th class="px-4 py-3 text-center font-semibold text-gray-700">Aksi</th>
                     </tr>
                 </thead>
@@ -166,35 +166,48 @@
                             </span>
                             @endif
                         </td>
-                        <!-- Kolom Faktur Pajak -->
+                        
+                        <!-- Kolom Dokumen Pajak (FP & BP) -->
                         <td class="px-4 py-3 text-center">
-                            @if($invoice->status === 'paid')
-                                @if($invoice->faktur_pajak_path)
-                                    {{-- Sudah ada faktur pajak - tampilkan View & Download --}}
-                                    <div class="flex items-center justify-center gap-1">
-                                        <button wire:click="openFakturPajakPreview({{ $invoice->id }})" class="p-1.5 text-blue-600 hover:bg-blue-100 rounded-lg transition" title="Preview Faktur Pajak">
-                                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"/></svg>
+                            <div class="flex flex-col items-center gap-1.5 min-w-[120px]">
+                                {{-- 1. Faktur Pajak (PPN) --}}
+                                @if(strtolower($invoice->type) == 'commercial')
+                                    @if($invoice->faktur_pajak_path)
+                                        <div class="flex items-center gap-1 bg-green-50 border border-green-200 px-2 py-0.5 rounded text-xs">
+                                            <span class="font-bold text-green-700 text-[11px]" title="No FP: {{ $invoice->faktur_pajak_number }}">FP: {{ \Illuminate\Support\Str::limit($invoice->faktur_pajak_number ?? 'Ada', 8) }}</span>
+                                            <button wire:click="openFakturPajakPreview({{ $invoice->id }})" class="p-0.5 text-blue-600 hover:text-blue-800" title="Preview FP">👁</button>
+                                            <a href="{{ asset('storage/' . $invoice->faktur_pajak_path) }}" download class="p-0.5 text-green-600 hover:text-green-800" title="Download FP">📥</a>
+                                        </div>
+                                    @elseif($invoice->faktur_pajak_requested)
+                                        <span class="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-medium bg-yellow-100 text-yellow-700">
+                                            <svg class="w-2.5 h-2.5 mr-1 animate-pulse" fill="currentColor" viewBox="0 0 20 20"><circle cx="10" cy="10" r="10"/></svg>
+                                            FP Diproses
+                                        </span>
+                                    @else
+                                        <button wire:click="requestFakturPajak({{ $invoice->id }})" class="inline-flex items-center px-2 py-0.5 text-[11px] font-medium text-blue-700 bg-blue-50 hover:bg-blue-100 rounded border border-blue-200 transition" title="Request Faktur Pajak PPN">
+                                            📄 Request FP
                                         </button>
-                                        <a href="{{ asset('storage/' . $invoice->faktur_pajak_path) }}" download class="p-1.5 text-green-600 hover:bg-green-100 rounded-lg transition" title="Download Faktur Pajak">
-                                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"/></svg>
-                                        </a>
-                                    </div>
-                                @elseif($invoice->faktur_pajak_requested)
-                                    {{-- Sudah request, menunggu upload --}}
-                                    <span class="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-yellow-100 text-yellow-700">
-                                        <svg class="w-3 h-3 mr-1 animate-pulse" fill="currentColor" viewBox="0 0 20 20"><circle cx="10" cy="10" r="10"/></svg>
-                                        Diproses
-                                    </span>
+                                    @endif
                                 @else
-                                    {{-- Belum request --}}
-                                    <button wire:click="requestFakturPajak({{ $invoice->id }})" class="inline-flex items-center px-2.5 py-1.5 text-xs font-medium text-blue-700 bg-blue-50 hover:bg-blue-100 rounded-lg transition" title="Request Faktur Pajak">
-                                        <svg class="w-3.5 h-3.5 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/></svg>
-                                        Request
-                                    </button>
+                                    <span class="text-[10px] text-gray-300 font-mono">FP: N/A</span>
                                 @endif
-                            @else
-                                <span class="text-xs text-gray-400">-</span>
-                            @endif
+
+                                {{-- 2. Bukti Potong PPh (e-Bupot) --}}
+                                @if(strtolower($invoice->type) == 'commercial')
+                                    @if($invoice->bukti_potong_path)
+                                        <div class="flex items-center gap-1 bg-purple-50 border border-purple-200 px-2 py-0.5 rounded text-xs">
+                                            <span class="font-bold text-purple-700 text-[11px]" title="No Bupot: {{ $invoice->bukti_potong_number }} (Rp {{ number_format($invoice->bukti_potong_amount ?? 0, 0, ',', '.') }})">BP: {{ \Illuminate\Support\Str::limit($invoice->bukti_potong_number, 8) }}</span>
+                                            <a href="{{ asset('storage/' . $invoice->bukti_potong_path) }}" target="_blank" download class="p-0.5 text-purple-600 hover:text-purple-800" title="Download Bupot">📥</a>
+                                        </div>
+                                    @else
+                                        <button wire:click="openBupotModal({{ $invoice->id }})" class="inline-flex items-center px-2 py-0.5 text-[11px] font-semibold text-purple-700 bg-purple-50 hover:bg-purple-100 rounded border border-purple-200 transition" title="Upload Bukti Potong PPh (e-Bupot)">
+                                            📑 Upload Bupot
+                                        </button>
+                                    @endif
+                                @else
+                                    <span class="text-[10px] text-gray-300 font-mono">BP: N/A</span>
+                                @endif
+                            </div>
                         </td>
                         <td class="px-4 py-3 text-center">
                             <div class="flex items-center justify-center gap-1">
@@ -440,6 +453,56 @@
         <div class="flex-1 overflow-y-auto bg-gray-100 p-4">
             <iframe src="{{ asset('storage/' . $previewFakturPajakPath) }}" class="w-full h-[70vh] border-0 bg-white rounded-lg shadow"></iframe>
         </div>
+    </div>
+</div>
+@endif
+
+{{-- Modal Upload Bukti Potong PPh (Customer Portal) --}}
+@if($showBupotModal)
+<div class="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm" wire:click.self="closeBupotModal">
+    <div class="bg-white rounded-2xl shadow-2xl w-full max-w-md mx-4 overflow-hidden border-t-8 border-purple-700">
+        <div class="bg-gradient-to-r from-purple-700 to-indigo-800 px-6 py-4 flex justify-between items-center">
+            <div>
+                <h3 class="text-lg font-bold text-white flex items-center gap-2">
+                    📑 Upload Bukti Potong PPh
+                </h3>
+                <p class="text-xs text-purple-100 mt-0.5">Invoice #{{ $bupotInvoice->invoice_number ?? '' }}</p>
+            </div>
+            <button wire:click="closeBupotModal" class="text-white/80 hover:text-white text-2xl">&times;</button>
+        </div>
+        <form wire:submit.prevent="uploadBupotProof" class="p-6 space-y-4">
+            <div>
+                <label class="block text-sm font-bold text-gray-700 mb-1">Nomor Bukti Potong (e-Bupot DJP) <span class="text-red-500">*</span></label>
+                <input type="text" wire:model="bupotNumber" class="w-full border-2 border-gray-200 rounded-xl px-4 py-2.5 text-sm focus:border-purple-600 focus:ring-0" placeholder="Contoh: BP-23/07/2026/001">
+                @error('bupotNumber') <span class="text-red-500 text-xs mt-1 block">{{ $message }}</span> @enderror
+            </div>
+            <div class="grid grid-cols-2 gap-3">
+                <div>
+                    <label class="block text-sm font-bold text-gray-700 mb-1">Nominal PPh (Rp)</label>
+                    <input type="number" step="0.01" wire:model="bupotAmount" class="w-full border-2 border-gray-200 rounded-xl px-4 py-2.5 text-sm focus:border-purple-600 focus:ring-0" placeholder="0">
+                    @error('bupotAmount') <span class="text-red-500 text-xs mt-1 block">{{ $message }}</span> @enderror
+                </div>
+                <div>
+                    <label class="block text-sm font-bold text-gray-700 mb-1">Tanggal Bupot</label>
+                    <input type="date" wire:model="bupotDate" class="w-full border-2 border-gray-200 rounded-xl px-4 py-2.5 text-sm focus:border-purple-600 focus:ring-0">
+                    @error('bupotDate') <span class="text-red-500 text-xs mt-1 block">{{ $message }}</span> @enderror
+                </div>
+            </div>
+            <div>
+                <label class="block text-sm font-bold text-gray-700 mb-1">File e-Bupot (PDF / Gambar) <span class="text-red-500">*</span></label>
+                <input type="file" wire:model="bupotFile" accept=".pdf,image/*" class="w-full border-2 border-gray-200 rounded-xl px-4 py-2.5 text-sm focus:border-purple-600">
+                <div class="text-[11px] text-gray-400 mt-1">Format PDF, JPG, PNG (Max 5MB)</div>
+                <div wire:loading wire:target="bupotFile" class="text-xs text-purple-600 mt-1 font-bold">Uploading file...</div>
+                @error('bupotFile') <span class="text-red-500 text-xs mt-1 block">{{ $message }}</span> @enderror
+            </div>
+            <div class="flex gap-3 pt-2">
+                <button type="button" wire:click="closeBupotModal" class="flex-1 py-3 text-sm font-bold text-gray-600 bg-gray-100 rounded-xl hover:bg-gray-200">Batal</button>
+                <button type="submit" class="flex-1 py-3 text-sm font-bold text-white bg-purple-700 rounded-xl hover:bg-purple-800 shadow-md" wire:loading.attr="disabled">
+                    <span wire:loading.remove wire:target="uploadBupotProof">Upload Bupot</span>
+                    <span wire:loading wire:target="uploadBupotProof">Proses...</span>
+                </button>
+            </div>
+        </form>
     </div>
 </div>
 @endif
