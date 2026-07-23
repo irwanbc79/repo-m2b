@@ -1066,4 +1066,84 @@ class InvoiceManager extends Component
 
         session()->flash('message', 'Faktur Pajak berhasil dihapus');
     }
+
+    // === BUKTI POTONG PPH ===
+    public $buktiPotongFile;
+    public $buktiPotongNumber;
+    public $buktiPotongAmount;
+    public $buktiPotongDate;
+    public $buktiPotongInvoiceId;
+
+    public function openBuktiPotongModal($invoiceId)
+    {
+        $this->buktiPotongInvoiceId = $invoiceId;
+        $invoice = \App\Models\Invoice::findOrFail($invoiceId);
+        $this->buktiPotongNumber = $invoice->bukti_potong_number ?? '';
+        $this->buktiPotongAmount = $invoice->bukti_potong_amount ?? ($invoice->pph_amount ?? 0);
+        $this->buktiPotongDate = $invoice->bukti_potong_date ? $invoice->bukti_potong_date->format('Y-m-d') : date('Y-m-d');
+        $this->buktiPotongFile = null;
+        $this->dispatch('open-modal', 'bukti-potong-modal');
+    }
+
+    public function saveBuktiPotong()
+    {
+        $invoice = \App\Models\Invoice::findOrFail($this->buktiPotongInvoiceId);
+
+        $rules = [
+            'buktiPotongNumber' => 'required|string|max:100',
+            'buktiPotongAmount' => 'nullable|numeric|min:0',
+            'buktiPotongDate' => 'nullable|date',
+        ];
+
+        if (!$invoice->bukti_potong_path || $this->buktiPotongFile) {
+            $rules['buktiPotongFile'] = 'required|file|mimes:pdf,jpg,jpeg,png|max:5120';
+        }
+
+        $this->validate($rules);
+
+        $updateData = [
+            'bukti_potong_number' => $this->buktiPotongNumber,
+            'bukti_potong_amount' => $this->buktiPotongAmount ? (float)$this->buktiPotongAmount : 0,
+            'bukti_potong_date' => $this->buktiPotongDate ?: null,
+        ];
+
+        if ($this->buktiPotongFile) {
+            $invoiceNumber = str_replace(['/', '\\'], '-', $invoice->invoice_number);
+            $ext = $this->buktiPotongFile->getClientOriginalExtension();
+            $filename = 'BUPOT_' . $invoiceNumber . '_' . time() . '.' . $ext;
+            $path = $this->buktiPotongFile->storeAs('bukti-potong', $filename, 'public');
+            $updateData['bukti_potong_path'] = $path;
+            $updateData['bukti_potong_uploaded_at'] = now();
+        }
+
+        $invoice->update($updateData);
+
+        $this->buktiPotongInvoiceId = null;
+        $this->buktiPotongFile = null;
+        $this->buktiPotongNumber = '';
+        $this->buktiPotongAmount = 0;
+        $this->buktiPotongDate = '';
+        $this->flushInvoiceDashboardCache();
+        session()->flash('message', 'Bukti Potong PPh berhasil disimpan');
+    }
+
+    public function deleteBuktiPotong($invoiceId)
+    {
+        $invoice = \App\Models\Invoice::findOrFail($invoiceId);
+
+        if ($invoice->bukti_potong_path) {
+            \Storage::disk('public')->delete($invoice->bukti_potong_path);
+        }
+
+        $invoice->update([
+            'bukti_potong_number' => null,
+            'bukti_potong_path' => null,
+            'bukti_potong_amount' => null,
+            'bukti_potong_date' => null,
+            'bukti_potong_uploaded_at' => null,
+        ]);
+
+        $this->flushInvoiceDashboardCache();
+        session()->flash('message', 'Bukti Potong PPh berhasil dihapus');
+    }
 }

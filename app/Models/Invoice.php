@@ -60,16 +60,27 @@ class Invoice extends Model
         'faktur_pajak_uploaded_at',
         'faktur_pajak_requested',
         'faktur_pajak_requested_at',
+
+        // Bukti Potong PPh fields
+        'bukti_potong_number',
+        'bukti_potong_path',
+        'bukti_potong_amount',
+        'bukti_potong_date',
+        'bukti_potong_uploaded_at',
     ];
 
     protected $casts = [
         'invoice_date' => 'date',
         'due_date' => 'date',
         'payment_date' => 'date',
+        'bukti_potong_date' => 'date',
+        'bukti_potong_uploaded_at' => 'datetime',
+        'faktur_pajak_uploaded_at' => 'datetime',
         'last_reminded_at' => 'datetime',
         'follow_up_sent_at' => 'datetime',
         'use_materai' => 'boolean',
         'total_paid' => 'decimal:2',
+        'bukti_potong_amount' => 'decimal:2',
         'payment_claimed' => 'boolean',
         'claimed_at' => 'datetime',
     ];

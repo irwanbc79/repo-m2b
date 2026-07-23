@@ -131,7 +131,7 @@
                         <th class="px-6 py-4">Total / Status</th>
                         <th class="px-6 py-4">Jatuh Tempo</th>
                         <th class="px-6 py-4 text-center">Klaim</th>
-                        <th class="px-6 py-4 text-center">Faktur Pajak</th>
+                        <th class="px-6 py-4 text-center">Dokumen Pajak</th>
                         <th class="px-6 py-4 text-center">Aksi</th>
                     </tr>
                 </thead>
@@ -215,73 +215,118 @@
                                 </div>
                             @endif
                         </td>
-                        <!-- Kolom Faktur Pajak -->
+                        
+                        {{-- Kolom Dokumen Pajak (Faktur Pajak & Bukti Potong) --}}
                         <td class="px-6 py-4 text-center">
-                            @if($inv->status === 'paid')
-                                @if($inv->faktur_pajak_path)
-                                    <div class="flex items-center justify-center gap-1">
-                                        <span class="text-xs text-green-600 font-medium">{{ $inv->faktur_pajak_number }}</span>
-                                        <button wire:click="openFilePreview('{{ $inv->faktur_pajak_path }}')" class="text-blue-500 hover:text-blue-700" title="View">
-                                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"/></svg>
+                            <div class="flex flex-col items-center gap-1.5 min-w-[130px]">
+                                {{-- 1. Faktur Pajak Badge --}}
+                                @if($inv->type == 'Commercial')
+                                    @if($inv->faktur_pajak_path)
+                                        <div class="flex items-center gap-1 bg-green-50 border border-green-200 px-2 py-0.5 rounded-lg text-xs">
+                                            <span class="text-[11px] font-bold text-green-700" title="FP: {{ $inv->faktur_pajak_number }}">FP: {{ \Illuminate\Support\Str::limit($inv->faktur_pajak_number, 10) }}</span>
+                                            <button wire:click="openFilePreview('{{ $inv->faktur_pajak_path }}')" class="text-blue-600 hover:text-blue-800" title="View FP">👁</button>
+                                            <button wire:click="openFakturPajakModal({{ $inv->id }})" class="text-yellow-600 hover:text-yellow-800" title="Edit FP">✏️</button>
+                                            <button wire:click="deleteFakturPajak({{ $inv->id }})" wire:confirm="Hapus Faktur Pajak ini?" class="text-red-500 hover:text-red-700" title="Hapus FP">🗑️</button>
+                                        </div>
+                                    @elseif($inv->faktur_pajak_requested)
+                                        <button wire:click="openFakturPajakModal({{ $inv->id }})" class="text-[10px] bg-red-500 text-white hover:bg-red-600 px-2 py-0.5 rounded-full flex items-center justify-center gap-1 animate-pulse font-bold shadow" title="Customer Request FP!">
+                                            📋 FP Request!
                                         </button>
-                                        <button wire:click="openFakturPajakModal({{ $inv->id }})" class="text-yellow-500 hover:text-yellow-700" title="Edit">
-                                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"/></svg>
+                                    @else
+                                        <button wire:click="openFakturPajakModal({{ $inv->id }})" class="text-[11px] font-semibold text-gray-400 hover:text-blue-600 bg-gray-50 hover:bg-blue-50 border border-gray-200 hover:border-blue-200 px-2 py-0.5 rounded-md flex items-center gap-1 transition">
+                                            <span>📄 FP: Upload</span>
                                         </button>
-                                        <button wire:click="deleteFakturPajak({{ $inv->id }})" wire:confirm="Yakin hapus faktur pajak ini?" class="text-red-500 hover:text-red-700" title="Hapus">
-                                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/></svg>
+                                    @endif
+                                @else
+                                    <span class="text-[10px] text-gray-300 font-mono">FP: N/A</span>
+                                @endif
+
+                                {{-- 2. Bukti Potong PPh Badge --}}
+                                @if($inv->type == 'Commercial')
+                                    @if($inv->bukti_potong_path)
+                                        <div class="flex items-center gap-1 bg-purple-50 border border-purple-200 px-2 py-0.5 rounded-lg text-xs">
+                                            <span class="text-[11px] font-bold text-purple-700" title="BP: {{ $inv->bukti_potong_number }} (Rp {{ number_format($inv->bukti_potong_amount ?? 0, 0, ',', '.') }})">BP: {{ \Illuminate\Support\Str::limit($inv->bukti_potong_number, 10) }}</span>
+                                            <button wire:click="openFilePreview('{{ $inv->bukti_potong_path }}')" class="text-blue-600 hover:text-blue-800" title="View Bupot">👁</button>
+                                            <button wire:click="openBuktiPotongModal({{ $inv->id }})" class="text-yellow-600 hover:text-yellow-800" title="Edit Bupot">✏️</button>
+                                            <button wire:click="deleteBuktiPotong({{ $inv->id }})" wire:confirm="Hapus Bukti Potong ini?" class="text-red-500 hover:text-red-700" title="Hapus Bupot">🗑️</button>
+                                        </div>
+                                    @elseif(($inv->pph_amount ?? 0) > 0 || $inv->status == 'paid' || $inv->status == 'partial')
+                                        <button wire:click="openBuktiPotongModal({{ $inv->id }})" class="text-[11px] font-semibold text-amber-700 bg-amber-50 hover:bg-amber-100 border border-amber-200 px-2 py-0.5 rounded-md flex items-center gap-1 transition">
+                                            <span>📑 BP: Upload</span>
                                         </button>
-                                    </div>
-                                @elseif($inv->faktur_pajak_requested)
-                                    <button wire:click="openFakturPajakModal({{ $inv->id }})" class="text-xs bg-red-500 text-white hover:bg-red-600 px-2 py-1 rounded-full flex items-center justify-center gap-1 animate-pulse font-bold shadow" title="Customer Request!">
-                                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12"/></svg>
-                                        📋 Request!
+                                    @else
+                                        <span class="text-[10px] text-gray-300 font-mono">BP: -</span>
+                                    @endif
+                                @else
+                                    <span class="text-[10px] text-gray-300 font-mono">BP: N/A</span>
+                                @endif
+                            </div>
+                        </td>
+
+                        {{-- Kolom AKSI Contextual Primary Action + Dropdown "•••" --}}
+                        <td class="px-6 py-4 text-center">
+                            <div class="flex items-center justify-center gap-1.5" x-data="{ menuOpen: false }">
+                                {{-- Primary Action Button --}}
+                                @if($inv->status == 'unpaid')
+                                    <button wire:click="openPaymentModal({{ $inv->id }})" class="px-2.5 py-1 bg-green-600 hover:bg-green-700 text-white text-xs font-bold rounded-lg shadow-sm flex items-center gap-1 transition">
+                                        <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+                                        <span>Bayar</span>
                                     </button>
                                 @else
-                                    <button wire:click="openFakturPajakModal({{ $inv->id }})" class="text-xs text-gray-400 hover:text-orange-500 flex items-center justify-center gap-1">
-                                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12"/></svg>
-                                        Upload
+                                    <button @click="$dispatch('open-print-preview', { url: '{{ route('admin.invoices.print', $inv->id) }}?signature=full&signer=1' })" class="px-2.5 py-1 bg-blue-900 hover:bg-blue-800 text-white text-xs font-bold rounded-lg shadow-sm flex items-center gap-1 transition" title="Cetak PDF">
+                                        <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z"/></svg>
+                                        <span>Cetak</span>
                                     </button>
                                 @endif
-                            @else
-                                <span class="text-xs text-gray-400">-</span>
-                            @endif
-                        </td>
-                        <td class="px-6 py-4 text-center">
-                            <div class="flex justify-center gap-2">
-                                <div wire:ignore x-data="{ open: false }" class="relative inline-block">
-                                    <button @click="open = !open" type="button" class="p-1.5 text-gray-500 border rounded hover:bg-gray-100" title="Print PDF">
-                                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z"></path></svg>
+
+                                {{-- Dropdown "•••" Menu --}}
+                                <div class="relative inline-block text-left" wire:ignore>
+                                    <button @click="menuOpen = !menuOpen" type="button" class="p-1.5 text-gray-500 hover:text-gray-800 hover:bg-gray-100 rounded-lg border border-gray-200 transition" title="Menu Aksi Lainnya">
+                                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 5v.01M12 12v.01M12 19v.01M12 6a1 1 0 110-2 1 1 0 010 2zm0 7a1 1 0 110-2 1 1 0 010 2zm0 7a1 1 0 110-2 1 1 0 010 2z"/></svg>
                                     </button>
-                                    <div x-show="open" @click.away="open = false" x-cloak class="absolute right-0 mt-1 w-56 bg-white border rounded-xl shadow-xl z-50 py-2">
-                                        <button @click="open = false; $dispatch('open-print-preview', { url: '{{ route('admin.invoices.print', $inv->id) }}?signature=full&signer=1' })" class="w-full text-left block px-4 py-2 text-sm text-gray-700 hover:bg-green-50"><span class="font-bold text-green-700">✓ Sign + Stamp</span><br><span class="text-xs text-gray-500">Nurul Asyikin</span></button>
-                                        <button @click="open = false; $dispatch('open-print-preview', { url: '{{ route('admin.invoices.print', $inv->id) }}?signature=blank&signer=1' })" class="w-full text-left block px-4 py-2 text-sm text-gray-700 hover:bg-blue-50"><span class="font-bold text-gray-600">☐ Kosong</span><br><span class="text-xs text-gray-500">Untuk Materai Fisik</span></button>
+
+                                    <div x-show="menuOpen" @click.away="menuOpen = false" x-cloak class="absolute right-0 mt-1 w-48 bg-white rounded-xl shadow-xl border border-gray-100 z-50 py-1 divide-y divide-gray-100">
+                                        <div class="py-1">
+                                            <button @click="menuOpen = false; $dispatch('open-print-preview', { url: '{{ route('admin.invoices.print', $inv->id) }}?signature=full&signer=1' })" class="w-full text-left flex items-center gap-2 px-3 py-1.5 text-xs text-gray-700 hover:bg-blue-50 font-semibold">
+                                                <span>🖨️</span> Cetak Sign+Stamp
+                                            </button>
+                                            <button @click="menuOpen = false; $dispatch('open-print-preview', { url: '{{ route('admin.invoices.print', $inv->id) }}?signature=blank&signer=1' })" class="w-full text-left flex items-center gap-2 px-3 py-1.5 text-xs text-gray-600 hover:bg-gray-50">
+                                                <span>📄</span> Cetak (Kosong)
+                                            </button>
+                                        </div>
+
+                                        <div class="py-1">
+                                            <button wire:click="openSendModal({{ $inv->id }})" @click="menuOpen = false" class="w-full text-left flex items-center gap-2 px-3 py-1.5 text-xs text-blue-600 hover:bg-blue-50 font-semibold">
+                                                <span>✉️</span> Kirim Email
+                                            </button>
+                                            @if($inv->status == 'unpaid')
+                                                <button wire:click="openPaymentModal({{ $inv->id }})" @click="menuOpen = false" class="w-full text-left flex items-center gap-2 px-3 py-1.5 text-xs text-green-600 hover:bg-green-50 font-semibold">
+                                                    <span>💵</span> Catat Pembayaran
+                                                </button>
+                                            @else
+                                                <button wire:click="openPaymentHistory({{ $inv->id }})" @click="menuOpen = false" class="w-full text-left flex items-center gap-2 px-3 py-1.5 text-xs text-purple-600 hover:bg-purple-50 font-semibold">
+                                                    <span>📜</span> Riwayat Pembayaran
+                                                </button>
+                                            @endif
+                                        </div>
+
+                                        @unless(auth()->user()->hasRole('auditor'))
+                                        <div class="py-1">
+                                            <button wire:click="edit({{ $inv->id }})" @click="menuOpen = false" class="w-full text-left flex items-center gap-2 px-3 py-1.5 text-xs text-gray-700 hover:bg-gray-50">
+                                                <span>✏️</span> Edit Invoice
+                                            </button>
+                                            <button wire:click="delete({{ $inv->id }})" wire:confirm="Hapus invoice {{ $inv->invoice_number }}?" @click="menuOpen = false" class="w-full text-left flex items-center gap-2 px-3 py-1.5 text-xs text-red-600 hover:bg-red-50 font-semibold">
+                                                <span>🗑️</span> Hapus Invoice
+                                            </button>
+                                        </div>
+                                        @endunless
                                     </div>
                                 </div>
-                                <button wire:click="openSendModal({{ $inv->id }})" class="p-1.5 text-blue-500 border border-blue-200 rounded hover:bg-blue-50" title="Kirim Invoice">
-                                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"></path></svg>
-                                </button>
-                                @if($inv->status == 'unpaid')
-                                    <button wire:click="openPaymentModal({{ $inv->id }})" class="p-1.5 text-green-600 border border-green-200 rounded hover:bg-green-50" title="Catat Pembayaran">
-                                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
-                                    </button>
-                                @else
-                                    <button wire:click="openPaymentHistory({{ $inv->id }})" class="p-1.5 text-purple-600 border border-purple-200 rounded hover:bg-purple-50" title="Riwayat Pembayaran">
-                                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"></path><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"></path></svg>
-                                    </button>
-                                @endif
-                                @unless(auth()->user()->hasRole('auditor'))
-                                <button wire:click="edit({{ $inv->id }})" class="p-1.5 text-blue-600 border rounded hover:bg-blue-50" title="Edit">
-                                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"></path></svg>
-                                </button>
-                                <button wire:click="delete({{ $inv->id }})" wire:confirm="Hapus?" class="p-1.5 text-red-600 border rounded hover:bg-red-50" title="Hapus">
-                                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path></svg>
-                                </button>
-                                @endunless
                             </div>
                         </td>
                     </tr>
                     @empty
-                    <tr><td colspan="7" class="px-6 py-12 text-center text-gray-500 italic">Belum ada invoice yang diterbitkan.</td></tr>
+                    <tr><td colspan="8" class="px-6 py-12 text-center text-gray-500 italic">Belum ada invoice yang diterbitkan.</td></tr>
                     @endforelse
                 </tbody>
             </table>
@@ -1044,6 +1089,53 @@
                     <button type="submit" class="flex-1 py-3 text-sm font-bold text-white bg-blue-600 rounded-xl hover:bg-blue-700" wire:loading.attr="disabled">
                         <span wire:loading.remove wire:target="saveFakturPajak">Simpan</span>
                         <span wire:loading wire:target="saveFakturPajak">Menyimpan...</span>
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+    @endif
+
+    <!-- Modal Bukti Potong PPh -->
+    @if($buktiPotongInvoiceId)
+    <div class="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm" wire:click.self="$set('buktiPotongInvoiceId', null)">
+        <div class="bg-white rounded-2xl shadow-2xl w-full max-w-md mx-4 overflow-hidden border-t-8 border-purple-800">
+            <div class="bg-gradient-to-r from-purple-700 to-indigo-800 px-6 py-4 flex justify-between items-center">
+                <h3 class="text-lg font-bold text-white flex items-center gap-2">
+                    <span>📑 Upload Bukti Potong PPh</span>
+                </h3>
+                <button wire:click="$set('buktiPotongInvoiceId', null)" class="text-white/80 hover:text-white text-2xl">&times;</button>
+            </div>
+            <form wire:submit.prevent="saveBuktiPotong" class="p-6 space-y-4">
+                <div>
+                    <label class="block text-sm font-bold text-gray-700 mb-1">Nomor Bukti Potong (e-Bupot DJP)</label>
+                    <input type="text" wire:model="buktiPotongNumber" class="w-full border-2 border-gray-200 rounded-xl px-4 py-2.5 text-sm focus:border-purple-600 focus:ring-0" placeholder="Contoh: BP-23/07/2026/001">
+                    @error('buktiPotongNumber') <span class="text-red-500 text-xs mt-1 block">{{ $message }}</span> @enderror
+                </div>
+                <div class="grid grid-cols-2 gap-3">
+                    <div>
+                        <label class="block text-sm font-bold text-gray-700 mb-1">Nominal PPh (Rp)</label>
+                        <input type="number" step="0.01" wire:model="buktiPotongAmount" class="w-full border-2 border-gray-200 rounded-xl px-4 py-2.5 text-sm focus:border-purple-600 focus:ring-0" placeholder="0">
+                        @error('buktiPotongAmount') <span class="text-red-500 text-xs mt-1 block">{{ $message }}</span> @enderror
+                    </div>
+                    <div>
+                        <label class="block text-sm font-bold text-gray-700 mb-1">Tanggal Bupot</label>
+                        <input type="date" wire:model="buktiPotongDate" class="w-full border-2 border-gray-200 rounded-xl px-4 py-2.5 text-sm focus:border-purple-600 focus:ring-0">
+                        @error('buktiPotongDate') <span class="text-red-500 text-xs mt-1 block">{{ $message }}</span> @enderror
+                    </div>
+                </div>
+                <div>
+                    <label class="block text-sm font-bold text-gray-700 mb-1">File e-Bupot (PDF / Gambar)</label>
+                    <input type="file" wire:model="buktiPotongFile" accept=".pdf,image/*" class="w-full border-2 border-gray-200 rounded-xl px-4 py-2.5 text-sm focus:border-purple-600">
+                    <div class="text-[11px] text-gray-400 mt-1">Format PDF, JPG, PNG (Max 5MB)</div>
+                    <div wire:loading wire:target="buktiPotongFile" class="text-xs text-purple-600 mt-1 font-bold">Mengupload file...</div>
+                    @error('buktiPotongFile') <span class="text-red-500 text-xs mt-1 block">{{ $message }}</span> @enderror
+                </div>
+                <div class="flex gap-3 pt-2">
+                    <button type="button" wire:click="$set('buktiPotongInvoiceId', null)" class="flex-1 py-3 text-sm font-bold text-gray-600 bg-gray-100 rounded-xl hover:bg-gray-200">Batal</button>
+                    <button type="submit" class="flex-1 py-3 text-sm font-bold text-white bg-purple-700 rounded-xl hover:bg-purple-800 shadow-md" wire:loading.attr="disabled">
+                        <span wire:loading.remove wire:target="saveBuktiPotong">Simpan Bupot</span>
+                        <span wire:loading wire:target="saveBuktiPotong">Menyimpan...</span>
                     </button>
                 </div>
             </form>
