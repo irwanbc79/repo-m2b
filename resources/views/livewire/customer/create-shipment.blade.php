@@ -1,229 +1,270 @@
-<div class="max-w-4xl mx-auto space-y-6">
-    <div class="flex items-center justify-between">
+<div class="max-w-6xl mx-auto space-y-6">
+    <div class="flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div>
-            <h2 class="text-2xl font-bold text-gray-800">Create New Booking</h2>
-            <p class="text-gray-500 text-sm">Submit a new shipment order request.</p>
+            <h2 class="text-2xl font-black text-blue-950 flex items-center gap-2">
+                <span>📦 Create New Shipment Booking</span>
+            </h2>
+            <p class="text-gray-500 text-sm">Submit your freight order request to M2B Logistics team.</p>
         </div>
-        <a href="{{ route('customer.shipments.index') }}" class="text-gray-500 hover:text-gray-700 text-sm font-medium">&larr; Cancel & Back</a>
+        <a href="{{ route('customer.shipments.index') }}" class="inline-flex items-center gap-1.5 text-gray-600 hover:text-blue-900 text-sm font-bold bg-white px-4 py-2 rounded-xl border border-gray-200 shadow-sm transition">
+            &larr; Batal & Kembali
+        </a>
     </div>
 
-    {{-- Pengingat kontekstual: data perusahaan belum lengkap saat booking --}}
+    {{-- STEPPER PROGRESS BAR UI --}}
+    <div class="bg-white rounded-2xl p-4 shadow-sm border border-gray-200">
+        <div class="grid grid-cols-2 md:grid-cols-4 gap-3 text-center">
+            <div class="flex items-center gap-3 p-2 bg-blue-50 rounded-xl border border-blue-200">
+                <span class="w-8 h-8 rounded-lg bg-blue-900 text-white font-black flex items-center justify-center text-sm shadow">1</span>
+                <div class="text-left">
+                    <p class="text-xs font-black text-blue-950 uppercase">Rute & Moda</p>
+                    <p class="text-[10px] text-blue-700">Origin, Dest & Mode</p>
+                </div>
+            </div>
+            <div class="flex items-center gap-3 p-2 bg-gray-50 rounded-xl border border-gray-100">
+                <span class="w-8 h-8 rounded-lg bg-gray-200 text-gray-700 font-bold flex items-center justify-center text-sm">2</span>
+                <div class="text-left">
+                    <p class="text-xs font-bold text-gray-700 uppercase">Detail Kargo</p>
+                    <p class="text-[10px] text-gray-500">Dimensi, Weight, CBM</p>
+                </div>
+            </div>
+            <div class="flex items-center gap-3 p-2 bg-gray-50 rounded-xl border border-gray-100">
+                <span class="w-8 h-8 rounded-lg bg-gray-200 text-gray-700 font-bold flex items-center justify-center text-sm">3</span>
+                <div class="text-left">
+                    <p class="text-xs font-bold text-gray-700 uppercase">HS Code & Pajak</p>
+                    <p class="text-[10px] text-gray-500">BTKI & Catatan</p>
+                </div>
+            </div>
+            <div class="flex items-center gap-3 p-2 bg-gray-50 rounded-xl border border-gray-100">
+                <span class="w-8 h-8 rounded-lg bg-gray-200 text-gray-700 font-bold flex items-center justify-center text-sm">4</span>
+                <div class="text-left">
+                    <p class="text-xs font-bold text-gray-700 uppercase">Submit Booking</p>
+                    <p class="text-[10px] text-gray-500">Proses ke Admin</p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    {{-- Pengingat kontekstual data perusahaan --}}
     @php($__bookCust = auth()->user()?->customer)
     @if($__bookCust && ($__bookDq = $__bookCust->dataQuality())['level'] !== 'good')
-    <div class="rounded-xl border {{ $__bookDq['level'] === 'bad' ? 'bg-red-50 border-red-200' : 'bg-amber-50 border-amber-200' }} p-4 flex items-start gap-3">
+    <div class="rounded-2xl border {{ $__bookDq['level'] === 'bad' ? 'bg-red-50 border-red-200' : 'bg-amber-50 border-amber-200' }} p-4 flex items-start gap-3 shadow-sm">
         <svg class="w-6 h-6 shrink-0 mt-0.5 {{ $__bookDq['level'] === 'bad' ? 'text-red-500' : 'text-amber-500' }}" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01M5.07 19h13.86c1.54 0 2.5-1.67 1.73-3L13.73 4a2 2 0 00-3.46 0L3.34 16c-.77 1.33.19 3 1.73 3z"/></svg>
         <div class="flex-1">
-            <p class="text-sm font-bold {{ $__bookDq['level'] === 'bad' ? 'text-red-800' : 'text-amber-800' }}">Data perusahaan Anda belum lengkap</p>
+            <p class="text-sm font-bold {{ $__bookDq['level'] === 'bad' ? 'text-red-800' : 'text-amber-800' }}">Data Perusahaan Anda Belum Lengkap</p>
             <p class="text-xs {{ $__bookDq['level'] === 'bad' ? 'text-red-700' : 'text-amber-700' }} mt-0.5">
-                Booking tetap bisa dikirim, tetapi shipment <strong>tidak dapat diproses ke dokumen kepabeanan/invoice</strong> sampai data perusahaan (nama resmi, NPWP, alamat) lengkap &amp; benar.
+                Booking tetap dapat dikirim, tetapi proses dokumen kepabeanan/invoice membutuhkan kelengkapan nama resmi, NPWP, &amp; alamat perusahaan.
             </p>
-            <a href="{{ route('customer.profile') }}" class="inline-flex items-center gap-1 mt-2 text-white text-xs font-bold px-3 py-1.5 rounded-lg transition {{ $__bookDq['level'] === 'bad' ? 'bg-red-600 hover:bg-red-700' : 'bg-amber-500 hover:bg-amber-600' }}">
-                👤 Lengkapi Data Dulu
+            <a href="{{ route('customer.profile') }}" class="inline-flex items-center gap-1 mt-2 text-white text-xs font-bold px-3 py-1.5 rounded-lg transition shadow {{ $__bookDq['level'] === 'bad' ? 'bg-red-600 hover:bg-red-700' : 'bg-amber-600 hover:bg-amber-700' }}">
+                👤 Lengkapi Data Profil
             </a>
         </div>
     </div>
     @endif
 
-    <div class="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
-        <div class="p-6 md:p-8 space-y-6">
-            
-            <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
-                <div>
-                    <label class="block text-sm font-bold text-gray-700 mb-2">Origin (City/Port)</label>
-                    <input type="text" wire:model="origin" class="w-full border-gray-300 rounded-lg focus:ring-m2b-primary focus:border-m2b-primary" placeholder="e.g. Shanghai, China">
-                    @error('origin') <span class="text-red-500 text-xs">{{ $message }}</span> @enderror
-                </div>
-                <div>
-                    <label class="block text-sm font-bold text-gray-700 mb-2">Destination (City/Port)</label>
-                    <input type="text" wire:model="destination" class="w-full border-gray-300 rounded-lg focus:ring-m2b-primary focus:border-m2b-primary" placeholder="e.g. Jakarta, Indonesia">
-                    @error('destination') <span class="text-red-500 text-xs">{{ $message }}</span> @enderror
-                </div>
-            </div>
-
-            <hr class="border-gray-100">
-
-            <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
-                <div>
-                    <label class="block text-sm font-bold text-gray-700 mb-2">Service Type</label>
-                    <select wire:model="service_type" class="w-full border-gray-300 rounded-lg bg-gray-50">
-                        <option value="import">Import</option>
-                        <option value="export">Export</option>
-                        <option value="domestic">Domestic</option>
-                    </select>
-                </div>
-                <div>
-                    <label class="block text-sm font-bold text-gray-700 mb-2">Transport Mode</label>
-                    <select wire:model="shipment_type" class="w-full border-gray-300 rounded-lg bg-gray-50">
-                        <option value="sea">Sea Freight (Laut)</option>
-                        <option value="air">Air Freight (Udara)</option>
-                        <option value="land">Land Freight (Darat)</option>
-                    </select>
-                </div>
-                <div>
-                    <label class="block text-sm font-bold text-gray-700 mb-2">Container Mode</label>
-                    <select wire:model="container_mode" class="w-full border-gray-300 rounded-lg bg-gray-50">
-                        <option value="LCL">LCL (Less Container)</option>
-                        <option value="FCL">FCL (Full Container)</option>
-                        <option value="Non-Container">Non-Container / Bulk</option>
-                    </select>
-                </div>
-            </div>
-
-            <div class="bg-blue-50 p-5 rounded-lg border border-blue-100">
-                <h4 class="text-sm font-bold text-blue-800 uppercase mb-4 flex items-center">
-                    <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4"></path></svg>
-                    Cargo Details
-                </h4>
-                <div class="grid grid-cols-1 md:grid-cols-5 gap-4">
-                    <div class="md:col-span-2">
-                        <label class="block text-xs font-bold text-gray-500 mb-1">Container Info / Dimensions</label>
-                        <input type="text" wire:model="container_info" class="w-full border-gray-300 rounded-lg text-sm" placeholder="e.g. Description of Goods/ 2x40HC or 120x100x80 cm">
-                    </div>
+    {{-- GRID FORM & LIVE SUMMARY SIDEBAR --}}
+    <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+        
+        {{-- FORM UTAMA (2 COLS) --}}
+        <div class="lg:col-span-2 space-y-6">
+            <div class="bg-white rounded-2xl shadow-sm border border-gray-200 overflow-hidden">
+                <div class="p-6 md:p-8 space-y-6">
+                    
+                    {{-- 1. PRESET RUTE CEPAT & ORIGIN/DESTINATION --}}
                     <div>
-                        <label class="block text-xs font-bold text-gray-500 mb-1">Weight (Kg)</label>
-                        <input type="number" step="0.01" wire:model="weight" class="w-full border-gray-300 rounded-lg text-sm text-right" placeholder="0.00">
-                        @error('weight') <span class="text-red-500 text-xs">{{ $message }}</span> @enderror
-                    </div>
-                    <div>
-                        <label class="block text-xs font-bold text-gray-500 mb-1">Volume (CBM)</label>
-                        <input type="number" step="0.001" wire:model="volume" class="w-full border-gray-300 rounded-lg text-sm text-right" placeholder="0.000">
-                        @error('volume') <span class="text-red-500 text-xs">{{ $message }}</span> @enderror
-                    </div>
-                    <div class="grid grid-cols-2 gap-2">
-                        <div>
-                            <label class="block text-xs font-bold text-gray-500 mb-1">Qty</label>
-                            <input type="number" wire:model="pieces" class="w-full border-gray-300 rounded-lg text-sm text-center" placeholder="0">
+                        <div class="flex items-center justify-between mb-3">
+                            <label class="block text-xs font-black uppercase text-blue-900 tracking-wider">⚡ Preset Rute Populer</label>
+                            <span class="text-[11px] text-gray-400">Klik untuk isi otomatis</span>
                         </div>
-                        <div>
-                            <label class="block text-xs font-bold text-gray-500 mb-1">Kemasan</label>
-                                <select wire:model="package_type" class="w-full border-gray-300 rounded-lg text-sm">
-                                    <option value="">-- Pilih --</option>
-                                    <optgroup label="📦 Packaging">
-                                        <option value="Ctn">Ctn</option>
-                                        <option value="Box">Box</option>
-                                        <option value="Pkgs">Pkgs</option>
-                                        <option value="Plt">Pallet</option>
-                                        <option value="Crate">Crate</option>
-                                        <option value="Case">Case</option>
-                                        <option value="Skid">Skid</option>
-                                    </optgroup>
-                                    <optgroup label="🔗 Bundle">
-                                        <option value="Bdl">Bundle</option>
-                                        <option value="Bale">Bale</option>
-                                        <option value="Coil">Coil</option>
-                                        <option value="Roll">Roll</option>
-                                        <option value="Reel">Reel</option>
-                                    </optgroup>
-                                    <optgroup label="🔢 Satuan">
-                                        <option value="Pcs">Pcs</option>
-                                        <option value="Unit">Unit</option>
-                                        <option value="Set">Set</option>
-                                        <option value="Pair">Pair</option>
-                                        <option value="Dozen">Dozen</option>
-                                        <option value="Ea">Each</option>
-                                    </optgroup>
-                                    <optgroup label="🛢️ Wadah">
-                                        <option value="Bag">Bag</option>
-                                        <option value="Sack">Sack</option>
-                                        <option value="Drum">Drum</option>
-                                        <option value="Barrel">Barrel</option>
-                                        <option value="IBC">IBC</option>
-                                        <option value="Jerrycan">Jerrycan</option>
-                                        <option value="Bottle">Bottle</option>
-                                        <option value="Can">Can</option>
-                                        <option value="Cylinder">Cylinder</option>
-                                        <option value="Tubes">Tubes</option>
-                                        <option value="Tote">Tote</option>
-                                    </optgroup>
-                                    <optgroup label="⚖️ Berat">
-                                        <option value="Kg">Kg</option>
-                                        <option value="Ton">Ton</option>
-                                        <option value="MT">MT</option>
-                                        <option value="Lbs">Lbs</option>
-                                        <option value="Gram">Gram</option>
-                                    </optgroup>
-                                    <optgroup label="📐 Volume">
-                                        <option value="M3">M3</option>
-                                        <option value="CBM">CBM</option>
-                                        <option value="Ltr">Liter</option>
-                                        <option value="Gal">Gallon</option>
-                                        <option value="CFT">CFT</option>
-                                    </optgroup>
-                                    <optgroup label="📏 Ukuran">
-                                        <option value="Mtr">Meter</option>
-                                        <option value="Ft">Feet</option>
-                                        <option value="Yard">Yard</option>
-                                        <option value="SQM">SQM</option>
-                                        <option value="SQF">SQF</option>
-                                    </optgroup>
-                                    <optgroup label="🚢 Logistik">
-                                        <option value="TEU">TEU</option>
-                                        <option value="FEU">FEU</option>
-                                        <option value="Lot">Lot</option>
-                                        <option value="Shipment">Shipment</option>
-                                    </optgroup>
-                                    <optgroup label="📋 Lainnya">
-                                        <option value="Other">Other</option>
-                                    </optgroup>
-                                </select>
+                        <div class="flex flex-wrap gap-2 mb-4">
+                            <button type="button" wire:click="setQuickRoute('Shanghai, China', 'Jakarta, Indonesia')" class="text-xs bg-blue-50 hover:bg-blue-100 text-blue-800 border border-blue-200 font-semibold px-3 py-1.5 rounded-xl transition flex items-center gap-1">
+                                <span>🇨🇳 Shanghai</span> ➔ <span>🇮🇩 Jakarta</span>
+                            </button>
+                            <button type="button" wire:click="setQuickRoute('Guangzhou, China', 'Surabaya, Indonesia')" class="text-xs bg-purple-50 hover:bg-purple-100 text-purple-800 border border-purple-200 font-semibold px-3 py-1.5 rounded-xl transition flex items-center gap-1">
+                                <span>🇨🇳 Guangzhou</span> ➔ <span>🇮🇩 Surabaya</span>
+                            </button>
+                            <button type="button" wire:click="setQuickRoute('Ningbo, China', 'Semarang, Indonesia')" class="text-xs bg-emerald-50 hover:bg-emerald-100 text-emerald-800 border border-emerald-200 font-semibold px-3 py-1.5 rounded-xl transition flex items-center gap-1">
+                                <span>🇨🇳 Ningbo</span> ➔ <span>🇮🇩 Semarang</span>
+                            </button>
+                            <button type="button" wire:click="setQuickRoute('Singapore', 'Jakarta, Indonesia')" class="text-xs bg-amber-50 hover:bg-amber-100 text-amber-800 border border-amber-200 font-semibold px-3 py-1.5 rounded-xl transition flex items-center gap-1">
+                                <span>🇸🇬 Singapore</span> ➔ <span>🇮🇩 Jakarta</span>
+                            </button>
+                        </div>
+
+                        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                            <div>
+                                <label class="block text-sm font-bold text-gray-700 mb-1">Origin (Kota / Pelabuhan Asal) <span class="text-red-500">*</span></label>
+                                <input type="text" wire:model.live="origin" class="w-full border-2 border-gray-200 rounded-xl px-4 py-2.5 text-sm focus:border-blue-600 focus:ring-0" placeholder="e.g. Shanghai, China">
+                                @error('origin') <span class="text-red-500 text-xs mt-1 block">{{ $message }}</span> @enderror
+                            </div>
+                            <div>
+                                <label class="block text-sm font-bold text-gray-700 mb-1">Destination (Kota / Pelabuhan Tujuan) <span class="text-red-500">*</span></label>
+                                <input type="text" wire:model.live="destination" class="w-full border-2 border-gray-200 rounded-xl px-4 py-2.5 text-sm focus:border-blue-600 focus:ring-0" placeholder="e.g. Jakarta, Indonesia">
+                                @error('destination') <span class="text-red-500 text-xs mt-1 block">{{ $message }}</span> @enderror
                             </div>
                         </div>
                     </div>
-                    {{-- HS Code dengan Autocomplete --}}
-                    <div x-data="hsCodeAutocomplete()" class="relative mt-3">
-                        <label class="block text-xs font-bold text-gray-500 mb-1">HS Code (Opsional)</label>
-                        <input type="text" x-model="search" @input.debounce.300ms="fetchResults" @focus="showDropdown = true" @click.away="showDropdown = false" wire:model="hs_code" class="w-full border-gray-300 rounded-lg text-sm font-mono" placeholder="Ketik HS Code atau nama barang..." autocomplete="off">
-                        <div x-show="showDropdown && results.length > 0" x-cloak class="absolute z-50 w-full mt-1 bg-white border border-gray-300 rounded-lg shadow-lg max-h-48 overflow-y-auto">
-                            <template x-for="item in results" :key="item.hs_code">
-                                <div @click="selectItem(item)" class="px-3 py-2 hover:bg-blue-50 cursor-pointer border-b border-gray-100">
-                                    <span class="font-mono text-sm font-bold text-blue-600" x-text="item.hs_code"></span>
-                                    <p class="text-xs text-gray-600 mt-0.5 line-clamp-1" x-text="item.description_id"></p>
-                                </div>
-                            </template>
+
+                    <hr class="border-gray-100">
+
+                    {{-- 2. MODA & SERVICE TYPE --}}
+                    <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+                        <div>
+                            <label class="block text-xs font-bold uppercase text-gray-600 mb-1">Service Type</label>
+                            <select wire:model.live="service_type" class="w-full border-2 border-gray-200 rounded-xl px-3 py-2.5 text-sm font-bold bg-gray-50 focus:border-blue-600 focus:ring-0">
+                                <option value="import">📥 Import</option>
+                                <option value="export">📤 Export</option>
+                                <option value="domestic">🚚 Domestic</option>
+                            </select>
                         </div>
-                        <p class="text-xs text-gray-400 mt-1" x-show="!selectedDesc">Kode tarif kepabeanan (BTKI)</p>
-                        <p class="text-xs text-green-600 mt-1" x-show="selectedDesc" x-text="selectedDesc"></p>
+                        <div>
+                            <label class="block text-xs font-bold uppercase text-gray-600 mb-1">Transport Mode</label>
+                            <select wire:model.live="shipment_type" class="w-full border-2 border-gray-200 rounded-xl px-3 py-2.5 text-sm font-bold bg-gray-50 focus:border-blue-600 focus:ring-0">
+                                <option value="sea">🚢 Sea Freight (Laut)</option>
+                                <option value="air">✈️ Air Freight (Udara)</option>
+                                <option value="land">🚛 Land Freight (Darat)</option>
+                            </select>
+                        </div>
+                        <div>
+                            <label class="block text-xs font-bold uppercase text-gray-600 mb-1">Container Mode</label>
+                            <select wire:model.live="container_mode" class="w-full border-2 border-gray-200 rounded-xl px-3 py-2.5 text-sm font-bold bg-gray-50 focus:border-blue-600 focus:ring-0">
+                                <option value="LCL">📦 LCL (Less Container)</option>
+                                <option value="FCL">🚢 FCL (Full Container)</option>
+                                <option value="Non-Container">🏗️ Non-Container / Bulk</option>
+                            </select>
+                        </div>
                     </div>
+
+                    {{-- 3. CARGO DETAILS --}}
+                    <div class="bg-gradient-to-br from-blue-50/80 to-indigo-50/50 p-5 rounded-2xl border border-blue-100 space-y-4">
+                        <h4 class="text-xs font-black text-blue-900 uppercase tracking-widest flex items-center gap-2">
+                            <svg class="w-4 h-4 text-blue-700" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4"></path></svg>
+                            Detail Barang & Dimensi Kargo
+                        </h4>
+                        
+                        <div>
+                            <label class="block text-xs font-bold text-gray-600 mb-1">Deskripsi Barang & Container Info</label>
+                            <input type="text" wire:model.live="container_info" class="w-full border-2 border-gray-200 rounded-xl px-4 py-2 text-sm bg-white focus:border-blue-600 focus:ring-0" placeholder="e.g. Spareparts Mesin / 2x40HC atau Dimensi 120x100x80 cm">
+                        </div>
+
+                        <div class="grid grid-cols-1 md:grid-cols-3 gap-3">
+                            <div>
+                                <label class="block text-xs font-bold text-gray-600 mb-1">Jumlah (Qty) <span class="text-red-500">*</span></label>
+                                <input type="number" wire:model.live="pieces" class="w-full border-2 border-gray-200 rounded-xl px-3 py-2 text-sm text-center font-bold bg-white focus:border-blue-600 focus:ring-0" placeholder="1">
+                                @error('pieces') <span class="text-red-500 text-xs mt-1 block">{{ $message }}</span> @enderror
+                            </div>
+                            <div>
+                                <label class="block text-xs font-bold text-gray-600 mb-1">Kemasan <span class="text-red-500">*</span></label>
+                                <select wire:model.live="package_type" class="w-full border-2 border-gray-200 rounded-xl px-3 py-2 text-sm font-semibold bg-white focus:border-blue-600 focus:ring-0">
+                                    <option value="Colli">Colli</option>
+                                    <option value="Ctn">Carton (Ctn)</option>
+                                    <option value="Box">Box</option>
+                                    <option value="Plt">Pallet (Plt)</option>
+                                    <option value="Crate">Crate</option>
+                                    <option value="Drum">Drum</option>
+                                    <option value="Bag">Bag</option>
+                                    <option value="Pcs">Pcs</option>
+                                    <option value="Unit">Unit</option>
+                                </select>
+                            </div>
+                            <div>
+                                <label class="block text-xs font-bold text-gray-600 mb-1">Berat Total (Kg)</label>
+                                <input type="number" step="0.01" wire:model.live="weight" class="w-full border-2 border-gray-200 rounded-xl px-3 py-2 text-sm text-right font-bold bg-white focus:border-blue-600 focus:ring-0" placeholder="0.00">
+                            </div>
+                        </div>
+
+                        <div>
+                            <label class="block text-xs font-bold text-gray-600 mb-1">Volume Total (CBM / M³)</label>
+                            <input type="number" step="0.001" wire:model.live="volume" class="w-full border-2 border-gray-200 rounded-xl px-4 py-2 text-sm text-right font-bold bg-white focus:border-blue-600 focus:ring-0" placeholder="0.000">
+                        </div>
+
+                        {{-- HS Code Autocomplete --}}
+                        <div x-data="hsCodeAutocomplete()" class="relative pt-1">
+                            <label class="block text-xs font-bold text-gray-600 mb-1">HS Code BTKI (Opsional / Direkomendasikan)</label>
+                            <input type="text" x-model="search" @input.debounce.300ms="fetchResults" @focus="showDropdown = true" @click.away="showDropdown = false" wire:model.live="hs_code" class="w-full border-2 border-gray-200 rounded-xl px-4 py-2 text-sm font-mono bg-white focus:border-blue-600 focus:ring-0" placeholder="Ketik 8 digit HS Code atau nama komoditas..." autocomplete="off">
+                            <div x-show="showDropdown && results.length > 0" x-cloak class="absolute z-50 w-full mt-1 bg-white border-2 border-blue-500 rounded-xl shadow-xl max-h-48 overflow-y-auto divide-y divide-gray-100">
+                                <template x-for="item in results" :key="item.hs_code">
+                                    <div @click="selectItem(item)" class="px-4 py-2.5 hover:bg-blue-50 cursor-pointer transition">
+                                        <span class="font-mono text-sm font-bold text-blue-700" x-text="item.hs_code"></span>
+                                        <p class="text-xs text-gray-600 line-clamp-1" x-text="item.description_id"></p>
+                                    </div>
+                                </template>
+                            </div>
+                        </div>
+                    </div>
+
+                    {{-- 4. CATATAN / SPECIAL INSTRUCTIONS --}}
+                    <div>
+                        <label class="block text-sm font-bold text-gray-700 mb-1">Catatan / Instruksi Khusus</label>
+                        <textarea wire:model.live="notes" rows="3" class="w-full border-2 border-gray-200 rounded-xl p-3 text-sm focus:border-blue-600 focus:ring-0" placeholder="Contoh: Barang butuh kontainer pendingin (Reefer) / Penanganan khusus muatan berharga..."></textarea>
+                    </div>
+
                 </div>
             </div>
-
-            <div>
-                <label class="block text-sm font-bold text-gray-700 mb-2">Notes / Instructions</label>
-                <textarea wire:model="notes" rows="3" class="w-full border-gray-300 rounded-lg" placeholder="Any special handling instructions?"></textarea>
-            </div>
-
-            <div class="flex items-center justify-end gap-4 pt-4 border-t border-gray-100">
-                <a href="{{ route('customer.shipments.index') }}" class="text-gray-500 hover:text-gray-800 font-medium text-sm px-4 py-2">Cancel</a>
-                <button wire:click="save" class="bg-m2b-primary hover:bg-blue-900 text-white font-bold py-3 px-8 rounded-lg shadow-lg transform transition hover:-translate-y-0.5 flex items-center">
-                    <svg wire:loading.remove wire:target="save" class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
-                    <svg wire:loading wire:target="save" class="animate-spin -ml-1 mr-3 h-5 w-5 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg>
-                    Submit Booking
-                </button>
-            </div>
-
         </div>
+
+        {{-- LIVE SUMMARY STICKY SIDEBAR (1 COL) --}}
+        <div class="space-y-6">
+            <div class="bg-gradient-to-b from-blue-950 to-indigo-900 rounded-2xl shadow-xl border border-blue-800 text-white p-6 sticky top-6 space-y-6">
+                <div class="flex items-center justify-between border-b border-blue-800/80 pb-4">
+                    <h3 class="font-black text-sm uppercase tracking-widest text-blue-200 flex items-center gap-2">
+                        <span>📋 Ringkasan Order</span>
+                    </h3>
+                    <span class="px-2.5 py-0.5 bg-blue-500/30 text-blue-200 border border-blue-400/30 rounded-full text-[10px] font-bold uppercase">Live Preview</span>
+                </div>
+
+                {{-- Visual Route Badge --}}
+                <div class="bg-white/10 rounded-xl p-4 border border-white/10 space-y-2">
+                    <div class="text-xs text-blue-200 font-bold uppercase tracking-wider">Rute Pengiriman</div>
+                    <div class="flex items-center justify-between text-sm font-black">
+                        <span class="text-white">{{ $origin ?: 'Origin' }}</span>
+                        <span class="text-blue-400">➔</span>
+                        <span class="text-white">{{ $destination ?: 'Destination' }}</span>
+                    </div>
+                </div>
+
+                {{-- Mode & Cargo Specs --}}
+                <div class="space-y-3 text-xs">
+                    <div class="flex justify-between items-center border-b border-blue-800/50 pb-2">
+                        <span class="text-blue-300">Layanan:</span>
+                        <span class="font-bold text-white uppercase">{{ $service_type }} ({{ $shipment_type }})</span>
+                    </div>
+                    <div class="flex justify-between items-center border-b border-blue-800/50 pb-2">
+                        <span class="text-blue-300">Moda Kontainer:</span>
+                        <span class="font-bold text-amber-300 uppercase">{{ $container_mode }}</span>
+                    </div>
+                    <div class="flex justify-between items-center border-b border-blue-800/50 pb-2">
+                        <span class="text-blue-300">Jumlah / Kemasan:</span>
+                        <span class="font-bold text-white">{{ $pieces ?: 0 }} {{ $package_type }}</span>
+                    </div>
+                    <div class="flex justify-between items-center border-b border-blue-800/50 pb-2">
+                        <span class="text-blue-300">Berat Total:</span>
+                        <span class="font-bold text-white">{{ $weight ? number_format($weight, 2, ',', '.') . ' Kg' : '-' }}</span>
+                    </div>
+                    <div class="flex justify-between items-center border-b border-blue-800/50 pb-2">
+                        <span class="text-blue-300">Volume Total:</span>
+                        <span class="font-bold text-white">{{ $volume ? number_format($volume, 3, ',', '.') . ' CBM' : '-' }}</span>
+                    </div>
+                    @if($hs_code)
+                    <div class="flex justify-between items-center border-b border-blue-800/50 pb-2">
+                        <span class="text-blue-300">HS Code BTKI:</span>
+                        <span class="font-mono font-bold text-green-300">{{ $hs_code }}</span>
+                    </div>
+                    @endif
+                </div>
+
+                {{-- Submit Button --}}
+                <div class="pt-2">
+                    <button wire:click="save" wire:loading.attr="disabled" class="w-full bg-gradient-to-r from-emerald-500 to-green-600 hover:from-emerald-600 hover:to-green-700 text-white font-black py-4 px-6 rounded-xl shadow-lg transform transition hover:-translate-y-0.5 flex items-center justify-center gap-2 text-base">
+                        <svg wire:loading.remove wire:target="save" class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path></svg>
+                        <svg wire:loading wire:target="save" class="animate-spin h-5 w-5 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg>
+                        <span wire:loading.remove wire:target="save">Kirim Booking Sekarang</span>
+                        <span wire:loading wire:target="save">Memproses Booking...</span>
+                    </button>
+                    <p class="text-[11px] text-blue-300 text-center mt-2">Tim operasional M2B akan langsung memproses booking Anda.</p>
+                </div>
+            </div>
+        </div>
+
     </div>
-<script>
-function hsCodeAutocomplete() {
-    return {
-        search: "",
-        results: [],
-        showDropdown: false,
-        selectedDesc: "",
-        async fetchResults() {
-            if (this.search.length < 2) { this.results = []; return; }
-            try {
-                const response = await fetch(`/api/hs-codes/search?q=${encodeURIComponent(this.search)}`);
-                this.results = await response.json();
-            } catch (e) { this.results = []; }
-        },
-        selectItem(item) {
-            this.search = item.hs_code;
-            this.selectedDesc = item.description_id;
-            this.showDropdown = false;
-            this.$wire.set("hs_code", item.hs_code);
-        }
-    }
-}
-</script>
 </div>

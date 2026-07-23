@@ -67,11 +67,25 @@
         <div class="search-box">
             <div style="display: flex; gap: 12px; flex-wrap: wrap;">
                 <div style="flex: 1; min-width: 300px;">
-                    <input type="text" wire:model.live.debounce.300ms="search" class="search-input" placeholder="Cari kode HS atau deskripsi barang...">
+                    <input type="text" wire:model.live.debounce.300ms="search" class="search-input" placeholder="Cari kode HS (e.g. 8517.13.00) atau deskripsi barang...">
                 </div>
-                @if($search)<button wire:click="$set('search', '')" class="btn-clear">✕ Clear</button>@endif
+                @if($search || $selectedChapter)<button wire:click="$set('search', ''); $set('selectedChapter', '')" class="btn-clear">✕ Clear Filter</button>@endif
             </div>
+
+            {{-- QUICK CHAPTER FILTER CHIPS --}}
+            <div style="margin-top:16px; border-top:1px solid #f1f5f9; pt-12;">
+                <div style="font-size:11px; font-weight:700; color:#64748b; text-transform:uppercase; letter-spacing:0.05em; margin-bottom:8px;">⚡ Quick Filter Bab BTKI Populer:</div>
+                <div style="display:flex; flex-wrap:wrap; gap:8px;">
+                    <button type="button" wire:click="filterByChapter('85')" class="badge" style="background:{{ $selectedChapter == '85' ? '#3b82f6' : '#eff6ff' }}; color:{{ $selectedChapter == '85' ? 'white' : '#1d4ed8' }}; padding:6px 12px; border-radius:8px; font-weight:700; border:1px solid #bfdbfe; cursor:pointer;">⚡ Bab 85: Elektronik & HP</button>
+                    <button type="button" wire:click="filterByChapter('84')" class="badge" style="background:{{ $selectedChapter == '84' ? '#3b82f6' : '#eff6ff' }}; color:{{ $selectedChapter == '84' ? 'white' : '#1d4ed8' }}; padding:6px 12px; border-radius:8px; font-weight:700; border:1px solid #bfdbfe; cursor:pointer;">⚙️ Bab 84: Mesin & Sparepart</button>
+                    <button type="button" wire:click="filterByChapter('39')" class="badge" style="background:{{ $selectedChapter == '39' ? '#3b82f6' : '#eff6ff' }}; color:{{ $selectedChapter == '39' ? 'white' : '#1d4ed8' }}; padding:6px 12px; border-radius:8px; font-weight:700; border:1px solid #bfdbfe; cursor:pointer;">🧪 Bab 39: Plastik & Bahan Baku</button>
+                    <button type="button" wire:click="filterByChapter('62')" class="badge" style="background:{{ $selectedChapter == '62' ? '#3b82f6' : '#eff6ff' }}; color:{{ $selectedChapter == '62' ? 'white' : '#1d4ed8' }}; padding:6px 12px; border-radius:8px; font-weight:700; border:1px solid #bfdbfe; cursor:pointer;">👕 Bab 62: Pakaian & Tekstil</button>
+                    <button type="button" wire:click="filterByChapter('87')" class="badge" style="background:{{ $selectedChapter == '87' ? '#3b82f6' : '#eff6ff' }}; color:{{ $selectedChapter == '87' ? 'white' : '#1d4ed8' }}; padding:6px 12px; border-radius:8px; font-weight:700; border:1px solid #bfdbfe; cursor:pointer;">🚗 Bab 87: Otomotif & Kendaraan</button>
+                </div>
+            </div>
+
             @if($search)<div style="margin-top: 12px; padding: 10px; background: #eff6ff; border-radius: 6px; color: #1e40af;">📌 Pencarian: "{{ $search }}" ({{ $results->total() }} hasil)</div>@endif
+            @if($selectedChapter)<div style="margin-top: 12px; padding: 10px; background: #f0fdf4; border-radius: 6px; color: #166534;">📁 Filter Bab BTKI {{ $selectedChapter }} ({{ $results->total() }} hasil)</div>@endif
         </div>
         @if($selectedCode && is_array($hierarchy) && count($hierarchy) > 0)
         <div class="hierarchy-panel">
@@ -133,7 +147,7 @@
         <div wire:loading.remove>
             @if($results->count() > 0)
             <div style="margin-bottom:1rem;"><h2 style="font-size:18px;color:#374151;margin:0;">📊 Hasil Pencarian ({{ $results->total() }} kode)</h2></div>
-            <div class="table-header"><span>KODE</span><span>URAIAN (INDONESIA)</span><span>DESCRIPTION (ENGLISH)</span><span>BEA MASUK</span><span>BEA KELUAR</span><span>INFO</span></div>
+            <div class="table-header"><span>KODE</span><span>URAIAN (INDONESIA)</span><span>DESCRIPTION (ENGLISH)</span><span>BEA MASUK</span><span>BEA KELUAR</span><span>AKSI & INFO</span></div>
             @foreach($results as $code)
             <div class="result-card {{ $selectedCode == $code->hs_code ? 'selected' : '' }}">
                 <div class="table-row">
@@ -161,9 +175,8 @@
     @endif
 </div>
                     <div style="display:flex;align-items:center;flex-wrap:wrap;gap:4px;">
-                        <span class="badge badge-level">{{ $code->hs_level }} Digit</span>
-                        @if($code->chapter_number)<span class="badge badge-chapter">Bab {{ $code->chapter_number }}</span>@endif
-                        <button wire:click="showHierarchy('{{ $code->hs_code }}')" class="btn-detail" title="Lihat Detail Hierarki">👁</button>
+                        <button wire:click="showHierarchy('{{ $code->hs_code }}')" class="btn-detail" title="Lihat Detail Hierarki">👁 Detail</button>
+                        <a href="{{ route('customer.shipments.create', ['hs_code' => $code->hs_code]) }}" class="btn-detail" style="background:#3b82f6; text-decoration:none;" title="Gunakan HS Code ini di Create Booking">📦 Booking</a>
                     </div>
                 </div>
             </div>

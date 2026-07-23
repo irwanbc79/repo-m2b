@@ -138,14 +138,29 @@
 
             {{-- PARAMETER TARIF --}}
             <div class="bg-white rounded-[2.5rem] shadow-xl shadow-blue-900/5 border border-gray-100 p-8 md:p-10">
-                <div class="flex items-center gap-3 border-b border-gray-50 pb-6 mb-10">
+                <div class="flex items-center gap-3 border-b border-gray-50 pb-6 mb-6">
                     <span class="bg-slate-900 text-white w-7 h-7 rounded-xl flex items-center justify-center text-xs font-black">02</span>
                     <h4 class="font-black text-slate-800 uppercase text-xs tracking-widest">Detail Tarif Pajak (%)</h4>
                     <button wire:click="toggleBreakdown" class="ml-auto text-[10px] font-black text-blue-600 hover:underline uppercase tracking-widest">Info Tarif</button>
                 </div>
 
+                {{-- SWITCH TOGGLE NPWP --}}
+                <div class="p-4 bg-gradient-to-r from-purple-50 to-indigo-50 rounded-2xl border border-purple-200 mb-8 flex items-center justify-between gap-4">
+                    <div>
+                        <div class="flex items-center gap-2">
+                            <span class="font-black text-xs text-purple-900 uppercase">Status Kepemilikan NPWP / API Impor</span>
+                            <span class="px-2 py-0.5 rounded text-[10px] font-bold uppercase {{ $has_npwp ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700' }}">{{ $has_npwp ? 'PPh Normal' : 'PPh 2x Lipat' }}</span>
+                        </div>
+                        <p class="text-[11px] text-purple-700 mt-0.5">Importir tanpa NPWP dikenakan penyesuaian PPh Impor 2x lipat sesuai PMK & UU PPh Art 22.</p>
+                    </div>
+                    <label class="relative inline-flex items-center cursor-pointer shrink-0">
+                        <input type="checkbox" wire:model.live="has_npwp" class="sr-only peer">
+                        <div class="w-11 h-6 bg-gray-200 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-purple-700"></div>
+                    </label>
+                </div>
+
                 @if($showBreakdown)
-                <div class="mb-10 p-5 bg-blue-50 rounded-2xl border border-blue-100 text-xs text-slate-600 leading-relaxed italic animate-fade-in">
+                <div class="mb-8 p-5 bg-blue-50 rounded-2xl border border-blue-100 text-xs text-slate-600 leading-relaxed italic animate-fade-in">
                     Parameter tarif dihitung dari Nilai Pabean (BM) dan Nilai Impor (PPN, PPnBM, PPh) sesuai UU Harmonisasi Peraturan Perpajakan.
                 </div>
                 @endif
@@ -173,7 +188,8 @@
                     
                     <div class="flex flex-col items-center justify-center gap-1 relative z-10 mb-12">
                         <span class="text-white/20 text-3xl font-black italic tracking-widest leading-none">IDR</span>
-                        <span class="text-6xl md:text-7xl font-black text-white font-mono tracking-tighter leading-none block mt-2">{{ number_format($total_pungutan, 0, ',', '.') }}</span>
+                        <span class="text-6xl md:text-7xl font-black text-white font-mono tracking-tighter leading-none block mt-2" title="Rp {{ number_format($total_pungutan, 0, ',', '.') }}">{{ \App\Support\NumberHelper::formatCompact($total_pungutan) }}</span>
+                        <span class="text-xs text-blue-200/60 font-mono mt-1">Rp {{ number_format($total_pungutan, 0, ',', '.') }}</span>
                     </div>
                     
                     <div class="mt-10 pt-12 border-t border-white/10 relative z-10 space-y-8">
@@ -196,19 +212,24 @@
                     </div>
                 </div>
                 
-                <div class="p-10 bg-white/5 backdrop-blur-3xl border-t border-white/10 space-y-6">
-                    <div class="grid grid-cols-2 gap-4">
-                        <button wire:click="saveToHistory" class="py-5 bg-emerald-500 text-white font-black rounded-2xl hover:bg-emerald-600 transition-all text-[10px] uppercase tracking-widest flex items-center justify-center gap-2 shadow-xl shadow-emerald-900/20 active:scale-95">
+                <div class="p-8 bg-white/5 backdrop-blur-3xl border-t border-white/10 space-y-4">
+                    {{-- TOMBOL CONVERT SIMULATION TO BOOKING --}}
+                    <a href="{{ route('customer.shipments.create') }}" class="w-full py-4 bg-gradient-to-r from-emerald-500 to-green-600 hover:from-emerald-600 hover:to-green-700 text-white font-black rounded-2xl transition-all text-xs uppercase tracking-widest flex items-center justify-center gap-2 shadow-xl shadow-emerald-900/30">
+                        🚀 Buat Booking dari Hasil Simulasi
+                    </a>
+
+                    <div class="grid grid-cols-2 gap-3">
+                        <button wire:click="saveToHistory" class="py-3.5 bg-emerald-500 text-white font-black rounded-xl hover:bg-emerald-600 transition-all text-[10px] uppercase tracking-widest flex items-center justify-center gap-2 shadow-xl shadow-emerald-900/20 active:scale-95">
                             💾 Simpan
                         </button>
                         <button wire:click="copyToClipboard" 
                                 x-data x-on:copy-text.window="navigator.clipboard.writeText($event.detail.text); $dispatch('notify', {type: 'success', message: 'Berhasil disalin!'})"
-                                class="py-5 bg-blue-600 text-white font-black rounded-2xl hover:bg-blue-700 transition-all text-[10px] uppercase tracking-widest flex items-center justify-center gap-2 shadow-xl shadow-blue-900/20 active:scale-95">
+                                class="py-3.5 bg-blue-600 text-white font-black rounded-xl hover:bg-blue-700 transition-all text-[10px] uppercase tracking-widest flex items-center justify-center gap-2 shadow-xl shadow-blue-900/20 active:scale-95">
                             📋 Copy Result
                         </button>
                     </div>
 
-                    <button wire:click="resetCalculator" class="w-full py-5 bg-white text-slate-900 font-black rounded-2xl hover:bg-red-600 hover:text-white transition-all text-[10px] uppercase tracking-[0.3em] flex items-center justify-center gap-3 active:scale-95">
+                    <button wire:click="resetCalculator" class="w-full py-3 bg-white/10 text-gray-300 font-bold rounded-xl hover:bg-red-600 hover:text-white transition-all text-[10px] uppercase tracking-[0.2em] flex items-center justify-center gap-3 active:scale-95">
                         RESET SIMULASI
                     </button>
                 </div>

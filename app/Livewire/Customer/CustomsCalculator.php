@@ -18,12 +18,33 @@ class CustomsCalculator extends Component
     public $is_auto_kurs = true;
 
     // =========================
-    // TARIF (%)
+    // TARIF (%) & NPWP
     // =========================
     public $tarif_bm = 10;
     public $tarif_ppn = 11;
     public $tarif_ppnbm = 0;
     public $tarif_pph = 7.5;
+    public $has_npwp = true; // Default Memiliki NPWP (PPh Standar)
+
+    public function updatedHasNpwp()
+    {
+        // Jika tidak punya NPWP, tarif PPh 2x lipat (UU PPh Impor Art 22)
+        if (!$this->has_npwp) {
+            $this->tarif_pph = min(100, $this->tarif_pph * 2);
+        } else {
+            $this->applyPreset($this->selectedPreset);
+        }
+        $this->hitung();
+    }
+
+    public function convertToBooking()
+    {
+        return redirect()->route('customer.shipments.create', [
+            'hs_code' => '',
+            'origin' => 'Shanghai, China',
+            'destination' => 'Jakarta, Indonesia',
+        ]);
+    }
 
     // =========================
     // HASIL

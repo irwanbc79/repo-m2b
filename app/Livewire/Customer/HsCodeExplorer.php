@@ -12,6 +12,7 @@ class HsCodeExplorer extends Component
     use WithPagination;
     
     public $search = '';
+    public $selectedChapter = '';
     public $selectedCode = null;
     public $hierarchy = [];
     
@@ -22,6 +23,20 @@ class HsCodeExplorer extends Component
         $this->resetPage();
         $this->selectedCode = null;
         $this->hierarchy = [];
+    }
+
+    public function filterByChapter($chap)
+    {
+        $this->selectedChapter = $chap;
+        $this->search = '';
+        $this->resetPage();
+    }
+
+    public function setSearch($term)
+    {
+        $this->search = $term;
+        $this->selectedChapter = '';
+        $this->resetPage();
     }
     
     public function showHierarchy($hsCode)
@@ -118,6 +133,10 @@ class HsCodeExplorer extends Component
         $query = DB::table('hs_codes')
             ->select('hs_code', 'description_id', 'description_en', 'hs_level', 'chapter_number', 'parent_code', 'import_duty', 'export_duty');
             
+        if (!empty(trim($this->selectedChapter))) {
+            $query->where('chapter_number', $this->selectedChapter);
+        }
+
         if (!empty(trim($this->search))) {
             $searchTerm = '%' . trim($this->search) . '%';
             $query->where(function($q) use ($searchTerm) {

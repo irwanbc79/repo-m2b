@@ -24,6 +24,25 @@ class CreateShipment extends Component
     public $notes;
     public $hs_code;
 
+    public function mount()
+    {
+        if (request()->has('origin')) {
+            $this->origin = request()->get('origin');
+        }
+        if (request()->has('destination')) {
+            $this->destination = request()->get('destination');
+        }
+        if (request()->has('hs_code')) {
+            $this->hs_code = request()->get('hs_code');
+        }
+        if (request()->has('weight')) {
+            $this->weight = request()->get('weight');
+        }
+        if (request()->has('volume')) {
+            $this->volume = request()->get('volume');
+        }
+    }
+
     // Rules Validasi
     protected $rules = [
         'origin' => 'required|string|max:255',
@@ -36,6 +55,12 @@ class CreateShipment extends Component
         'weight' => 'nullable|numeric|min:0',
         'volume' => 'nullable|numeric|min:0',
     ];
+
+    public function setQuickRoute($origin, $destination)
+    {
+        $this->origin = $origin;
+        $this->destination = $destination;
+    }
 
     public function save()
     {
