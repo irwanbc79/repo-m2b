@@ -153,80 +153,36 @@
                                 <input type="number" wire:model.live="pieces" class="w-full border-2 border-gray-200 rounded-xl px-3 py-2 text-sm text-center font-bold bg-white focus:border-blue-600 focus:ring-0" placeholder="1">
                                 @error('pieces') <span class="text-red-500 text-xs mt-1 block">{{ $message }}</span> @enderror
                             </div>
-                            <div>
+
+                            {{-- SEARCHABLE KEMASAN COMBOBOX --}}
+                            <div x-data="packageTypeSelect()" class="relative">
                                 <label class="block text-xs font-bold text-gray-600 mb-1">Kemasan <span class="text-red-500">*</span></label>
-                                <select wire:model.live="package_type" class="w-full border-2 border-gray-200 rounded-xl px-3 py-2 text-sm font-semibold bg-white focus:border-blue-600 focus:ring-0">
-                                    <option value="">-- Pilih Jenis Kemasan --</option>
-                                    <optgroup label="📦 Packaging">
-                                        <option value="Colli">Colli - Colli</option>
-                                        <option value="Ctn">Ctn - Cartons</option>
-                                        <option value="Box">Box - Kotak</option>
-                                        <option value="Pkgs">Pkgs - Packages</option>
-                                        <option value="Plt">Plt - Pallet</option>
-                                        <option value="Crate">Crate - Krat</option>
-                                        <option value="Case">Case - Peti</option>
-                                        <option value="Skid">Skid - Alas Kayu</option>
-                                    </optgroup>
-                                    <optgroup label="🔗 Bundle/Gulungan">
-                                        <option value="Bdl">Bdl - Bundle</option>
-                                        <option value="Bale">Bale - Bal</option>
-                                        <option value="Coil">Coil - Gulungan</option>
-                                        <option value="Roll">Roll - Roll</option>
-                                        <option value="Reel">Reel - Kumparan</option>
-                                    </optgroup>
-                                    <optgroup label="🔢 Satuan">
-                                        <option value="Pcs">Pcs - Pieces</option>
-                                        <option value="Unit">Unit - Unit</option>
-                                        <option value="Set">Set - Set</option>
-                                        <option value="Pair">Pair - Pasang</option>
-                                        <option value="Dozen">Dozen - Lusin</option>
-                                        <option value="Ea">Ea - Each</option>
-                                    </optgroup>
-                                    <optgroup label="🛢️ Wadah/Container">
-                                        <option value="Bag">Bag - Tas</option>
-                                        <option value="Sack">Sack - Karung</option>
-                                        <option value="Drum">Drum - Drum</option>
-                                        <option value="Barrel">Barrel - Barel</option>
-                                        <option value="IBC">IBC - IBC Tank</option>
-                                        <option value="Jerrycan">Jerrycan - Jerigen</option>
-                                        <option value="Bottle">Bottle - Botol</option>
-                                        <option value="Can">Can - Kaleng</option>
-                                        <option value="Cylinder">Cylinder - Tabung Gas</option>
-                                        <option value="Tubes">Tubes - Tabung</option>
-                                        <option value="Tote">Tote - Tote Bag</option>
-                                    </optgroup>
-                                    <optgroup label="⚖️ Berat">
-                                        <option value="Kg">Kg - Kilogram</option>
-                                        <option value="Ton">Ton - Metric Ton</option>
-                                        <option value="MT">MT - Metric Ton</option>
-                                        <option value="Lbs">Lbs - Pounds</option>
-                                        <option value="Gram">Gram - Gram</option>
-                                    </optgroup>
-                                    <optgroup label="📐 Volume">
-                                        <option value="M3">M3 - Cubic Meter</option>
-                                        <option value="CBM">CBM - Cubic Meter</option>
-                                        <option value="Ltr">Ltr - Liter</option>
-                                        <option value="Gal">Gal - Gallon</option>
-                                        <option value="CFT">CFT - Cubic Feet</option>
-                                    </optgroup>
-                                    <optgroup label="📏 Panjang/Luas">
-                                        <option value="Mtr">Mtr - Meter</option>
-                                        <option value="Ft">Ft - Feet</option>
-                                        <option value="Yard">Yard - Yard</option>
-                                        <option value="SQM">SQM - Square Meter</option>
-                                        <option value="SQF">SQF - Square Feet</option>
-                                    </optgroup>
-                                    <optgroup label="🚢 Logistik">
-                                        <option value="TEU">TEU - 20ft Container</option>
-                                        <option value="FEU">FEU - 40ft Container</option>
-                                        <option value="Lot">Lot - Lot</option>
-                                        <option value="Shipment">Shipment - Pengiriman</option>
-                                    </optgroup>
-                                    <optgroup label="📋 Lainnya">
-                                        <option value="Other">Other - Lainnya</option>
-                                    </optgroup>
-                                </select>
+                                <button type="button" @click="toggle" class="w-full border-2 border-gray-200 rounded-xl px-3 py-2 text-sm font-bold bg-white text-left flex items-center justify-between focus:border-blue-600 focus:ring-0">
+                                    <span x-text="selectedLabel || '-- Pilih Jenis Kemasan --'" :class="selectedLabel ? 'text-gray-900 font-bold' : 'text-gray-400 font-normal'"></span>
+                                    <svg class="w-4 h-4 text-gray-400 transform transition-transform" :class="open ? 'rotate-180' : ''" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path></svg>
+                                </button>
+
+                                <div x-show="open" @click.away="open = false" x-cloak class="absolute z-50 w-full mt-1 bg-white border-2 border-blue-500 rounded-xl shadow-2xl overflow-hidden max-h-72 flex flex-col">
+                                    <div class="p-2 border-b border-gray-100 bg-gray-50">
+                                        <input type="text" x-model="search" x-ref="searchInput" class="w-full border border-gray-300 rounded-lg px-3 py-1.5 text-xs focus:ring-2 focus:ring-blue-500 focus:border-blue-500" placeholder="🔍 Cari kemasan (Ctn, Box, Drum, Unit)..." autocomplete="off">
+                                    </div>
+                                    <div class="overflow-y-auto flex-1 divide-y divide-gray-50">
+                                        <template x-for="item in filteredOptions" :key="item.value">
+                                            <div @click="select(item)" class="px-3 py-2 text-xs hover:bg-blue-50 cursor-pointer flex items-center justify-between transition" :class="selected === item.value ? 'bg-blue-50/80 font-bold text-blue-900' : 'text-gray-700'">
+                                                <div>
+                                                    <span class="font-bold" x-text="item.label"></span>
+                                                    <span class="text-[10px] text-gray-400 block" x-text="item.group"></span>
+                                                </div>
+                                                <span x-show="selected === item.value" class="text-blue-600 font-bold text-sm">✓</span>
+                                            </div>
+                                        </template>
+                                        <div x-show="filteredOptions.length === 0" class="p-4 text-center text-xs text-gray-400 italic">
+                                            Tidak ada jenis kemasan ditemukan
+                                        </div>
+                                    </div>
+                                </div>
                             </div>
+
                             <div>
                                 <label class="block text-xs font-bold text-gray-600 mb-1">Berat Total (Kg)</label>
                                 <input type="number" step="0.01" wire:model.live="weight" class="w-full border-2 border-gray-200 rounded-xl px-3 py-2 text-sm text-right font-bold bg-white focus:border-blue-600 focus:ring-0" placeholder="0.00">
@@ -238,15 +194,28 @@
                             <input type="number" step="0.001" wire:model.live="volume" class="w-full border-2 border-gray-200 rounded-xl px-4 py-2 text-sm text-right font-bold bg-white focus:border-blue-600 focus:ring-0" placeholder="0.000">
                         </div>
 
-                        {{-- HS Code Autocomplete --}}
+                        {{-- HS CODE AUTOCOMPLETE WITH 8 DIGIT SUPPORT --}}
                         <div x-data="hsCodeAutocomplete()" class="relative pt-1">
                             <label class="block text-xs font-bold text-gray-600 mb-1">HS Code BTKI (Opsional / Direkomendasikan)</label>
-                            <input type="text" x-model="search" @input.debounce.300ms="fetchResults" @focus="showDropdown = true" @click.away="showDropdown = false" wire:model.live="hs_code" class="w-full border-2 border-gray-200 rounded-xl px-4 py-2 text-sm font-mono bg-white focus:border-blue-600 focus:ring-0" placeholder="Ketik 8 digit HS Code atau nama komoditas..." autocomplete="off">
-                            <div x-show="showDropdown && results.length > 0" x-cloak class="absolute z-50 w-full mt-1 bg-white border-2 border-blue-500 rounded-xl shadow-xl max-h-48 overflow-y-auto divide-y divide-gray-100">
+                            <div class="relative">
+                                <input type="text" x-model="search" @input.debounce.300ms="fetchResults" @focus="fetchResults" @click.away="showDropdown = false" class="w-full border-2 border-gray-200 rounded-xl px-4 py-2 text-sm font-mono bg-white focus:border-blue-600 focus:ring-0" placeholder="Ketik 8 digit (e.g. 23096060 / 2309.60.60) atau nama barang..." autocomplete="off">
+                                <div x-show="isLoading" class="absolute right-3 top-2.5">
+                                    <svg class="animate-spin h-4 w-4 text-blue-600" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg>
+                                </div>
+                            </div>
+                            
+                            {{-- Autocomplete Dropdown List --}}
+                            <div x-show="showDropdown && results.length > 0" x-cloak class="absolute z-50 w-full mt-1 bg-white border-2 border-blue-500 rounded-xl shadow-2xl max-h-56 overflow-y-auto divide-y divide-gray-100">
                                 <template x-for="item in results" :key="item.hs_code">
-                                    <div @click="selectItem(item)" class="px-4 py-2.5 hover:bg-blue-50 cursor-pointer transition">
-                                        <span class="font-mono text-sm font-bold text-blue-700" x-text="item.hs_code"></span>
-                                        <p class="text-xs text-gray-600 line-clamp-1" x-text="item.description_id"></p>
+                                    <div @click="selectItem(item)" class="px-4 py-2.5 hover:bg-blue-50 cursor-pointer transition flex items-center justify-between gap-3">
+                                        <div>
+                                            <div class="flex items-center gap-2">
+                                                <span class="font-mono text-sm font-black text-blue-700 bg-blue-50 px-2 py-0.5 rounded border border-blue-200" x-text="item.hs_code"></span>
+                                                <span x-show="item.import_duty" class="text-[10px] bg-green-100 text-green-700 font-bold px-1.5 py-0.5 rounded" x-text="'BM ' + item.import_duty + (isFinite(item.import_duty) ? '%' : '')"></span>
+                                            </div>
+                                            <p class="text-xs text-gray-700 line-clamp-1 mt-1 font-medium" x-text="item.description_id || item.description_en"></p>
+                                        </div>
+                                        <span class="text-blue-600 text-xs font-bold shrink-0">Pilih ➔</span>
                                     </div>
                                 </template>
                             </div>
@@ -329,3 +298,153 @@
 
     </div>
 </div>
+
+{{-- JAVASCRIPT HELPERS UNTUK HS CODE & SEARCHABLE KEMASAN --}}
+<script>
+function hsCodeAutocomplete() {
+    return {
+        search: '',
+        results: [],
+        showDropdown: false,
+        isLoading: false,
+        init() {
+            this.search = this.$wire.get('hs_code') || '';
+            this.$watch('$wire.hs_code', (val) => {
+                if (val !== undefined && val !== this.search) {
+                    this.search = val || '';
+                }
+            });
+        },
+        async fetchResults() {
+            let q = (this.search || '').trim();
+
+            // Auto-format 8 digit tanpa titik e.g. 23096060 -> 2309.60.60
+            let cleanDigits = q.replace(/[^0-9]/g, '');
+            if (cleanDigits.length === 8 && !q.includes('.')) {
+                q = cleanDigits.substring(0,4) + '.' + cleanDigits.substring(4,6) + '.' + cleanDigits.substring(6,8);
+                this.search = q;
+            }
+
+            this.$wire.set('hs_code', q);
+
+            if (q.length < 2) {
+                this.results = [];
+                this.showDropdown = false;
+                return;
+            }
+
+            this.isLoading = true;
+            this.showDropdown = true;
+            try {
+                const response = await fetch(`/api/hs-codes/search?q=${encodeURIComponent(q)}`);
+                const data = await response.json();
+                this.results = data || [];
+            } catch (e) {
+                this.results = [];
+            } finally {
+                this.isLoading = false;
+            }
+        },
+        selectItem(item) {
+            this.search = item.hs_code;
+            this.showDropdown = false;
+            this.$wire.set('hs_code', item.hs_code);
+        }
+    }
+}
+
+function packageTypeSelect() {
+    return {
+        open: false,
+        search: '',
+        selected: '',
+        options: [
+            { value: 'Colli', label: 'Colli - Colli', group: '📦 Packaging' },
+            { value: 'Ctn', label: 'Ctn - Cartons', group: '📦 Packaging' },
+            { value: 'Box', label: 'Box - Kotak', group: '📦 Packaging' },
+            { value: 'Pkgs', label: 'Pkgs - Packages', group: '📦 Packaging' },
+            { value: 'Plt', label: 'Plt - Pallet', group: '📦 Packaging' },
+            { value: 'Crate', label: 'Crate - Krat', group: '📦 Packaging' },
+            { value: 'Case', label: 'Case - Peti', group: '📦 Packaging' },
+            { value: 'Skid', label: 'Skid - Alas Kayu', group: '📦 Packaging' },
+            { value: 'Bdl', label: 'Bdl - Bundle', group: '🔗 Bundle/Gulungan' },
+            { value: 'Bale', label: 'Bale - Bal', group: '🔗 Bundle/Gulungan' },
+            { value: 'Coil', label: 'Coil - Gulungan', group: '🔗 Bundle/Gulungan' },
+            { value: 'Roll', label: 'Roll - Roll', group: '🔗 Bundle/Gulungan' },
+            { value: 'Reel', label: 'Reel - Kumparan', group: '🔗 Bundle/Gulungan' },
+            { value: 'Pcs', label: 'Pcs - Pieces', group: '🔢 Satuan' },
+            { value: 'Unit', label: 'Unit - Unit', group: '🔢 Satuan' },
+            { value: 'Set', label: 'Set - Set', group: '🔢 Satuan' },
+            { value: 'Pair', label: 'Pair - Pasang', group: '🔢 Satuan' },
+            { value: 'Dozen', label: 'Dozen - Lusin', group: '🔢 Satuan' },
+            { value: 'Ea', label: 'Ea - Each', group: '🔢 Satuan' },
+            { value: 'Bag', label: 'Bag - Tas', group: '🛢️ Wadah/Container' },
+            { value: 'Sack', label: 'Sack - Karung', group: '🛢️ Wadah/Container' },
+            { value: 'Drum', label: 'Drum - Drum', group: '🛢️ Wadah/Container' },
+            { value: 'Barrel', label: 'Barrel - Barel', group: '🛢️ Wadah/Container' },
+            { value: 'IBC', label: 'IBC - IBC Tank', group: '🛢️ Wadah/Container' },
+            { value: 'Jerrycan', label: 'Jerrycan - Jerigen', group: '🛢️ Wadah/Container' },
+            { value: 'Bottle', label: 'Bottle - Botol', group: '🛢️ Wadah/Container' },
+            { value: 'Can', label: 'Can - Kaleng', group: '🛢️ Wadah/Container' },
+            { value: 'Cylinder', label: 'Cylinder - Tabung Gas', group: '🛢️ Wadah/Container' },
+            { value: 'Tubes', label: 'Tubes - Tabung', group: '🛢️ Wadah/Container' },
+            { value: 'Tote', label: 'Tote - Tote Bag', group: '🛢️ Wadah/Container' },
+            { value: 'Kg', label: 'Kg - Kilogram', group: '⚖️ Berat' },
+            { value: 'Ton', label: 'Ton - Metric Ton', group: '⚖️ Berat' },
+            { value: 'MT', label: 'MT - Metric Ton', group: '⚖️ Berat' },
+            { value: 'Lbs', label: 'Lbs - Pounds', group: '⚖️ Berat' },
+            { value: 'Gram', label: 'Gram - Gram', group: '⚖️ Berat' },
+            { value: 'M3', label: 'M3 - Cubic Meter', group: '📐 Volume' },
+            { value: 'CBM', label: 'CBM - Cubic Meter', group: '📐 Volume' },
+            { value: 'Ltr', label: 'Ltr - Liter', group: '📐 Volume' },
+            { value: 'Gal', label: 'Gal - Gallon', group: '📐 Volume' },
+            { value: 'CFT', label: 'CFT - Cubic Feet', group: '📐 Volume' },
+            { value: 'Mtr', label: 'Mtr - Meter', group: '📏 Panjang/Luas' },
+            { value: 'Ft', label: 'Ft - Feet', group: '📏 Panjang/Luas' },
+            { value: 'Yard', label: 'Yard - Yard', group: '📏 Panjang/Luas' },
+            { value: 'SQM', label: 'SQM - Square Meter', group: '📏 Panjang/Luas' },
+            { value: 'SQF', label: 'SQF - Square Feet', group: '📏 Panjang/Luas' },
+            { value: 'TEU', label: 'TEU - 20ft Container', group: '🚢 Logistik' },
+            { value: 'FEU', label: 'FEU - 40ft Container', group: '🚢 Logistik' },
+            { value: 'Lot', label: 'Lot - Lot', group: '🚢 Logistik' },
+            { value: 'Shipment', label: 'Shipment - Pengiriman', group: '🚢 Logistik' },
+            { value: 'Other', label: 'Other - Lainnya', group: '📋 Lainnya' }
+        ],
+        init() {
+            this.selected = this.$wire.get('package_type') || 'Colli';
+            this.$watch('$wire.package_type', (val) => {
+                if (val && val !== this.selected) {
+                    this.selected = val;
+                }
+            });
+        },
+        get selectedLabel() {
+            const found = this.options.find(o => o.value === this.selected);
+            return found ? found.label : this.selected;
+        },
+        get filteredOptions() {
+            if (!this.search) return this.options;
+            const s = this.search.toLowerCase();
+            return this.options.filter(o => 
+                o.label.toLowerCase().includes(s) || 
+                o.value.toLowerCase().includes(s) || 
+                o.group.toLowerCase().includes(s)
+            );
+        },
+        toggle() {
+            this.open = !this.open;
+            if (this.open) {
+                this.search = '';
+                this.$nextTick(() => {
+                    if (this.$refs.searchInput) this.$refs.searchInput.focus();
+                });
+            }
+        },
+        select(item) {
+            this.selected = item.value;
+            this.$wire.set('package_type', item.value);
+            this.open = false;
+        }
+    }
+}
+</script>

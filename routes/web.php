@@ -619,22 +619,42 @@ Route::get('/hs-codes', \App\Livewire\HsCode\Explorer::class)->name('hs-codes.ex
 
 // API endpoint for autocomplete - aman dari SQL injection (parameter binding)
 Route::get('/api/hs-codes/search', function (Request $request) {
-    $query = $request->input('q', '');
-    $query = \Illuminate\Support\Str::limit($query, 100); // Batasi panjang input
+    $rawQuery = trim($request->input('q', ''));
+    $query = \Illuminate\Support\Str::limit($rawQuery, 100);
 
     if (strlen($query) < 2) {
         return response()->json([]);
     }
 
+    $cleanDigits = preg_replace('/[^0-9]/', '', $query);
+    
+    // Auto-format 8 digits e.g. 23096060 -> 2309.60.60
+    $formattedDots = null;
+    if (strlen($cleanDigits) === 8) {
+        $formattedDots = substr($cleanDigits, 0, 4) . '.' . substr($cleanDigits, 4, 2) . '.' . substr($cleanDigits, 6, 2);
+    } elseif (strlen($cleanDigits) === 6) {
+        $formattedDots = substr($cleanDigits, 0, 4) . '.' . substr($cleanDigits, 4, 2);
+    }
+
     $pattern = '%' . $query . '%';
     $results = DB::table('hs_codes')
-        ->where('hs_code', 'LIKE', $pattern)
-        ->orWhere('description_id', 'LIKE', $pattern)
-        ->limit(10)
-        ->get(['hs_code', 'description_id', 'hs_level']);
+        ->where(function($q) use ($pattern, $cleanDigits, $formattedDots) {
+            $q->where('hs_code', 'LIKE', $pattern)
+              ->orWhere('description_id', 'LIKE', $pattern)
+              ->orWhere('description_en', 'LIKE', $pattern);
+
+            if (!empty($cleanDigits) && strlen($cleanDigits) >= 2) {
+                $q->orWhereRaw("REPLACE(hs_code, '.', '') LIKE ?", ['%' . $cleanDigits . '%']);
+            }
+            if ($formattedDots) {
+                $q->orWhere('hs_code', 'LIKE', '%' . $formattedDots . '%');
+            }
+        })
+        ->limit(15)
+        ->get(['hs_code', 'description_id', 'description_en', 'hs_level', 'import_duty']);
 
     return response()->json($results);
-})->name('api.hs-codes.search')->middleware('throttle:60,1');
+})->name('api.hs-codes.search')->middleware('throttle:120,1');
 
 // ============================================
 // FIELD DOCUMENTATION ROUTES
