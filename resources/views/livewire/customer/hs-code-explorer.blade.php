@@ -1,21 +1,25 @@
 <div class="max-w-7xl mx-auto space-y-6 pb-12">
     @section('header', 'HS Code Explorer BTKI 2022')
 
-    {{-- HEADER SECTION BANNER --}}
-    <div class="bg-gradient-to-r from-blue-950 via-blue-900 to-indigo-900 text-white rounded-3xl p-6 md:p-8 shadow-xl border border-blue-800/50 space-y-4">
+    {{-- HEADER SECTION --}}
+    <div class="bg-white rounded-3xl p-6 md:p-8 shadow-sm border border-gray-200 space-y-4">
         <div class="flex flex-col md:flex-row md:items-center justify-between gap-4">
-            <div>
-                <h1 class="text-2xl md:text-3xl font-black tracking-tight flex items-center gap-3">
-                    <span>🔍 HS Code Explorer - BTKI 2022</span>
+            <div class="space-y-1">
+                <div class="flex items-center gap-2">
+                    <span class="text-xs font-black uppercase text-blue-900 bg-blue-50 border border-blue-200 px-3 py-1 rounded-full tracking-wider">BTKI 2022 Official Database</span>
+                    <span class="text-xs font-bold text-gray-500">• {{ number_format(\DB::table('hs_codes')->count()) }} Kode HS Active</span>
+                </div>
+                <h1 class="text-2xl md:text-3xl font-black text-slate-900 tracking-tight flex items-center gap-3">
+                    <span>🔍 HS Code Explorer</span>
                 </h1>
-                <p class="text-blue-200 text-xs md:text-sm mt-1">
-                    Database {{ number_format(\DB::table('hs_codes')->count()) }} Kode HS Resmi Kepabeanan Indonesia. Dukungan pencarian 8 digit tanpa titik &amp; nama komoditas.
+                <p class="text-slate-600 text-sm font-medium">
+                    Cari kode tarif Bea Masuk &amp; Lartas resmi Kepabeanan Indonesia. Dukungan pencarian 8-digit tanpa titik &amp; nama komoditas.
                 </p>
             </div>
             
             {{-- KUM HS Toggle Button --}}
             <div x-data="{ showKum: false }" class="shrink-0">
-                <button @click="showKum = !showKum" class="bg-gradient-to-r from-emerald-500 to-teal-600 hover:from-emerald-600 hover:to-teal-700 text-white text-xs font-black px-4 py-2.5 rounded-xl shadow-lg transition flex items-center gap-2">
+                <button @click="showKum = !showKum" class="bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-700 hover:to-teal-700 text-white text-xs font-bold px-4 py-2.5 rounded-xl shadow-sm transition flex items-center gap-2">
                     <span>📚</span>
                     <span x-text="showKum ? 'Tutup KUM HS' : 'Lihat KUM HS (Panduan Klasifikasi)'"></span>
                 </button>
