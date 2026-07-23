@@ -156,15 +156,75 @@
                             <div>
                                 <label class="block text-xs font-bold text-gray-600 mb-1">Kemasan <span class="text-red-500">*</span></label>
                                 <select wire:model.live="package_type" class="w-full border-2 border-gray-200 rounded-xl px-3 py-2 text-sm font-semibold bg-white focus:border-blue-600 focus:ring-0">
-                                    <option value="Colli">Colli</option>
-                                    <option value="Ctn">Carton (Ctn)</option>
-                                    <option value="Box">Box</option>
-                                    <option value="Plt">Pallet (Plt)</option>
-                                    <option value="Crate">Crate</option>
-                                    <option value="Drum">Drum</option>
-                                    <option value="Bag">Bag</option>
-                                    <option value="Pcs">Pcs</option>
-                                    <option value="Unit">Unit</option>
+                                    <option value="">-- Pilih Jenis Kemasan --</option>
+                                    <optgroup label="📦 Packaging">
+                                        <option value="Colli">Colli - Colli</option>
+                                        <option value="Ctn">Ctn - Cartons</option>
+                                        <option value="Box">Box - Kotak</option>
+                                        <option value="Pkgs">Pkgs - Packages</option>
+                                        <option value="Plt">Plt - Pallet</option>
+                                        <option value="Crate">Crate - Krat</option>
+                                        <option value="Case">Case - Peti</option>
+                                        <option value="Skid">Skid - Alas Kayu</option>
+                                    </optgroup>
+                                    <optgroup label="🔗 Bundle/Gulungan">
+                                        <option value="Bdl">Bdl - Bundle</option>
+                                        <option value="Bale">Bale - Bal</option>
+                                        <option value="Coil">Coil - Gulungan</option>
+                                        <option value="Roll">Roll - Roll</option>
+                                        <option value="Reel">Reel - Kumparan</option>
+                                    </optgroup>
+                                    <optgroup label="🔢 Satuan">
+                                        <option value="Pcs">Pcs - Pieces</option>
+                                        <option value="Unit">Unit - Unit</option>
+                                        <option value="Set">Set - Set</option>
+                                        <option value="Pair">Pair - Pasang</option>
+                                        <option value="Dozen">Dozen - Lusin</option>
+                                        <option value="Ea">Ea - Each</option>
+                                    </optgroup>
+                                    <optgroup label="🛢️ Wadah/Container">
+                                        <option value="Bag">Bag - Tas</option>
+                                        <option value="Sack">Sack - Karung</option>
+                                        <option value="Drum">Drum - Drum</option>
+                                        <option value="Barrel">Barrel - Barel</option>
+                                        <option value="IBC">IBC - IBC Tank</option>
+                                        <option value="Jerrycan">Jerrycan - Jerigen</option>
+                                        <option value="Bottle">Bottle - Botol</option>
+                                        <option value="Can">Can - Kaleng</option>
+                                        <option value="Cylinder">Cylinder - Tabung Gas</option>
+                                        <option value="Tubes">Tubes - Tabung</option>
+                                        <option value="Tote">Tote - Tote Bag</option>
+                                    </optgroup>
+                                    <optgroup label="⚖️ Berat">
+                                        <option value="Kg">Kg - Kilogram</option>
+                                        <option value="Ton">Ton - Metric Ton</option>
+                                        <option value="MT">MT - Metric Ton</option>
+                                        <option value="Lbs">Lbs - Pounds</option>
+                                        <option value="Gram">Gram - Gram</option>
+                                    </optgroup>
+                                    <optgroup label="📐 Volume">
+                                        <option value="M3">M3 - Cubic Meter</option>
+                                        <option value="CBM">CBM - Cubic Meter</option>
+                                        <option value="Ltr">Ltr - Liter</option>
+                                        <option value="Gal">Gal - Gallon</option>
+                                        <option value="CFT">CFT - Cubic Feet</option>
+                                    </optgroup>
+                                    <optgroup label="📏 Panjang/Luas">
+                                        <option value="Mtr">Mtr - Meter</option>
+                                        <option value="Ft">Ft - Feet</option>
+                                        <option value="Yard">Yard - Yard</option>
+                                        <option value="SQM">SQM - Square Meter</option>
+                                        <option value="SQF">SQF - Square Feet</option>
+                                    </optgroup>
+                                    <optgroup label="🚢 Logistik">
+                                        <option value="TEU">TEU - 20ft Container</option>
+                                        <option value="FEU">FEU - 40ft Container</option>
+                                        <option value="Lot">Lot - Lot</option>
+                                        <option value="Shipment">Shipment - Pengiriman</option>
+                                    </optgroup>
+                                    <optgroup label="📋 Lainnya">
+                                        <option value="Other">Other - Lainnya</option>
+                                    </optgroup>
                                 </select>
                             </div>
                             <div>
@@ -205,50 +265,51 @@
 
         {{-- LIVE SUMMARY STICKY SIDEBAR (1 COL) --}}
         <div class="space-y-6">
-            <div class="bg-gradient-to-b from-blue-950 to-indigo-900 rounded-2xl shadow-xl border border-blue-800 text-white p-6 sticky top-6 space-y-6">
-                <div class="flex items-center justify-between border-b border-blue-800/80 pb-4">
-                    <h3 class="font-black text-sm uppercase tracking-widest text-blue-200 flex items-center gap-2">
-                        <span>📋 Ringkasan Order</span>
+            <div class="bg-white rounded-2xl shadow-xl border-2 border-blue-600 p-6 sticky top-6 space-y-5">
+                <div class="flex items-center justify-between border-b border-gray-100 pb-4">
+                    <h3 class="font-black text-sm uppercase tracking-wider text-blue-950 flex items-center gap-2">
+                        <span class="text-lg">📋</span>
+                        <span>Ringkasan Order</span>
                     </h3>
-                    <span class="px-2.5 py-0.5 bg-blue-500/30 text-blue-200 border border-blue-400/30 rounded-full text-[10px] font-bold uppercase">Live Preview</span>
+                    <span class="px-2.5 py-0.5 bg-blue-100 text-blue-800 border border-blue-200 rounded-full text-[10px] font-black uppercase">Live Preview</span>
                 </div>
 
                 {{-- Visual Route Badge --}}
-                <div class="bg-white/10 rounded-xl p-4 border border-white/10 space-y-2">
-                    <div class="text-xs text-blue-200 font-bold uppercase tracking-wider">Rute Pengiriman</div>
-                    <div class="flex items-center justify-between text-sm font-black">
-                        <span class="text-white">{{ $origin ?: 'Origin' }}</span>
-                        <span class="text-blue-400">➔</span>
-                        <span class="text-white">{{ $destination ?: 'Destination' }}</span>
+                <div class="bg-gradient-to-r from-blue-50 to-indigo-50 rounded-xl p-4 border border-blue-200 space-y-1.5 shadow-sm">
+                    <div class="text-[10px] font-black text-blue-900 uppercase tracking-wider">Rute Pengiriman</div>
+                    <div class="flex items-center justify-between text-sm font-black text-slate-900">
+                        <span class="text-blue-950 font-extrabold">{{ $origin ?: 'Kota / Pelabuhan Asal' }}</span>
+                        <span class="text-blue-600 font-bold text-base">➔</span>
+                        <span class="text-blue-950 font-extrabold">{{ $destination ?: 'Kota / Pelabuhan Tujuan' }}</span>
                     </div>
                 </div>
 
                 {{-- Mode & Cargo Specs --}}
-                <div class="space-y-3 text-xs">
-                    <div class="flex justify-between items-center border-b border-blue-800/50 pb-2">
-                        <span class="text-blue-300">Layanan:</span>
-                        <span class="font-bold text-white uppercase">{{ $service_type }} ({{ $shipment_type }})</span>
+                <div class="space-y-2.5 text-xs">
+                    <div class="flex justify-between items-center border-b border-gray-100 pb-2">
+                        <span class="text-gray-500 font-bold">Layanan & Moda:</span>
+                        <span class="font-black text-blue-900 uppercase">{{ $service_type }} ({{ $shipment_type }})</span>
                     </div>
-                    <div class="flex justify-between items-center border-b border-blue-800/50 pb-2">
-                        <span class="text-blue-300">Moda Kontainer:</span>
-                        <span class="font-bold text-amber-300 uppercase">{{ $container_mode }}</span>
+                    <div class="flex justify-between items-center border-b border-gray-100 pb-2">
+                        <span class="text-gray-500 font-bold">Moda Kontainer:</span>
+                        <span class="font-black text-purple-900 uppercase bg-purple-50 px-2 py-0.5 rounded border border-purple-200">{{ $container_mode }}</span>
                     </div>
-                    <div class="flex justify-between items-center border-b border-blue-800/50 pb-2">
-                        <span class="text-blue-300">Jumlah / Kemasan:</span>
-                        <span class="font-bold text-white">{{ $pieces ?: 0 }} {{ $package_type }}</span>
+                    <div class="flex justify-between items-center border-b border-gray-100 pb-2">
+                        <span class="text-gray-500 font-bold">Jumlah & Kemasan:</span>
+                        <span class="font-black text-slate-900">{{ $pieces ?: 0 }} {{ $package_type }}</span>
                     </div>
-                    <div class="flex justify-between items-center border-b border-blue-800/50 pb-2">
-                        <span class="text-blue-300">Berat Total:</span>
-                        <span class="font-bold text-white">{{ $weight ? number_format($weight, 2, ',', '.') . ' Kg' : '-' }}</span>
+                    <div class="flex justify-between items-center border-b border-gray-100 pb-2">
+                        <span class="text-gray-500 font-bold">Berat Total:</span>
+                        <span class="font-black text-slate-900">{{ $weight ? number_format($weight, 2, ',', '.') . ' Kg' : '-' }}</span>
                     </div>
-                    <div class="flex justify-between items-center border-b border-blue-800/50 pb-2">
-                        <span class="text-blue-300">Volume Total:</span>
-                        <span class="font-bold text-white">{{ $volume ? number_format($volume, 3, ',', '.') . ' CBM' : '-' }}</span>
+                    <div class="flex justify-between items-center border-b border-gray-100 pb-2">
+                        <span class="text-gray-500 font-bold">Volume Total:</span>
+                        <span class="font-black text-slate-900">{{ $volume ? number_format($volume, 3, ',', '.') . ' CBM' : '-' }}</span>
                     </div>
                     @if($hs_code)
-                    <div class="flex justify-between items-center border-b border-blue-800/50 pb-2">
-                        <span class="text-blue-300">HS Code BTKI:</span>
-                        <span class="font-mono font-bold text-green-300">{{ $hs_code }}</span>
+                    <div class="flex justify-between items-center border-b border-gray-100 pb-2">
+                        <span class="text-gray-500 font-bold">HS Code BTKI:</span>
+                        <span class="font-mono font-black text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded border border-emerald-200">{{ $hs_code }}</span>
                     </div>
                     @endif
                 </div>
@@ -261,7 +322,7 @@
                         <span wire:loading.remove wire:target="save">Kirim Booking Sekarang</span>
                         <span wire:loading wire:target="save">Memproses Booking...</span>
                     </button>
-                    <p class="text-[11px] text-blue-300 text-center mt-2">Tim operasional M2B akan langsung memproses booking Anda.</p>
+                    <p class="text-[11px] text-gray-500 text-center mt-2 font-medium">Tim operasional M2B akan langsung memproses booking Anda.</p>
                 </div>
             </div>
         </div>
