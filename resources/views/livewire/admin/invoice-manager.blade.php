@@ -220,7 +220,7 @@
                         <td class="px-6 py-4 text-center">
                             <div class="flex flex-col items-center gap-1.5 min-w-[130px]">
                                 {{-- 1. Faktur Pajak Badge --}}
-                                @if($inv->type == 'Commercial')
+                                @if(strtolower($inv->type) == 'commercial')
                                     @if($inv->faktur_pajak_path)
                                         <div class="flex items-center gap-1 bg-green-50 border border-green-200 px-2 py-0.5 rounded-lg text-xs">
                                             <span class="text-[11px] font-bold text-green-700" title="FP: {{ $inv->faktur_pajak_number }}">FP: {{ \Illuminate\Support\Str::limit($inv->faktur_pajak_number, 10) }}</span>
@@ -233,7 +233,7 @@
                                             📋 FP Request!
                                         </button>
                                     @else
-                                        <button wire:click="openFakturPajakModal({{ $inv->id }})" class="text-[11px] font-semibold text-gray-400 hover:text-blue-600 bg-gray-50 hover:bg-blue-50 border border-gray-200 hover:border-blue-200 px-2 py-0.5 rounded-md flex items-center gap-1 transition">
+                                        <button wire:click="openFakturPajakModal({{ $inv->id }})" class="text-[11px] font-semibold text-gray-500 hover:text-blue-600 bg-gray-50 hover:bg-blue-50 border border-gray-200 hover:border-blue-200 px-2 py-0.5 rounded-md flex items-center gap-1 transition" title="Upload Faktur Pajak PPN">
                                             <span>📄 FP: Upload</span>
                                         </button>
                                     @endif
@@ -242,7 +242,7 @@
                                 @endif
 
                                 {{-- 2. Bukti Potong PPh Badge --}}
-                                @if($inv->type == 'Commercial')
+                                @if(strtolower($inv->type) == 'commercial')
                                     @if($inv->bukti_potong_path)
                                         <div class="flex items-center gap-1 bg-purple-50 border border-purple-200 px-2 py-0.5 rounded-lg text-xs">
                                             <span class="text-[11px] font-bold text-purple-700" title="BP: {{ $inv->bukti_potong_number }} (Rp {{ number_format($inv->bukti_potong_amount ?? 0, 0, ',', '.') }})">BP: {{ \Illuminate\Support\Str::limit($inv->bukti_potong_number, 10) }}</span>
@@ -250,12 +250,10 @@
                                             <button wire:click="openBuktiPotongModal({{ $inv->id }})" class="text-yellow-600 hover:text-yellow-800" title="Edit Bupot">✏️</button>
                                             <button wire:click="deleteBuktiPotong({{ $inv->id }})" wire:confirm="Hapus Bukti Potong ini?" class="text-red-500 hover:text-red-700" title="Hapus Bupot">🗑️</button>
                                         </div>
-                                    @elseif(($inv->pph_amount ?? 0) > 0 || $inv->status == 'paid' || $inv->status == 'partial')
-                                        <button wire:click="openBuktiPotongModal({{ $inv->id }})" class="text-[11px] font-semibold text-amber-700 bg-amber-50 hover:bg-amber-100 border border-amber-200 px-2 py-0.5 rounded-md flex items-center gap-1 transition">
+                                    @else
+                                        <button wire:click="openBuktiPotongModal({{ $inv->id }})" class="text-[11px] font-semibold text-purple-700 bg-purple-50 hover:bg-purple-100 border border-purple-200 px-2 py-0.5 rounded-md flex items-center gap-1 transition" title="Upload Bukti Potong PPh (dari WA / Email)">
                                             <span>📑 BP: Upload</span>
                                         </button>
-                                    @else
-                                        <span class="text-[10px] text-gray-300 font-mono">BP: -</span>
                                     @endif
                                 @else
                                     <span class="text-[10px] text-gray-300 font-mono">BP: N/A</span>
