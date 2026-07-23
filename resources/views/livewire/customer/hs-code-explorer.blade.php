@@ -1,55 +1,69 @@
 <div class="max-w-7xl mx-auto space-y-6 pb-12">
     @section('header', 'HS Code Explorer BTKI 2022')
 
-    {{-- HEADER SECTION --}}
-    <div class="bg-white rounded-3xl p-6 md:p-8 shadow-sm border border-gray-200 space-y-4">
-        <div class="flex flex-col md:flex-row md:items-center justify-between gap-4">
-            <div class="space-y-1">
-                <div class="flex items-center gap-2">
-                    <span class="text-xs font-black uppercase text-blue-900 bg-blue-50 border border-blue-200 px-3 py-1 rounded-full tracking-wider">BTKI 2022 Official Database</span>
-                    <span class="text-xs font-bold text-gray-500">• {{ number_format(\DB::table('hs_codes')->count()) }} Kode HS Active</span>
+    {{-- HEADER SECTION WITH KUM HS MODAL --}}
+    <div x-data="{ showKum: false }">
+        <div class="bg-white rounded-3xl p-6 md:p-8 shadow-sm border border-gray-200 space-y-4">
+            <div class="flex flex-col md:flex-row md:items-center justify-between gap-4">
+                <div class="space-y-1">
+                    <div class="flex items-center gap-2 flex-wrap">
+                        <span class="text-xs font-black uppercase text-blue-900 bg-blue-50 border border-blue-200 px-3 py-1 rounded-full tracking-wider">BTKI 2022 Official Database</span>
+                        <span class="text-xs font-bold text-gray-500">• {{ number_format(\DB::table('hs_codes')->count()) }} Kode HS Active</span>
+                    </div>
+                    <h1 class="text-2xl md:text-3xl font-black text-slate-900 tracking-tight flex items-center gap-3">
+                        <span>🔍 HS Code Explorer</span>
+                    </h1>
+                    <p class="text-slate-600 text-sm font-medium">
+                        Cari kode tarif Bea Masuk &amp; Lartas resmi Kepabeanan Indonesia. Dukungan pencarian 8-digit tanpa titik &amp; nama komoditas.
+                    </p>
                 </div>
-                <h1 class="text-2xl md:text-3xl font-black text-slate-900 tracking-tight flex items-center gap-3">
-                    <span>🔍 HS Code Explorer</span>
-                </h1>
-                <p class="text-slate-600 text-sm font-medium">
-                    Cari kode tarif Bea Masuk &amp; Lartas resmi Kepabeanan Indonesia. Dukungan pencarian 8-digit tanpa titik &amp; nama komoditas.
-                </p>
+                
+                {{-- KUM HS Toggle Button --}}
+                <div class="shrink-0">
+                    <button @click="showKum = true" class="bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-700 hover:to-teal-700 text-white text-xs font-bold px-4 py-2.5 rounded-xl shadow-sm transition flex items-center gap-2">
+                        <span>📚</span>
+                        <span>Lihat KUM HS (Panduan Klasifikasi)</span>
+                    </button>
+                </div>
             </div>
-            
-            {{-- KUM HS Toggle Button --}}
-            <div x-data="{ showKum: false }" class="shrink-0">
-                <button @click="showKum = !showKum" class="bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-700 hover:to-teal-700 text-white text-xs font-bold px-4 py-2.5 rounded-xl shadow-sm transition flex items-center gap-2">
-                    <span>📚</span>
-                    <span x-text="showKum ? 'Tutup KUM HS' : 'Lihat KUM HS (Panduan Klasifikasi)'"></span>
-                </button>
+        </div>
 
-                {{-- KUM HS Panel Modal / Drawer --}}
-                <div x-show="showKum" x-cloak class="mt-4 bg-emerald-950/80 backdrop-blur-md p-6 rounded-2xl border border-emerald-500/30 text-white space-y-4 shadow-2xl">
-                    <div class="flex items-center justify-between border-b border-emerald-800/60 pb-3">
-                        <h3 class="font-black text-sm text-emerald-300 uppercase tracking-wider flex items-center gap-2">
-                            <span>📚 KUM HS - Ketentuan Umum Menginterpretasikan Harmonized System</span>
-                        </h3>
-                        <button @click="showKum = false" class="text-emerald-400 hover:text-white font-bold text-lg">&times;</button>
-                    </div>
-                    <p class="text-xs text-emerald-200">Panduan resmi Bea Cukai untuk mengklasifikasikan barang secara sah ke dalam kode HS 8 digit BTKI 2022.</p>
-                    <div class="space-y-3 max-h-80 overflow-y-auto pr-2">
-                        @foreach(DB::table('hs_kum')->orderBy('rule_number')->get() as $kum)
-                        <div class="bg-white/10 rounded-xl p-4 border border-white/10" x-data="{ expanded: false }">
-                            <h4 class="font-bold text-xs text-emerald-300 mb-1">{{ $kum->title }}</h4>
-                            <div class="text-xs text-emerald-100/90 leading-relaxed">
-                                <span x-show="!expanded">{{ Str::limit($kum->content, 160) }}</span>
-                                <span x-show="expanded" x-cloak>{{ $kum->content }}</span>
-                                @if(strlen($kum->content) > 160)
-                                <button @click="expanded = !expanded" class="text-emerald-300 hover:underline text-[11px] font-bold block mt-1">
-                                    <span x-show="!expanded">Selengkapnya...</span>
-                                    <span x-show="expanded">Sembunyikan</span>
-                                </button>
-                                @endif
-                            </div>
+        {{-- KUM HS MODAL OVERLAY --}}
+        <div x-show="showKum" x-cloak class="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-[100] flex items-center justify-center p-4" @click.self="showKum = false">
+            <div class="bg-white rounded-3xl shadow-2xl max-w-3xl w-full max-h-[85vh] overflow-hidden flex flex-col border border-gray-100">
+                <div class="p-6 border-b border-gray-100 flex justify-between items-center bg-gradient-to-r from-emerald-900 to-teal-900 text-white">
+                    <div class="flex items-center gap-3">
+                        <span class="text-2xl">📚</span>
+                        <div>
+                            <h3 class="font-black text-base uppercase tracking-wider text-emerald-200">KUM HS - Ketentuan Umum Menginterpretasikan HS</h3>
+                            <p class="text-xs text-emerald-100/80">Panduan resmi Bea Cukai untuk mengklasifikasikan barang secara sah</p>
                         </div>
-                        @endforeach
                     </div>
+                    <button @click="showKum = false" class="text-white/70 hover:text-white transition text-2xl font-bold leading-none">&times;</button>
+                </div>
+
+                <div class="p-6 overflow-y-auto flex-1 space-y-4 bg-slate-50">
+                    @foreach(DB::table('hs_kum')->orderBy('rule_number')->get() as $kum)
+                    <div class="bg-white rounded-2xl p-5 border border-gray-200 shadow-sm space-y-2" x-data="{ expanded: false }">
+                        <h4 class="font-black text-sm text-emerald-800">{{ $kum->title }}</h4>
+                        <div class="text-xs text-slate-700 leading-relaxed">
+                            <span x-show="!expanded">{{ Str::limit($kum->content, 180) }}</span>
+                            <span x-show="expanded" x-cloak>{{ $kum->content }}</span>
+                            @if(strlen($kum->content) > 180)
+                            <button @click="expanded = !expanded" class="text-emerald-700 hover:text-emerald-900 text-xs font-bold block mt-2">
+                                <span x-show="!expanded">Selengkapnya ➔</span>
+                                <span x-show="expanded">Sembunyikan</span>
+                            </button>
+                            @endif
+                        </div>
+                    </div>
+                    @endforeach
+                </div>
+
+                <div class="p-4 bg-gray-100 border-t border-gray-200 text-right">
+                    <button @click="showKum = false" class="px-5 py-2 bg-slate-800 hover:bg-slate-900 text-white font-bold text-xs rounded-xl transition">
+                        Tutup Modal
+                    </button>
                 </div>
             </div>
         </div>
