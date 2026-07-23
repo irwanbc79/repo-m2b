@@ -20,7 +20,7 @@
                 
                 {{-- KUM HS Toggle Button --}}
                 <div class="shrink-0">
-                    <button @click="showKum = true" class="bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-700 hover:to-teal-700 text-white text-xs font-bold px-4 py-2.5 rounded-xl shadow-sm transition flex items-center gap-2">
+                    <button @click="showKum = true" class="bg-emerald-700 hover:bg-emerald-800 text-white text-xs font-bold px-4 py-2.5 rounded-xl shadow-md transition flex items-center gap-2 border border-emerald-800">
                         <span>📚</span>
                         <span>Lihat KUM HS (Panduan Klasifikasi)</span>
                     </button>
