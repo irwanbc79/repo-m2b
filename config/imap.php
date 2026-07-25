@@ -25,6 +25,11 @@ return [
             ],
             'timeout' => 30,
             'extensions' => [],
+            'smtp' => [
+                'host' => env('SMTP_SALES_HOST', env('MAIL_HOST', 'mx.kerjamail.co')),
+                'port' => env('SMTP_SALES_PORT', env('MAIL_PORT', 587)),
+                'encryption' => env('SMTP_SALES_ENCRYPTION', 'tls'),
+            ],
         ],
 
         'import' => [
@@ -44,6 +49,11 @@ return [
             ],
             'timeout' => 30,
             'extensions' => [],
+            'smtp' => [
+                'host' => env('SMTP_IMPORT_HOST', env('MAIL_HOST', 'mx.kerjamail.co')),
+                'port' => env('SMTP_IMPORT_PORT', env('MAIL_PORT', 587)),
+                'encryption' => env('SMTP_IMPORT_ENCRYPTION', 'tls'),
+            ],
         ],
 
         'export' => [
@@ -63,6 +73,11 @@ return [
             ],
             'timeout' => 30,
             'extensions' => [],
+            'smtp' => [
+                'host' => env('SMTP_EXPORT_HOST', env('MAIL_HOST', 'mx.kerjamail.co')),
+                'port' => env('SMTP_EXPORT_PORT', env('MAIL_PORT', 587)),
+                'encryption' => env('SMTP_EXPORT_ENCRYPTION', 'tls'),
+            ],
         ],
 
         'finance' => [
@@ -82,6 +97,11 @@ return [
             ],
             'timeout' => 30,
             'extensions' => [],
+            'smtp' => [
+                'host' => env('SMTP_FINANCE_HOST', env('MAIL_HOST', 'mx.kerjamail.co')),
+                'port' => env('SMTP_FINANCE_PORT', env('MAIL_PORT', 587)),
+                'encryption' => env('SMTP_FINANCE_ENCRYPTION', 'tls'),
+            ],
         ],
         'gmail' => [
             'host'  => env('IMAP_GMAIL_HOST'),
@@ -100,6 +120,13 @@ return [
             ],
             'timeout' => 30,
             'extensions' => [],
+            // Gmail SMTP beda host dari IMAP-nya (imap.gmail.com) — WAJIB pakai App Password
+            // (bukan password akun biasa) kalau 2FA aktif di akun ini, dipakai jg oleh IMAP di atas.
+            'smtp' => [
+                'host' => env('SMTP_GMAIL_HOST', 'smtp.gmail.com'),
+                'port' => env('SMTP_GMAIL_PORT', 587),
+                'encryption' => env('SMTP_GMAIL_ENCRYPTION', 'tls'),
+            ],
         ],
         'pajak' => [
             'host'  => env('IMAP_PAJAK_HOST'),
@@ -118,6 +145,11 @@ return [
             ],
             'timeout' => 30,
             'extensions' => [],
+            'smtp' => [
+                'host' => env('SMTP_PAJAK_HOST', 'smtp.gmail.com'),
+                'port' => env('SMTP_PAJAK_PORT', 587),
+                'encryption' => env('SMTP_PAJAK_ENCRYPTION', 'tls'),
+            ],
         ],
         'outlook' => [
             'host'  => env('IMAP_OUTLOOK_HOST'),
@@ -136,6 +168,11 @@ return [
             ],
             'timeout' => 30,
             'extensions' => [],
+            'smtp' => [
+                'host' => env('SMTP_OUTLOOK_HOST', 'smtp.office365.com'),
+                'port' => env('SMTP_OUTLOOK_PORT', 587),
+                'encryption' => env('SMTP_OUTLOOK_ENCRYPTION', 'tls'),
+            ],
         ],
         'shipping' => [
             'host'  => env('IMAP_SHIPPING_HOST'),
@@ -154,6 +191,11 @@ return [
             ],
             'timeout' => 30,
             'extensions' => [],
+            'smtp' => [
+                'host' => env('SMTP_SHIPPING_HOST', env('MAIL_HOST', 'mx.kerjamail.co')),
+                'port' => env('SMTP_SHIPPING_PORT', env('MAIL_PORT', 587)),
+                'encryption' => env('SMTP_SHIPPING_ENCRYPTION', 'tls'),
+            ],
         ],
     ],
 

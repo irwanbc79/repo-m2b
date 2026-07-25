@@ -641,21 +641,29 @@ class EmailInbox extends Component
         }
 
         $sentWithCustom = false;
-        
-        // Ambil konfigurasi SMTP default untuk disalin (host, port, encryption, dll)
-        $smtpConfig = config('mail.mailers.smtp');
-        $imapConfig = config("imap.accounts.{$this->activeAccount}");
 
-        if ($imapConfig && !empty($imapConfig['username']) && !empty($imapConfig['password']) && $smtpConfig) {
+        // Konfigurasi SMTP per-mailbox aktif (BUKAN satu host SMTP default untuk semua).
+        // Mailbox di kerjamail.co (sales/import/export/finance/shipping) beda host SMTP
+        // dari Gmail/Outlook — kalau dipaksa pakai satu host, mailbox non-kerjamail.co akan
+        // selalu gagal auth & diam-diam jatuh ke fallback no_reply@m2b.co.id.
+        $imapConfig = config("imap.accounts.{$this->activeAccount}");
+        $mailboxSmtp = $imapConfig['smtp'] ?? null;
+
+        if ($imapConfig && !empty($imapConfig['username']) && !empty($imapConfig['password']) && $mailboxSmtp && !empty($mailboxSmtp['host'])) {
             try {
-                \Log::info("Mencoba mengirim email via SMTP Dinamis: {$fromEmail}");
-                
-                // Konfigurasi mailer dinamis dengan username & password dari mailbox aktif
+                \Log::info("Mencoba mengirim email via SMTP Dinamis ({$mailboxSmtp['host']}): {$fromEmail}");
+
+                // Konfigurasi mailer dinamis: host/port/encryption ikut mailbox aktif, bukan mailer default
                 config([
-                    'mail.mailers.dynamic_smtp' => array_merge($smtpConfig, [
+                    'mail.mailers.dynamic_smtp' => [
+                        'transport' => 'smtp',
+                        'host' => $mailboxSmtp['host'],
+                        'port' => $mailboxSmtp['port'] ?? 587,
+                        'encryption' => $mailboxSmtp['encryption'] ?? 'tls',
                         'username' => $imapConfig['username'],
                         'password' => $imapConfig['password'],
-                    ])
+                        'timeout' => null,
+                    ]
                 ]);
 
                 \Mail::mailer('dynamic_smtp')->html($htmlBody, function($message) use ($fromEmail, $fromName, $ccEmails) {
