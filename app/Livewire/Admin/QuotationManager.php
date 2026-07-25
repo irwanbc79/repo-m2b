@@ -286,7 +286,9 @@ class QuotationManager extends Component
             $amount = (float)$item['qty'] * (float)$item['price'];
             if (($item['item_type'] ?? 'service') == 'service') $this->serviceTotal += $amount; else $this->reimbursementTotal += $amount;
         }
-        $this->ppn = $this->serviceTotal * ($this->ppn_rate / 100); $this->pph = $this->serviceTotal * ($this->pph_rate / 100);
+        $ppnRate = is_numeric($this->ppn_rate) ? (float) $this->ppn_rate : 0;
+        $pphRate = is_numeric($this->pph_rate) ? (float) $this->pph_rate : 0;
+        $this->ppn = $this->serviceTotal * ($ppnRate / 100); $this->pph = $this->serviceTotal * ($pphRate / 100);
         $this->grandTotal = ($this->serviceTotal + $this->ppn - $this->pph) + $this->reimbursementTotal;
     }
     public function delete($id) { if(Quotation::find($id)->delete()) session()->flash('message', 'Deleted.'); }
