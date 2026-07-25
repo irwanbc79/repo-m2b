@@ -36,6 +36,11 @@ class ChartOfAccounts extends Component
         'beban_lain' => 'Beban Lain-lain',
     ];
 
+    public function mount()
+    {
+        abort_unless(auth()->user()->hasPermission('cashier.view'), 403);
+    }
+
     public function updatingSearch() { $this->resetPage(); }
 
     public function getStats()
@@ -96,6 +101,8 @@ class ChartOfAccounts extends Component
 
     public function save()
     {
+        abort_unless(auth()->user()->hasPermission('cashier.view'), 403);
+
         $rules = [
             'name' => 'required|string|max:255',
             'type' => 'required',
@@ -111,23 +118,30 @@ class ChartOfAccounts extends Component
 
         $this->validate($rules);
 
-        $data = [
-            'code' => $this->code,
-            'name' => $this->name,
-            'type' => $this->type,
-            'opening_balance' => $this->opening_balance,
-            // Jika edit, current balance dihitung ulang nanti (sementara samakan logic dasar)
-            'current_balance' => $this->opening_balance 
-        ];
-
         if ($this->isEditing) {
             $acc = Account::find($this->editingId);
-            // Update logic saldo berjalan (current_balance) bisa lebih kompleks nanti
-            // Untuk sekarang kita update data master saja
-            $acc->update($data);
+
+            // Saldo berjalan (current_balance) TIDAK boleh ditimpa saat edit master akun,
+            // karena sudah mengandung akumulasi debit/kredit dari jurnal yang sudah posting.
+            // Kalau opening_balance berubah, geser current_balance sebesar selisihnya.
+            $openingDelta = $this->opening_balance - $acc->opening_balance;
+
+            $acc->update([
+                'code' => $this->code,
+                'name' => $this->name,
+                'type' => $this->type,
+                'opening_balance' => $this->opening_balance,
+                'current_balance' => $acc->current_balance + $openingDelta,
+            ]);
             session()->flash('message', 'Akun berhasil diperbarui.');
         } else {
-            Account::create($data);
+            Account::create([
+                'code' => $this->code,
+                'name' => $this->name,
+                'type' => $this->type,
+                'opening_balance' => $this->opening_balance,
+                'current_balance' => $this->opening_balance,
+            ]);
             session()->flash('message', 'Akun baru berhasil dibuat.');
         }
 
@@ -136,12 +150,20 @@ class ChartOfAccounts extends Component
 
     public function delete($id)
     {
-        // Cegah hapus jika sudah ada transaksi (Nanti kita tambah validasi jurnal)
+        abort_unless(auth()->user()->hasPermission('cashier.view'), 403);
+
         $acc = Account::find($id);
-        if($acc) {
-            $acc->delete();
-            session()->flash('message', 'Akun dihapus.');
+        if (!$acc) {
+            return;
         }
+
+        if ($acc->journalItems()->exists()) {
+            session()->flash('error', 'Akun tidak bisa dihapus karena sudah memiliki riwayat jurnal. Biarkan akun ini tetap ada agar laporan (Ledger, Trial Balance, Neraca) tidak kehilangan data historis.');
+            return;
+        }
+
+        $acc->delete();
+        session()->flash('message', 'Akun dihapus.');
     }
 
     public function closeModal()

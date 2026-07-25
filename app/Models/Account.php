@@ -20,6 +20,11 @@ class Account extends Model
         'is_active',        // Status Aktif/Nonaktif
     ];
 
+    public function journalItems()
+    {
+        return $this->hasMany(JournalItem::class);
+    }
+
     // Jika bapak menggunakan kolom lain di database, tambahkan juga kesini.
     public static function cashOrBank()
 {

@@ -31,6 +31,8 @@ class JournalEntry extends Component
 
     public function mount()
     {
+        abort_unless(Auth::user()->hasPermission('cashier.view'), 403);
+
         $this->transaction_date = date('Y-m-d');
         $this->resetItems();
     }
@@ -88,6 +90,8 @@ class JournalEntry extends Component
 
     public function save()
     {
+        abort_unless(Auth::user()->hasPermission('cashier.view'), 403);
+
         $this->validate([
             'transaction_date' => 'required|date',
             'description' => 'required|string',
@@ -187,14 +191,19 @@ class JournalEntry extends Component
      */
     public function delete($id)
     {
+        abort_unless(Auth::user()->hasPermission('cashier.view'), 403);
+
         try {
             DB::transaction(function () use ($id) {
                 $journal = Journal::findOrFail($id);
 
                 // === ROLE-BASED PERMISSION CHECK ===
                 $user = Auth::user();
-                $isAdmin = $user->role === "admin";
-                
+                // hasRole() cek array 'roles' (multi-role) dgn fallback ke kolom 'role' lama —
+                // sebelumnya cek `$user->role === "admin"` gagal utk admin/super_admin/director/manager
+                // yang cuma punya kolom 'roles' (tanpa kolom 'role' legacy).
+                $isAdmin = $user->hasRole(['admin', 'super_admin', 'director', 'manager']);
+
                 // Staff tidak boleh hapus journal yang sudah posted
                 if (!$isAdmin && $journal->status === "posted") {
                     throw new \Exception("Anda tidak memiliki izin untuk menghapus jurnal yang sudah POSTED. Hubungi Admin.");
