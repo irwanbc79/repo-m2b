@@ -58,10 +58,29 @@
 
         {{-- 2. EMAIL LIST --}}
         <div class="w-80 border-r border-gray-200 flex flex-col bg-gray-50/50 shrink-0">
-            <div class="p-3 border-b border-gray-100 bg-white">
-                <input type="text" placeholder="Search mail..." class="w-full pl-3 pr-4 py-2 border border-gray-200 rounded-lg text-sm bg-gray-50 focus:ring-2 focus:ring-blue-500/20">
+            <div class="p-3 border-b border-gray-100 bg-white flex items-center gap-2">
+                <input type="text" placeholder="Search mail..." class="flex-1 min-w-0 pl-3 pr-4 py-2 border border-gray-200 rounded-lg text-sm bg-gray-50 focus:ring-2 focus:ring-blue-500/20">
+                <button type="button" wire:click="toggleSelectMode" title="{{ $selectMode ? 'Batal pilih' : 'Pilih beberapa email' }}"
+                        class="shrink-0 w-9 h-9 rounded-lg flex items-center justify-center text-sm transition-colors {{ $selectMode ? 'bg-red-50 text-red-600' : 'bg-gray-50 text-gray-400 hover:text-blue-600 hover:bg-blue-50' }}">
+                    {{ $selectMode ? '✕' : '☑️' }}
+                </button>
             </div>
-            
+
+            @if($selectMode)
+            <div class="px-3 py-2 border-b border-gray-100 bg-red-50/60 flex items-center justify-between gap-2">
+                <label class="flex items-center gap-2 text-xs font-bold text-gray-600 cursor-pointer">
+                    <input type="checkbox" wire:click="toggleSelectAll" @checked(count($selectedEmailIds) > 0 && count($selectedEmailIds) >= count($emails))
+                           class="w-4 h-4 text-red-600 border-gray-300 rounded focus:ring-red-500">
+                    {{ count($selectedEmailIds) }} dipilih
+                </label>
+                <button type="button" wire:click="bulkDeleteSelected" wire:confirm="Hapus {{ count($selectedEmailIds) }} email terpilih secara permanen dari portal & server?"
+                        @disabled(empty($selectedEmailIds))
+                        class="px-3 py-1.5 bg-red-600 text-white rounded-lg text-[11px] font-black uppercase tracking-wide hover:bg-red-700 transition disabled:opacity-40 disabled:cursor-not-allowed">
+                    🗑️ Hapus
+                </button>
+            </div>
+            @endif
+
             <div class="overflow-y-auto flex-1 divide-y divide-gray-100 relative">
                 <!-- Loading Overlay -->
                 <div wire:loading wire:target="selectEmail" class="absolute inset-0 bg-white/50 z-10 flex items-center justify-center backdrop-blur-[1px]">
@@ -72,11 +91,11 @@
                 </div>
 
                 @forelse($emails as $email)
-                <button wire:click="selectEmail({{ $email['db_id'] }})" 
-                   wire:key="email-{{ $email['db_id'] }}"
+                <div wire:key="email-{{ $email['db_id'] }}"
+                   wire:click="{{ $selectMode ? 'toggleOneSelection(' . $email['db_id'] . ')' : 'selectEmail(' . $email['db_id'] . ')' }}"
                    wire:loading.attr="disabled"
-                   class="w-full text-left block p-4 hover:bg-blue-50/50 transition border-l-4 group relative {{ $selectedEmail && $selectedEmail['db_id'] == $email['db_id'] ? 'bg-blue-50 border-l-blue-600' : 'bg-white border-l-transparent' }}">
-                    
+                   class="w-full text-left block p-4 hover:bg-blue-50/50 transition border-l-4 group relative cursor-pointer {{ $selectedEmail && $selectedEmail['db_id'] == $email['db_id'] ? 'bg-blue-50 border-l-blue-600' : 'bg-white border-l-transparent' }}">
+
                     {{-- Loading Indicator per Item --}}
                     <span wire:loading wire:target="selectEmail({{ $email['db_id'] }})" class="absolute right-2 top-2">
                         <svg class="animate-spin h-4 w-4 text-blue-600" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
@@ -86,6 +105,10 @@
                     </span>
 
                     <div class="flex items-start gap-3">
+                        @if($selectMode)
+                        <input type="checkbox" wire:model="selectedEmailIds" value="{{ $email['db_id'] }}" @click.stop
+                               class="mt-1.5 shrink-0 w-4 h-4 text-red-600 border-gray-300 rounded focus:ring-red-500">
+                        @else
                         <div class="mt-1.5 shrink-0">
                             @if(!$email['is_read'])
                             <span class="block w-2 h-2 bg-blue-600 rounded-full ring-2 ring-blue-100"></span>
@@ -93,6 +116,7 @@
                             <span class="block w-2 h-2 bg-transparent border border-gray-200 rounded-full"></span>
                             @endif
                         </div>
+                        @endif
                         <div class="flex-1 min-w-0">
                             <div class="flex justify-between items-center mb-0.5">
                                 <h4 class="text-sm truncate {{ !$email['is_read'] ? 'font-bold text-gray-900' : 'text-gray-600' }}">
@@ -102,13 +126,20 @@
                                     @if(isset($email['attachments']) && $email['attachments'] > 0)
                                         <svg class="w-3.5 h-3.5 text-gray-400 group-hover:text-blue-500 transition-colors" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15.172 7l-6.586 6.586a2 2 0 102.828 2.828l6.414-6.586a4 4 0 00-5.656-5.656l-6.415 6.585a6 6 0 108.486 8.486L20.5 13"></path></svg>
                                     @endif
-                                    <span class="text-[9px] text-gray-400 font-bold uppercase">{{ $email['date'] }}</span>
+                                    <span class="text-[9px] text-gray-400 font-bold uppercase group-hover:opacity-0 transition-opacity">{{ $email['date'] }}</span>
+                                    @if(!$selectMode)
+                                    <button type="button" wire:click.stop="deleteEmail({{ $email['db_id'] }})" wire:confirm="Hapus email ini secara permanen dari portal & server?"
+                                            title="Hapus email"
+                                            class="absolute right-3 top-3.5 opacity-0 group-hover:opacity-100 transition-opacity text-gray-300 hover:text-red-500">
+                                        🗑️
+                                    </button>
+                                    @endif
                                 </div>
                             </div>
                             <p class="text-xs truncate text-gray-500 group-hover:text-gray-700 transition-colors">{{ $email['subject'] }}</p>
                         </div>
                     </div>
-                </button>
+                </div>
                 @empty
                 <div class="flex flex-col items-center justify-center p-12 text-center">
                     <svg class="w-12 h-12 text-gray-200 mb-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M20 13V6a2 2 0 00-2-2H6a2 2 0 00-2 2v7m16 0v5a2 2 0 01-2 2H6a2 2 0 01-2-2v-5m16 0h-2.586a1 1 0 00-.707.293l-2.414 2.414a1 1 0 01-.707.293h-3.172a1 1 0 01-.707-.293l-2.414-2.414A1 1 0 006.586 13H4"></path></svg>
@@ -157,6 +188,11 @@
                             </button>
                             <button wire:click="$set('showConvertModal', true)" title="Convert to Shipment" class="bg-blue-600 text-white px-4 py-2.5 rounded-xl font-black text-[11px] uppercase tracking-widest hover:bg-blue-700 transition shadow-lg shadow-blue-100 flex items-center gap-1.5 whitespace-nowrap shrink-0">
                                 📦 Convert
+                            </button>
+                            <button wire:click="deleteEmail({{ $selectedEmail['db_id'] }})" wire:confirm="Hapus email ini secara permanen dari portal & server?"
+                                    title="Hapus email (spam/tidak relevan)"
+                                    class="bg-white text-red-600 border border-red-200 px-4 py-2.5 rounded-xl font-black text-[11px] uppercase tracking-widest hover:bg-red-50 transition shadow-sm flex items-center gap-1.5 whitespace-nowrap shrink-0">
+                                🗑️ Delete
                             </button>
                         </div>
                     </div>
@@ -409,7 +445,7 @@
                                                                 {{ $attachment['filename'] ?? '-' }}
                                                             </span>
                                                             <span class="text-xs text-gray-400 ml-2 shrink-0">
-                                                                {{ number_format(($attachment['file_size'] ?? 0) / 1024, 1) }} KB
+                                                                {{ number_format(($attachment['size'] ?? 0) / 1024, 1) }} KB
                                                             </span>
                                                         </div>
                                                     </div>
@@ -593,7 +629,7 @@
                                         <label class="flex items-center px-4 py-2.5 hover:bg-violet-50 cursor-pointer transition-colors group">
                                             <input type="checkbox" wire:model="forwardAttachments" value="{{ $index }}" class="w-4 h-4 text-violet-600 border-gray-300 rounded focus:ring-violet-500">
                                             <span class="ml-3 text-xs font-bold text-gray-800 truncate">{{ $attachment['filename'] }}</span>
-                                            <span class="ml-auto text-xs text-gray-400 font-medium">{{ number_format(($attachment['file_size'] ?? 0) / 1024, 1) }} KB</span>
+                                            <span class="ml-auto text-xs text-gray-400 font-medium">{{ number_format(($attachment['size'] ?? 0) / 1024, 1) }} KB</span>
                                         </label>
                                         @endforeach
                                     </div>

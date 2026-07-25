@@ -42,6 +42,10 @@ class EmailInbox extends Component
     public $existingShipmentId = null;
     public $existingShipmentSearch = '';
 
+    // --- Hapus email (single & bulk) ---
+    public $selectMode = false;
+    public $selectedEmailIds = [];
+
     public function mount()
     {
         $this->activeAccount = request()->query('mailbox', 'sales');
@@ -150,6 +154,121 @@ class EmailInbox extends Component
             }
         }
         $this->hasMissingAttachments = false;
+    }
+
+    // --- HAPUS EMAIL ---
+
+    public function toggleSelectMode()
+    {
+        $this->selectMode = !$this->selectMode;
+        $this->selectedEmailIds = [];
+    }
+
+    public function toggleSelectAll()
+    {
+        $allIds = array_column($this->emails, 'db_id');
+        $this->selectedEmailIds = count($this->selectedEmailIds) >= count($allIds) ? [] : $allIds;
+    }
+
+    /** Klik baris saat select mode aktif → toggle centang baris itu. */
+    public function toggleOneSelection($dbId)
+    {
+        if (in_array($dbId, $this->selectedEmailIds)) {
+            $this->selectedEmailIds = array_values(array_diff($this->selectedEmailIds, [$dbId]));
+        } else {
+            $this->selectedEmailIds[] = $dbId;
+        }
+    }
+
+    /** Hapus satu email (dari tombol trash per-baris atau dari panel detail). */
+    public function deleteEmail($dbId)
+    {
+        $this->bulkDeleteEmailIds([$dbId]);
+    }
+
+    /** Hapus semua email yang dicentang di mode select. */
+    public function bulkDeleteSelected()
+    {
+        if (empty($this->selectedEmailIds)) return;
+        $this->bulkDeleteEmailIds($this->selectedEmailIds);
+        $this->selectedEmailIds = [];
+        $this->selectMode = false;
+    }
+
+    /**
+     * Hapus email dari server IMAP (biar tidak balik lagi pas sync berikutnya) +
+     * file attachment fisik + baris lokal (cascade ke email_attachments).
+     * Kalau hapus di server IMAP gagal (koneksi/kredensial), tetap hapus lokal
+     * tapi kasih flash warning yang jelas — bukan diam-diam.
+     */
+    protected function bulkDeleteEmailIds(array $dbIds)
+    {
+        $rows = DB::table('emails')->whereIn('id', $dbIds)->get(['id', 'mailbox', 'uid']);
+        if ($rows->isEmpty()) return;
+
+        $failedMailboxes = [];
+
+        foreach ($rows->groupBy('mailbox') as $mailbox => $group) {
+            try {
+                $client = Client::account($mailbox);
+                if (!$client->isConnected()) {
+                    $client->connect();
+                }
+
+                $folder = $this->findInboxFolder($client);
+                if ($folder) {
+                    $uids = $group->pluck('uid')->map(fn ($u) => (int) $u)->all();
+                    $messages = $folder->query()->whereUidIn($uids)->get();
+                    foreach ($messages as $message) {
+                        $message->delete();
+                    }
+                }
+            } catch (\Throwable $e) {
+                \Log::warning("Gagal hapus email dari server IMAP [{$mailbox}]: " . $e->getMessage());
+                $failedMailboxes[] = $mailbox;
+            }
+        }
+
+        // Hapus file attachment fisik (best-effort, jangan sampai gagal hapus file
+        // membatalkan penghapusan email-nya)
+        $attachments = DB::table('email_attachments')->whereIn('email_id', $rows->pluck('id'))->get(['file_path']);
+        foreach ($attachments as $att) {
+            try {
+                if ($att->file_path && Storage::disk('public')->exists($att->file_path)) {
+                    Storage::disk('public')->delete($att->file_path);
+                }
+            } catch (\Throwable $e) {
+                // skip, tidak kritis
+            }
+        }
+
+        DB::table('emails')->whereIn('id', $rows->pluck('id'))->delete();
+
+        if ($this->selectedEmail && in_array($this->selectedEmail['db_id'], $dbIds)) {
+            $this->selectedEmail = null;
+        }
+
+        $this->loadEmails();
+
+        $count = $rows->count();
+        if (!empty($failedMailboxes)) {
+            $mailboxList = implode(', ', array_unique($failedMailboxes));
+            session()->flash('warning', "{$count} email dihapus dari portal, tapi gagal dihapus dari server ({$mailboxList}) — kemungkinan akan muncul lagi saat sync berikutnya.");
+        } else {
+            session()->flash('message', $count > 1 ? "{$count} email berhasil dihapus." : 'Email berhasil dihapus.');
+        }
+    }
+
+    /** Cari folder INBOX (atau Focused/Fokus utk Outlook) — sama seperti logic di SyncEmailInbox. */
+    protected function findInboxFolder($client)
+    {
+        foreach ($client->getFolders() as $folder) {
+            $name = strtolower($folder->name);
+            if ($name === 'inbox' || str_contains($name, 'fokus') || str_contains($name, 'focused')) {
+                return $folder;
+            }
+        }
+        return null;
     }
 
     public function redownloadAttachments()
