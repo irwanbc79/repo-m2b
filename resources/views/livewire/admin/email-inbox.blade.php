@@ -409,7 +409,7 @@
                                                                 {{ $attachment['filename'] ?? '-' }}
                                                             </span>
                                                             <span class="text-xs text-gray-400 ml-2 shrink-0">
-                                                                {{ number_format(($attachment['size'] ?? 0) / 1024, 1) }} KB
+                                                                {{ number_format(($attachment['file_size'] ?? 0) / 1024, 1) }} KB
                                                             </span>
                                                         </div>
                                                     </div>
@@ -443,40 +443,63 @@
     </div>
     @endif
 
-    {{-- REPLY MODAL --}}
+    {{-- REPLY / FORWARD MODAL --}}
     @if($showReplyModal)
+    @php
+        $isReply = $emailMode === 'reply';
+        $modeAccent = $isReply ? 'emerald' : 'indigo';
+        $totalAttachCount = count($newAttachments)
+            + ($attachQuotationId ? 1 : 0)
+            + ($attachInvoiceId ? 1 : 0)
+            + ($isReply ? 0 : count($forwardAttachments ?? []));
+    @endphp
     <div class="fixed inset-0 z-[9999] overflow-y-auto" aria-labelledby="modal-title" role="dialog" aria-modal="true">
         <div class="flex items-center justify-center min-h-screen p-4 text-center">
             <div class="fixed inset-0 bg-slate-900/60 backdrop-blur-sm transition-opacity" wire:click="closeReplyModal"></div>
             <div class="inline-block align-bottom bg-white rounded-3xl text-left overflow-hidden shadow-2xl transform transition-all sm:max-w-2xl sm:w-full relative z-[10000]">
-                <div class="bg-white">
-                    <div class="px-8 py-6 border-b border-gray-50 flex justify-between items-center bg-gray-50/50">
-                        <h3 class="font-black text-gray-800 uppercase text-sm tracking-widest">
-                            @if($emailMode === 'reply') ✉️ Reply Email @else ➡️ Forward Email @endif
-                        </h3>
-                        <button wire:click="closeReplyModal" class="text-gray-400 hover:text-red-500 transition-colors text-2xl leading-none">&times;</button>
+                <div class="bg-white" x-data="{ attachTab: 'upload' }">
+                    {{-- Header --}}
+                    <div class="px-8 py-6 border-b border-gray-50 flex items-center gap-4 bg-gray-50/50">
+                        <div class="w-11 h-11 rounded-2xl flex items-center justify-center text-lg shrink-0
+                            {{ $isReply ? 'bg-emerald-50 text-emerald-600' : 'bg-indigo-50 text-indigo-600' }}">
+                            {{ $isReply ? '↩️' : '➡️' }}
+                        </div>
+                        <div class="min-w-0">
+                            <h3 class="font-black text-gray-800 uppercase text-sm tracking-widest">
+                                {{ $isReply ? 'Reply Email' : 'Forward Email' }}
+                            </h3>
+                            @if($selectedEmail)
+                            <p class="text-xs text-gray-400 font-medium truncate mt-0.5">{{ $selectedEmail['subject'] ?? '' }}</p>
+                            @endif
+                        </div>
+                        <button wire:click="closeReplyModal" class="ml-auto text-gray-400 hover:text-red-500 transition-colors text-2xl leading-none">&times;</button>
                     </div>
+
                     <form wire:submit.prevent="sendReply">
                         <div class="p-8 space-y-6">
-                            <div>
-                                <label class="block text-[10px] font-black text-gray-400 uppercase tracking-widest mb-2 ml-1">To</label>
-                                @if($emailMode === 'reply')
-                                    <input type="email" wire:model="replyTo" readonly class="w-full border-gray-200 rounded-xl text-sm font-bold bg-gray-50 py-3 px-4">
-                                @else
-                                    <input type="email" wire:model="replyTo" class="w-full border-gray-200 rounded-xl text-sm font-bold focus:ring-blue-500 focus:border-blue-500 py-3 px-4" placeholder="recipient@example.com">
-                                    @error('replyTo') <span class="text-xs text-red-500 mt-1">{{ $message }}</span> @enderror
-                                @endif
+
+                            {{-- Recipient card --}}
+                            <div class="border border-gray-200 rounded-2xl divide-y divide-gray-100 overflow-hidden">
+                                <div class="flex items-center gap-3 px-4 py-3">
+                                    <span class="text-[10px] font-black text-gray-400 uppercase tracking-widest w-9 shrink-0">To</span>
+                                    <input type="email" wire:model="replyTo" placeholder="recipient@example.com"
+                                           class="flex-1 border-0 focus:ring-0 text-sm font-bold text-gray-800 py-1 px-0 placeholder:text-gray-300">
+                                </div>
+                                <div class="flex items-center gap-3 px-4 py-3">
+                                    <span class="text-[10px] font-black text-gray-400 uppercase tracking-widest w-9 shrink-0">Cc</span>
+                                    <input type="text" wire:model="replyCc" placeholder="cc1@example.com, cc2@example.com"
+                                           class="flex-1 border-0 focus:ring-0 text-sm font-bold text-gray-800 py-1 px-0 placeholder:text-gray-300">
+                                </div>
                             </div>
-                            <div>
-                                <label class="block text-[10px] font-black text-gray-400 uppercase tracking-widest mb-2 ml-1">Cc</label>
-                                <input type="text" wire:model="replyCc" class="w-full border-gray-200 rounded-xl text-sm font-bold focus:ring-blue-500 focus:border-blue-500 py-3 px-4" placeholder="cc1@example.com, cc2@example.com">
-                                @error('replyCc') <span class="text-xs text-red-500 mt-1">{{ $message }}</span> @enderror
-                            </div>
+                            @error('replyTo') <span class="text-xs text-red-500 -mt-4 block ml-1">{{ $message }}</span> @enderror
+                            @error('replyCc') <span class="text-xs text-red-500 -mt-4 block ml-1">{{ $message }}</span> @enderror
+
                             <div>
                                 <label class="block text-[10px] font-black text-gray-400 uppercase tracking-widest mb-2 ml-1">Subject</label>
                                 <input type="text" wire:model="replySubject" class="w-full border-gray-200 rounded-xl text-sm font-bold focus:ring-blue-500 focus:border-blue-500 py-3 px-4">
-                                @error('replySubject') <span class="text-xs text-red-500 mt-1">{{ $message }}</span> @enderror
+                                @error('replySubject') <span class="text-xs text-red-500 mt-1 block">{{ $message }}</span> @enderror
                             </div>
+
                             <!-- Template Selector -->
                             <div class="bg-gradient-to-r from-blue-50 to-indigo-50 rounded-xl p-4 border border-blue-100">
                                 <div class="flex items-center justify-between mb-3">
@@ -502,101 +525,154 @@
                                 </div>
                             </div>
 
-                            @if($emailMode === 'forward' && $selectedEmail && count($selectedEmail['attachments'] ?? []) > 0)
-                            <div>
-                                <label class="block text-[10px] font-black text-gray-400 uppercase tracking-widest mb-2 ml-1">📎 Attachments to Forward</label>
-                                <div class="border border-gray-200 rounded-xl overflow-hidden bg-white max-h-32 overflow-y-auto divide-y divide-gray-100">
-                                    @foreach($selectedEmail['attachments'] as $index => $attachment)
-                                    <label class="flex items-center px-4 py-2.5 hover:bg-blue-50 cursor-pointer transition-colors group">
-                                        <input type="checkbox" wire:model="forwardAttachments" value="{{ $index }}" class="w-4 h-4 text-blue-600 border-gray-300 rounded focus:ring-blue-500">
-                                        <span class="ml-3 text-xs font-bold text-gray-800 truncate">{{ $attachment['filename'] }}</span>
-                                        <span class="ml-auto text-xs text-gray-400 font-medium">{{ number_format(($attachment['size'] ?? 0) / 1024, 1) }} KB</span>
-                                    </label>
-                                    @endforeach
+                            {{-- LAMPIRAN: chip rail + tabbed sources --}}
+                            <div class="border border-violet-100 bg-violet-50/40 rounded-2xl p-4">
+                                <div class="flex items-center justify-between mb-3">
+                                    <label class="text-[10px] font-black text-violet-600 uppercase tracking-widest">📎 Lampiran</label>
+                                    @if($totalAttachCount > 0)
+                                    <span class="text-[10px] font-black text-violet-600 bg-violet-100 rounded-full px-2 py-0.5">{{ $totalAttachCount }} terpasang</span>
+                                    @endif
                                 </div>
-                                <p class="text-[10px] text-gray-400 mt-1 ml-1">Semua lampiran secara default akan ikut dikirimkan saat di-forward.</p>
-                            </div>
-                            @endif
 
-                            {{-- UPLOAD FILE BARU --}}
-                            <div>
-                                <label class="block text-[10px] font-black text-gray-400 uppercase tracking-widest mb-2 ml-1">📎 Lampirkan File Baru</label>
-                                <input type="file" wire:model="newAttachments" multiple
-                                       class="w-full text-xs border border-gray-200 rounded-xl py-2.5 px-4 file:mr-3 file:py-1.5 file:px-3 file:rounded-lg file:border-0 file:text-xs file:font-bold file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100">
-                                <div wire:loading wire:target="newAttachments" class="text-xs text-blue-600 mt-1 ml-1">Mengupload...</div>
-                                @error('newAttachments.*') <span class="text-xs text-red-500 mt-1 block">{{ $message }}</span> @enderror
-                                @if(!empty($newAttachments))
-                                <div class="mt-2 space-y-1">
+                                {{-- Chip rail: semua yang sudah terpasang, apapun sumbernya --}}
+                                @if($totalAttachCount > 0)
+                                <div class="flex flex-wrap gap-2 mb-3">
+                                    @if(!$isReply)
+                                        @foreach(($selectedEmail['attachments'] ?? []) as $index => $attachment)
+                                            @if(in_array((string)$index, $forwardAttachments ?? []))
+                                            <span class="inline-flex items-center gap-1.5 bg-white border border-gray-200 rounded-full px-3 py-1 text-xs font-bold text-gray-700" title="Kelola di tab &quot;Email Asli&quot;">
+                                                📨 {{ Str::limit($attachment['filename'], 20) }}
+                                            </span>
+                                            @endif
+                                        @endforeach
+                                    @endif
                                     @foreach($newAttachments as $index => $file)
-                                    <div class="flex items-center justify-between bg-gray-50 border border-gray-200 rounded-lg px-3 py-1.5">
-                                        <span class="text-xs font-bold text-gray-700 truncate">{{ $file->getClientOriginalName() }}</span>
-                                        <button type="button" wire:click="removeNewAttachment({{ $index }})" class="text-red-400 hover:text-red-600 text-xs font-bold ml-2">&times;</button>
-                                    </div>
+                                    <span class="inline-flex items-center gap-1.5 bg-white border border-blue-200 rounded-full pl-3 pr-1.5 py-1 text-xs font-bold text-blue-700">
+                                        📎 {{ Str::limit($file->getClientOriginalName(), 20) }}
+                                        <button type="button" wire:click="removeNewAttachment({{ $index }})" class="w-4 h-4 rounded-full hover:bg-blue-100 text-blue-400 hover:text-red-500 leading-none">&times;</button>
+                                    </span>
                                     @endforeach
-                                </div>
-                                @endif
-                            </div>
-
-                            {{-- LAMPIRKAN QUOTATION DARI SISTEM --}}
-                            <div wire:key="attach-quotation-block">
-                                <label class="block text-[10px] font-black text-gray-400 uppercase tracking-widest mb-2 ml-1">🧾 Lampirkan Quotation (PDF)</label>
-                                @if($attachQuotationId)
-                                <div class="flex items-center justify-between bg-indigo-50 border border-indigo-200 rounded-xl px-4 py-2.5">
-                                    <span class="text-xs font-bold text-indigo-800">{{ $attachQuotationLabel }}</span>
-                                    <button type="button" wire:click="removeQuotationAttachment" class="text-red-400 hover:text-red-600 text-xs font-bold ml-2">&times;</button>
-                                </div>
-                                @else
-                                <div class="relative">
-                                    <input type="text" wire:model.live.debounce.400ms="attachQuotationSearch" placeholder="Cari nomor quotation / nama customer..."
-                                           class="w-full border-gray-200 rounded-xl text-sm focus:ring-blue-500 focus:border-blue-500 py-2.5 px-4">
-                                    @if(count($attachQuotationResults) > 0)
-                                    <div class="absolute z-10 mt-1 w-full bg-white border border-gray-200 rounded-xl shadow-lg max-h-40 overflow-y-auto">
-                                        @foreach($attachQuotationResults as $row)
-                                        <button type="button" wire:click="selectQuotationToAttach({{ $row['id'] }})" class="w-full text-left px-4 py-2 text-xs font-bold text-gray-700 hover:bg-blue-50 border-b border-gray-50 last:border-0">
-                                            {{ $row['label'] }}
-                                        </button>
-                                        @endforeach
-                                    </div>
+                                    @if($attachQuotationId)
+                                    <span class="inline-flex items-center gap-1.5 bg-white border border-indigo-200 rounded-full pl-3 pr-1.5 py-1 text-xs font-bold text-indigo-700">
+                                        🧾 {{ Str::limit($attachQuotationLabel, 24) }}
+                                        <button type="button" wire:click="removeQuotationAttachment" class="w-4 h-4 rounded-full hover:bg-indigo-100 text-indigo-400 hover:text-red-500 leading-none">&times;</button>
+                                    </span>
+                                    @endif
+                                    @if($attachInvoiceId)
+                                    <span class="inline-flex items-center gap-1.5 bg-white border border-emerald-200 rounded-full pl-3 pr-1.5 py-1 text-xs font-bold text-emerald-700">
+                                        🧾 {{ Str::limit($attachInvoiceLabel, 24) }}
+                                        <button type="button" wire:click="removeInvoiceAttachment" class="w-4 h-4 rounded-full hover:bg-emerald-100 text-emerald-400 hover:text-red-500 leading-none">&times;</button>
+                                    </span>
                                     @endif
                                 </div>
                                 @endif
-                            </div>
 
-                            {{-- LAMPIRKAN INVOICE DARI SISTEM --}}
-                            <div wire:key="attach-invoice-block">
-                                <label class="block text-[10px] font-black text-gray-400 uppercase tracking-widest mb-2 ml-1">🧾 Lampirkan Invoice (PDF)</label>
-                                @if($attachInvoiceId)
-                                <div class="flex items-center justify-between bg-emerald-50 border border-emerald-200 rounded-xl px-4 py-2.5">
-                                    <span class="text-xs font-bold text-emerald-800">{{ $attachInvoiceLabel }}</span>
-                                    <button type="button" wire:click="removeInvoiceAttachment" class="text-red-400 hover:text-red-600 text-xs font-bold ml-2">&times;</button>
+                                {{-- Tab switcher (client-side, no round trip) --}}
+                                <div class="flex gap-1 bg-white/70 border border-violet-100 rounded-xl p-1 mb-3">
+                                    @if(!$isReply && $selectedEmail && count($selectedEmail['attachments'] ?? []) > 0)
+                                    <button type="button" @click="attachTab = 'original'"
+                                            :class="attachTab === 'original' ? 'bg-violet-600 text-white shadow-sm' : 'text-gray-500 hover:text-violet-600'"
+                                            class="flex-1 text-[11px] font-bold rounded-lg py-1.5 transition-all">📨 Email Asli</button>
+                                    @endif
+                                    <button type="button" @click="attachTab = 'upload'"
+                                            :class="attachTab === 'upload' ? 'bg-violet-600 text-white shadow-sm' : 'text-gray-500 hover:text-violet-600'"
+                                            class="flex-1 text-[11px] font-bold rounded-lg py-1.5 transition-all">📎 Upload</button>
+                                    <button type="button" @click="attachTab = 'quotation'"
+                                            :class="attachTab === 'quotation' ? 'bg-violet-600 text-white shadow-sm' : 'text-gray-500 hover:text-violet-600'"
+                                            class="flex-1 text-[11px] font-bold rounded-lg py-1.5 transition-all">🧾 Quotation</button>
+                                    <button type="button" @click="attachTab = 'invoice'"
+                                            :class="attachTab === 'invoice' ? 'bg-violet-600 text-white shadow-sm' : 'text-gray-500 hover:text-violet-600'"
+                                            class="flex-1 text-[11px] font-bold rounded-lg py-1.5 transition-all">🧾 Invoice</button>
                                 </div>
-                                @else
-                                <div class="relative">
-                                    <input type="text" wire:model.live.debounce.400ms="attachInvoiceSearch" placeholder="Cari nomor invoice / nama customer..."
-                                           class="w-full border-gray-200 rounded-xl text-sm focus:ring-blue-500 focus:border-blue-500 py-2.5 px-4">
-                                    @if(count($attachInvoiceResults) > 0)
-                                    <div class="absolute z-10 mt-1 w-full bg-white border border-gray-200 rounded-xl shadow-lg max-h-40 overflow-y-auto">
-                                        @foreach($attachInvoiceResults as $row)
-                                        <button type="button" wire:click="selectInvoiceToAttach({{ $row['id'] }})" class="w-full text-left px-4 py-2 text-xs font-bold text-gray-700 hover:bg-blue-50 border-b border-gray-50 last:border-0">
-                                            {{ $row['label'] }}
-                                        </button>
+
+                                {{-- Panel: email asli (forward only) --}}
+                                @if(!$isReply && $selectedEmail && count($selectedEmail['attachments'] ?? []) > 0)
+                                <div x-show="attachTab === 'original'" x-cloak>
+                                    <div class="border border-gray-200 rounded-xl overflow-hidden bg-white max-h-32 overflow-y-auto divide-y divide-gray-100">
+                                        @foreach($selectedEmail['attachments'] as $index => $attachment)
+                                        <label class="flex items-center px-4 py-2.5 hover:bg-violet-50 cursor-pointer transition-colors group">
+                                            <input type="checkbox" wire:model="forwardAttachments" value="{{ $index }}" class="w-4 h-4 text-violet-600 border-gray-300 rounded focus:ring-violet-500">
+                                            <span class="ml-3 text-xs font-bold text-gray-800 truncate">{{ $attachment['filename'] }}</span>
+                                            <span class="ml-auto text-xs text-gray-400 font-medium">{{ number_format(($attachment['file_size'] ?? 0) / 1024, 1) }} KB</span>
+                                        </label>
                                         @endforeach
+                                    </div>
+                                </div>
+                                @endif
+
+                                {{-- Panel: upload file baru --}}
+                                <div x-show="attachTab === 'upload'" x-cloak>
+                                    <input type="file" wire:model="newAttachments" multiple
+                                           class="w-full text-xs border border-gray-200 rounded-xl py-2.5 px-4 bg-white file:mr-3 file:py-1.5 file:px-3 file:rounded-lg file:border-0 file:text-xs file:font-bold file:bg-violet-50 file:text-violet-700 hover:file:bg-violet-100">
+                                    <div wire:loading wire:target="newAttachments" class="text-xs text-violet-600 mt-1 ml-1">Mengupload...</div>
+                                    @error('newAttachments.*') <span class="text-xs text-red-500 mt-1 block">{{ $message }}</span> @enderror
+                                    <p class="text-[10px] text-gray-400 mt-1.5 ml-1">Max 10MB/file — PDF, gambar, Office, ZIP.</p>
+                                </div>
+
+                                {{-- Panel: pilih quotation dari sistem --}}
+                                <div x-show="attachTab === 'quotation'" x-cloak>
+                                    @if($attachQuotationId)
+                                    <div class="flex items-center justify-between bg-white border border-indigo-200 rounded-xl px-4 py-2.5">
+                                        <span class="text-xs font-bold text-indigo-800">✓ {{ $attachQuotationLabel }}</span>
+                                        <button type="button" wire:click="removeQuotationAttachment" class="text-red-400 hover:text-red-600 text-xs font-bold ml-2">Ganti</button>
+                                    </div>
+                                    @else
+                                    <div class="relative">
+                                        <input type="text" wire:model.live.debounce.400ms="attachQuotationSearch" placeholder="Cari nomor quotation / nama customer..."
+                                               class="w-full border-gray-200 rounded-xl text-sm bg-white focus:ring-violet-500 focus:border-violet-500 py-2.5 px-4">
+                                        @if(count($attachQuotationResults) > 0)
+                                        <div class="absolute z-10 mt-1 w-full bg-white border border-gray-200 rounded-xl shadow-lg max-h-40 overflow-y-auto">
+                                            @foreach($attachQuotationResults as $row)
+                                            <button type="button" wire:click="selectQuotationToAttach({{ $row['id'] }})" class="w-full text-left px-4 py-2 text-xs font-bold text-gray-700 hover:bg-indigo-50 border-b border-gray-50 last:border-0">
+                                                {{ $row['label'] }}
+                                            </button>
+                                            @endforeach
+                                        </div>
+                                        @endif
                                     </div>
                                     @endif
                                 </div>
-                                @endif
+
+                                {{-- Panel: pilih invoice dari sistem --}}
+                                <div x-show="attachTab === 'invoice'" x-cloak>
+                                    @if($attachInvoiceId)
+                                    <div class="flex items-center justify-between bg-white border border-emerald-200 rounded-xl px-4 py-2.5">
+                                        <span class="text-xs font-bold text-emerald-800">✓ {{ $attachInvoiceLabel }}</span>
+                                        <button type="button" wire:click="removeInvoiceAttachment" class="text-red-400 hover:text-red-600 text-xs font-bold ml-2">Ganti</button>
+                                    </div>
+                                    @else
+                                    <div class="relative">
+                                        <input type="text" wire:model.live.debounce.400ms="attachInvoiceSearch" placeholder="Cari nomor invoice / nama customer..."
+                                               class="w-full border-gray-200 rounded-xl text-sm bg-white focus:ring-violet-500 focus:border-violet-500 py-2.5 px-4">
+                                        @if(count($attachInvoiceResults) > 0)
+                                        <div class="absolute z-10 mt-1 w-full bg-white border border-gray-200 rounded-xl shadow-lg max-h-40 overflow-y-auto">
+                                            @foreach($attachInvoiceResults as $row)
+                                            <button type="button" wire:click="selectInvoiceToAttach({{ $row['id'] }})" class="w-full text-left px-4 py-2 text-xs font-bold text-gray-700 hover:bg-emerald-50 border-b border-gray-50 last:border-0">
+                                                {{ $row['label'] }}
+                                            </button>
+                                            @endforeach
+                                        </div>
+                                        @endif
+                                    </div>
+                                    @endif
+                                </div>
                             </div>
 
                             <div>
                                 <label class="block text-[10px] font-black text-gray-400 uppercase tracking-widest mb-2 ml-1">Message</label>
                                 <textarea wire:model="replyBody" rows="10" class="w-full border-gray-200 rounded-xl text-sm focus:ring-blue-500 focus:border-blue-500 py-3 px-4" placeholder="Type your message here..."></textarea>
-                                @error('replyBody') <span class="text-xs text-red-500 mt-1">{{ $message }}</span> @enderror
+                                @error('replyBody') <span class="text-xs text-red-500 mt-1 block">{{ $message }}</span> @enderror
                             </div>
                         </div>
                         <div class="px-8 py-5 bg-gray-50 flex justify-end gap-3 border-t border-gray-100">
                             <button type="button" wire:click="closeReplyModal" class="px-6 py-2.5 text-xs font-black text-gray-400 uppercase tracking-widest hover:text-gray-600 transition-all">Cancel</button>
-                            <button type="submit" class="px-8 py-2.5 bg-green-600 text-white rounded-xl font-black text-xs uppercase tracking-widest shadow-lg shadow-green-100 hover:bg-green-700 transition-all">
-                                @if($emailMode === 'reply') Send Reply @else Send Forward @endif
+                            <button type="submit" wire:loading.attr="disabled" wire:target="sendReply"
+                                    class="px-8 py-2.5 rounded-xl font-black text-xs uppercase tracking-widest shadow-lg transition-all text-white disabled:opacity-60 disabled:cursor-not-allowed
+                                    {{ $isReply ? 'bg-emerald-600 hover:bg-emerald-700 shadow-emerald-100' : 'bg-indigo-600 hover:bg-indigo-700 shadow-indigo-100' }}">
+                                <span wire:loading.remove wire:target="sendReply">
+                                    {{ $isReply ? 'Send Reply' : 'Send Forward' }}{{ $totalAttachCount > 0 ? ' · 📎' . $totalAttachCount : '' }}
+                                </span>
+                                <span wire:loading wire:target="sendReply">Mengirim...</span>
                             </button>
                         </div>
                     </form>
