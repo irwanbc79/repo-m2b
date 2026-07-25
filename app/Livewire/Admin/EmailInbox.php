@@ -4,20 +4,24 @@ namespace App\Livewire\Admin;
 
 use Livewire\Component;
 use Livewire\WithPagination;
+use Livewire\WithFileUploads;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
 use App\Models\Shipment;
 use App\Models\Customer;
 use App\Models\Document;
+use App\Models\Quotation;
+use App\Models\Invoice;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Artisan;
 use Webklex\IMAP\Facades\Client;
+use Barryvdh\DomPDF\Facade\Pdf;
 use Carbon\Carbon;
 
 class EmailInbox extends Component
 {
-    use WithPagination;
+    use WithPagination, WithFileUploads;
 
     public $activeAccount = 'sales';
     public $mailboxes = ['sales', 'import', 'export', 'finance', 'gmail', 'pajak', 'shipping'];
@@ -405,6 +409,19 @@ class EmailInbox extends Component
     public $templateLang = "ID";
     public $forwardAttachments = []; // indices of attachments of original email to forward
 
+    // --- Attachment baru: upload file bebas + pilih Quotation/Invoice dari sistem ---
+    public $newAttachments = []; // TemporaryUploadedFile[]
+
+    public $attachQuotationSearch = '';
+    public $attachQuotationResults = [];
+    public $attachQuotationId = null;
+    public $attachQuotationLabel = null;
+
+    public $attachInvoiceSearch = '';
+    public $attachInvoiceResults = [];
+    public $attachInvoiceId = null;
+    public $attachInvoiceLabel = null;
+
     public function getTemplatesProperty()
     {
         $templates = config("email_templates.templates", []);
@@ -447,33 +464,125 @@ class EmailInbox extends Component
     public function openReplyModal()
     {
         if (!$this->selectedEmail) return;
-        
+
         $this->emailMode = 'reply';
         $this->replyTo = $this->selectedEmail['from'];
         $this->replyCc = '';
         $this->replySubject = 'Re: ' . $this->selectedEmail['subject'];
         $this->replyBody = '';
         $this->forwardAttachments = [];
+        $this->resetNewAttachments();
         $this->showReplyModal = true;
     }
 
     public function openForwardModal()
     {
         if (!$this->selectedEmail) return;
-        
+
         $this->emailMode = 'forward';
         $this->replyTo = '';
         $this->replyCc = '';
         $this->replySubject = 'Fwd: ' . $this->selectedEmail['subject'];
         $this->replyBody = '';
-        
+
         // Auto-select all attachments for forwarding
         $this->forwardAttachments = [];
         if (isset($this->selectedEmail['attachments'])) {
             $this->forwardAttachments = array_map('strval', array_keys($this->selectedEmail['attachments']));
         }
-        
+        $this->resetNewAttachments();
+
         $this->showReplyModal = true;
+    }
+
+    protected function resetNewAttachments()
+    {
+        $this->reset([
+            'newAttachments',
+            'attachQuotationSearch', 'attachQuotationResults', 'attachQuotationId', 'attachQuotationLabel',
+            'attachInvoiceSearch', 'attachInvoiceResults', 'attachInvoiceId', 'attachInvoiceLabel',
+        ]);
+    }
+
+    public function updatedAttachQuotationSearch()
+    {
+        $q = trim($this->attachQuotationSearch);
+        if (mb_strlen($q) < 2) {
+            $this->attachQuotationResults = [];
+            return;
+        }
+
+        $this->attachQuotationResults = Quotation::with('customer')
+            ->where('quotation_number', 'like', "%{$q}%")
+            ->orWhere('manual_company', 'like', "%{$q}%")
+            ->orWhereHas('customer', fn ($c) => $c->where('company_name', 'like', "%{$q}%"))
+            ->latest()
+            ->limit(10)
+            ->get()
+            ->map(fn ($row) => [
+                'id' => $row->id,
+                'label' => $row->quotation_number . ' — ' . ($row->customer->company_name ?? $row->manual_company ?? '-'),
+            ])
+            ->all();
+    }
+
+    public function selectQuotationToAttach($id)
+    {
+        $q = Quotation::find($id);
+        if (!$q) return;
+        $this->attachQuotationId = $q->id;
+        $this->attachQuotationLabel = $q->quotation_number . ' — ' . ($q->customer->company_name ?? $q->manual_company ?? '-');
+        $this->attachQuotationSearch = '';
+        $this->attachQuotationResults = [];
+    }
+
+    public function removeQuotationAttachment()
+    {
+        $this->attachQuotationId = null;
+        $this->attachQuotationLabel = null;
+    }
+
+    public function updatedAttachInvoiceSearch()
+    {
+        $q = trim($this->attachInvoiceSearch);
+        if (mb_strlen($q) < 2) {
+            $this->attachInvoiceResults = [];
+            return;
+        }
+
+        $this->attachInvoiceResults = Invoice::with('customer')
+            ->where('invoice_number', 'like', "%{$q}%")
+            ->orWhereHas('customer', fn ($c) => $c->where('company_name', 'like', "%{$q}%"))
+            ->latest()
+            ->limit(10)
+            ->get()
+            ->map(fn ($row) => [
+                'id' => $row->id,
+                'label' => $row->invoice_number . ' — ' . ($row->customer->company_name ?? '-'),
+            ])
+            ->all();
+    }
+
+    public function selectInvoiceToAttach($id)
+    {
+        $inv = Invoice::find($id);
+        if (!$inv) return;
+        $this->attachInvoiceId = $inv->id;
+        $this->attachInvoiceLabel = $inv->invoice_number . ' — ' . ($inv->customer->company_name ?? '-');
+        $this->attachInvoiceSearch = '';
+        $this->attachInvoiceResults = [];
+    }
+
+    public function removeInvoiceAttachment()
+    {
+        $this->attachInvoiceId = null;
+        $this->attachInvoiceLabel = null;
+    }
+
+    public function removeNewAttachment($index)
+    {
+        unset($this->newAttachments[$index]);
+        $this->newAttachments = array_values($this->newAttachments);
     }
 
     public function sendReply()
@@ -482,6 +591,7 @@ class EmailInbox extends Component
             'replyTo' => 'required|email',
             'replySubject' => 'required|string',
             'replyBody' => 'required|string|min:5',
+            'newAttachments.*' => 'file|max:10240|mimes:pdf,jpg,jpeg,png,doc,docx,xls,xlsx,zip',
         ];
 
         $this->validate($rules);
@@ -557,7 +667,7 @@ class EmailInbox extends Component
                         $message->cc($ccEmails);
                     }
                     
-                    $this->attachForwardedFiles($message);
+                    $this->attachAllFiles($message);
                 });
 
                 $sentWithCustom = true;
@@ -581,7 +691,7 @@ class EmailInbox extends Component
                         $message->cc($ccEmails);
                     }
                     
-                    $this->attachForwardedFiles($message);
+                    $this->attachAllFiles($message);
                 });
             }
 
@@ -604,6 +714,7 @@ class EmailInbox extends Component
             session()->flash('message', "{$msgType} berhasil dikirim ke " . $this->replyTo);
             $this->showReplyModal = false;
             $this->reset(['replyTo', 'replyCc', 'replySubject', 'replyBody', 'forwardAttachments', 'emailMode']);
+        $this->resetNewAttachments();
             
         } catch (\Exception $e) {
             \Log::error('Failed to send email', [
@@ -615,9 +726,9 @@ class EmailInbox extends Component
         }
     }
 
-    protected function attachForwardedFiles($message)
+    protected function attachAllFiles($message)
     {
-        // Attach files if in forward mode and attachments are selected
+        // 1. Attach files if in forward mode and original attachments are selected
         if ($this->emailMode === 'forward' && !empty($this->forwardAttachments) && isset($this->selectedEmail['attachments'])) {
             foreach ($this->selectedEmail['attachments'] as $idx => $att) {
                 if (in_array((string)$idx, $this->forwardAttachments)) {
@@ -639,12 +750,56 @@ class EmailInbox extends Component
                 }
             }
         }
+
+        // 2. File baru yang di-upload admin dari komputernya
+        foreach ($this->newAttachments as $file) {
+            if (!$file) continue;
+            $message->attach($file->getRealPath(), [
+                'as' => $file->getClientOriginalName(),
+                'mime' => $file->getMimeType(),
+            ]);
+        }
+
+        // 3. Quotation PDF yang dipilih dari sistem (generate langsung, tanpa download-upload manual)
+        if ($this->attachQuotationId) {
+            try {
+                $quotation = Quotation::with('customer', 'items')->find($this->attachQuotationId);
+                if ($quotation) {
+                    $f = new \NumberFormatter('id', \NumberFormatter::SPELLOUT);
+                    $terbilangText = ucwords($f->format($quotation->grand_total)) . ' Rupiah';
+                    $pdf = Pdf::loadView('admin.quotation-print', compact('quotation', 'terbilangText'))->setPaper('a4', 'portrait');
+                    $message->attachData($pdf->output(), 'Quotation_' . str_replace(['.', '/'], '-', $quotation->quotation_number) . '.pdf', [
+                        'mime' => 'application/pdf',
+                    ]);
+                }
+            } catch (\Throwable $e) {
+                \Log::warning('Gagal generate PDF Quotation utk lampiran email: ' . $e->getMessage());
+                session()->flash('warning', 'Email terkirim, tapi PDF Quotation gagal dilampirkan: ' . $e->getMessage());
+            }
+        }
+
+        // 4. Invoice PDF yang dipilih dari sistem
+        if ($this->attachInvoiceId) {
+            try {
+                $invoice = Invoice::find($this->attachInvoiceId);
+                if ($invoice) {
+                    $pdf = Pdf::loadView('admin.invoice-pdf', ['invoice' => $invoice, 'isPdf' => true])->setPaper('A4');
+                    $message->attachData($pdf->output(), 'Invoice_' . str_replace(['.', '/'], '-', $invoice->invoice_number) . '.pdf', [
+                        'mime' => 'application/pdf',
+                    ]);
+                }
+            } catch (\Throwable $e) {
+                \Log::warning('Gagal generate PDF Invoice utk lampiran email: ' . $e->getMessage());
+                session()->flash('warning', 'Email terkirim, tapi PDF Invoice gagal dilampirkan: ' . $e->getMessage());
+            }
+        }
     }
 
     public function closeReplyModal()
     {
         $this->showReplyModal = false;
         $this->reset(['replyTo', 'replyCc', 'replySubject', 'replyBody', 'forwardAttachments', 'emailMode']);
+        $this->resetNewAttachments();
     }
 
 

@@ -14,6 +14,12 @@
             <button onclick="this.parentElement.remove()" class="text-red-700 hover:text-red-900">&times;</button>
         </div>
     @endif
+    @if (session()->has('warning'))
+        <div class="bg-amber-100 border border-amber-400 text-amber-700 px-4 py-3 rounded-xl mb-4 flex items-center justify-between">
+            <span class="font-bold">{{ session('warning') }}</span>
+            <button onclick="this.parentElement.remove()" class="text-amber-700 hover:text-amber-900">&times;</button>
+        </div>
+    @endif
 
     <div class="flex-1 flex bg-white border border-gray-200 rounded-xl overflow-hidden shadow-sm">
         
@@ -511,6 +517,75 @@
                                 <p class="text-[10px] text-gray-400 mt-1 ml-1">Semua lampiran secara default akan ikut dikirimkan saat di-forward.</p>
                             </div>
                             @endif
+
+                            {{-- UPLOAD FILE BARU --}}
+                            <div>
+                                <label class="block text-[10px] font-black text-gray-400 uppercase tracking-widest mb-2 ml-1">📎 Lampirkan File Baru</label>
+                                <input type="file" wire:model="newAttachments" multiple
+                                       class="w-full text-xs border border-gray-200 rounded-xl py-2.5 px-4 file:mr-3 file:py-1.5 file:px-3 file:rounded-lg file:border-0 file:text-xs file:font-bold file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100">
+                                <div wire:loading wire:target="newAttachments" class="text-xs text-blue-600 mt-1 ml-1">Mengupload...</div>
+                                @error('newAttachments.*') <span class="text-xs text-red-500 mt-1 block">{{ $message }}</span> @enderror
+                                @if(!empty($newAttachments))
+                                <div class="mt-2 space-y-1">
+                                    @foreach($newAttachments as $index => $file)
+                                    <div class="flex items-center justify-between bg-gray-50 border border-gray-200 rounded-lg px-3 py-1.5">
+                                        <span class="text-xs font-bold text-gray-700 truncate">{{ $file->getClientOriginalName() }}</span>
+                                        <button type="button" wire:click="removeNewAttachment({{ $index }})" class="text-red-400 hover:text-red-600 text-xs font-bold ml-2">&times;</button>
+                                    </div>
+                                    @endforeach
+                                </div>
+                                @endif
+                            </div>
+
+                            {{-- LAMPIRKAN QUOTATION DARI SISTEM --}}
+                            <div wire:key="attach-quotation-block">
+                                <label class="block text-[10px] font-black text-gray-400 uppercase tracking-widest mb-2 ml-1">🧾 Lampirkan Quotation (PDF)</label>
+                                @if($attachQuotationId)
+                                <div class="flex items-center justify-between bg-indigo-50 border border-indigo-200 rounded-xl px-4 py-2.5">
+                                    <span class="text-xs font-bold text-indigo-800">{{ $attachQuotationLabel }}</span>
+                                    <button type="button" wire:click="removeQuotationAttachment" class="text-red-400 hover:text-red-600 text-xs font-bold ml-2">&times;</button>
+                                </div>
+                                @else
+                                <div class="relative">
+                                    <input type="text" wire:model.live.debounce.400ms="attachQuotationSearch" placeholder="Cari nomor quotation / nama customer..."
+                                           class="w-full border-gray-200 rounded-xl text-sm focus:ring-blue-500 focus:border-blue-500 py-2.5 px-4">
+                                    @if(count($attachQuotationResults) > 0)
+                                    <div class="absolute z-10 mt-1 w-full bg-white border border-gray-200 rounded-xl shadow-lg max-h-40 overflow-y-auto">
+                                        @foreach($attachQuotationResults as $row)
+                                        <button type="button" wire:click="selectQuotationToAttach({{ $row['id'] }})" class="w-full text-left px-4 py-2 text-xs font-bold text-gray-700 hover:bg-blue-50 border-b border-gray-50 last:border-0">
+                                            {{ $row['label'] }}
+                                        </button>
+                                        @endforeach
+                                    </div>
+                                    @endif
+                                </div>
+                                @endif
+                            </div>
+
+                            {{-- LAMPIRKAN INVOICE DARI SISTEM --}}
+                            <div wire:key="attach-invoice-block">
+                                <label class="block text-[10px] font-black text-gray-400 uppercase tracking-widest mb-2 ml-1">🧾 Lampirkan Invoice (PDF)</label>
+                                @if($attachInvoiceId)
+                                <div class="flex items-center justify-between bg-emerald-50 border border-emerald-200 rounded-xl px-4 py-2.5">
+                                    <span class="text-xs font-bold text-emerald-800">{{ $attachInvoiceLabel }}</span>
+                                    <button type="button" wire:click="removeInvoiceAttachment" class="text-red-400 hover:text-red-600 text-xs font-bold ml-2">&times;</button>
+                                </div>
+                                @else
+                                <div class="relative">
+                                    <input type="text" wire:model.live.debounce.400ms="attachInvoiceSearch" placeholder="Cari nomor invoice / nama customer..."
+                                           class="w-full border-gray-200 rounded-xl text-sm focus:ring-blue-500 focus:border-blue-500 py-2.5 px-4">
+                                    @if(count($attachInvoiceResults) > 0)
+                                    <div class="absolute z-10 mt-1 w-full bg-white border border-gray-200 rounded-xl shadow-lg max-h-40 overflow-y-auto">
+                                        @foreach($attachInvoiceResults as $row)
+                                        <button type="button" wire:click="selectInvoiceToAttach({{ $row['id'] }})" class="w-full text-left px-4 py-2 text-xs font-bold text-gray-700 hover:bg-blue-50 border-b border-gray-50 last:border-0">
+                                            {{ $row['label'] }}
+                                        </button>
+                                        @endforeach
+                                    </div>
+                                    @endif
+                                </div>
+                                @endif
+                            </div>
 
                             <div>
                                 <label class="block text-[10px] font-black text-gray-400 uppercase tracking-widest mb-2 ml-1">Message</label>
