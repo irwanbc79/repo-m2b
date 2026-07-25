@@ -15,6 +15,7 @@ use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Storage;
 use App\Mail\QuotationMail;
+use App\Services\QuotationTranslationService;
 
 class QuotationManager extends Component
 {
@@ -39,8 +40,11 @@ class QuotationManager extends Component
     public $destination;
     public $service_type = 'import';
     public $quotation_type = 'shipment';
-    public $notes = ''; 
+    public $notes = '';
     public $terbilang_lang = 'id';
+    public $notes_en = null;
+    public $notes_en_source_hash = null;
+    public $isTranslatingNotes = false;
     
     public $ppn_rate = 11;
     public $pph_rate = 0;
@@ -83,7 +87,43 @@ class QuotationManager extends Component
         $this->items = [['item_type' => 'service', 'description' => 'Jasa Freight', 'qty' => 1, 'price' => 0]];
     }
 
-    public function changeServiceType($value) { 
+    /**
+     * Translate Catatan/Syarat & Ketentuan (ID) ke Inggris via AI — HANYA jalan
+     * saat tombol ini diklik manual (bukan otomatis), supaya hemat token.
+     * Hasil disimpan di $notes_en (ikut ke-save saat Save Quotation ditekan).
+     */
+    public function translateNotesToEnglish()
+    {
+        $service = app(QuotationTranslationService::class);
+
+        if (!$service->isConfigured()) {
+            session()->flash('error', 'Fitur translate AI belum aktif. Hubungi admin untuk mengisi API key AI di server.');
+            return;
+        }
+
+        $this->isTranslatingNotes = true;
+
+        try {
+            $this->notes_en = $service->translateNotesToEnglish((string) $this->notes);
+            $this->notes_en_source_hash = md5((string) $this->notes);
+            $this->dispatch('set-editor-content-en', content: $this->notes_en);
+        } catch (\Throwable $e) {
+            session()->flash('error', 'Gagal translate: ' . $e->getMessage());
+        } finally {
+            $this->isTranslatingNotes = false;
+        }
+    }
+
+    /** True kalau notes_en ada tapi catatan ID sudah berubah sejak terakhir ditranslate. */
+    public function getIsNotesTranslationStaleProperty(): bool
+    {
+        if (empty($this->notes_en)) {
+            return false;
+        }
+        return $this->notes_en_source_hash !== md5((string) $this->notes);
+    }
+
+    public function changeServiceType($value) {
         $this->service_type = $value;
         $this->setDefaultNotes($value); 
         // Paksa update tampilan editor
@@ -132,8 +172,10 @@ class QuotationManager extends Component
             $this->quotation_type = $q->quotation_type ?? 'shipment';
             
             // Pastikan Notes diambil sebagai string
-            $this->notes = (string) $q->notes; 
+            $this->notes = (string) $q->notes;
             $this->terbilang_lang = $q->terbilang_lang ?? 'id';
+            $this->notes_en = $q->notes_en;
+            $this->notes_en_source_hash = $q->notes_en_source_hash;
 
             if ($q->customer_id) {
                 $this->is_new_customer = false;
@@ -228,6 +270,8 @@ class QuotationManager extends Component
             // Pastikan Notes String
             'notes'             => is_string($this->notes) ? $this->notes : (string)$this->notes,
             'terbilang_lang'    => $this->terbilang_lang,
+            'notes_en'          => $this->notes_en,
+            'notes_en_source_hash' => $this->notes_en_source_hash,
         ];
 
         // 3. PROSES DATABASE UTAMA
@@ -275,7 +319,7 @@ class QuotationManager extends Component
     }
 
     // --- UTILS ---
-    public function resetInput() { $this->reset(['customer_id', 'manual_company', 'manual_pic', 'manual_email', 'manual_phone', 'items', 'origin', 'destination', 'service_type', 'quotation_type', 'notes', 'terbilang_lang', 'editingId', 'isEditing', 'isSendModalOpen']); }
+    public function resetInput() { $this->reset(['customer_id', 'manual_company', 'manual_pic', 'manual_email', 'manual_phone', 'items', 'origin', 'destination', 'service_type', 'quotation_type', 'notes', 'terbilang_lang', 'notes_en', 'notes_en_source_hash', 'editingId', 'isEditing', 'isSendModalOpen']); }
     public function closeModal() { $this->isModalOpen = false; }
     public function addItem() { $this->items[] = ['item_type' => 'service', 'description' => '', 'qty' => 1, 'price' => 0]; }
     public function removeItem($index) { unset($this->items[$index]); $this->items = array_values($this->items); $this->calculate(); }

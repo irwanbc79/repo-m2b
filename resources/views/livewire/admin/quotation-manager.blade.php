@@ -10,6 +10,7 @@
         .native-editor p { margin-bottom: 8px; text-align: justify; }
         .native-editor ul, .native-editor ol { padding-left: 25px; margin-bottom: 10px; }
         .native-editor li { margin-bottom: 4px; text-align: justify; }
+        .native-editor:empty:before { content: attr(data-placeholder); color: #9ca3af; font-style: italic; }
     </style>
 
     @if (session()->has('message'))
@@ -477,7 +478,7 @@
                             </div>
                         </div>
                         @empty
-                        <p class="text-gray-500 text-sm text-center py-4">Belum ada produk di master. <a href="{{ route('products') }}" class="text-blue-600 hover:underline">Tambah produk</a></p>
+                        <p class="text-gray-500 text-sm text-center py-4">Belum ada produk di master. <a href="{{ route('admin.products') }}" class="text-blue-600 hover:underline">Tambah produk</a></p>
                         @endforelse
                     </div>
                     @endif
@@ -573,6 +574,33 @@
                         </div>
                         <div x-ref="editor" class="native-editor" contenteditable="true" @input="update" @blur="update"></div>
                     </div>
+
+                    @if($terbilang_lang !== 'id')
+                    <div wire:ignore
+                         x-data="{
+                             content: @entangle('notes_en'),
+                             exec(cmd) { document.execCommand(cmd, false, null); this.$refs.editorEn.focus(); },
+                             update() { this.content = this.$refs.editorEn.innerHTML; }
+                         }"
+                         x-init="$refs.editorEn.innerHTML = content || ''; $wire.on('set-editor-content-en', (e) => { content = e.content; $refs.editorEn.innerHTML = e.content; });">
+                        <div class="flex items-center justify-between mb-1">
+                            <label class="block text-sm font-bold text-gray-700">🌐 Notes / Terms (English)</label>
+                            <button type="button" wire:click="translateNotesToEnglish" wire:loading.attr="disabled" wire:target="translateNotesToEnglish"
+                                    class="text-xs font-bold text-blue-600 hover:underline disabled:opacity-50 flex items-center gap-1">
+                                <span wire:loading.remove wire:target="translateNotesToEnglish">{{ $notes_en ? '↻ Translate Ulang' : '✨ Translate dari Bahasa Indonesia' }}</span>
+                                <span wire:loading wire:target="translateNotesToEnglish">Menerjemahkan...</span>
+                            </button>
+                        </div>
+                        @if($this->isNotesTranslationStale)
+                        <div class="text-xs text-amber-700 bg-amber-50 border border-amber-200 rounded px-2 py-1 mb-2">
+                            ⚠️ Catatan Bahasa Indonesia berubah sejak terakhir diterjemahkan. Klik "Translate Ulang" untuk sinkronkan.
+                        </div>
+                        @endif
+                        <div x-ref="editorEn" class="native-editor" contenteditable="true"
+                             data-placeholder="Belum diterjemahkan. Klik &quot;Translate dari Bahasa Indonesia&quot; di atas."
+                             @input="update" @blur="update"></div>
+                    </div>
+                    @endif
 
                     <div class="bg-gray-50 p-5 rounded-xl border border-gray-200 text-right space-y-3 h-fit">
                         <p class="text-sm flex justify-between text-gray-600"><span>Subtotal Jasa:</span> <span class="font-mono">{{ number_format($serviceTotal, 0, ',', '.') }}</span></p>

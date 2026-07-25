@@ -118,6 +118,20 @@
             // both
             $terbilangText = $terbilangID . "\n" . $terbilangEN;
         }
+
+        // Catatan/Syarat & Ketentuan: pakai versi Inggris kalau bahasa EN/Both dipilih
+        // DAN sudah pernah diterjemahkan (notes_en diisi manual via tombol Translate).
+        // Kalau belum ada terjemahan, fallback ke versi Indonesia supaya dokumen tidak kosong.
+        $notesID = (string) $quotation->notes;
+        $notesEN = (string) ($quotation->notes_en ?? '');
+        if ($lang === 'id' || $notesEN === '') {
+            $notesText = $notesID;
+        } elseif ($lang === 'en') {
+            $notesText = $notesEN;
+        } else {
+            // both
+            $notesText = $notesID . '<br><br>' . $notesEN;
+        }
     @endphp
 
     <div class="container">
@@ -195,7 +209,7 @@
                     <div style="margin-top:20px;">
     <strong>-----------------------------------------------------------------</strong>
     <div style="font-size:11px; margin-top:5px; text-align:justify;">
-        {!! $quotation->notes !!}
+        {!! $notesText !!}
     </div>
 </div>
 

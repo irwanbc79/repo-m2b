@@ -36,7 +36,7 @@ class Quotation extends Model
         'destination', 
         'service_type', 
         'quotation_type',
-        'notes', 'terbilang_lang',
+        'notes', 'terbilang_lang', 'notes_en', 'notes_en_source_hash',
 
         // Approval
         'approval_token', 'approval_status',
