@@ -1,86 +1,55 @@
-<!DOCTYPE html>
-<html lang="id">
-<head>
-    <meta charset="utf-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Password Berhasil Diubah - M2B Portal</title>
-    <style>
-        * { margin: 0; padding: 0; box-sizing: border-box; }
-        body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background: #f1f5f9; padding: 40px 20px; }
-        .email-container { max-width: 600px; margin: 0 auto; background: #ffffff; border-radius: 16px; overflow: hidden; box-shadow: 0 10px 40px rgba(0,0,0,0.1); }
-        .header { background: linear-gradient(135deg, #10b981 0%, #059669 100%); padding: 40px 30px; text-align: center; }
-        .success-icon { font-size: 50px; margin-bottom: 15px; }
-        .header h1 { color: #ffffff; font-size: 22px; font-weight: 700; margin-bottom: 5px; }
-        .header p { color: rgba(255,255,255,0.9); font-size: 13px; }
-        .body { padding: 40px; }
-        .greeting { font-size: 18px; color: #1e293b; margin-bottom: 15px; }
-        .message { color: #64748b; font-size: 15px; line-height: 1.8; margin-bottom: 25px; }
-        .info-box { background: #ecfdf5; border: 2px solid #10b981; border-radius: 12px; padding: 20px; margin: 20px 0; }
-        .info-box h3 { color: #065f46; font-size: 14px; margin-bottom: 15px; }
-        .info-item { display: flex; justify-content: space-between; padding: 8px 0; border-bottom: 1px dashed #a7f3d0; font-size: 13px; }
-        .info-item:last-child { border-bottom: none; }
-        .info-item .label { color: #047857; }
-        .info-item .value { color: #065f46; font-weight: 600; }
-        .security-notice { background: #fef3c7; border-left: 4px solid #f59e0b; padding: 15px; border-radius: 0 8px 8px 0; margin: 20px 0; }
-        .security-notice h4 { color: #92400e; font-size: 13px; margin-bottom: 8px; }
-        .security-notice p { color: #a16207; font-size: 12px; line-height: 1.6; margin: 0; }
-        .cta-section { text-align: center; margin: 25px 0; }
-        .btn-login { display: inline-block; background: linear-gradient(135deg, #3b82f6 0%, #1e3a8a 100%); color: #ffffff !important; text-decoration: none; padding: 14px 40px; border-radius: 50px; font-size: 15px; font-weight: 700; text-transform: uppercase; }
-        .footer { background: #1e293b; padding: 25px; text-align: center; }
-        .footer-brand { color: #ffffff; font-size: 14px; font-weight: 700; margin-bottom: 5px; }
-        .footer-tagline { color: #94a3b8; font-size: 11px; letter-spacing: 2px; text-transform: uppercase; margin-bottom: 10px; }
-        .footer-contact { color: #94a3b8; font-size: 11px; line-height: 1.8; }
-        .footer-contact a { color: #60a5fa; text-decoration: none; }
-    </style>
-</head>
-<body>
-    <div class="email-container">
-        <div class="header">
-            <div class="success-icon">&#128274;&#10004;</div>
-            <h1>Password Berhasil Diubah!</h1>
-            <p>Keamanan akun Anda telah diperbarui</p>
-        </div>
-        <div class="body">
-            <h2 class="greeting">Halo, {{ $user->name }}!</h2>
-            <p class="message">
-                Password akun Portal M2B Anda telah <strong>berhasil diubah</strong>. 
-                Anda sekarang dapat login menggunakan password baru Anda.
-            </p>
-            <div class="info-box">
-                <h3>Detail Perubahan</h3>
-                <div class="info-item">
-                    <span class="label">Akun</span>
-                    <span class="value">{{ $user->email }}</span>
-                </div>
-                <div class="info-item">
-                    <span class="label">Waktu Perubahan</span>
-                    <span class="value">{{ now()->setTimezone('Asia/Jakarta')->format('d M Y, H:i') }} WIB</span>
-                </div>
-                <div class="info-item">
-                    <span class="label">Status</span>
-                    <span class="value">Password Diperbarui</span>
-                </div>
-            </div>
-            <div class="security-notice">
-                <h4>Bukan Anda yang Melakukan Ini?</h4>
-                <p>
-                    Jika Anda tidak melakukan perubahan password ini, segera hubungi tim support kami di 
-                    <strong>sales@m2b.co.id</strong> atau telepon <strong>061-44020012</strong>.
-                </p>
-            </div>
-            <div class="cta-section">
-                <a href="{{ route('login') }}" class="btn-login">Login Sekarang</a>
-            </div>
-        </div>
-        <div class="footer">
-            <div class="footer-brand">PT. MORA MULTI BERKAH</div>
-            <div class="footer-tagline">Logistic | Solution | Partner</div>
-            <div class="footer-contact">
-                Jl. Kapt. Sumarsono Komp. Graha Metropolitan Blok G No. 14<br>
-                Medan - Indonesia | Telp: <a href="tel:06144020012">061-44020012</a><br>
-                Email: <a href="mailto:sales@m2b.co.id">sales@m2b.co.id</a>
-            </div>
-        </div>
-    </div>
-</body>
-</html>
+@extends('emails.layouts.master')
+
+@section('title', 'Password Berhasil Diubah — Portal M2B')
+
+@section('content')
+    <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="margin-bottom:24px;">
+        <tr>
+            <td align="center" style="background-color:#F0FDF4; border:1px solid #BBF7D0; border-radius:10px; padding:24px;">
+                <div style="font-size:40px; margin-bottom:8px;">🔒✅</div>
+                <div style="font-size:18px; font-weight:800; color:#065F46;">Password Berhasil Diubah!</div>
+                <div style="font-size:13px; color:#374151; margin-top:4px;">Keamanan akun Anda telah diperbarui</div>
+            </td>
+        </tr>
+    </table>
+
+    <p style="margin:0 0 16px; font-size:16px; font-weight:700; color:#0F2C59;">Halo, {{ $user->name }}!</p>
+    <p style="margin:0 0 22px; color:#4B5563;">Password akun Portal M2B Anda telah <strong style="color:#111827;">berhasil diubah</strong>. Anda sekarang dapat login menggunakan password baru Anda.</p>
+
+    <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background-color:#F8FAFC; border:1px solid #E5E9F0; border-radius:8px; margin-bottom:20px;">
+        <tr>
+            <td style="padding:16px 20px;">
+                <div style="font-size:10px; font-weight:800; letter-spacing:1.5px; text-transform:uppercase; color:#9AA5B4; margin-bottom:10px;">Detail Perubahan</div>
+                <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="font-size:14px;">
+                    <tr>
+                        <td style="padding:6px 0; color:#6B7280;">Akun</td>
+                        <td style="padding:6px 0; font-weight:700; color:#111827; text-align:right;">{{ $user->email }}</td>
+                    </tr>
+                    <tr>
+                        <td style="padding:6px 0; color:#6B7280;">Waktu Perubahan</td>
+                        <td style="padding:6px 0; font-weight:700; color:#111827; text-align:right;">{{ now()->setTimezone('Asia/Jakarta')->format('d M Y, H:i') }} WIB</td>
+                    </tr>
+                </table>
+            </td>
+        </tr>
+    </table>
+
+    <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background-color:#FFFBEB; border-left:4px solid #F59E0B; border-radius:0 6px 6px 0; margin-bottom:24px;">
+        <tr>
+            <td style="padding:14px 16px;">
+                <div style="font-size:12px; font-weight:800; color:#92400E; margin-bottom:4px;">Bukan Anda yang Melakukan Ini?</div>
+                <div style="font-size:13px; color:#78350F;">Segera hubungi tim support kami di <strong>sales@m2b.co.id</strong> atau telepon <strong>061-44020012</strong>.</div>
+            </td>
+        </tr>
+    </table>
+
+    <table role="presentation" width="100%" cellpadding="0" cellspacing="0">
+        <tr>
+            <td align="center">
+                <a href="{{ route('login') }}" style="display:inline-block; background-color:#0F2C59; color:#ffffff; font-weight:700; font-size:14px; padding:13px 34px; border-radius:8px;">Login Sekarang</a>
+            </td>
+        </tr>
+    </table>
+@endsection
+
+@section('footerNote', 'Email keamanan otomatis. Jika ini bukan Anda, segera hubungi tim kami.')

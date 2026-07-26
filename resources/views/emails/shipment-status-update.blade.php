@@ -1,90 +1,94 @@
-<!DOCTYPE html>
-<html>
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>{{ __('email.shipment_status_title', [], $lang ?? 'id') }}</title>
-    <style>
-        body { font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif; background-color: #f3f4f6; margin: 0; padding: 0; }
-        .container { max-width: 600px; margin: 40px auto; background-color: #ffffff; border-radius: 8px; overflow: hidden; box-shadow: 0 4px 6px rgba(0,0,0,0.05); }
-        .header { background-color: #1e3a8a; padding: 30px; text-align: center; border-bottom: 4px solid #172554; }
-        .header h2 { margin: 0; font-size: 22px; font-weight: 800; letter-spacing: 1px; text-transform: uppercase; color: #ffffff; }
-        .header .subtitle { margin: 8px 0 0; font-size: 11px; letter-spacing: 3px; color: #dc2626; font-weight: 600; }
-        .content { padding: 40px 30px; color: #374151; line-height: 1.6; }
-        .status-box { background-color: #f0f9ff; border-left: 4px solid #1e3a8a; padding: 15px; margin: 20px 0; border-radius: 4px; text-align: center; }
-        .status-label { font-size: 11px; text-transform: uppercase; color: #6b7280; font-weight: bold; letter-spacing: 1px; }
-        .status-value { font-size: 22px; font-weight: bold; color: #1e3a8a; margin-top: 5px; text-transform: uppercase; }
-        .details-table { width: 100%; border-collapse: collapse; margin-top: 20px; font-size: 14px; }
-        .details-table td { padding: 12px 0; border-bottom: 1px solid #e5e7eb; }
-        .details-label { color: #6b7280; width: 140px; font-weight: 600; }
-        .details-value { color: #111827; font-weight: 700; }
-        .notes-box { background-color: #fef3c7; border-left: 4px solid #f59e0b; padding: 15px; margin: 20px 0; border-radius: 4px; }
-        .notes-title { font-size: 12px; font-weight: 700; color: #92400e; margin-bottom: 5px; }
-        .notes-text { font-size: 14px; color: #78350f; margin: 0; }
-        .button { display: inline-block; padding: 14px 35px; background-color: #1e3a8a; color: #ffffff; text-decoration: none; border-radius: 6px; font-weight: bold; margin-top: 25px; font-size: 14px; }
-        .footer { background-color: #f9fafb; padding: 25px; text-align: center; font-size: 12px; color: #9ca3af; border-top: 1px solid #e5e7eb; line-height: 1.6; }
-        .footer-brand { font-weight: bold; color: #64748b; }
-    </style>
-</head>
-<body>
-    <div class="container">
-        <!-- HEADER CORPORATE -->
-        <div class="header">
-            <h2>PT. MORA MULTI BERKAH</h2>
-            <div class="subtitle">LOGISTIC | SOLUTION | PARTNER</div>
-        </div>
+@extends('emails.layouts.master')
 
-        <!-- CONTENT -->
-        <div class="content">
-            <p>{{ __('email.greeting', [], $lang ?? 'id') }} <strong>{{ $customerName }}</strong>,</p>
-            <p>{{ __('email.shipment_status_intro', [], $lang ?? 'id') }}</p>
+@section('title', __('email.shipment_status_title', [], $lang ?? 'id'))
 
-            <!-- STATUS BOX -->
-            <div class="status-box">
-                <div class="status-label">{{ __('email.current_status', [], $lang ?? 'id') }}</div>
-                <div class="status-value">{{ strtoupper($status) }}</div>
-            </div>
+@php
+    $statusText = strtoupper($status);
+    $statusLower = strtolower($status);
+    if (str_contains($statusLower, 'selesai') || str_contains($statusLower, 'complet') || str_contains($statusLower, 'deliver')) {
+        $statusColor = '#16A34A'; $statusBg = '#F0FDF4';
+    } elseif (str_contains($statusLower, 'batal') || str_contains($statusLower, 'cancel')) {
+        $statusColor = '#B91C1C'; $statusBg = '#FEF2F2';
+    } else {
+        $statusColor = '#0F2C59'; $statusBg = '#EFF6FF';
+    }
+@endphp
 
-            <!-- DETAIL SHIPMENT -->
-            <table class="details-table">
-                <tr>
-                    <td class="details-label">📋 {{ __('email.awb_number', [], $lang ?? 'id') }}</td>
-                    <td class="details-value">{{ $awbNumber }}</td>
-                </tr>
-                <tr>
-                    <td class="details-label">📍 {{ __('email.origin', [], $lang ?? 'id') }}</td>
-                    <td class="details-value">{{ $origin }}</td>
-                </tr>
-                <tr>
-                    <td class="details-label">🎯 {{ __('email.destination', [], $lang ?? 'id') }}</td>
-                    <td class="details-value">{{ $destination }}</td>
-                </tr>
-                <tr>
-                    <td class="details-label">📌 {{ __('email.current_location', [], $lang ?? 'id') }}</td>
-                    <td class="details-value">{{ $location }}</td>
-                </tr>
-            </table>
+@section('content')
+    <p style="margin:0 0 4px;">{{ __('email.greeting', [], $lang ?? 'id') }}</p>
+    <p style="margin:0 0 20px; font-size:17px; font-weight:800; color:#0F2C59;">{{ $customerName }}</p>
 
-            @if($notes)
-            <!-- CATATAN -->
-            <div class="notes-box">
-                <div class="notes-title">📝 {{ __('email.notes', [], $lang ?? 'id') }}:</div>
-                <p class="notes-text">{{ $notes }}</p>
-            </div>
-            @endif
+    <p style="margin:0 0 22px; color:#4B5563;">{{ __('email.shipment_status_intro', [], $lang ?? 'id') }}</p>
 
-            <!-- CTA BUTTON -->
-            <center>
-                <a href="{{ $trackingUrl }}" class="button">🔍 {{ __('email.track_shipment', [], $lang ?? 'id') }}</a>
-            </center>
-        </div>
+    {{-- Dokumen referensi (AWB) --}}
+    <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background-color:#F8FAFC; border:1px solid #E5E9F0; border-radius:8px; margin-bottom:18px;">
+        <tr>
+            <td style="padding:14px 18px;">
+                <div style="font-size:10px; font-weight:800; letter-spacing:1.5px; text-transform:uppercase; color:#9AA5B4;">
+                    {{ __('email.awb_number', [], $lang ?? 'id') }}
+                </div>
+                <div style="font-family: 'Courier New', Courier, monospace; font-size:18px; font-weight:700; color:#0F2C59; letter-spacing:0.5px; margin-top:2px;">
+                    {{ $awbNumber }}
+                </div>
+            </td>
+        </tr>
+    </table>
 
-        <!-- FOOTER -->
-        <div class="footer">
-            <span class="footer-brand">{{ __('email.footer_company', [], $lang ?? 'id') }}</span><br>
-            {{ __('email.footer_tagline', [], $lang ?? 'id') }}<br>
-            📧 sales@m2b.co.id | 🌐 portal.m2b.co.id
-        </div>
-    </div>
-</body>
-</html>
+    {{-- Status badge --}}
+    <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="margin-bottom:18px;">
+        <tr>
+            <td align="center" style="background-color:{{ $statusBg }}; border:1px solid {{ $statusColor }}22; border-radius:8px; padding:18px;">
+                <div style="font-size:10px; font-weight:800; letter-spacing:1.5px; text-transform:uppercase; color:#9AA5B4; margin-bottom:6px;">
+                    {{ __('email.current_status', [], $lang ?? 'id') }}
+                </div>
+                <div style="display:inline-block; background-color:{{ $statusColor }}; color:#ffffff; font-size:14px; font-weight:800; letter-spacing:0.5px; padding:7px 20px; border-radius:20px;">
+                    {{ $statusText }}
+                </div>
+            </td>
+        </tr>
+    </table>
+
+    {{-- Rute --}}
+    <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="margin-bottom:8px;">
+        <tr>
+            <td width="45%" style="text-align:left;">
+                <div style="font-size:10px; font-weight:800; letter-spacing:1px; text-transform:uppercase; color:#9AA5B4;">{{ __('email.origin', [], $lang ?? 'id') }}</div>
+                <div style="font-size:14px; font-weight:700; color:#111827; margin-top:2px;">{{ $origin }}</div>
+            </td>
+            <td width="10%" style="text-align:center; color:#B7C0CC; font-size:16px;">&rarr;</td>
+            <td width="45%" style="text-align:right;">
+                <div style="font-size:10px; font-weight:800; letter-spacing:1px; text-transform:uppercase; color:#9AA5B4;">{{ __('email.destination', [], $lang ?? 'id') }}</div>
+                <div style="font-size:14px; font-weight:700; color:#111827; margin-top:2px;">{{ $destination }}</div>
+            </td>
+        </tr>
+    </table>
+
+    <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="margin:16px 0 4px; border-top:1px solid #E5E9F0;">
+        <tr><td style="padding-top:14px; font-size:13px; color:#4B5563;">
+            📌 <strong style="color:#111827;">{{ __('email.current_location', [], $lang ?? 'id') }}:</strong> {{ $location }}
+        </td></tr>
+    </table>
+
+    @if($notes)
+    <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background-color:#FFFBEB; border-left:4px solid #F59E0B; border-radius:0 6px 6px 0; margin-top:18px;">
+        <tr>
+            <td style="padding:14px 16px;">
+                <div style="font-size:11px; font-weight:800; color:#92400E; margin-bottom:3px;">📝 {{ __('email.notes', [], $lang ?? 'id') }}</div>
+                <div style="font-size:13px; color:#78350F;">{{ $notes }}</div>
+            </td>
+        </tr>
+    </table>
+    @endif
+
+    {{-- CTA --}}
+    <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="margin-top:28px;">
+        <tr>
+            <td align="center">
+                <a href="{{ $trackingUrl }}" class="m2b-btn"
+                   style="display:inline-block; background-color:#0F2C59; color:#ffffff; font-size:14px; font-weight:700; letter-spacing:0.3px; padding:14px 36px; border-radius:8px;">
+                    🔍 {{ __('email.track_shipment', [], $lang ?? 'id') }}
+                </a>
+            </td>
+        </tr>
+    </table>
+@endsection

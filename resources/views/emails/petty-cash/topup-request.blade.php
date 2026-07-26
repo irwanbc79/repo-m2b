@@ -1,49 +1,41 @@
-<!DOCTYPE html>
-<html>
-<head>
-    <meta charset="utf-8">
-    <style>
-        body { font-family: Arial, sans-serif; line-height: 1.6; color: #333; }
-        .container { max-width: 600px; margin: 0 auto; padding: 20px; }
-        .header { background: #1e40af; color: white; padding: 20px; text-align: center; border-radius: 8px 8px 0 0; }
-        .content { background: #f8fafc; padding: 20px; border: 1px solid #e2e8f0; }
-        .info-box { background: white; padding: 15px; border-radius: 8px; margin: 15px 0; }
-        .amount { font-size: 24px; font-weight: bold; color: #059669; }
-        .btn { display: inline-block; padding: 12px 24px; background: #1e40af; color: white; text-decoration: none; border-radius: 6px; margin-top: 15px; }
-        .footer { text-align: center; padding: 15px; color: #64748b; font-size: 12px; }
-    </style>
-</head>
-<body>
-    <div class="container">
-        <div class="header">
-            <h2>💰 Request Top Up Kas Kecil</h2>
-        </div>
-        <div class="content">
-            <p>Halo <strong>{{ $fund->approver->name ?? 'Approver' }}</strong>,</p>
-            <p>Ada permintaan top up kas kecil yang memerlukan persetujuan Anda:</p>
-            
-            <div class="info-box">
-                <table width="100%">
-                    <tr><td><strong>No. Request:</strong></td><td>{{ $topup->topup_number }}</td></tr>
-                    <tr><td><strong>Dari:</strong></td><td>{{ $requester->name }}</td></tr>
-                    <tr><td><strong>Tanggal:</strong></td><td>{{ $topup->created_at->format('d/m/Y H:i') }}</td></tr>
-                    <tr><td><strong>Saldo Saat Ini:</strong></td><td>Rp {{ number_format($topup->balance_before, 0, ',', '.') }}</td></tr>
+@extends('emails.layouts.master')
+
+@section('title', 'Request Top Up Kas Kecil')
+
+@section('content')
+    <p style="margin:0 0 6px; font-size:19px; font-weight:800; color:#0F2C59;">💰 Request Top Up Kas Kecil</p>
+
+    <p style="margin:0 0 4px; color:#4B5563;">Halo</p>
+    <p style="margin:0 0 18px; font-size:16px; font-weight:700; color:#0F2C59;">{{ $fund->approver->name ?? 'Approver' }}</p>
+    <p style="margin:0 0 22px; color:#4B5563;">Ada permintaan top up kas kecil yang memerlukan persetujuan Anda:</p>
+
+    <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background-color:#F8FAFC; border:1px solid #E5E9F0; border-radius:8px; margin-bottom:22px;">
+        <tr>
+            <td style="padding:18px 20px;">
+                <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="font-size:14px;">
+                    <tr><td style="padding:6px 0; color:#6B7280; width:150px;">No. Request</td><td style="padding:6px 0; font-weight:700; color:#111827;">{{ $topup->topup_number }}</td></tr>
+                    <tr><td style="padding:6px 0; color:#6B7280;">Dari</td><td style="padding:6px 0; font-weight:700; color:#111827;">{{ $requester->name }}</td></tr>
+                    <tr><td style="padding:6px 0; color:#6B7280;">Tanggal</td><td style="padding:6px 0; font-weight:700; color:#111827;">{{ $topup->created_at->format('d/m/Y H:i') }}</td></tr>
+                    <tr><td style="padding:6px 0; color:#6B7280;">Saldo Saat Ini</td><td style="padding:6px 0; font-weight:700; color:#111827;">Rp {{ number_format($topup->balance_before, 0, ',', '.') }}</td></tr>
+                    <tr>
+                        <td style="padding:10px 0 0; color:#6B7280; border-top:1px dashed #E5E9F0;">Jumlah Request</td>
+                        <td style="padding:10px 0 0; font-weight:800; font-size:17px; color:#0F2C59; border-top:1px dashed #E5E9F0;">Rp {{ number_format($topup->amount_requested, 0, ',', '.') }}</td>
+                    </tr>
                 </table>
-                <hr style="margin: 15px 0;">
-                <p style="margin: 0;">Jumlah Request:</p>
-                <p class="amount">Rp {{ number_format($topup->amount_requested, 0, ',', '.') }}</p>
                 @if($topup->notes)
-                <p><strong>Catatan:</strong> {{ $topup->notes }}</p>
+                <p style="margin:12px 0 0; font-size:13px; color:#374151;"><strong>Catatan:</strong> {{ $topup->notes }}</p>
                 @endif
-            </div>
-            
-            <center>
-                <a href="{{ url('/admin/kas-kecil') }}" class="btn">Lihat & Approve</a>
-            </center>
-        </div>
-        <div class="footer">
-            <p>Email ini dikirim otomatis dari Portal M2B</p>
-        </div>
-    </div>
-</body>
-</html>
+            </td>
+        </tr>
+    </table>
+
+    <table role="presentation" width="100%" cellpadding="0" cellspacing="0">
+        <tr>
+            <td align="center">
+                <a href="{{ url('/admin/kas-kecil') }}" style="display:inline-block; background-color:#0F2C59; color:#ffffff; font-weight:700; font-size:14px; padding:12px 30px; border-radius:8px;">Lihat &amp; Approve</a>
+            </td>
+        </tr>
+    </table>
+@endsection
+
+@section('footerNote', 'Notifikasi otomatis Portal M2B.')

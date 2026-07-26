@@ -1,42 +1,37 @@
-<!DOCTYPE html>
-<html>
-<head>
-    <meta charset="utf-8">
-    <style>
-        body { font-family: Arial, sans-serif; line-height: 1.6; color: #333; }
-        .container { max-width: 600px; margin: 0 auto; padding: 20px; }
-        .header { background: #059669; color: white; padding: 20px; text-align: center; border-radius: 8px 8px 0 0; }
-        .content { background: #f8fafc; padding: 20px; border: 1px solid #e2e8f0; }
-        .info-box { background: white; padding: 15px; border-radius: 8px; margin: 15px 0; }
-        .amount { font-size: 24px; font-weight: bold; color: #059669; }
-        .footer { text-align: center; padding: 15px; color: #64748b; font-size: 12px; }
-    </style>
-</head>
-<body>
-    <div class="container">
-        <div class="header">
-            <h2>✅ Top Up Kas Kecil Disetujui</h2>
-        </div>
-        <div class="content">
-            <p>Halo <strong>{{ $fund->holder->name ?? 'Pemegang Kas' }}</strong>,</p>
-            <p>Request top up kas kecil Anda telah <strong style="color: #059669;">DISETUJUI</strong>!</p>
-            
-            <div class="info-box">
-                <table width="100%">
-                    <tr><td><strong>No. Request:</strong></td><td>{{ $topup->topup_number }}</td></tr>
-                    <tr><td><strong>Disetujui Oleh:</strong></td><td>{{ $approver->name }}</td></tr>
-                    <tr><td><strong>Tanggal Approve:</strong></td><td>{{ now()->format('d/m/Y H:i') }}</td></tr>
+@extends('emails.layouts.master')
+
+@section('title', 'Top Up Kas Kecil Disetujui')
+
+@section('content')
+    <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background-color:#F0FDF4; border:1px solid #BBF7D0; border-radius:10px; margin-bottom:22px;">
+        <tr>
+            <td style="padding:20px;">
+                <div style="font-size:17px; font-weight:800; color:#065F46;">✅ Top Up Kas Kecil Disetujui</div>
+            </td>
+        </tr>
+    </table>
+
+    <p style="margin:0 0 4px; color:#4B5563;">Halo</p>
+    <p style="margin:0 0 18px; font-size:16px; font-weight:700; color:#0F2C59;">{{ $fund->holder->name ?? 'Pemegang Kas' }}</p>
+    <p style="margin:0 0 22px; color:#4B5563;">Request top up kas kecil Anda telah <strong style="color:#16A34A;">DISETUJUI</strong>!</p>
+
+    <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background-color:#F8FAFC; border:1px solid #E5E9F0; border-radius:8px; margin-bottom:22px;">
+        <tr>
+            <td style="padding:18px 20px;">
+                <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="font-size:14px;">
+                    <tr><td style="padding:6px 0; color:#6B7280; width:150px;">No. Request</td><td style="padding:6px 0; font-weight:700; color:#111827;">{{ $topup->topup_number }}</td></tr>
+                    <tr><td style="padding:6px 0; color:#6B7280;">Disetujui Oleh</td><td style="padding:6px 0; font-weight:700; color:#111827;">{{ $approver->name }}</td></tr>
+                    <tr><td style="padding:6px 0; color:#6B7280;">Tanggal Approve</td><td style="padding:6px 0; font-weight:700; color:#111827;">{{ now()->format('d/m/Y H:i') }}</td></tr>
+                    <tr>
+                        <td style="padding:10px 0 0; color:#6B7280; border-top:1px dashed #E5E9F0;">Jumlah Disetujui</td>
+                        <td style="padding:10px 0 0; font-weight:800; font-size:17px; color:#16A34A; border-top:1px dashed #E5E9F0;">Rp {{ number_format($topup->amount_approved ?? $topup->amount_requested, 0, ',', '.') }}</td>
+                    </tr>
                 </table>
-                <hr style="margin: 15px 0;">
-                <p style="margin: 0;">Jumlah Disetujui:</p>
-                <p class="amount">Rp {{ number_format($topup->amount_approved ?? $topup->amount_requested, 0, ',', '.') }}</p>
-            </div>
-            
-            <p>Dana akan segera ditransfer ke Anda. Harap tunggu konfirmasi transfer.</p>
-        </div>
-        <div class="footer">
-            <p>Email ini dikirim otomatis dari Portal M2B</p>
-        </div>
-    </div>
-</body>
-</html>
+            </td>
+        </tr>
+    </table>
+
+    <p style="margin:0; color:#4B5563;">Dana akan segera ditransfer ke Anda. Harap tunggu konfirmasi transfer.</p>
+@endsection
+
+@section('footerNote', 'Notifikasi otomatis Portal M2B.')
