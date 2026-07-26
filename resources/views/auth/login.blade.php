@@ -217,22 +217,22 @@
                     </div>
                 </div>
 
-                <!-- Partner 2: Emergent AI -->
-                <div class="bg-white/5 border border-white/10 rounded-xl p-3.5 space-y-2 hover:border-blue-500/40 transition duration-300">
+                <!-- Partner 2: Emailkerja.id -->
+                <div class="bg-white/5 border border-white/10 rounded-xl p-3.5 space-y-2 hover:border-emerald-500/40 transition duration-300">
                     <div class="flex flex-col gap-1.5">
                         <div class="flex items-center gap-1.5">
-                            <div class="w-5 h-5 rounded bg-blue-600 flex items-center justify-center text-[10px] font-bold text-white shrink-0">E</div>
-                            <span class="text-xs font-bold text-white truncate">Emergent AI</span>
+                            <div class="w-5 h-5 rounded bg-emerald-600 flex items-center justify-center text-[10px] font-bold text-white shrink-0">E</div>
+                            <span class="text-xs font-bold text-white truncate">Emailkerja.id</span>
                         </div>
-                        <span class="self-start text-[9px] text-blue-400 bg-blue-400/10 px-2 py-0.5 rounded border border-blue-400/20 font-semibold uppercase tracking-wider">FREE ACCESS</span>
+                        <span class="self-start text-[9px] text-emerald-400 bg-emerald-400/10 px-2 py-0.5 rounded border border-emerald-400/20 font-semibold uppercase tracking-wider">DIPAKAI M2B</span>
                     </div>
                     <p class="text-[10px] text-slate-400 leading-relaxed font-light">
-                        Platform automasi alur kerja (workflow) berbasis AI.
+                        Email bisnis profesional (@namaperusahaan) yang jadi tulang punggung email M2B — tanpa nyasar ke folder spam.
                     </p>
                     <div class="pt-0.5">
-                        <a href="https://app.emergent.sh/register?ref=irwa212175" target="_blank" rel="noopener noreferrer"
-                           class="inline-flex items-center text-[10px] font-bold text-blue-400 hover:text-blue-300 transition gap-1">
-                            Daftar Akun &rarr;
+                        <a href="https://emailkerja.id" target="_blank" rel="noopener noreferrer"
+                           class="inline-flex items-center text-[10px] font-bold text-emerald-400 hover:text-emerald-300 transition gap-1">
+                            Daftar Sekarang &rarr;
                         </a>
                     </div>
                 </div>
@@ -267,5 +267,7 @@
 
     </div>
 
+    {{-- Affiliate tracking: Emailkerja.id (partner ecosystem card di atas) --}}
+    <script type='text/javascript' src='https://member.kirim.email/aff/scripts/m2b_email/34'></script>
 </body>
 </html>
