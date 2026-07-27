@@ -171,11 +171,36 @@ class MandiriApiService
                 ]
             );
 
+            // Simpan juga ke tabel utama bank_transactions (modul rekonsiliasi bank M2B)
+            if (class_exists(\App\Models\BankTransaction::class)) {
+                $description = $item['description'] ?? $item['remark'] ?? '';
+                \App\Models\BankTransaction::updateOrCreate(
+                    ['reference_number' => $refNo],
+                    [
+                        'bank_name'          => 'mandiri',
+                        'account_number'     => $this->accountNumber,
+                        'transaction_date'   => Carbon::parse($item['transactionDate'] ?? now()),
+                        'description'        => $description,
+                        'debit_amount'       => $type === 'DB' ? $amount : 0,
+                        'credit_amount'      => $type === 'CR' ? $amount : 0,
+                        'balance'            => isset($item['balance']['value']) ? (float) $item['balance']['value'] : null,
+                        'category'           => method_exists(\App\Models\BankTransaction::class, 'detectCategory') ? \App\Models\BankTransaction::detectCategory($description) : 'other',
+                        'import_batch'       => 'API_MANDIRI_' . now()->format('Ymd'),
+                        'imported_at'        => now(),
+                    ]
+                );
+            }
+
             $savedStatements[] = $statement;
         }
 
         // Jalankan pencocokan otomatis invoice (Auto Reconciliation)
         $this->autoReconcileUnmatched();
+
+        // Panggil BankReconciliationService jika tersedia
+        if (class_exists(\App\Services\BankReconciliationService::class)) {
+            app(\App\Services\BankReconciliationService::class)->reconcileAll();
+        }
 
         return $savedStatements;
     }
