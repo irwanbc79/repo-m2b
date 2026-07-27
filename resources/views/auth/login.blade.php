@@ -207,7 +207,7 @@
                         <span class="self-start text-[9px] text-emerald-400 bg-emerald-400/10 px-2 py-0.5 rounded border border-emerald-400/20 font-semibold uppercase tracking-wider">20% OFF</span>
                     </div>
                     <p class="text-[10px] text-slate-400 leading-relaxed font-light">
-                        Infrastruktur cloud ultra-cepat dengan server lokal Jakarta.
+                        Hosting website super cepat &amp; terjangkau. Bikin website toko online tanpa pusing!
                     </p>
                     <div class="pt-0.5">
                         <a href="https://www.hostinger.com/id?REFERRALCODE=7YYIRWANB72L" target="_blank" rel="noopener noreferrer"
@@ -247,7 +247,7 @@
                         <span class="self-start text-[9px] text-cyan-400 bg-cyan-400/10 px-2 py-0.5 rounded border border-cyan-400/20 font-semibold uppercase tracking-wider">IT PARTNER</span>
                     </div>
                     <p class="text-[10px] text-slate-400 leading-relaxed font-light">
-                        Sistem Enterprise (ERP, CRM) &amp; integrasi AI terpercaya.
+                        Jasa bikin aplikasi &amp; web bisnis. Bantu rapiin stok, kasir, &amp; keuangan usaha Anda.
                     </p>
                     <div class="pt-0.5">
                         <a href="https://morabangun.com" target="_blank" rel="noopener noreferrer"
