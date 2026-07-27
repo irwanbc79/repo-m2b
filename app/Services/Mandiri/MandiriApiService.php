@@ -34,6 +34,7 @@ class MandiriApiService
 
     /**
      * 1. Mendapatkan B2B Access Token dari Bank Mandiri (dengan Caching)
+     * Endpoint: POST /openapi/auth/v2.0/access-token/b2b
      */
     public function getAccessToken(): string
     {
@@ -78,25 +79,26 @@ class MandiriApiService
 
     /**
      * 2. Tarik Mutasi Rekening (Bank Statement)
+     * Endpoint Resmi: POST /openapi/transactions/v2.1/bank-statement
      *
-     * @param string|Carbon|null $startDate Format YYYY-MM-DD
-     * @param string|Carbon|null $endDate Format YYYY-MM-DD
+     * @param string|Carbon|null $startDate Format YYYY-MM-DD atau DateTime
+     * @param string|Carbon|null $endDate Format YYYY-MM-DD atau DateTime
      * @return array List transaksi mutasi
      */
     public function getBankStatement($startDate = null, $endDate = null): array
     {
-        $startDate = $startDate ? Carbon::parse($startDate)->format('Y-m-d') : now()->subDays(1)->format('Y-m-d');
-        $endDate   = $endDate ? Carbon::parse($endDate)->format('Y-m-d') : now()->format('Y-m-d');
+        $fromDateTime = $startDate ? Carbon::parse($startDate)->format('Y-m-d\TH:i:sP') : now()->subDays(1)->startOfDay()->format('Y-m-d\TH:i:sP');
+        $toDateTime   = $endDate ? Carbon::parse($endDate)->format('Y-m-d\TH:i:sP') : now()->endOfDay()->format('Y-m-d\TH:i:sP');
 
         $accessToken  = $this->getAccessToken();
         $timestamp    = now()->format('Y-m-d\TH:i:sP');
         $externalId   = (string) Str::uuid();
-        $endpointPath = '/openapi/v1.0/bank-statement';
+        $endpointPath = '/openapi/transactions/v2.1/bank-statement';
 
         $body = [
-            'bankCardToken' => $this->accountNumber,
-            'startingDate'  => $startDate,
-            'endingDate'    => $endDate,
+            'accountNo'    => $this->accountNumber,
+            'fromDateTime' => $fromDateTime,
+            'toDateTime'   => $toDateTime,
         ];
 
         $signature = MandiriSignatureEngine::generateServiceSignature(
@@ -137,7 +139,155 @@ class MandiriApiService
     }
 
     /**
-     * 3. Menyimpan & Memproses Mutasi Rekening ke Database + Trigger Rekonsiliasi Otomatis
+     * 3. Balance Inquiry (Cek Saldo Rekening Mandiri)
+     * Endpoint Resmi: POST /openapi/customers/v2.1/balance-inquiry
+     */
+    public function getBalanceInquiry(?string $accountNo = null): array
+    {
+        $accountNo = $accountNo ?: $this->accountNumber;
+        $accessToken  = $this->getAccessToken();
+        $timestamp    = now()->format('Y-m-d\TH:i:sP');
+        $externalId   = (string) Str::uuid();
+        $endpointPath = '/openapi/customers/v2.1/balance-inquiry';
+
+        $body = [
+            'accountNo' => $accountNo,
+        ];
+
+        $signature = MandiriSignatureEngine::generateServiceSignature(
+            'POST',
+            $endpointPath,
+            $accessToken,
+            $body,
+            $timestamp,
+            $this->clientSecret
+        );
+
+        $headers = [
+            'Authorization' => 'Bearer ' . $accessToken,
+            'X-TIMESTAMP'     => $timestamp,
+            'X-SIGNATURE'     => $signature,
+            'X-PARTNER-ID'    => $this->partnerId ?: $this->clientId,
+            'X-EXTERNAL-ID'   => $externalId,
+            'CHANNEL-ID'      => $this->channelId,
+            'Content-Type'    => 'application/json',
+        ];
+
+        $response = Http::withHeaders($headers)
+            ->timeout(30)
+            ->post($this->baseUrl . $endpointPath, $body);
+
+        if ($response->failed()) {
+            Log::error('Mandiri Balance Inquiry Gagal', [
+                'status' => $response->status(),
+                'body'   => $response->body(),
+            ]);
+            throw new Exception('Mandiri Balance Inquiry Error: ' . $response->body());
+        }
+
+        return $response->json();
+    }
+
+    /**
+     * 4. Internal Account Inquiry (Validasi Nama Pemilik Rekening Mandiri)
+     * Endpoint Resmi: POST /openapi/customers/v2.0/account-inquiry-internal
+     */
+    public function inquiryAccountInternal(string $beneficiaryAccountNo): array
+    {
+        $accessToken  = $this->getAccessToken();
+        $timestamp    = now()->format('Y-m-d\TH:i:sP');
+        $externalId   = (string) Str::uuid();
+        $endpointPath = '/openapi/customers/v2.0/account-inquiry-internal';
+
+        $body = [
+            'beneficiaryAccountNo' => $beneficiaryAccountNo,
+        ];
+
+        $signature = MandiriSignatureEngine::generateServiceSignature(
+            'POST',
+            $endpointPath,
+            $accessToken,
+            $body,
+            $timestamp,
+            $this->clientSecret
+        );
+
+        $headers = [
+            'Authorization' => 'Bearer ' . $accessToken,
+            'X-TIMESTAMP'     => $timestamp,
+            'X-SIGNATURE'     => $signature,
+            'X-PARTNER-ID'    => $this->partnerId ?: $this->clientId,
+            'X-EXTERNAL-ID'   => $externalId,
+            'CHANNEL-ID'      => $this->channelId,
+            'Content-Type'    => 'application/json',
+        ];
+
+        $response = Http::withHeaders($headers)
+            ->timeout(30)
+            ->post($this->baseUrl . $endpointPath, $body);
+
+        if ($response->failed()) {
+            throw new Exception('Mandiri Internal Account Inquiry Error: ' . $response->body());
+        }
+
+        return $response->json();
+    }
+
+    /**
+     * 5. Create Virtual Account (Membuat Mandiri VA untuk Tagihan Customer)
+     * Endpoint Resmi: POST /openapi/transaction/v1.0/transfer-va/create-va
+     */
+    public function createVirtualAccount(string $trxNo, string $customerName, float $amount, ?string $expiredDate = null): array
+    {
+        $accessToken  = $this->getAccessToken();
+        $timestamp    = now()->format('Y-m-d\TH:i:sP');
+        $externalId   = (string) Str::uuid();
+        $endpointPath = '/openapi/transaction/v1.0/transfer-va/create-va';
+
+        $body = [
+            'partnerServiceId' => $this->partnerId,
+            'customerNo'       => $trxNo,
+            'virtualAccountNo' => $this->partnerId . $trxNo,
+            'virtualAccountName' => $customerName,
+            'totalAmount' => [
+                'value'    => number_format($amount, 2, '.', ''),
+                'currency' => 'IDR',
+            ],
+            'expiredDate' => $expiredDate ?: now()->addDays(2)->format('Y-m-d\TH:i:sP'),
+        ];
+
+        $signature = MandiriSignatureEngine::generateServiceSignature(
+            'POST',
+            $endpointPath,
+            $accessToken,
+            $body,
+            $timestamp,
+            $this->clientSecret
+        );
+
+        $headers = [
+            'Authorization' => 'Bearer ' . $accessToken,
+            'X-TIMESTAMP'     => $timestamp,
+            'X-SIGNATURE'     => $signature,
+            'X-PARTNER-ID'    => $this->partnerId ?: $this->clientId,
+            'X-EXTERNAL-ID'   => $externalId,
+            'CHANNEL-ID'      => $this->channelId,
+            'Content-Type'    => 'application/json',
+        ];
+
+        $response = Http::withHeaders($headers)
+            ->timeout(30)
+            ->post($this->baseUrl . $endpointPath, $body);
+
+        if ($response->failed()) {
+            throw new Exception('Mandiri Create Virtual Account Error: ' . $response->body());
+        }
+
+        return $response->json();
+    }
+
+    /**
+     * 6. Menyimpan & Memproses Mutasi Rekening ke Database + Trigger Rekonsiliasi Otomatis
      */
     public function processAndStoreStatements(array $items): array
     {
@@ -146,8 +296,7 @@ class MandiriApiService
         foreach ($items as $item) {
             $refNo = $item['referenceNumber'] ?? $item['transactionId'] ?? $item['detailTransactionId'] ?? null;
             if (!$refNo) {
-                // Generate fallback reference jika bank tidak memberikan ID unik
-                $refNo = md5(($item['transactionDate'] ?? '') . ($item['amount']['value'] ?? '0') . ($item['description'] ?? ''));
+                $refNo = md5(($item['transactionDate'] ?? $item['dateTime'] ?? '') . ($item['amount']['value'] ?? '0') . ($item['description'] ?? ''));
             }
 
             $amount = (float) ($item['amount']['value'] ?? $item['amount'] ?? 0);
@@ -156,12 +305,14 @@ class MandiriApiService
                 $type = 'CR';
             }
 
+            $txDate = isset($item['transactionDate']) ? Carbon::parse($item['transactionDate']) : (isset($item['dateTime']) ? Carbon::parse($item['dateTime']) : now());
+
             $statement = BankStatement::updateOrCreate(
                 ['reference_number' => $refNo],
                 [
                     'bank_name'        => 'MANDIRI',
                     'account_number'   => $this->accountNumber,
-                    'transaction_date' => Carbon::parse($item['transactionDate'] ?? now()),
+                    'transaction_date' => $txDate,
                     'booking_date'     => isset($item['bookingDate']) ? Carbon::parse($item['bookingDate']) : null,
                     'type'             => $type,
                     'amount'           => $amount,
@@ -179,7 +330,7 @@ class MandiriApiService
                     [
                         'bank_name'          => 'mandiri',
                         'account_number'     => $this->accountNumber,
-                        'transaction_date'   => Carbon::parse($item['transactionDate'] ?? now()),
+                        'transaction_date'   => $txDate,
                         'description'        => $description,
                         'debit_amount'       => $type === 'DB' ? $amount : 0,
                         'credit_amount'      => $type === 'CR' ? $amount : 0,
@@ -206,7 +357,7 @@ class MandiriApiService
     }
 
     /**
-     * 4. Logika Auto-Reconciliation Pembayaran Invoice M2B
+     * 7. Logika Auto-Reconciliation Pembayaran Invoice M2B
      */
     public function autoReconcileUnmatched(): int
     {
