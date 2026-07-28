@@ -91,7 +91,7 @@ class CheckFinanceIntegrity extends Command
                         . "Tidak ada tindakan yang diperlukan. Ringkasan ini dikirim berkala sebagai\n"
                         . "pengingat bahwa pemantauan integritas pembukuan berjalan normal.\n";
                     try {
-                        Mail::raw($body, function ($message) use ($recipient) {
+                        Mail::mailer(env('FINANCE_ALERT_MAILER'))->raw($body, function ($message) use ($recipient) {
                             $message->to($recipient)->subject('[Portal M2B] ✅ Buku kas aman — semua transaksi terbukukan');
                         });
                         $this->info("Ringkasan digest dikirim ke {$recipient}");
@@ -145,7 +145,7 @@ class CheckFinanceIntegrity extends Command
             $recipient = env('FINANCE_ALERT_EMAIL', 'finance@m2b.co.id');
             if ($recipient) {
                 try {
-                    Mail::raw($report, function ($message) use ($recipient, $total) {
+                    Mail::mailer(env('FINANCE_ALERT_MAILER'))->raw($report, function ($message) use ($recipient, $total) {
                         $message->to($recipient)
                             ->subject('[Portal M2B] CROSS-CHECK: ' . $total . ' transaksi belum terbukukan');
                     });

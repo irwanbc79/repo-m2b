@@ -80,6 +80,11 @@ return [
             'transport' => 'array',
         ],
 
+        'kirimemail' => [
+            'transport' => 'kirimemail',
+            'domain' => env('KIRIMEMAIL_DOMAIN'),
+        ],
+
         'failover' => [
             'transport' => 'failover',
             'mailers' => [
