@@ -91,7 +91,7 @@ class CheckFinanceIntegrity extends Command
                         . "Tidak ada tindakan yang diperlukan. Ringkasan ini dikirim berkala sebagai\n"
                         . "pengingat bahwa pemantauan integritas pembukuan berjalan normal.\n";
                     try {
-                        Mail::mailer(env('FINANCE_ALERT_MAILER'))->raw($body, function ($message) use ($recipient) {
+                        $this->sendAlertMail($body, function ($message) use ($recipient) {
                             $message->to($recipient)->subject('[Portal M2B] ✅ Buku kas aman — semua transaksi terbukukan');
                         });
                         $this->info("Ringkasan digest dikirim ke {$recipient}");
@@ -145,7 +145,7 @@ class CheckFinanceIntegrity extends Command
             $recipient = env('FINANCE_ALERT_EMAIL', 'finance@m2b.co.id');
             if ($recipient) {
                 try {
-                    Mail::mailer(env('FINANCE_ALERT_MAILER'))->raw($report, function ($message) use ($recipient, $total) {
+                    $this->sendAlertMail($report, function ($message) use ($recipient, $total) {
                         $message->to($recipient)
                             ->subject('[Portal M2B] CROSS-CHECK: ' . $total . ' transaksi belum terbukukan');
                     });
@@ -188,5 +188,24 @@ class CheckFinanceIntegrity extends Command
         $out .= "dibukukan — tidak lagi hilang sendiri. Buku kas yang akurat = prioritas.\n";
 
         return $out;
+    }
+
+    /**
+     * Kirim plain-text alert via mailer FINANCE_ALERT_MAILER (fallback default bila kosong).
+     *
+     * Mailer 'kirimemail' menolak body dengan html kosong ("html field must be a string"
+     * dari API mereka meski text terisi) — untuk mailer itu saja kirim sebagai html
+     * (nl2br) agar tidak kena bug tsb. Mailer lain (smtp/log/dst) tetap raw() seperti semula.
+     */
+    protected function sendAlertMail(string $body, callable $configureMessage): void
+    {
+        $mailerName = env('FINANCE_ALERT_MAILER') ?: config('mail.default');
+
+        if ($mailerName === 'kirimemail') {
+            Mail::mailer($mailerName)->html(nl2br(e($body)), $configureMessage);
+            return;
+        }
+
+        Mail::mailer($mailerName)->raw($body, $configureMessage);
     }
 }
