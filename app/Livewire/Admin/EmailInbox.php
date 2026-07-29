@@ -836,7 +836,25 @@ class EmailInbox extends Component
             ]);
 
             \Log::info('Email saved to sent_emails');
-            
+
+            // Cap waktu balasan pada email aslinya — dasar perhitungan
+            // "rata-rata waktu balas" & "menggantung > 24 jam" di layar
+            // Statistik. Hanya untuk mode balas; forward bukan jawaban ke
+            // pengirim aslinya. Dibungkus try/catch: gagal mencatat statistik
+            // tidak boleh membatalkan email yang sudah benar-benar terkirim.
+            if ($this->emailMode !== 'forward' && !empty($this->selectedEmail['id'])) {
+                try {
+                    \App\Models\Email::where('id', $this->selectedEmail['id'])
+                        ->whereNull('replied_at')
+                        ->update([
+                            'replied_at' => now(),
+                            'replied_by' => auth()->id(),
+                        ]);
+                } catch (\Throwable $e) {
+                    \Log::warning('[email-inbox] gagal mencatat waktu balas: ' . $e->getMessage());
+                }
+            }
+
             $msgType = $this->emailMode === 'forward' ? 'Forward' : 'Reply';
             session()->flash('message', "{$msgType} berhasil dikirim ke " . $this->replyTo);
             $this->showReplyModal = false;

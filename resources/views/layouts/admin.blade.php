@@ -102,6 +102,10 @@
                     @endif
                 </a>
 
+                <a href="{{ route('admin.email-statistik') }}" class="flex items-center px-4 py-3 text-sm font-medium rounded-lg transition-colors group {{ request()->routeIs('admin.email-statistik') ? 'bg-m2b-accent text-white shadow-lg' : 'hover:bg-gray-800 text-gray-300' }}">
+                    <span class="flex-1">📈 Statistik Email</span>
+                </a>
+
                 @php $moraLeadCount = \App\Models\MoraLeadNotification::whereNull('read_at')->count(); @endphp
                 <a href="{{ route('admin.mora-leads') }}" class="flex items-center px-4 py-3 text-sm font-medium rounded-lg transition-colors group {{ request()->routeIs('admin.mora-leads') ? 'bg-orange-600 text-white shadow-lg' : 'hover:bg-gray-800 text-gray-300' }}">
                     <span class="flex-1">🔥 MORA Leads</span>

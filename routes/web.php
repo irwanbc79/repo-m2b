@@ -364,6 +364,7 @@ Route::middleware(['auth', 'admin'])->prefix('admin')->name('admin.')->group(fun
         Route::get('/job-costing', JobCostingManager::class)->name('job-costing.index');
         Route::get('/profit-report', \App\Livewire\Admin\ProfitReport::class)->name('profit-report');
         Route::get('/email-keluar', \App\Livewire\Admin\OutgoingEmails::class)->name('email-keluar');
+        Route::get('/email-statistik', \App\Livewire\Admin\EmailStats::class)->name('email-statistik');
         Route::get('/calculator', AdminCalculator::class)->name('calculator');
 
         // --- PRINT ROUTES (FIX AKSES DITOLAK 403) ---
