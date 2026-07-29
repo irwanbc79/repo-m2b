@@ -23,6 +23,17 @@ class EmailStatsTest extends TestCase
     {
         parent::setUp();
         $this->stats = app(EmailStatsService::class);
+
+        // Batas pelacakan balasan dimundurkan jauh supaya test tidak
+        // bergantung pada tanggal hari ini. Batasnya sendiri diuji khusus
+        // di test_email_lama_sebelum_pelacakan_tidak_dianggap_menggantung.
+        putenv('EMAIL_REPLY_TRACKING_SINCE=2000-01-01');
+    }
+
+    protected function tearDown(): void
+    {
+        putenv('EMAIL_REPLY_TRACKING_SINCE');
+        parent::tearDown();
     }
 
     private function masuk(array $attr = []): Email
@@ -119,6 +130,23 @@ class EmailStatsTest extends TestCase
         $this->masuk(['email_date' => now()->subHours(3), 'replied_at' => now()->subHours(2)]); // 60 menit
 
         $this->assertSame(30.0, $this->stats->operasional()['menit_balas']);
+    }
+
+    public function test_email_lama_sebelum_pelacakan_tidak_dianggap_menggantung(): void
+    {
+        // Terpantau di production: tanpa batas ini, 1.920 email arsip
+        // terhitung "belum dibalas" hanya karena kolom replied_at belum ada
+        // saat email itu masuk. Angka palsu sebesar itu merusak kepercayaan
+        // pada laporan harian ke Direktur.
+        putenv('EMAIL_REPLY_TRACKING_SINCE=' . now()->subDays(7)->toDateString());
+
+        $this->masuk(['email_date' => now()->subDays(60)]); // arsip lama, tak terhitung
+        $this->masuk(['email_date' => now()->subHours(30)]); // benar menggantung
+
+        $operasional = $this->stats->operasional();
+
+        $this->assertSame(1, $operasional['belum_dibalas']);
+        $this->assertSame(1, $operasional['menggantung']);
     }
 
     public function test_menggantung_hanya_yang_lewat_24_jam(): void

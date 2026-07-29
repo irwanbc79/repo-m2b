@@ -13,6 +13,20 @@ class BriefingEmailSectionTest extends TestCase
 {
     use RefreshDatabase;
 
+    protected function setUp(): void
+    {
+        parent::setUp();
+        // Lihat catatan yang sama di EmailStatsTest — supaya test tidak
+        // bergantung pada tanggal hari ini.
+        putenv('EMAIL_REPLY_TRACKING_SINCE=2000-01-01');
+    }
+
+    protected function tearDown(): void
+    {
+        putenv('EMAIL_REPLY_TRACKING_SINCE');
+        parent::tearDown();
+    }
+
     /**
      * Briefing dicetak sebagai satu blok teks, jadi isinya diperiksa langsung
      * — bukan lewat expectsOutputToContain berganda, yang mencocokkan per

@@ -72,11 +72,32 @@ class Email extends Model
     }
 
     /**
-     * Email masuk yang belum dibalas staf.
+     * Batas terlama yang boleh dihitung untuk metrik balasan.
+     *
+     * Kolom `replied_at` baru ada sejak 29 Juli 2026. Email yang masuk
+     * SEBELUM itu selalu ber-replied_at null — bukan karena tidak dibalas,
+     * tapi karena saat itu belum ada yang mencatat. Tanpa batas ini, seluruh
+     * arsip inbox terhitung "belum dibalas" (terpantau 1.920 baris di
+     * production) dan angkanya jadi omong kosong yang justru merusak
+     * kepercayaan pada laporan.
+     *
+     * Pola yang sama dipakai `finance:check-integrity` untuk mengecualikan
+     * backlog legacy.
+     */
+    public static function lantaiPelacakanBalasan(): \Illuminate\Support\Carbon
+    {
+        return \Illuminate\Support\Carbon::parse(
+            env('EMAIL_REPLY_TRACKING_SINCE', '2026-07-29')
+        )->startOfDay();
+    }
+
+    /**
+     * Email masuk yang belum dibalas staf, sejak pelacakan balasan aktif.
      */
     public function scopeBelumDibalas($query)
     {
-        return $query->whereNull('replied_at');
+        return $query->whereNull('replied_at')
+            ->where('email_date', '>=', static::lantaiPelacakanBalasan());
     }
 
     /**
@@ -85,7 +106,7 @@ class Email extends Model
      */
     public function scopeMenggantung($query, int $jam = 24)
     {
-        return $query->whereNull('replied_at')
+        return $query->belumDibalas()
             ->where('email_date', '<', now()->subHours($jam));
     }
 }
