@@ -1,4 +1,8 @@
-<div class="h-[calc(100vh-100px)] flex flex-col">
+{{-- Tinggi dipakai inline, bukan class arbitrary Tailwind: build v4 di project
+     ini tidak selalu meng-generate class arbitrary yang baru, jadi mengganti
+     angkanya lewat class berisiko tidak berefek sama sekali. Angka 150px =
+     tinggi header + bilah tab Pusat Email di atasnya. --}}
+<div class="flex flex-col" style="height: calc(100vh - 150px);">
     @section('header', 'Communication Center')
 
     {{-- Flash Messages --}}

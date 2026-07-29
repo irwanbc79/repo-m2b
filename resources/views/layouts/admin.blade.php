@@ -73,37 +73,37 @@
                 @if(auth()->user()->hasPermission('dashboard.view') && !auth()->user()->hasRole(['auditor', 'konsultan_pajak']))
                 <div class="px-4 py-2 mt-4 text-xs font-bold text-gray-500 uppercase tracking-wider">Communication</div>
 
-                @php $unreadInboxCount = \DB::table('emails')->where('is_read', false)->count(); @endphp
-                <a href="{{ route('inbox.index') }}" class="flex items-center px-4 py-3 text-sm font-medium rounded-lg transition-colors group {{ request()->routeIs('inbox.*') ? 'bg-m2b-accent text-white shadow-lg' : 'hover:bg-gray-800 text-gray-300' }}">
-                    <span class="flex-1">📧 Email Inbox</span>
-                    @if($unreadInboxCount > 0)
-                        <span class="ml-2 min-w-5 h-5 px-1.5 bg-red-500 text-white text-[10px] font-black rounded-full flex items-center justify-center animate-pulse">
-                            {{ $unreadInboxCount > 99 ? '99+' : $unreadInboxCount }}
-                        </span>
-                    @endif
-                </a>
+                {{-- ── Pusat Email ──────────────────────────────────────────
+                     Empat halaman email (Masuk, Terkirim, Status Keluar,
+                     Statistik) berbagi satu menu, lalu dipilah lewat bilah tab
+                     di dalam halaman. Sidebar sempat punya empat baris email
+                     dan mulai sesak.
 
-                <a href="{{ route('sent-emails.index') }}" class="flex items-center px-4 py-3 text-sm font-medium rounded-lg transition-colors group {{ request()->routeIs('sent-emails.*') ? 'bg-m2b-accent text-white shadow-lg' : 'hover:bg-gray-800 text-gray-300' }}">
-                    <span class="flex-1">📤 Email Terkirim</span>
-                </a>
+                     Menu ini mengarah ke INBOX — tujuan yang selama ini dihafal
+                     staf. Route lama tidak ada yang diubah, jadi bookmark &
+                     tautan lama tetap berfungsi.
 
-                {{-- Email mental = alamat customer salah; angkanya dimunculkan
-                     karena itu yang menuntut tindakan, bukan sekadar informasi. --}}
+                     Kedua hitungan dipakai lagi oleh bilah tab, karena itu
+                     dideklarasikan di sini.
+                --}}
                 @php
+                    $unreadInboxCount = \DB::table('emails')->where('is_read', false)->count();
+                    // Email mental = alamat customer salah; angkanya dimunculkan
+                    // karena menuntut tindakan, bukan sekadar informasi.
                     $emailMental = \App\Models\EmailDelivery::whereIn('status', ['bounced', 'failed'])
                         ->where('sent_at', '>=', now()->subDays(30))->count();
+                    $adaHalamanEmail = request()->routeIs('inbox.*')
+                        || request()->routeIs('sent-emails.*')
+                        || request()->routeIs('admin.email-keluar')
+                        || request()->routeIs('admin.email-statistik');
                 @endphp
-                <a href="{{ route('admin.email-keluar') }}" class="flex items-center px-4 py-3 text-sm font-medium rounded-lg transition-colors group {{ request()->routeIs('admin.email-keluar') ? 'bg-m2b-accent text-white shadow-lg' : 'hover:bg-gray-800 text-gray-300' }}">
-                    <span class="flex-1">📊 Status Email Keluar</span>
-                    @if ($emailMental > 0)
-                        <span class="ml-2 min-w-5 h-5 px-1.5 bg-red-500 text-white text-[10px] font-black rounded-full flex items-center justify-center">
-                            {{ $emailMental > 9 ? '9+' : $emailMental }}
+                <a href="{{ route('inbox.index') }}" class="flex items-center px-4 py-3 text-sm font-medium rounded-lg transition-colors group {{ $adaHalamanEmail ? 'bg-m2b-accent text-white shadow-lg' : 'hover:bg-gray-800 text-gray-300' }}">
+                    <span class="flex-1">📬 Pusat Email</span>
+                    @if($unreadInboxCount + $emailMental > 0)
+                        <span class="ml-2 min-w-5 h-5 px-1.5 bg-red-500 text-white text-[10px] font-black rounded-full flex items-center justify-center animate-pulse">
+                            {{ ($unreadInboxCount + $emailMental) > 99 ? '99+' : $unreadInboxCount + $emailMental }}
                         </span>
                     @endif
-                </a>
-
-                <a href="{{ route('admin.email-statistik') }}" class="flex items-center px-4 py-3 text-sm font-medium rounded-lg transition-colors group {{ request()->routeIs('admin.email-statistik') ? 'bg-m2b-accent text-white shadow-lg' : 'hover:bg-gray-800 text-gray-300' }}">
-                    <span class="flex-1">📈 Statistik Email</span>
                 </a>
 
                 @php $moraLeadCount = \App\Models\MoraLeadNotification::whereNull('read_at')->count(); @endphp
@@ -329,6 +329,14 @@
 
         <main class="flex-1 flex flex-col min-h-screen w-0 overflow-hidden">
             @livewire('admin.header', ['title' => View::hasSection('header') ? View::getSection('header') : 'Admin Dashboard'])
+
+            {{-- Bilah tab Pusat Email — hanya muncul di keempat halaman email.
+                 Ditaruh di sini, bukan di tiap view, supaya keempat halaman
+                 tidak perlu disunting satu per satu. --}}
+            @if ($adaHalamanEmail ?? false)
+                @include('partials.email-tabs')
+            @endif
+
             <div class="flex-1 overflow-x-hidden overflow-y-auto p-6 w-full">
                 @yield('content')
                 {{ $slot ?? '' }}

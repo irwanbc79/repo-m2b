@@ -136,8 +136,9 @@ class OutgoingEmailsScreenTest extends TestCase
             ->get(route('admin.email-keluar'))
             ->assertOk()
             ->assertSee('Tagihan mental')
-            // Lencana sidebar ikut terpasang tanpa menjatuhkan halaman.
-            ->assertSee('Status Email Keluar');
+            // Sidebar ikut terpasang tanpa menjatuhkan halaman. Sejak menu
+            // dilebur, penandanya adalah menu tunggal "Pusat Email".
+            ->assertSee('Pusat Email');
     }
 
     public function test_partial_riwayat_menampilkan_perjalanan_email_entitas(): void
