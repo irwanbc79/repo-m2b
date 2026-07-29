@@ -1,5 +1,6 @@
 <?php
 
+use App\Http\Controllers\Api\KirimEmailWebhookController;
 use App\Http\Controllers\Api\MoraLeadWebhookController;
 use App\Http\Controllers\Api\V1\AttendanceController;
 use App\Http\Controllers\Api\V1\AuthController;
@@ -15,6 +16,11 @@ use Illuminate\Support\Facades\Route;
 // ── MORA Chat Lead Webhook (dari m2b.co.id) ────────────────────────────────
 Route::post('/mora-lead-incoming', [MoraLeadWebhookController::class, 'store'])
     ->middleware('throttle:60,1');
+
+// ── Peristiwa pengiriman email (dari Kirim Email) ──────────────────────────
+// Token di path karena API mereka tidak bisa mengirim custom header.
+Route::post('/webhooks/kirimemail/{token}', [KirimEmailWebhookController::class, 'store'])
+    ->middleware('throttle:600,1');
 
 /*
 |--------------------------------------------------------------------------

@@ -50,6 +50,13 @@ return [
         'portal_secret' => env('MORA_PORTAL_WEBHOOK_SECRET'),
     ],
 
+    // Webhook peristiwa pengiriman dari Kirim Email.
+    // Token ditaruh di path URL (bukan header) karena API mereka tidak bisa
+    // menangani custom header — lihat KirimEmailWebhookController.
+    'kirimemail' => [
+        'webhook_token' => env('KIRIMEMAIL_WEBHOOK_TOKEN'),
+    ],
+
     // ===== AI Lartas (F4) — HYBRID multi-provider =====
     // Isi salah satu / beberapa key. Sistem auto-pakai provider yang tersedia
     // (urutan 'order'), dengan fallback bila satu gagal. Degrade aman bila kosong.
