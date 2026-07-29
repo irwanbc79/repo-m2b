@@ -2,9 +2,11 @@
 
 namespace App\Services;
 
+use App\Models\Customer;
 use App\Models\EmailDelivery;
 use App\Models\EmailDeliveryEvent;
 use Illuminate\Support\Carbon;
+use Illuminate\Support\Facades\Log;
 
 /**
  * Menautkan peristiwa pengiriman dari Kirim Email ke catatan email keluar.
@@ -136,6 +138,8 @@ class EmailDeliveryTracker
         switch ($type) {
             case EmailDelivery::STATUS_DELIVERED:
                 $changes['delivered_at'] = $delivery->delivered_at ?? $occurredAt;
+                // Alamatnya hidup lagi — cabut penanda mental bila ada.
+                $this->cabutPenandaMental($delivery->recipient_email);
                 break;
 
             case EmailDelivery::STATUS_OPENED:
@@ -147,6 +151,7 @@ class EmailDeliveryTracker
             case EmailDelivery::STATUS_FAILED:
                 $changes['failed_at']      = $delivery->failed_at ?? $occurredAt;
                 $changes['failure_reason'] = $detail;
+                $this->tandaiCustomerEmailMental($delivery->recipient_email, $detail, $occurredAt);
                 break;
         }
 
@@ -158,6 +163,59 @@ class EmailDeliveryTracker
             ->where('event_type', EmailDelivery::STATUS_CLICKED)->count();
 
         $delivery->update($changes);
+    }
+
+    /**
+     * Tandai customer yang alamat emailnya mental.
+     *
+     * Penanda disimpan di baris customer (bukan dihitung saat dibutuhkan)
+     * karena Manage Customers memanggil dataQuality() per baris — menghitung
+     * di sana akan langsung jadi N+1.
+     *
+     * Email customer tinggal di tabel `users`, jadi pencocokannya lewat relasi.
+     */
+    private function tandaiCustomerEmailMental(?string $email, ?string $alasan, Carbon $waktu): void
+    {
+        if (! $email) {
+            return;
+        }
+
+        try {
+            Customer::whereHas('user', fn ($q) => $q->where('email', $email))
+                ->update([
+                    'email_bounced_at'    => $waktu,
+                    'email_bounce_reason' => $alasan ? mb_substr($alasan, 0, 500) : null,
+                ]);
+        } catch (\Throwable $e) {
+            // Penandaan kualitas data tidak boleh menggagalkan pencatatan
+            // peristiwa pengiriman.
+            Log::warning('[email-delivery] gagal menandai email mental: ' . $e->getMessage());
+        }
+    }
+
+    /**
+     * Cabut penanda begitu ada email yang berhasil sampai ke alamat itu —
+     * supaya penandanya sembuh sendiri setelah staf memperbaiki alamatnya,
+     * tanpa perlu dibersihkan manual.
+     */
+    private function cabutPenandaMental(?string $email): void
+    {
+        if (! $email) {
+            return;
+        }
+
+        try {
+            // `whereNotNull` didahulukan supaya mayoritas kasus (tidak ada
+            // penanda sama sekali) berhenti murah di indeks.
+            Customer::whereNotNull('email_bounced_at')
+                ->whereHas('user', fn ($q) => $q->where('email', $email))
+                ->update([
+                    'email_bounced_at'    => null,
+                    'email_bounce_reason' => null,
+                ]);
+        } catch (\Throwable $e) {
+            Log::warning('[email-delivery] gagal mencabut penanda mental: ' . $e->getMessage());
+        }
     }
 
     /**

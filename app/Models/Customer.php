@@ -16,6 +16,7 @@ class Customer extends Model
         'profile_reminder_seen_at' => 'datetime',
         'profile_reminder_dismissed_at' => 'datetime',
         'profile_completed_at' => 'datetime',
+        'email_bounced_at' => 'datetime',
     ];
 
     /**
@@ -97,7 +98,10 @@ class Customer extends Model
             $q->whereNull('npwp')->orWhere('npwp', '')
               ->orWhereNull('phone')->orWhere('phone', '')
               ->orWhereNull('address')->orWhere('address', '')
-              ->orWhereRaw('LENGTH(TRIM(company_name)) < 4');
+              ->orWhereRaw('LENGTH(TRIM(company_name)) < 4')
+              // Alamat email yang mental juga masalah data yang menuntut
+              // tindakan, bukan sekadar kolom kosong.
+              ->orWhereNotNull('email_bounced_at');
         });
     }
 
@@ -176,10 +180,22 @@ class Customer extends Model
             $score += 5;
         }
 
+        // Email yang mental = alamatnya salah atau sudah mati. Ini masalah
+        // data paling mahal: invoice & pemberitahuan tidak pernah sampai,
+        // dan staf mengejar piutang ke alamat yang tidak ada. Karena itu
+        // bobotnya besar dan langsung menjatuhkan level ke 'bad'.
+        //
+        // Membaca kolom, bukan query — dataQuality() dipanggil per baris di
+        // Manage Customers.
+        if ($this->email_bounced_at) {
+            $issues[] = 'Email mental — alamat tidak dapat dijangkau';
+            $score = max(0, $score - 40);
+        }
+
         $score = min(100, $score);
 
         $level = 'good';
-        if ($this->hasSuspectName() || $score < 40) {
+        if ($this->hasSuspectName() || $this->email_bounced_at || $score < 40) {
             $level = 'bad';
         } elseif ($score < 75) {
             $level = 'warn';

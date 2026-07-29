@@ -245,6 +245,17 @@
                                     {{ $dq['score'] }}%
                                 </span>
                                 @endif
+
+                                {{-- Email mental dipisahkan dari lencana skor: tindakannya
+                                     spesifik (perbaiki alamatnya), bukan sekadar melengkapi
+                                     kolom yang kosong. Penanda ini hilang sendiri begitu ada
+                                     email yang berhasil sampai ke alamat itu. --}}
+                                @if($c->email_bounced_at)
+                                <span title="Email terakhir mental {{ $c->email_bounced_at->diffForHumans() }}{{ $c->email_bounce_reason ? ' — ' . $c->email_bounce_reason : '' }}"
+                                    class="inline-flex items-center gap-1 text-[10px] font-bold px-1.5 py-0.5 rounded-full border cursor-help bg-red-600 text-white border-red-700">
+                                    ✉️ EMAIL MENTAL
+                                </span>
+                                @endif
                             </div>
                             @php($rs = $c->reminderStatus())
                             @if($rs)
