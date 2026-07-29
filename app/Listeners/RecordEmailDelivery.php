@@ -73,6 +73,10 @@ class RecordEmailDelivery
                 'subject'         => mb_substr($subject, 0, 500),
                 'sent_at'         => now(),
                 'mailable_class'  => $data['__laravel_mailable'] ?? null,
+                // Event MessageSending tidak membawa nama mailer yang dipakai,
+                // jadi yang tercatat adalah mailer DEFAULT. Pengiriman lewat
+                // Mail::mailer('x') eksplisit akan tercatat keliru di kolom ini
+                // — cukup untuk menyaring, jangan dijadikan dasar keputusan.
                 'mailer'          => config('mail.default'),
                 'status'          => EmailDelivery::STATUS_QUEUED,
             ], $relation));

@@ -65,3 +65,14 @@ Schedule::command('finance:check-integrity --notify --digest')
 Schedule::command('finance:daily-briefing --send')
     ->dailyAt('07:15')
     ->timezone('Asia/Jakarta');
+
+// 7. Tarik riwayat pengiriman email dari Kirim Email tiap 15 menit.
+// Ini MEKANISME UTAMA pelacakan, bukan cadangan: webhook mereka terbukti
+// tidak menyala untuk peristiwa nyata (diuji 29 Juli 2026 — log mencatat
+// delivered & opened dengan normal, tapi tidak ada satu pun permintaan masuk
+// ke portal). Aman diulang: tiap peristiwa punya ID sendiri dan hanya
+// dicatat sekali. withoutOverlapping supaya tidak menumpuk bila API lambat.
+Schedule::command('email:sync-delivery-logs')
+    ->everyFifteenMinutes()
+    ->withoutOverlapping()
+    ->timezone('Asia/Jakarta');
