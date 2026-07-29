@@ -3,6 +3,7 @@
 namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\Relations\MorphTo;
 
 /**
@@ -77,6 +78,14 @@ class EmailDelivery extends Model
         return $this->morphTo();
     }
 
+    /**
+     * Riwayat peristiwa: sampai, dibuka, diklik, mental.
+     */
+    public function events(): HasMany
+    {
+        return $this->hasMany(EmailDeliveryEvent::class);
+    }
+
     public function statusOrder(?string $status = null): int
     {
         return self::ORDER[$status ?? $this->status] ?? 0;
@@ -93,6 +102,80 @@ class EmailDelivery extends Model
     public function scopeUntracked($query)
     {
         return $query->whereNull('provider_message_guid');
+    }
+
+    /**
+     * Keterangan status dalam bahasa yang dipakai staf, bukan istilah teknis
+     * provider. Jumlah buka disertakan karena itu yang paling menentukan
+     * tindakan berikutnya.
+     */
+    public function statusLabel(): string
+    {
+        if ($this->open_count > 1) {
+            return "dibuka {$this->open_count}×";
+        }
+
+        return match ($this->status) {
+            self::STATUS_QUEUED    => 'menunggu konfirmasi',
+            self::STATUS_SENT      => 'dikirim',
+            self::STATUS_DELIVERED => 'sampai',
+            self::STATUS_OPENED    => 'dibuka',
+            self::STATUS_CLICKED   => 'dibuka · tautan diklik',
+            self::STATUS_DEFERRED  => 'tertunda',
+            self::STATUS_BOUNCED   => 'mental',
+            self::STATUS_FAILED    => 'gagal',
+            default                => $this->status,
+        };
+    }
+
+    /**
+     * Nada warna untuk lencana status: ok | info | warn | crit | mute.
+     */
+    public function statusTone(): string
+    {
+        return match ($this->status) {
+            self::STATUS_BOUNCED, self::STATUS_FAILED    => 'crit',
+            self::STATUS_OPENED, self::STATUS_CLICKED    => 'info',
+            self::STATUS_DELIVERED                       => 'ok',
+            self::STATUS_DEFERRED                        => 'warn',
+            default                                      => 'mute',
+        };
+    }
+
+    /**
+     * Jenis email menurut entitas yang ditautkan. Email tanpa tautan berarti
+     * email sistem (briefing harian, peringatan pembukuan).
+     */
+    public function jenisLabel(): string
+    {
+        return match ($this->related_type) {
+            Invoice::class   => 'Invoice',
+            Quotation::class => 'Quotation',
+            Shipment::class  => 'Shipment',
+            Customer::class  => 'Customer',
+            default          => 'Sistem',
+        };
+    }
+
+    /**
+     * Nomor dokumen terkait, bila ada — jauh lebih berguna bagi staf
+     * daripada nomor baris internal.
+     */
+    public function relatedLabel(): ?string
+    {
+        $related = $this->related;
+
+        if (! $related) {
+            return null;
+        }
+
+        foreach (['invoice_number', 'quotation_number', 'awb_number', 'company_name'] as $field) {
+            if (! empty($related->{$field})) {
+                return (string) $related->{$field};
+            }
+        }
+
+        return null;
     }
 
     /**

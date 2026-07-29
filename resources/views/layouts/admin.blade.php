@@ -87,6 +87,21 @@
                     <span class="flex-1">📤 Email Terkirim</span>
                 </a>
 
+                {{-- Email mental = alamat customer salah; angkanya dimunculkan
+                     karena itu yang menuntut tindakan, bukan sekadar informasi. --}}
+                @php
+                    $emailMental = \App\Models\EmailDelivery::whereIn('status', ['bounced', 'failed'])
+                        ->where('sent_at', '>=', now()->subDays(30))->count();
+                @endphp
+                <a href="{{ route('admin.email-keluar') }}" class="flex items-center px-4 py-3 text-sm font-medium rounded-lg transition-colors group {{ request()->routeIs('admin.email-keluar') ? 'bg-m2b-accent text-white shadow-lg' : 'hover:bg-gray-800 text-gray-300' }}">
+                    <span class="flex-1">📊 Status Email Keluar</span>
+                    @if ($emailMental > 0)
+                        <span class="ml-2 min-w-5 h-5 px-1.5 bg-red-500 text-white text-[10px] font-black rounded-full flex items-center justify-center">
+                            {{ $emailMental > 9 ? '9+' : $emailMental }}
+                        </span>
+                    @endif
+                </a>
+
                 @php $moraLeadCount = \App\Models\MoraLeadNotification::whereNull('read_at')->count(); @endphp
                 <a href="{{ route('admin.mora-leads') }}" class="flex items-center px-4 py-3 text-sm font-medium rounded-lg transition-colors group {{ request()->routeIs('admin.mora-leads') ? 'bg-orange-600 text-white shadow-lg' : 'hover:bg-gray-800 text-gray-300' }}">
                     <span class="flex-1">🔥 MORA Leads</span>
