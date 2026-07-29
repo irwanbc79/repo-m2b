@@ -17,6 +17,12 @@ class EventServiceProvider extends ServiceProvider
         ShipmentStatusUpdated::class => [
             SendStatusNotification::class,
         ],
+
+        // CATATAN: RecordEmailDelivery (MessageSending) TIDAK didaftarkan di
+        // sini. Laravel 11/12 sudah otomatis menemukan listener di
+        // app/Listeners yang meng-hint tipe event-nya di method handle();
+        // mendaftarkannya lagi di sini membuat listener menyala DUA KALI dan
+        // setiap email tercatat dobel di buku besar.
     ];
 
     public function boot(): void
