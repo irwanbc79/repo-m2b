@@ -83,6 +83,28 @@ class EmailDeliveryLedgerTest extends TestCase
         $this->assertTrue($row->related->is($customer));
     }
 
+    public function test_pengiriman_berbasis_view_juga_tertaut(): void
+    {
+        // Jalur INI yang dipakai pengiriman invoice sungguhan di portal
+        // (InvoiceManager memakai Mail::send('emails.invoice-notification',
+        // ['invoice' => $invoice, ...])), bukan Mailable. Datanya tetap
+        // membawa model, jadi tautannya harus tetap terbentuk.
+        $customer = $this->customer('PT Asia Grow');
+
+        Mail::send([], ['customer' => $customer], function ($message) {
+            $message->to('ops@asiagrow.co.id')
+                ->subject('Tagihan via jalur view')
+                ->html('<p>isi</p>');
+        });
+
+        $row = EmailDelivery::sole();
+
+        $this->assertSame(Customer::class, $row->related_type);
+        $this->assertSame($customer->id, $row->related_id);
+        // Mailable tidak dipakai di jalur ini, jadi kolomnya memang kosong.
+        $this->assertNull($row->mailable_class);
+    }
+
     public function test_tanpa_entitas_yang_dikenali_tautan_dibiarkan_kosong(): void
     {
         Mail::to('umum@m2b.co.id')->send(new LedgerProbeMail());
