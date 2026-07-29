@@ -5,6 +5,7 @@ namespace App\Services;
 use App\Models\Customer;
 use App\Models\EmailDelivery;
 use App\Models\EmailDeliveryEvent;
+use App\Models\EmailSuppression;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\Log;
 
@@ -138,8 +139,11 @@ class EmailDeliveryTracker
         switch ($type) {
             case EmailDelivery::STATUS_DELIVERED:
                 $changes['delivered_at'] = $delivery->delivered_at ?? $occurredAt;
-                // Alamatnya hidup lagi — cabut penanda mental bila ada.
+                // Alamatnya hidup lagi — cabut penanda mental & buka blokir.
                 $this->cabutPenandaMental($delivery->recipient_email);
+                if ($delivery->recipient_email) {
+                    EmailSuppression::cabut($delivery->recipient_email);
+                }
                 break;
 
             case EmailDelivery::STATUS_OPENED:
@@ -152,6 +156,12 @@ class EmailDeliveryTracker
                 $changes['failed_at']      = $delivery->failed_at ?? $occurredAt;
                 $changes['failure_reason'] = $detail;
                 $this->tandaiCustomerEmailMental($delivery->recipient_email, $detail, $occurredAt);
+                // Blokir alamatnya supaya portal berhenti menembak alamat
+                // mati — kiriman berulang ke sana merusak reputasi domain
+                // dan menyeret email ke customer lain ikut masuk spam.
+                if ($delivery->recipient_email) {
+                    EmailSuppression::tandai($delivery->recipient_email, $detail);
+                }
                 break;
         }
 

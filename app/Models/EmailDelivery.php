@@ -22,6 +22,9 @@ class EmailDelivery extends Model
     public const STATUS_BOUNCED   = 'bounced';
     public const STATUS_FAILED    = 'failed';
 
+    /** Tidak jadi dikirim karena alamatnya sedang diblokir. */
+    public const STATUS_SUPPRESSED = 'suppressed';
+
     /**
      * Urutan kemajuan status. Status TIDAK PERNAH mundur: peristiwa
      * `delivered` yang telat datang tidak boleh menurunkan email yang
@@ -39,6 +42,9 @@ class EmailDelivery extends Model
         self::STATUS_CLICKED   => 6,
         self::STATUS_BOUNCED   => 90,
         self::STATUS_FAILED    => 91,
+        // Setinggi status gagal: begitu tidak jadi dikirim, itulah kabar
+        // terakhir yang relevan bagi staf.
+        self::STATUS_SUPPRESSED => 92,
     ];
 
     protected $fillable = [
@@ -124,6 +130,7 @@ class EmailDelivery extends Model
             self::STATUS_DEFERRED  => 'tertunda',
             self::STATUS_BOUNCED   => 'mental',
             self::STATUS_FAILED    => 'gagal',
+            self::STATUS_SUPPRESSED => 'tidak dikirim · alamat diblokir',
             default                => $this->status,
         };
     }
@@ -134,7 +141,7 @@ class EmailDelivery extends Model
     public function statusTone(): string
     {
         return match ($this->status) {
-            self::STATUS_BOUNCED, self::STATUS_FAILED    => 'crit',
+            self::STATUS_BOUNCED, self::STATUS_FAILED, self::STATUS_SUPPRESSED => 'crit',
             self::STATUS_OPENED, self::STATUS_CLICKED    => 'info',
             self::STATUS_DELIVERED                       => 'ok',
             self::STATUS_DEFERRED                        => 'warn',

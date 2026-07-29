@@ -5,6 +5,7 @@ namespace App\Console\Commands;
 use App\Models\CashTransaction;
 use App\Models\Invoice;
 use App\Models\InvoicePayment;
+use App\Services\EmailStatsService;
 use Carbon\Carbon;
 use Illuminate\Console\Command;
 use Illuminate\Support\Facades\DB;
@@ -110,6 +111,8 @@ class DailyAccountingBriefing extends Command
         }
         $out .= "\n";
 
+        $out .= $this->bagianEmail();
+
         // --- PENGINGAT PAJAK (menjelang akhir bulan) ---
         if ($today->day >= 20) {
             $prev = (clone $today)->subMonthNoOverflow();
@@ -123,6 +126,69 @@ class DailyAccountingBriefing extends Command
         $out .= "dari data portal — keputusan & pelaporan pajak tetap perlu tinjauan manusia.\n";
 
         return $out;
+    }
+
+    /**
+     * Sinyal email yang menuntut tindakan.
+     *
+     * Layar Statistik Email hanya berguna kalau ada yang membukanya, dan
+     * realistisnya sering terlewat. Briefing ini sudah sampai ke meja Direktur
+     * tiap pagi — jadi angkanya dititipkan di sini supaya intelijennya sampai
+     * tanpa siapa pun perlu membuka halaman.
+     *
+     * Hanya menampilkan yang perlu ditindaklanjuti; kalau semua bersih,
+     * cukup satu baris supaya briefing tidak jadi panjang tanpa guna.
+     */
+    private function bagianEmail(): string
+    {
+        try {
+            $stats = app(EmailStatsService::class)->untukPeriode(30);
+            $kanal = $stats->kesehatanKanal();
+            $ops   = $stats->operasional();
+            $corong = $stats->corongBisnis();
+        } catch (\Throwable $e) {
+            // Briefing keuangan jauh lebih penting daripada bagian ini —
+            // kalau statistik email bermasalah, briefingnya tetap terkirim.
+            Log::warning('[finance:daily-briefing] bagian email dilewati: ' . $e->getMessage());
+
+            return '';
+        }
+
+        $baris = [];
+
+        if ($kanal['mental'] > 0) {
+            $baris[] = "  ⚠️ {$kanal['mental']} email MENTAL 30 hari terakhir — alamat customer perlu diperbaiki";
+        }
+        if ($ops['menggantung'] > 0) {
+            $baris[] = "  ⚠️ {$ops['menggantung']} email masuk menggantung >24 jam — kandidat jadi keluhan";
+        }
+        if ($kanal['mangkrak'] > 0) {
+            $baris[] = "  ⚠️ {$kanal['mangkrak']} email tak dikabarkan nasibnya >1 jam — cek kredit & kredensial";
+        }
+        if ($corong['quotation_panas'] > 0) {
+            $baris[] = "  🔥 {$corong['quotation_panas']} quotation dibuka ≥3× tanpa balasan — kandidat ditelepon hari ini";
+        }
+        if ($corong['terkirim_belum_dibuka'] > 0) {
+            $baris[] = "  · {$corong['terkirim_belum_dibuka']} email sampai tapi belum dibuka — pertimbangkan susulan WhatsApp";
+        }
+
+        $out = "EMAIL\n";
+
+        if (empty($baris)) {
+            $out .= "  ✅ Tidak ada yang perlu ditindaklanjuti.\n";
+        } else {
+            $out .= implode("\n", $baris) . "\n";
+        }
+
+        if ($ops['menit_balas'] !== null) {
+            $jam  = intdiv((int) $ops['menit_balas'], 60);
+            $sisa = (int) $ops['menit_balas'] % 60;
+            $lama = $jam > 0 ? "{$jam}j {$sisa}m" : "{$sisa} menit";
+            $out .= "  Rata-rata waktu balas: {$lama}"
+                . ($ops['menit_balas'] > 120 ? ' (di atas target 2 jam)' : '') . "\n";
+        }
+
+        return $out . "\n";
     }
 
     private function bulanId(Carbon $d): string

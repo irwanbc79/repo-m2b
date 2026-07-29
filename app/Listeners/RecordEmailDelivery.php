@@ -4,12 +4,14 @@ namespace App\Listeners;
 
 use App\Models\Customer;
 use App\Models\EmailDelivery;
+use App\Models\EmailSuppression;
 use App\Models\Invoice;
 use App\Models\Quotation;
 use App\Models\Shipment;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Mail\Events\MessageSending;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Str;
 
 /**
  * Mencatat SETIAP email keluar dari portal ke buku besar `email_deliveries`.
@@ -43,17 +45,74 @@ class RecordEmailDelivery
         Customer::class,
     ];
 
-    public function handle(MessageSending $event): void
+    /**
+     * Mengembalikan false membatalkan pengiriman (Laravel memakai
+     * `events->until()`, jadi nilai false menghentikan proses kirim).
+     *
+     * Pencatatan dan pemblokiran sengaja disatukan di SINI, bukan dipecah
+     * jadi dua listener: `until()` berhenti pada listener pertama yang
+     * mengembalikan nilai, jadi kalau pemblokiran ditaruh terpisah dan
+     * berjalan lebih dulu, email yang diblokir tidak akan tercatat sama
+     * sekali — persis hal yang paling ingin kita lihat.
+     *
+     * @return bool|null false = batalkan kirim; null = lanjutkan
+     */
+    public function handle(MessageSending $event): ?bool
     {
+        $diblokir = null;
+
         try {
-            $this->record($event);
+            $diblokir = $this->alamatDiblokir($event);
+            $this->record($event, $diblokir !== null);
         } catch (\Throwable $e) {
             // Sengaja ditelan — lihat catatan kelas di atas.
             Log::warning('[email-delivery] gagal mencatat email keluar: ' . $e->getMessage());
         }
+
+        if ($diblokir !== null) {
+            Log::warning('[email-delivery] pengiriman DIBATALKAN, alamat diblokir', [
+                'penerima' => $diblokir,
+                'subjek'   => (string) $event->message->getSubject(),
+            ]);
+
+            return false;
+        }
+
+        return null;
     }
 
-    private function record(MessageSending $event): void
+    /**
+     * Alamat penerima pertama yang sedang diblokir, atau null bila aman.
+     *
+     * Sengaja konservatif: hanya memblokir bila ADA catatan blokir yang
+     * eksplisit. Salah di sisi ini berarti email portal berhenti terkirim,
+     * jadi ragu = kirim.
+     *
+     * Alamat internal (domain pengirim sendiri) TIDAK PERNAH diblokir:
+     * peringatan keuangan & briefing dikirim ke sana, dan memblokirnya akan
+     * membuat sistem pemantauan mati diam-diam — jauh lebih berbahaya
+     * daripada mengirim ke kotak internal yang bermasalah.
+     */
+    private function alamatDiblokir(MessageSending $event): ?string
+    {
+        $domainSendiri = Str::after((string) config('mail.from.address'), '@');
+
+        foreach ($event->message->getTo() ?? [] as $penerima) {
+            $alamat = $penerima->getAddress();
+
+            if ($domainSendiri && Str::endsWith(mb_strtolower($alamat), '@' . mb_strtolower($domainSendiri))) {
+                continue;
+            }
+
+            if (EmailSuppression::diblokir($alamat)) {
+                return $alamat;
+            }
+        }
+
+        return null;
+    }
+
+    private function record(MessageSending $event, bool $diblokir = false): void
     {
         $recipients = $event->message->getTo() ?? [];
 
@@ -78,7 +137,11 @@ class RecordEmailDelivery
                 // Mail::mailer('x') eksplisit akan tercatat keliru di kolom ini
                 // — cukup untuk menyaring, jangan dijadikan dasar keputusan.
                 'mailer'          => config('mail.default'),
-                'status'          => EmailDelivery::STATUS_QUEUED,
+                // Yang diblokir tetap dicatat — supaya terlihat di layar
+                // Email Keluar, bukan hilang tanpa jejak.
+                'status'          => $diblokir
+                    ? EmailDelivery::STATUS_SUPPRESSED
+                    : EmailDelivery::STATUS_QUEUED,
             ], $relation));
         }
     }
