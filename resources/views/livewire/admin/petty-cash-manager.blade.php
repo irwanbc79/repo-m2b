@@ -520,12 +520,33 @@
 
                 <div>
                     <label class="block text-sm font-medium text-gray-700 mb-1">Job (opsional)</label>
-                    <select wire:model="editJob" class="w-full border-gray-300 rounded-lg text-sm">
-                        <option value="">— tidak terkait job —</option>
-                        @foreach($shipments as $s)
-                            <option value="{{ $s->id }}">{{ $s->awb_number }} — {{ $s->customer->company_name ?? '' }}</option>
-                        @endforeach
-                    </select>
+
+                    {{-- Pola pencarian sengaja disamakan dengan modal Input Pengeluaran:
+                         staf sudah terbiasa mengetik nomor shipment/nama customer di sana,
+                         jadi tidak perlu belajar cara kedua. --}}
+                    <div x-data="{ open: false, search: @js($editJobLabel) }" class="relative">
+                        <input type="text"
+                            x-model="search"
+                            @focus="open = true"
+                            @click.away="open = false"
+                            placeholder="Ketik No. Shipment atau nama customer..."
+                            class="w-full rounded-lg border-gray-300 text-sm shadow-sm focus:ring-blue-500 focus:border-blue-500">
+
+                        <div x-show="open" x-cloak class="absolute z-50 w-full mt-1 bg-white border rounded-lg shadow-lg max-h-60 overflow-y-auto">
+                            <div @click="$wire.set('editJob', ''); search = ''; open = false"
+                                class="px-4 py-2 hover:bg-gray-100 cursor-pointer text-gray-500 text-sm">— tidak terkait job —</div>
+
+                            @foreach($shipments as $s)
+                            <div x-show="!search || '{{ strtolower($s->awb_number . ' ' . ($s->customer->company_name ?? '')) }}'.includes(search.toLowerCase())"
+                                @click="$wire.set('editJob', '{{ $s->id }}'); search = '{{ $s->awb_number }}'; open = false"
+                                class="px-4 py-2 hover:bg-blue-50 cursor-pointer">
+                                <span class="font-mono text-sm">{{ $s->awb_number }}</span>
+                                @if($s->customer)<span class="text-gray-500 text-sm ml-2">- {{ $s->customer->company_name }}</span>@endif
+                            </div>
+                            @endforeach
+                        </div>
+                    </div>
+                    <p class="text-[11px] text-gray-500 mt-1">Kosongkan kotak lalu pilih "tidak terkait job" untuk melepas kaitan.</p>
                 </div>
 
                 <div>

@@ -194,6 +194,7 @@ class PettyCashManager extends Component
     public $editKategori = '';
     public $editKeterangan = '';
     public $editJob = '';
+    public $editJobLabel = '';
     public $editAlasan = '';
     public $showEditModal = false;
 
@@ -240,6 +241,10 @@ class PettyCashManager extends Component
         $this->editKategori   = $t->category;
         $this->editKeterangan = $t->description;
         $this->editJob        = $t->shipment_id;
+        // Label job dipakai mengisi awal kotak pencarian, supaya staf langsung
+        // melihat job yang sedang terpasang — bukan kotak kosong yang terkesan
+        // belum terisi.
+        $this->editJobLabel   = $t->shipment?->awb_number ?? '';
         $this->editAlasan     = '';
         $this->showEditModal  = true;
     }
@@ -278,7 +283,7 @@ class PettyCashManager extends Component
 
             $this->fund->refresh();
             $this->showEditModal = false;
-            $this->reset(['editId', 'editTanggal', 'editJumlah', 'editKategori', 'editKeterangan', 'editJob', 'editAlasan']);
+            $this->reset(['editId', 'editTanggal', 'editJumlah', 'editKategori', 'editKeterangan', 'editJob', 'editJobLabel', 'editAlasan']);
             session()->flash('success', 'Transaksi diperbarui. Jurnal lama dibalik & jurnal baru dibuat otomatis.');
         } catch (\Exception $e) {
             session()->flash('error', $e->getMessage());

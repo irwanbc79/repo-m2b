@@ -121,6 +121,74 @@ class PettyCashEditUiTest extends TestCase
             ->assertSet('showEditModal', false);
     }
 
+    public function test_job_bisa_dipasang_dan_dilepas(): void
+    {
+        $customer = \App\Models\Customer::create([
+            'user_id' => User::factory()->create(['role' => 'customer'])->id,
+            'customer_code' => \App\Models\Customer::generateCustomerCode(),
+            'company_name' => 'PT Dira Baraka Mulia',
+        ]);
+        $shipment = \App\Models\Shipment::create([
+            'customer_id' => $customer->id,
+            'awb_number'  => 'IMP-260722-758',
+            'service_type' => 'import',
+            'shipment_type' => 'sea',
+            'origin' => 'Shanghai',
+            'destination' => 'Surabaya',
+            'status' => 'pending',
+        ]);
+
+        $t = $this->transaksiOleh($this->nurul);
+
+        // Pasang job
+        Livewire::actingAs($this->nurul)
+            ->test(PettyCashManager::class)
+            ->call('openEdit', $t->id)
+            ->set('editJob', $shipment->id)
+            ->set('editAlasan', 'lupa isi job')
+            ->call('saveEdit');
+
+        $this->assertEquals($shipment->id, $t->fresh()->shipment_id);
+
+        // Lepas job lagi
+        Livewire::actingAs($this->nurul)
+            ->test(PettyCashManager::class)
+            ->call('openEdit', $t->id)
+            ->set('editJob', '')
+            ->set('editAlasan', 'ternyata bukan untuk job itu')
+            ->call('saveEdit');
+
+        $this->assertNull($t->fresh()->shipment_id);
+    }
+
+    public function test_kotak_pencarian_job_terisi_awal_dengan_job_terpasang(): void
+    {
+        // Kalau kotaknya kosong, staf mengira job-nya belum terisi lalu
+        // tanpa sadar melepasnya.
+        $customer = \App\Models\Customer::create([
+            'user_id' => User::factory()->create(['role' => 'customer'])->id,
+            'customer_code' => \App\Models\Customer::generateCustomerCode(),
+            'company_name' => 'PT ATS Inti Sampoerna',
+        ]);
+        $shipment = \App\Models\Shipment::create([
+            'customer_id' => $customer->id,
+            'awb_number'  => 'IMP-260706-824',
+            'service_type' => 'import',
+            'shipment_type' => 'sea',
+            'origin' => 'Shanghai',
+            'destination' => 'Surabaya',
+            'status' => 'pending',
+        ]);
+
+        $t = $this->transaksiOleh($this->nurul);
+        $t->update(['shipment_id' => $shipment->id]);
+
+        Livewire::actingAs($this->nurul)
+            ->test(PettyCashManager::class)
+            ->call('openEdit', $t->id)
+            ->assertSet('editJobLabel', 'IMP-260706-824');
+    }
+
     public function test_halaman_terbuka_dan_menampilkan_penanda(): void
     {
         $t = $this->transaksiOleh($this->nurul);
