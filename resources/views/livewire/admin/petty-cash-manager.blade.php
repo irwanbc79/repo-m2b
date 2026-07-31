@@ -130,19 +130,31 @@
                             <th class="px-4 py-3 text-left text-xs font-semibold text-gray-600 uppercase">Job</th>
                             <th class="px-4 py-3 text-right text-xs font-semibold text-gray-600 uppercase">Jumlah</th>
                             <th class="px-4 py-3 text-center text-xs font-semibold text-gray-600 uppercase">Bukti</th>
+                            <th class="px-4 py-3 text-center text-xs font-semibold text-gray-600 uppercase">Aksi</th>
                         </tr>
                     </thead>
                     <tbody class="bg-white divide-y divide-gray-200">
                         @forelse($transactions as $t)
-                        <tr class="hover:bg-gray-50">
+                        <tr class="hover:bg-gray-50 {{ $t->isCancelled() ? 'bg-gray-50/70' : '' }}">
                             <td class="px-4 py-3 text-sm text-gray-600">{{ $t->transaction_date->format('d/m/Y') }}</td>
-                            <td class="px-4 py-3 text-sm font-mono text-gray-800">{{ $t->transaction_number }}</td>
+                            <td class="px-4 py-3 text-sm font-mono {{ $t->isCancelled() ? 'text-gray-400 line-through' : 'text-gray-800' }}">{{ $t->transaction_number }}</td>
                             <td class="px-4 py-3">
                                 <span class="px-2 py-1 text-xs font-medium bg-gray-100 text-gray-700 rounded">{{ $t->category_label }}</span>
                             </td>
-                            <td class="px-4 py-3 text-sm text-gray-600">{{ Str::limit($t->description, 40) }}</td>
+                            <td class="px-4 py-3 text-sm text-gray-600">
+                                <span class="{{ $t->isCancelled() ? 'line-through text-gray-400' : '' }}">{{ Str::limit($t->description, 40) }}</span>
+
+                                {{-- Penanda status: dibatalkan & pernah diubah sengaja terlihat
+                                     di daftar, bukan disembunyikan di dalam modal. --}}
+                                @if($t->isCancelled())
+                                    <span class="ml-1 px-1.5 py-0.5 text-[10px] font-bold bg-red-100 text-red-700 rounded"
+                                          title="{{ $t->reject_reason }}">DIBATALKAN</span>
+                                @elseif($t->logs_count > 0)
+                                    <span class="ml-1 px-1.5 py-0.5 text-[10px] font-bold bg-amber-100 text-amber-700 rounded">DIUBAH</span>
+                                @endif
+                            </td>
                             <td class="px-4 py-3 text-sm text-gray-500">{{ $t->shipment->awb_number ?? '-' }}</td>
-                            <td class="px-4 py-3 text-sm text-right font-semibold text-red-600">-Rp {{ number_format($t->amount, 0, ',', '.') }}</td>
+                            <td class="px-4 py-3 text-sm text-right font-semibold {{ $t->isCancelled() ? 'text-gray-400 line-through' : 'text-red-600' }}">-Rp {{ number_format($t->amount, 0, ',', '.') }}</td>
                             <td class="px-4 py-3 text-center">
                                 @if($t->proof_file)
                                 <button onclick="openProof('{{ Storage::disk('public')->url($t->proof_file) }}', '{{ pathinfo($t->proof_file, PATHINFO_EXTENSION) }}')" class="text-blue-500 hover:text-blue-700 transition" title="Lihat Bukti">
@@ -150,10 +162,31 @@
                                 </button>
                                 @endif
                             </td>
+                            <td class="px-4 py-3">
+                                <div class="flex items-center justify-center gap-1">
+                                    @if($t->logs_count > 0)
+                                    <button wire:click="openRiwayat({{ $t->id }})"
+                                        class="p-1.5 text-gray-400 hover:text-gray-700 transition" title="Lihat riwayat perubahan">
+                                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+                                    </button>
+                                    @endif
+
+                                    @if($this->canEditTransaction($t))
+                                    <button wire:click="openEdit({{ $t->id }})"
+                                        class="p-1.5 text-blue-500 hover:text-blue-700 transition" title="Ubah transaksi">
+                                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"/></svg>
+                                    </button>
+                                    <button wire:click="openBatal({{ $t->id }})"
+                                        class="p-1.5 text-red-400 hover:text-red-600 transition" title="Batalkan transaksi">
+                                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 14l2-2m0 0l2-2m-2 2l-2-2m2 2l2 2m7-2a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+                                    </button>
+                                    @endif
+                                </div>
+                            </td>
                         </tr>
                         @empty
                         <tr>
-                            <td colspan="7" class="px-4 py-12 text-center text-gray-500">
+                            <td colspan="8" class="px-4 py-12 text-center text-gray-500">
                                 <svg class="w-12 h-12 mx-auto text-gray-300 mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/></svg>
                                 Belum ada transaksi
                             </td>
@@ -269,7 +302,7 @@
 
     {{-- MODAL: Input Transaksi --}}
     @if($showModal)
-    <div class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+    <div class="fixed inset-0 flex items-center justify-center z-50 p-4" style="background-color: rgba(0,0,0,0.5)">
         <div class="bg-white rounded-xl w-full max-w-lg shadow-2xl">
             <div class="px-6 py-4 border-b flex justify-between items-center">
                 <h3 class="text-lg font-bold text-gray-800">Input Pengeluaran Kas Kecil</h3>
@@ -345,7 +378,7 @@
 
     {{-- MODAL: Request Top Up --}}
     @if($showTopupModal)
-    <div class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+    <div class="fixed inset-0 flex items-center justify-center z-50 p-4" style="background-color: rgba(0,0,0,0.5)">
         <div class="bg-white rounded-xl w-full max-w-md shadow-2xl">
             <div class="px-6 py-4 border-b flex justify-between items-center">
                 <h3 class="text-lg font-bold text-gray-800">Request Top Up Kas Kecil</h3>
@@ -384,7 +417,7 @@
 
     {{-- MODAL: Pengaturan --}}
     @if($showSettingModal)
-    <div class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+    <div class="fixed inset-0 flex items-center justify-center z-50 p-4" style="background-color: rgba(0,0,0,0.5)">
         <div class="bg-white rounded-xl w-full max-w-lg shadow-2xl">
             <div class="px-6 py-4 border-b flex justify-between items-center">
                 <h3 class="text-lg font-bold text-gray-800">⚙️ Pengaturan Kas Kecil</h3>
@@ -442,7 +475,157 @@
     </div>
     @endif
 
-    
+    {{-- ══════════ UBAH TRANSAKSI ══════════ --}}
+    @if($showEditModal)
+    <div class="fixed inset-0 flex items-center justify-center z-50 p-4" style="background-color: rgba(0,0,0,0.5)">
+        <div class="bg-white rounded-xl shadow-2xl w-full max-w-lg max-h-[90vh] overflow-y-auto">
+            <div class="flex items-center justify-between px-6 py-4 border-b">
+                <h3 class="text-lg font-bold text-gray-800">Ubah Transaksi</h3>
+                <button wire:click="$set('showEditModal', false)" class="text-gray-400 hover:text-gray-600 text-2xl leading-none">&times;</button>
+            </div>
+
+            <form wire:submit.prevent="saveEdit" class="p-6 space-y-4">
+                <p class="text-xs text-amber-700 bg-amber-50 border border-amber-200 rounded-lg p-3">
+                    Mengubah <strong>jumlah</strong>, <strong>kategori</strong>, atau <strong>tanggal</strong> ikut
+                    memperbaiki pembukuan: jurnal lama dibalik, lalu dibuat jurnal baru. Saldo kas menyesuaikan otomatis.
+                </p>
+
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-1">Tanggal</label>
+                    <input type="date" wire:model="editTanggal" class="w-full border-gray-300 rounded-lg text-sm">
+                    @error('editTanggal') <span class="text-xs text-red-600">{{ $message }}</span> @enderror
+                </div>
+
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-1">Jumlah (Rp)</label>
+                    <input type="number" wire:model="editJumlah" min="1" step="1" class="w-full border-gray-300 rounded-lg text-sm">
+                    @error('editJumlah') <span class="text-xs text-red-600">{{ $message }}</span> @enderror
+                </div>
+
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-1">Kategori</label>
+                    <select wire:model="editKategori" class="w-full border-gray-300 rounded-lg text-sm">
+                        @foreach(\App\Models\PettyCashTransaction::CATEGORIES as $key => $cat)
+                            <option value="{{ $key }}">{{ $cat['label'] }}</option>
+                        @endforeach
+                    </select>
+                    @error('editKategori') <span class="text-xs text-red-600">{{ $message }}</span> @enderror
+                </div>
+
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-1">Keterangan</label>
+                    <input type="text" wire:model="editKeterangan" class="w-full border-gray-300 rounded-lg text-sm">
+                    @error('editKeterangan') <span class="text-xs text-red-600">{{ $message }}</span> @enderror
+                </div>
+
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-1">Job (opsional)</label>
+                    <select wire:model="editJob" class="w-full border-gray-300 rounded-lg text-sm">
+                        <option value="">— tidak terkait job —</option>
+                        @foreach($shipments as $s)
+                            <option value="{{ $s->id }}">{{ $s->awb_number }} — {{ $s->customer->company_name ?? '' }}</option>
+                        @endforeach
+                    </select>
+                </div>
+
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-1">
+                        Alasan perubahan <span class="text-red-500">*</span>
+                    </label>
+                    <input type="text" wire:model="editAlasan" placeholder="mis. salah ketik nominal"
+                        class="w-full border-gray-300 rounded-lg text-sm">
+                    <p class="text-[11px] text-gray-500 mt-1">Dicatat di riwayat perubahan supaya jejaknya bisa ditelusuri.</p>
+                    @error('editAlasan') <span class="text-xs text-red-600">{{ $message }}</span> @enderror
+                </div>
+
+                <div class="flex justify-end gap-3 pt-2">
+                    <button type="button" wire:click="$set('showEditModal', false)" class="px-4 py-2 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50">Batal</button>
+                    <button type="submit" class="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700">Simpan Perubahan</button>
+                </div>
+            </form>
+        </div>
+    </div>
+    @endif
+
+    {{-- ══════════ BATALKAN TRANSAKSI ══════════ --}}
+    @if($showBatalModal)
+    <div class="fixed inset-0 flex items-center justify-center z-50 p-4" style="background-color: rgba(0,0,0,0.5)">
+        <div class="bg-white rounded-xl shadow-2xl w-full max-w-md">
+            <div class="flex items-center justify-between px-6 py-4 border-b">
+                <h3 class="text-lg font-bold text-red-700">Batalkan Transaksi</h3>
+                <button wire:click="$set('showBatalModal', false)" class="text-gray-400 hover:text-gray-600 text-2xl leading-none">&times;</button>
+            </div>
+
+            <form wire:submit.prevent="confirmBatal" class="p-6 space-y-4">
+                <p class="text-xs text-gray-600 bg-gray-50 border border-gray-200 rounded-lg p-3">
+                    Saldo kas kecil dikembalikan dan efeknya di buku besar ditiadakan lewat jurnal balik.
+                    Barisnya <strong>tetap terlihat</strong> dengan tanda dibatalkan — bukan dihapus, supaya
+                    nomor transaksi tidak lompat tanpa penjelasan.
+                </p>
+
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-1">
+                        Alasan pembatalan <span class="text-red-500">*</span>
+                    </label>
+                    <input type="text" wire:model="batalAlasan" placeholder="mis. dobel input"
+                        class="w-full border-gray-300 rounded-lg text-sm">
+                    @error('batalAlasan') <span class="text-xs text-red-600">{{ $message }}</span> @enderror
+                </div>
+
+                <div class="flex justify-end gap-3 pt-2">
+                    <button type="button" wire:click="$set('showBatalModal', false)" class="px-4 py-2 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50">Tidak jadi</button>
+                    <button type="submit" class="px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700">Ya, batalkan</button>
+                </div>
+            </form>
+        </div>
+    </div>
+    @endif
+
+    {{-- ══════════ RIWAYAT PERUBAHAN ══════════ --}}
+    @if($showRiwayatModal)
+    <div class="fixed inset-0 flex items-center justify-center z-50 p-4" style="background-color: rgba(0,0,0,0.5)">
+        <div class="bg-white rounded-xl shadow-2xl w-full max-w-lg max-h-[85vh] overflow-y-auto">
+            <div class="flex items-center justify-between px-6 py-4 border-b">
+                <h3 class="text-lg font-bold text-gray-800">Riwayat Perubahan</h3>
+                <button wire:click="$set('showRiwayatModal', false)" class="text-gray-400 hover:text-gray-600 text-2xl leading-none">&times;</button>
+            </div>
+
+            <div class="p-6 space-y-4">
+                @forelse($riwayat as $log)
+                <div class="border-l-2 {{ $log->action === 'dibatalkan' ? 'border-red-300' : 'border-amber-300' }} pl-4 pb-1">
+                    <div class="flex flex-wrap items-center gap-2">
+                        <span class="px-1.5 py-0.5 text-[10px] font-bold rounded {{ $log->action === 'dibatalkan' ? 'bg-red-100 text-red-700' : 'bg-amber-100 text-amber-700' }}">
+                            {{ strtoupper($log->action) }}
+                        </span>
+                        <span class="text-sm font-medium text-gray-700">{{ $log->changed_by_name ?? '—' }}</span>
+                        <span class="ml-auto text-[11px] text-gray-400 tabular-nums">{{ $log->created_at->format('d/m/Y H:i') }}</span>
+                    </div>
+
+                    @if($log->reason)
+                        <p class="text-xs text-gray-600 mt-1">Alasan: {{ $log->reason }}</p>
+                    @endif
+
+                    @if($log->changes)
+                    <ul class="mt-2 space-y-0.5">
+                        @foreach($log->changes as $field => $ubah)
+                        <li class="text-xs text-gray-600">
+                            <span class="font-medium">{{ \App\Models\PettyCashTransactionLog::labelField($field) }}:</span>
+                            <span class="text-red-500 line-through">{{ $ubah['dari'] ?? '—' }}</span>
+                            <span class="text-gray-400">→</span>
+                            <span class="text-emerald-600 font-medium">{{ $ubah['ke'] ?? '—' }}</span>
+                        </li>
+                        @endforeach
+                    </ul>
+                    @endif
+                </div>
+                @empty
+                <p class="text-sm text-gray-500 text-center py-6">Belum ada perubahan tercatat.</p>
+                @endforelse
+            </div>
+        </div>
+    </div>
+    @endif
+
     <div id="proofOverlay" onclick="if(event.target===this)closeProof()" style="display:none;position:fixed;inset:0;z-index:9999;background:rgba(0,0,0,.75);justify-content:center;align-items:center;padding:1rem">
         <div style="background:#fff;border-radius:12px;max-width:900px;width:100%;max-height:90vh;overflow:hidden;box-shadow:0 25px 50px rgba(0,0,0,.25)">
             <div style="background:#334155;padding:12px 16px;display:flex;justify-content:space-between;align-items:center;border-radius:12px 12px 0 0">

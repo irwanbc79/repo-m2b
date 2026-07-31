@@ -186,6 +186,154 @@ class PettyCashManager extends Component
         }
     }
 
+    // ==================== EDIT & BATAL TRANSAKSI ====================
+
+    public $editId = null;
+    public $editTanggal = '';
+    public $editJumlah = '';
+    public $editKategori = '';
+    public $editKeterangan = '';
+    public $editJob = '';
+    public $editAlasan = '';
+    public $showEditModal = false;
+
+    public $batalId = null;
+    public $batalAlasan = '';
+    public $showBatalModal = false;
+
+    public $riwayatId = null;
+    public $showRiwayatModal = false;
+
+    /**
+     * Boleh mengubah/membatalkan bila: pencatatnya sendiri, pemegang kas,
+     * atau punya wewenang approve. Transaksi yang sudah dibatalkan terkunci.
+     */
+    public function canEditTransaction(PettyCashTransaction $t): bool
+    {
+        if ($t->status === 'cancelled') {
+            return false;
+        }
+
+        $user = Auth::user();
+        if (! $user) {
+            return false;
+        }
+
+        return $this->canApprove()
+            || (int) $t->created_by === (int) $user->id
+            || (int) $this->fund?->holder_user_id === (int) $user->id;
+    }
+
+    public function openEdit($id)
+    {
+        $t = PettyCashTransaction::findOrFail($id);
+
+        if (! $this->canEditTransaction($t)) {
+            session()->flash('error', 'Anda tidak berhak mengubah transaksi ini.');
+
+            return;
+        }
+
+        $this->editId         = $t->id;
+        $this->editTanggal    = optional($t->transaction_date)->format('Y-m-d') ?? (string) $t->transaction_date;
+        $this->editJumlah     = (float) $t->amount;
+        $this->editKategori   = $t->category;
+        $this->editKeterangan = $t->description;
+        $this->editJob        = $t->shipment_id;
+        $this->editAlasan     = '';
+        $this->showEditModal  = true;
+    }
+
+    public function saveEdit()
+    {
+        $t = PettyCashTransaction::findOrFail($this->editId);
+
+        if (! $this->canEditTransaction($t)) {
+            session()->flash('error', 'Anda tidak berhak mengubah transaksi ini.');
+
+            return;
+        }
+
+        $this->validate([
+            'editTanggal'    => 'required|date',
+            'editJumlah'     => 'required|numeric|min:1',
+            'editKategori'   => 'required',
+            'editKeterangan' => 'required|string|max:255',
+            // Alasan wajib supaya jejaknya bermakna, bukan sekadar "diubah".
+            'editAlasan'     => 'required|string|min:3|max:255',
+        ], [], [
+            'editTanggal' => 'tanggal', 'editJumlah' => 'jumlah',
+            'editKategori' => 'kategori', 'editKeterangan' => 'keterangan',
+            'editAlasan' => 'alasan perubahan',
+        ]);
+
+        try {
+            app(PettyCashService::class)->updateTransaction($t, [
+                'transaction_date' => $this->editTanggal,
+                'amount'           => $this->editJumlah,
+                'category'         => $this->editKategori,
+                'description'      => $this->editKeterangan,
+                'shipment_id'      => $this->editJob ?: null,
+            ], $this->editAlasan);
+
+            $this->fund->refresh();
+            $this->showEditModal = false;
+            $this->reset(['editId', 'editTanggal', 'editJumlah', 'editKategori', 'editKeterangan', 'editJob', 'editAlasan']);
+            session()->flash('success', 'Transaksi diperbarui. Jurnal lama dibalik & jurnal baru dibuat otomatis.');
+        } catch (\Exception $e) {
+            session()->flash('error', $e->getMessage());
+        }
+    }
+
+    public function openBatal($id)
+    {
+        $t = PettyCashTransaction::findOrFail($id);
+
+        if (! $this->canEditTransaction($t)) {
+            session()->flash('error', 'Anda tidak berhak membatalkan transaksi ini.');
+
+            return;
+        }
+
+        $this->batalId        = $t->id;
+        $this->batalAlasan    = '';
+        $this->showBatalModal = true;
+    }
+
+    public function confirmBatal()
+    {
+        $t = PettyCashTransaction::findOrFail($this->batalId);
+
+        if (! $this->canEditTransaction($t)) {
+            session()->flash('error', 'Anda tidak berhak membatalkan transaksi ini.');
+
+            return;
+        }
+
+        $this->validate(
+            ['batalAlasan' => 'required|string|min:3|max:255'],
+            [],
+            ['batalAlasan' => 'alasan pembatalan']
+        );
+
+        try {
+            app(PettyCashService::class)->cancelTransaction($t, $this->batalAlasan);
+
+            $this->fund->refresh();
+            $this->showBatalModal = false;
+            $this->reset(['batalId', 'batalAlasan']);
+            session()->flash('success', 'Transaksi dibatalkan. Saldo dikembalikan & efeknya di buku besar ditiadakan.');
+        } catch (\Exception $e) {
+            session()->flash('error', $e->getMessage());
+        }
+    }
+
+    public function openRiwayat($id)
+    {
+        $this->riwayatId        = $id;
+        $this->showRiwayatModal = true;
+    }
+
     // ==================== TOP-UP ====================
 
     public function requestTopup()
@@ -406,8 +554,14 @@ class PettyCashManager extends Component
 
     public function render()
     {
-        $transactions = $this->fund 
-            ? $this->fund->transactions()->with(['shipment.customer', 'creator'])->latest()->paginate(15, ['*'], 'txPage')
+        // withCount logs: dipakai menampilkan penanda "pernah diubah" di daftar
+        // tanpa query tambahan per baris.
+        $transactions = $this->fund
+            ? $this->fund->transactions()->with(['shipment.customer', 'creator'])->withCount('logs')->latest()->paginate(15, ['*'], 'txPage')
+            : collect();
+
+        $riwayat = $this->riwayatId
+            ? \App\Models\PettyCashTransactionLog::where('petty_cash_transaction_id', $this->riwayatId)->latest('id')->get()
             : collect();
 
         $topups = $this->fund
@@ -439,6 +593,7 @@ class PettyCashManager extends Component
             'canApprove' => $this->canApprove(),
             'canSetting' => $this->canSetting(),
             'canInput' => $this->canInput(),
+            'riwayat' => $riwayat,
         ])->layout('layouts.admin');
     }
 }

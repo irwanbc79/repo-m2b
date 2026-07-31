@@ -5,6 +5,7 @@ use App\Models\PettyCashFund;
 use App\Models\PettyCashTransaction;
 use App\Models\PettyCashTopup;
 use App\Models\PettyCashSettingLog;
+use App\Models\PettyCashTransactionLog;
 use App\Models\Journal;
 use App\Models\JournalItem;
 use App\Models\Account;
@@ -61,6 +62,213 @@ class PettyCashService
 
             return $transaction;
         });
+    }
+
+    /**
+     * Ubah transaksi kas kecil yang sudah tercatat.
+     *
+     * Perubahan yang menyentuh buku besar (jumlah, kategori, tanggal) TIDAK
+     * menyunting jurnal lama. Jurnal lama dibalik dengan jurnal koreksi, lalu
+     * dibuat jurnal baru sesuai nilai yang benar.
+     *
+     * Alasannya konkret: SELURUH laporan akuntansi portal ini (General Ledger,
+     * Trial Balance, Laba Rugi, Neraca) membaca journal_items TANPA menyaring
+     * status jurnal. Jadi menandai jurnal "batal" tidak akan mengeluarkan
+     * angkanya dari laporan — satu-satunya cara yang benar-benar menihilkan
+     * adalah jurnal balik. Sekalian, buku besar jadi menyimpan riwayat
+     * koreksinya sendiri, bukan berubah diam-diam.
+     *
+     * @param array $data field yang boleh diubah
+     */
+    public function updateTransaction(PettyCashTransaction $t, array $data, ?string $reason = null): PettyCashTransaction
+    {
+        return DB::transaction(function () use ($t, $data, $reason) {
+            if ($t->status === 'cancelled') {
+                throw new Exception('Transaksi yang sudah dibatalkan tidak bisa diubah.');
+            }
+
+            $fund = $t->fund()->lockForUpdate()->first();
+
+            $sebelum = $t->only([
+                'amount', 'category', 'description', 'transaction_date', 'shipment_id', 'proof_file',
+            ]);
+
+            $baru = [
+                'amount'           => isset($data['amount']) ? (float) $data['amount'] : (float) $t->amount,
+                'category'         => $data['category'] ?? $t->category,
+                'description'      => $data['description'] ?? $t->description,
+                'transaction_date' => $data['transaction_date'] ?? $t->transaction_date,
+                'shipment_id'      => array_key_exists('shipment_id', $data) ? $data['shipment_id'] : $t->shipment_id,
+                'proof_file'       => $data['proof_file'] ?? $t->proof_file,
+            ];
+
+            $selisih = $baru['amount'] - (float) $t->amount;
+
+            // Batas per transaksi tetap berlaku untuk nilai barunya.
+            if ($baru['amount'] > $fund->max_transaction) {
+                throw new Exception('Jumlah melebihi batas per transaksi Rp' . number_format($fund->max_transaction, 0, ',', '.'));
+            }
+            if ($baru['amount'] <= 0) {
+                throw new Exception('Jumlah harus lebih dari nol.');
+            }
+            // Hanya kenaikan yang perlu dicek saldo — penurunan selalu aman.
+            if ($selisih > 0 && $fund->current_balance < $selisih) {
+                throw new Exception('Saldo kas kecil tidak cukup untuk menaikkan jumlah sebesar Rp' . number_format($selisih, 0, ',', '.'));
+            }
+
+            $perubahan = $this->bedakan($sebelum, $baru);
+            if (empty($perubahan)) {
+                return $t;
+            }
+
+            $saldoBaru = $fund->current_balance - $selisih;
+
+            $t->update($baru + [
+                'balance_before' => $saldoBaru + $baru['amount'],
+                'balance_after'  => $saldoBaru,
+            ]);
+
+            $fund->update(['current_balance' => $saldoBaru]);
+
+            // Buku besar hanya perlu disentuh bila angkanya memang berubah.
+            if ($this->menyentuhBukuBesar($perubahan)) {
+                $this->reverseJournal($t, 'Koreksi');
+                $this->createExpenseJournal($t->fresh());
+            }
+
+            $this->catatJejak($t, PettyCashTransactionLog::ACTION_UPDATED, $perubahan, $reason);
+
+            return $t->fresh();
+        });
+    }
+
+    /**
+     * Batalkan transaksi: saldo dikembalikan, efeknya di buku besar ditiadakan
+     * lewat jurnal balik, tapi barisnya TETAP ada dengan status dibatalkan.
+     *
+     * Sengaja tidak menghapus: nomor transaksi yang lompat tanpa penjelasan
+     * justru menyulitkan penelusuran saat audit.
+     */
+    public function cancelTransaction(PettyCashTransaction $t, string $reason): PettyCashTransaction
+    {
+        return DB::transaction(function () use ($t, $reason) {
+            if ($t->status === 'cancelled') {
+                throw new Exception('Transaksi ini sudah dibatalkan.');
+            }
+            if (trim($reason) === '') {
+                throw new Exception('Alasan pembatalan wajib diisi.');
+            }
+
+            $fund = $t->fund()->lockForUpdate()->first();
+
+            $this->reverseJournal($t, 'Pembatalan');
+
+            $fund->update(['current_balance' => $fund->current_balance + (float) $t->amount]);
+
+            $t->update([
+                'status'        => 'cancelled',
+                'cancelled_at'  => now(),
+                'cancelled_by'  => Auth::id(),
+                'reject_reason' => $reason,
+            ]);
+
+            $this->catatJejak($t, PettyCashTransactionLog::ACTION_CANCELLED, [], $reason);
+
+            return $t->fresh();
+        });
+    }
+
+    /**
+     * Buat jurnal yang meniadakan jurnal transaksi ini (debit-kredit ditukar).
+     */
+    protected function reverseJournal(PettyCashTransaction $t, string $sebab): void
+    {
+        $asal = $t->journal_id ? Journal::with('items')->find($t->journal_id) : null;
+
+        if (! $asal) {
+            // Tidak ada jurnal untuk dibalik (mis. COA belum lengkap saat
+            // transaksi dibuat). Bukan alasan menggagalkan koreksi.
+            \Log::warning("[kas-kecil] jurnal asal tidak ditemukan untuk transaksi {$t->transaction_number}");
+
+            return;
+        }
+
+        $balik = Journal::create([
+            'journal_number'   => 'JU-PCR-' . now()->format('Ymd') . '-' . str_pad(
+                Journal::whereDate('created_at', today())->count() + 1, 4, '0', STR_PAD_LEFT
+            ),
+            'transaction_date' => now()->toDateString(),
+            'description'      => "[Kas Kecil] {$sebab} atas {$asal->journal_number}: {$t->description}",
+            'reference_no'     => $t->transaction_number,
+            'status'           => 'posted',
+            'created_by'       => Auth::id(),
+            'posted_at'        => now(),
+        ]);
+
+        foreach ($asal->items as $item) {
+            JournalItem::create([
+                'journal_id'  => $balik->id,
+                'account_id'  => $item->account_id,
+                // Ditukar: inilah yang membuat efeknya nihil di laporan.
+                'debit'       => $item->credit,
+                'credit'      => $item->debit,
+                'description' => "{$sebab}: {$item->description}",
+            ]);
+        }
+
+        $t->update(['reversal_journal_id' => $balik->id]);
+    }
+
+    /**
+     * Bandingkan nilai lama & baru, hanya kembalikan yang benar-benar berubah.
+     */
+    protected function bedakan(array $sebelum, array $sesudah): array
+    {
+        $perubahan = [];
+
+        foreach ($sesudah as $field => $nilaiBaru) {
+            $nilaiLama = $sebelum[$field] ?? null;
+
+            // Tanggal & angka disamakan bentuknya dulu supaya perbedaan semu
+            // (mis. "45000" vs 45000.00) tidak tercatat sebagai perubahan.
+            if ($field === 'transaction_date') {
+                $lama = $nilaiLama ? \Carbon\Carbon::parse($nilaiLama)->toDateString() : null;
+                $baru = $nilaiBaru ? \Carbon\Carbon::parse($nilaiBaru)->toDateString() : null;
+            } elseif ($field === 'amount') {
+                $lama = (float) $nilaiLama;
+                $baru = (float) $nilaiBaru;
+            } else {
+                $lama = $nilaiLama;
+                $baru = $nilaiBaru;
+            }
+
+            if ($lama != $baru) {
+                $perubahan[$field] = ['dari' => $lama, 'ke' => $baru];
+            }
+        }
+
+        return $perubahan;
+    }
+
+    /**
+     * Benar bila perubahannya mengubah angka/akun/tanggal di buku besar.
+     * Ganti keterangan atau tautan job tidak perlu menyentuh jurnal.
+     */
+    protected function menyentuhBukuBesar(array $perubahan): bool
+    {
+        return (bool) array_intersect(array_keys($perubahan), ['amount', 'category', 'transaction_date']);
+    }
+
+    protected function catatJejak(PettyCashTransaction $t, string $action, array $perubahan, ?string $reason): void
+    {
+        PettyCashTransactionLog::create([
+            'petty_cash_transaction_id' => $t->id,
+            'action'                    => $action,
+            'changes'                   => $perubahan ?: null,
+            'reason'                    => $reason,
+            'changed_by'                => Auth::id(),
+            'changed_by_name'           => Auth::user()?->name,
+        ]);
     }
 
     /**

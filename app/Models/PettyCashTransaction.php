@@ -32,7 +32,17 @@ class PettyCashTransaction extends Model
     public function creator() { return $this->belongsTo(User::class, 'created_by'); }
     public function approver() { return $this->belongsTo(User::class, 'approved_by'); }
     public function journal() { return $this->belongsTo(Journal::class); }
-    
+    public function logs() { return $this->hasMany(PettyCashTransactionLog::class)->latest('id'); }
+
+    /** Transaksi yang dibatalkan tidak lagi membebani kas. */
+    public function isCancelled(): bool { return $this->status === 'cancelled'; }
+
+    /** Sudah pernah diubah? Dipakai menampilkan penanda di daftar. */
+    public function pernahDiubah(): bool
+    {
+        return $this->logs()->where('action', PettyCashTransactionLog::ACTION_UPDATED)->exists();
+    }
+
     public function getCategoryLabelAttribute(): string { 
         return self::CATEGORIES[$this->category]['label'] ?? $this->category; 
     }
