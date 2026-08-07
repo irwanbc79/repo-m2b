@@ -389,12 +389,24 @@ class ShipmentDetail extends Component
 
     public function save()
     {
+        // Batas atas sengaja dipasang JAUH di atas kebutuhan nyata (data
+        // terberat sejauh ini 525.360 kg untuk 20x40ft) — tugasnya bukan
+        // menebak kiriman sebesar apa yang wajar, tapi menangkap salah ketik
+        // sebelum sampai ke database. Tanpa ini, staf mendapat layar error SQL
+        // mentah dan pekerjaannya hilang.
         $this->validate([
             'form.origin' => 'required',
             'form.destination' => 'required',
             'form.lane_status' => 'nullable|string',
             'form.notes' => 'nullable|string',
-            'form.volume' => 'nullable|numeric|min:0',
+            'form.weight' => 'nullable|numeric|min:0|max:10000000',
+            'form.volume' => 'nullable|numeric|min:0|max:100000',
+            'form.pieces' => 'nullable|integer|min:0|max:1000000',
+        ], [
+            'form.weight.max' => 'Berat terlalu besar (maksimal 10.000.000 kg). Pastikan satuannya KILOGRAM dan pemisah desimal memakai titik — contoh: 15051.2 untuk 15.051,2 kg.',
+            'form.weight.numeric' => 'Berat harus berupa angka, tanpa titik pemisah ribuan.',
+            'form.volume.max' => 'Volume terlalu besar (maksimal 100.000 CBM). Periksa kembali angkanya.',
+            'form.pieces.max' => 'Jumlah koli terlalu besar. Periksa kembali angkanya.',
         ]);
 
         // --- LOGIKA OTOMATIS STATUS ---
