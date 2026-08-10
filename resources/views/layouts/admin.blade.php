@@ -344,6 +344,10 @@
         </main>
     </div>
 
+    {{-- Chat internal (tombol mengambang). Komponen sendiri yang memutuskan
+         tampil atau tidak — auditor & konsultan pajak tidak melihat apa pun. --}}
+    @livewire('admin.internal-chat')
+
     {{-- Global Document Viewer Modal --}}
     <div x-data="{ show: false, url: '', title: '' }"
          x-on:open-doc-viewer.window="show = true; url = $event.detail.url; title = $event.detail.title ?? ''"

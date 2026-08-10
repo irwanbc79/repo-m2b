@@ -76,3 +76,10 @@ Schedule::command('email:sync-delivery-logs')
     ->everyFifteenMinutes()
     ->withoutOverlapping()
     ->timezone('Asia/Jakarta');
+
+// 8. Bersihkan chat internal yang lewat 90 hari, tiap hari 02:45 WIB.
+// Dijadwalkan sejak fitur chat lahir — tabel `emails` sudah membuktikan apa
+// yang terjadi kalau pembersihan baru dipikirkan setelah data menggunung.
+Schedule::command('chat:cleanup')
+    ->dailyAt('02:45')
+    ->timezone('Asia/Jakarta');
