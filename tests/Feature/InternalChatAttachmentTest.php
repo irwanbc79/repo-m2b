@@ -39,6 +39,51 @@ class InternalChatAttachmentTest extends TestCase
         ]);
     }
 
+    // ── Cara lampiran dibuka ───────────────────────────────────────────
+
+    public function test_gambar_dibuka_sebagai_pratinjau_melayang_bukan_tab_baru(): void
+    {
+        // Pindah ke tab baru membuat staf kehilangan konteks percakapan hanya
+        // untuk melihat satu tangkapan layar. Dikunci di sini supaya tidak
+        // diam-diam kembali jadi <a target="_blank"> saat markup dirapikan.
+        $eka = $this->user('Eka', 'director');
+        $this->user('Nurul', 'staff');
+
+        Storage::disk('local')->put('chat-internal/bl.png', 'data gambar');
+        $this->svc()->kirim($eka, 'ini BL nya', null, [
+            'path' => 'chat-internal/bl.png',
+            'name' => 'bl.png',
+            'mime' => 'image/png',
+            'size' => 11,
+        ]);
+
+        // Penanda dipilih yang KHAS per jenis lampiran: 'bukaPratinjau' dan
+        // target="_blank" sama-sama selalu ada di markup (fungsi x-data akar
+        // dan tautan "Tab baru" di dalam pratinjau), jadi keduanya tidak bisa
+        // membedakan apa pun.
+        Livewire::actingAs($eka)->test(InternalChat::class)
+            ->call('toggle')
+            ->assertSee('Klik untuk memperbesar')
+            ->assertSee('@click="bukaPratinjau($event', false);
+    }
+
+    public function test_pdf_tetap_dibuka_di_tab_baru(): void
+    {
+        // PDF sengaja TIDAK ikut pratinjau melayang: peramban sudah punya
+        // penampil PDF sendiri yang lebih baik (cari teks, halaman, cetak).
+        $eka = $this->user('Eka', 'director');
+        $this->user('Nurul', 'staff');
+
+        $this->pesanBerlampiran($eka);
+
+        Livewire::actingAs($eka)->test(InternalChat::class)
+            ->call('toggle')
+            ->assertSee('Invoice.pdf')
+            ->assertSee('target="_blank"', false)
+            ->assertDontSee('Klik untuk memperbesar')
+            ->assertDontSee('@click="bukaPratinjau($event', false);
+    }
+
     // ── Unggah ─────────────────────────────────────────────────────────
 
     public function test_gambar_bisa_dilampirkan_dan_diperkecil(): void

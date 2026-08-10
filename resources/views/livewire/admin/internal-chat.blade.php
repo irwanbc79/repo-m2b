@@ -11,6 +11,38 @@
      x-data="{
         bisu: localStorage.getItem('m2b_chat_bisu') === '1',
 
+        /* ── Pratinjau gambar melayang ──────────────────────────────
+           pratinjau menahan {url, nama}; mengembang memicu transisi.
+           asalX/asalY = titik tumbuh animasi, diambil dari posisi
+           gambar kecil yang diklik supaya balon terlihat mengembang
+           DARI gambar itu, bukan muncul begitu saja di tengah.       */
+        pratinjau: null,
+        mengembang: false,
+        asalX: 50,
+        asalY: 50,
+
+        bukaPratinjau(e, url, nama) {
+            const r = e.currentTarget.getBoundingClientRect();
+            this.asalX = ((r.left + r.width  / 2) / window.innerWidth)  * 100;
+            this.asalY = ((r.top  + r.height / 2) / window.innerHeight) * 100;
+
+            this.pratinjau  = { url, nama };
+            this.mengembang = false;
+
+            // Dua rangka: rangka pertama menempelkan keadaan awal (kecil),
+            // rangka kedua memicu transisi. Tanpa jeda ini peramban
+            // menggabung keduanya dan gambar langsung muncul besar.
+            requestAnimationFrame(() => requestAnimationFrame(() => {
+                this.mengembang = true;
+            }));
+        },
+
+        tutupPratinjau() {
+            this.mengembang = false;
+            // Tunggu animasi mengempis selesai baru lepas dari DOM.
+            setTimeout(() => { this.pratinjau = null; }, 220);
+        },
+
         alihBisu() {
             this.bisu = !this.bisu;
             localStorage.setItem('m2b_chat_bisu', this.bisu ? '1' : '0');
@@ -117,9 +149,15 @@
                             <p class="text-[10px] font-bold text-gray-500 mb-0.5">{{ $m->sender_name }}</p>
                         @endunless
                         @if($m->punyaLampiran())
-                            <a href="{{ route('admin.chat.lampiran', $m->id) }}" target="_blank" rel="noopener"
-                               class="block mb-1 rounded overflow-hidden">
-                                @if($m->lampiranGambar())
+                            @if($m->lampiranGambar())
+                                {{-- Gambar dibuka sebagai pratinjau melayang, BUKAN tab baru:
+                                     staf kehilangan konteks percakapan kalau harus berpindah
+                                     tab hanya untuk melihat satu tangkapan layar. PDF tetap ke
+                                     tab baru — peramban sudah punya penampil PDF sendiri. --}}
+                                <button type="button"
+                                        @click="bukaPratinjau($event, @js(route('admin.chat.lampiran', $m->id)), @js($m->attachment_name))"
+                                        class="block mb-1 rounded overflow-hidden"
+                                        title="Klik untuk memperbesar">
                                     {{-- onload menggulir ulang: gambar selesai dimuat SETELAH
                                          livewire:updated, jadi tanpa ini tampilan berhenti di
                                          tengah dan pesan terbaru tidak terlihat. --}}
@@ -127,14 +165,17 @@
                                          alt="{{ $m->attachment_name }}"
                                          onload="this.closest('#m2b-chat-scroll')?.scrollTo(0, 1e6)"
                                          class="rounded max-h-40 w-auto" loading="lazy">
-                                @else
+                                </button>
+                            @else
+                                <a href="{{ route('admin.chat.lampiran', $m->id) }}" target="_blank" rel="noopener"
+                                   class="block mb-1 rounded overflow-hidden">
                                     <span class="flex items-center gap-2 px-2 py-1.5 rounded {{ $milikSaya ? 'bg-blue-700' : 'bg-gray-100' }}">
                                         <svg class="w-4 h-4 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 21h10a2 2 0 002-2V9.414a1 1 0 00-.293-.707l-5.414-5.414A1 1 0 0012.586 3H7a2 2 0 00-2 2v14a2 2 0 002 2z"/></svg>
                                         <span class="text-xs truncate">{{ Str::limit($m->attachment_name, 22) }}</span>
                                         <span class="text-[10px] opacity-70 shrink-0">{{ $m->ukuranTerbaca() }}</span>
                                     </span>
-                                @endif
-                            </a>
+                                </a>
+                            @endif
                         @endif
 
                         @if(filled($m->body))
@@ -267,6 +308,62 @@
         </form>
     </div>
     @endif
+
+    {{-- ══════════ PRATINJAU GAMBAR MELAYANG ══════════
+         Diletakkan DI LUAR panel: kalau di dalam, ia ikut terpotong batas
+         panel yang beroverflow dan tidak akan pernah terlihat penuh.
+
+         z-index 9500 — di atas panel chat (9000) tapi tetap DI BAWAH
+         penampil dokumen global (9999), mengikuti tata urutan yang sudah
+         berlaku di portal ini.
+
+         Semua posisi & animasi ditulis inline: build Tailwind v4 di project
+         ini tidak meng-generate kelas posisi/z baru (jebakan yang sudah
+         berulang: bottom-6, bg-opacity-50, grid-cols-8). --}}
+    <template x-if="pratinjau">
+        <div class="flex items-center justify-center"
+             @click.self="tutupPratinjau()"
+             @keydown.escape.window="tutupPratinjau()"
+             style="position: fixed; inset: 0; z-index: 9500; padding: 2.5rem;
+                    background: rgba(15, 23, 42, 0.82);"
+             :style="{ opacity: mengembang ? 1 : 0, transition: 'opacity .2s ease' }">
+
+            {{-- Tombol tutup --}}
+            <button type="button" @click="tutupPratinjau()"
+                    title="Tutup (Esc)"
+                    style="position: absolute; top: 1rem; right: 1.25rem; z-index: 2;
+                           width: 2.25rem; height: 2.25rem; border-radius: 9999px;
+                           background: rgba(255,255,255,.14); color: #fff;
+                           font-size: 1.5rem; line-height: 1;">&times;</button>
+
+            {{-- Nama berkas + jalan keluar ke tab baru, untuk yang perlu
+                 mengunduh atau memperbesar lebih jauh. --}}
+            <div style="position: absolute; bottom: 1.1rem; left: 50%; transform: translateX(-50%);
+                        display: flex; align-items: center; gap: .75rem; max-width: 90vw;
+                        background: rgba(255,255,255,.12); color: #fff;
+                        padding: .45rem .9rem; border-radius: 9999px; font-size: .75rem;"
+                 :style="{ opacity: mengembang ? 1 : 0, transition: 'opacity .25s ease .1s' }">
+                <span style="overflow: hidden; text-overflow: ellipsis; white-space: nowrap;"
+                      x-text="pratinjau?.nama"></span>
+                <a :href="pratinjau?.url" target="_blank" rel="noopener" @click.stop
+                   style="font-weight: 700; text-decoration: underline; white-space: nowrap;">Tab baru</a>
+            </div>
+
+            {{-- Balon: mengembang dari titik gambar kecil yang diklik, sambil
+                 naik sedikit. cubic-bezier melewati 1 supaya ada pantulan
+                 kecil di ujung — itu yang membuatnya terasa "melayang",
+                 bukan sekadar membesar. --}}
+            <img :src="pratinjau?.url" :alt="pratinjau?.nama" @click.stop
+                 style="max-width: 100%; max-height: 100%; border-radius: .85rem;
+                        box-shadow: 0 30px 70px rgba(0,0,0,.55); will-change: transform;"
+                 :style="{
+                    transformOrigin: asalX + '% ' + asalY + '%',
+                    transform: mengembang ? 'scale(1) translateY(0)' : 'scale(.18) translateY(34px)',
+                    opacity: mengembang ? 1 : 0,
+                    transition: 'transform .44s cubic-bezier(.34, 1.4, .5, 1), opacity .22s ease'
+                 }">
+        </div>
+    </template>
 
     {{-- ══════════ TOMBOL MENGAMBANG ══════════ --}}
     <button wire:click="toggle"
