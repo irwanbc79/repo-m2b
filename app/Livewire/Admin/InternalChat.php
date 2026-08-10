@@ -51,9 +51,27 @@ class InternalChat extends Component
     /** Penanda pesan terbaru yang sudah terlihat komponen ini. */
     public int $penanda = 0;
 
+    /** Jumlah belum-dibaca pada denyut sebelumnya — dasar penentu bunyi ping. */
+    public int $belumTerakhir = 0;
+
     private function svc(): InternalChatService
     {
         return app(InternalChatService::class);
+    }
+
+    /**
+     * Ambil keadaan awal supaya denyut PERTAMA setelah halaman dimuat tidak
+     * dianggap "ada yang baru". Tanpa ini, $penanda mulai dari 0 sehingga
+     * setiap kali staf berpindah halaman admin, ping akan berbunyi untuk
+     * pesan lama yang sudah lama ada.
+     */
+    public function mount(): void
+    {
+        $me = Auth::user();
+        if ($me && $this->svc()->boleh($me)) {
+            $this->penanda       = $this->svc()->penandaTerbaru($me);
+            $this->belumTerakhir = $this->svc()->totalBelumDibaca($me);
+        }
     }
 
     public function toggle(): void
@@ -158,28 +176,60 @@ class InternalChat extends Component
      */
     public function denyut(): void
     {
-        $me = Auth::user();
-        if (! $me) {
+        $me  = Auth::user();
+        $svc = $this->svc();
+
+        // Kelayakan diperiksa DI SINI, bukan hanya di render(). Tanpa ini,
+        // auditor & konsultan pajak tetap menerima peristiwa `chat-masuk`
+        // dan mendengar ping tiap kali tim internal mengobrol — panel mereka
+        // memang kosong, tapi bunyinya membocorkan bahwa ada percakapan.
+        if (! $me || ! $svc->boleh($me)) {
             return;
         }
 
-        $terbaru = $this->svc()->penandaTerbaru($me);
+        $terbaru = $svc->penandaTerbaru($me);
 
-        if ($terbaru !== $this->penanda) {
-            $this->penanda = $terbaru;
+        // Jalur murah: tidak ada yang baru sama sekali, berhenti di sini.
+        if ($terbaru === $this->penanda) {
+            return;
+        }
 
-            if ($this->terbuka) {
-                $this->tandaiTerbaca();
-            }
+        $this->penanda = $terbaru;
+
+        // Bunyi dipicu oleh JUMLAH BELUM DIBACA, bukan oleh $penanda.
+        // $penanda ikut berubah saat kita sendiri yang mengirim pesan, jadi
+        // memakainya akan membunyikan ping ke diri sendiri setiap kali kirim.
+        // totalBelumDibaca() sudah mengecualikan sender_id = kita.
+        $belum = $svc->totalBelumDibaca($me);
+
+        if ($belum > $this->belumTerakhir) {
+            $this->dispatch('chat-masuk');
+        }
+
+        $this->belumTerakhir = $belum;
+
+        if ($this->terbuka) {
+            $this->tandaiTerbaca();
         }
     }
 
     private function tandaiTerbaca(): void
     {
         $me = Auth::user();
-        if ($me && $this->svc()->boleh($me)) {
-            $this->svc()->tandaiTerbaca($me, $this->lawan);
+        if (! $me || ! $this->svc()->boleh($me)) {
+            return;
         }
+
+        $this->svc()->tandaiTerbaca($me, $this->lawan);
+
+        // Segarkan dasar perbandingan bunyi DI SINI, bukan di pemanggilnya.
+        // Menandai terbaca menurunkan jumlah belum-dibaca; kalau
+        // $belumTerakhir dibiarkan tinggi, pesan berikutnya tidak akan pernah
+        // melampauinya dan pingnya ditelan diam-diam.
+        //
+        // Dihitung ulang, BUKAN disetel 0: tandaiTerbaca() hanya melunasi
+        // obrolan yang sedang dibuka, sisa dari obrolan lain masih berlaku.
+        $this->belumTerakhir = $this->svc()->totalBelumDibaca($me);
     }
 
     public function render()

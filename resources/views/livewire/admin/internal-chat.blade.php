@@ -7,7 +7,53 @@
     Denyut polling melambat saat tertutup; Livewire sendiri sudah berhenti
     memanggil saat tab tidak aktif.
 --}}
-<div @if($aktif) wire:poll.{{ $terbuka ? '10s' : '60s' }}="denyut" @endif>
+<div @if($aktif) wire:poll.{{ $terbuka ? '10s' : '60s' }}="denyut" @endif
+     x-data="{
+        bisu: localStorage.getItem('m2b_chat_bisu') === '1',
+
+        alihBisu() {
+            this.bisu = !this.bisu;
+            localStorage.setItem('m2b_chat_bisu', this.bisu ? '1' : '0');
+            if (!this.bisu) this.bunyi();   // contoh suara saat dinyalakan
+        },
+
+        /*
+           Nada dibangkitkan lewat WebAudio, bukan berkas .mp3: tidak ada
+           binari yang masuk repo, tidak ada permintaan HTTP tambahan, dan
+           build aset tidak perlu ikut di-deploy.
+
+           Peramban MELARANG audio sebelum pengguna menyentuh halaman, jadi
+           play() bisa gagal — semua dibungkus try/catch supaya kegagalan
+           bunyi tidak pernah menjatuhkan panel chat.
+        */
+        bunyi() {
+            if (this.bisu) return;
+            try {
+                const AC = window.AudioContext || window.webkitAudioContext;
+                if (!AC) return;
+                const ctx = new AC();
+                if (ctx.state === 'suspended') ctx.resume();
+
+                // Dua nada pendek naik — khas 'ping', bukan alarm.
+                [[880, 0], [1180, 0.11]].forEach(([hz, tunda]) => {
+                    const o = ctx.createOscillator();
+                    const g = ctx.createGain();
+                    o.type = 'sine';
+                    o.frequency.value = hz;
+                    o.connect(g); g.connect(ctx.destination);
+
+                    const t = ctx.currentTime + tunda;
+                    g.gain.setValueAtTime(0.0001, t);
+                    g.gain.exponentialRampToValueAtTime(0.18, t + 0.012);
+                    g.gain.exponentialRampToValueAtTime(0.0001, t + 0.14);
+                    o.start(t); o.stop(t + 0.16);
+                });
+
+                setTimeout(() => { try { ctx.close(); } catch (e) {} }, 600);
+            } catch (e) { /* bunyi gagal bukan alasan fitur chat ikut rusak */ }
+        }
+     }"
+     @chat-masuk.window="bunyi()">
     @if($aktif)
 
     {{-- ══════════ PANEL ══════════ --}}
@@ -24,7 +70,19 @@
         <div class="px-4 py-3 border-b border-gray-200 bg-gray-900 rounded-t-xl">
             <div class="flex items-center justify-between">
                 <span class="text-sm font-bold text-white">💬 Chat Internal</span>
-                <button wire:click="toggle" class="text-gray-400 hover:text-white text-xl leading-none">&times;</button>
+                <div class="flex items-center gap-2">
+                    {{-- Bunyi bisa dimatikan per-peramban (localStorage), tanpa
+                         kolom DB: preferensi ini melekat ke perangkat, dan staf
+                         yang sedang rapat harus bisa membisukannya seketika. --}}
+                    <button type="button" @click="alihBisu()"
+                            class="text-gray-400 hover:text-white leading-none"
+                            style="font-size: 0.95rem;"
+                            x-bind:title="bisu ? 'Bunyi mati — klik untuk menyalakan' : 'Bunyi hidup — klik untuk membisukan'">
+                        <span x-show="!bisu">🔔</span>
+                        <span x-show="bisu" x-cloak>🔕</span>
+                    </button>
+                    <button wire:click="toggle" class="text-gray-400 hover:text-white text-xl leading-none">&times;</button>
+                </div>
             </div>
 
             <div class="mt-2 flex gap-1 overflow-x-auto pb-1">
