@@ -4,7 +4,9 @@ namespace App\Livewire\Admin;
 
 use App\Services\InternalChatService;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Storage;
 use Livewire\Component;
+use Livewire\WithFileUploads;
 
 /**
  * Chat internal — tombol mengambang di sudut kanan bawah, tampil di seluruh
@@ -25,7 +27,21 @@ use Livewire\Component;
  */
 class InternalChat extends Component
 {
+    use WithFileUploads;
+
+    /** Jenis file yang diterima. Menolak sisanya bukan cuma soal disk —
+     *  mencegah file berbahaya diunggah lalu terunduh orang lain. */
+    private const MIME_DIIZINKAN = [
+        'image/jpeg', 'image/png', 'image/webp', 'image/gif', 'application/pdf',
+    ];
+
+    private const MAKS_GAMBAR_KB = 5120;   // 5 MB
+    private const MAKS_PDF_KB    = 10240;  // 10 MB
+
     public bool $terbuka = false;
+
+    /** File yang sedang dipilih, belum terkirim. */
+    public $berkas = null;
 
     /** null = obrolan "Semua"; berisi id user = japri. */
     public ?int $lawan = null;
@@ -60,12 +76,80 @@ class InternalChat extends Component
         $me = Auth::user();
 
         try {
-            $this->svc()->kirim($me, $this->isi, $this->lawan);
+            $lampiran = $this->berkas ? $this->simpanBerkas() : null;
+
+            $this->svc()->kirim($me, $this->isi, $this->lawan, $lampiran);
+
             $this->isi = '';
+            $this->berkas = null;
             $this->tandaiTerbaca();
         } catch (\Throwable $e) {
             $this->addError('isi', $e->getMessage());
         }
+    }
+
+    public function batalBerkas(): void
+    {
+        $this->berkas = null;
+    }
+
+    /**
+     * Simpan lampiran ke disk PRIVAT dan kembalikan metadatanya.
+     *
+     * Disk `local`, bukan `public`: file di `public` bisa dibuka siapa saja
+     * yang tahu URL-nya tanpa login. Untuk lampiran chat internal itu tidak
+     * boleh — file hanya dilayani lewat controller yang memeriksa hak akses.
+     */
+    private function simpanBerkas(): array
+    {
+        $mime = $this->berkas->getMimeType();
+        $kb   = (int) ceil($this->berkas->getSize() / 1024);
+
+        if (! in_array($mime, self::MIME_DIIZINKAN, true)) {
+            throw new \RuntimeException('Hanya gambar (JPG/PNG/WEBP/GIF) dan PDF yang bisa dilampirkan.');
+        }
+
+        $gambar = str_starts_with($mime, 'image/');
+        $maks   = $gambar ? self::MAKS_GAMBAR_KB : self::MAKS_PDF_KB;
+
+        if ($kb > $maks) {
+            throw new \RuntimeException(
+                'Ukuran file ' . round($kb / 1024, 1) . ' MB melebihi batas '
+                . round($maks / 1024) . ' MB.'
+            );
+        }
+
+        $nama = $this->berkas->getClientOriginalName();
+        $ext  = strtolower($this->berkas->getClientOriginalExtension() ?: 'bin');
+
+        // Gambar diperkecil dulu — pola yang sama dipakai bukti kas kecil,
+        // supaya foto dari HP tidak menghabiskan disk.
+        if ($gambar && in_array($ext, ['jpg', 'jpeg', 'png'], true)) {
+            $manager = new \Intervention\Image\ImageManager(new \Intervention\Image\Drivers\Gd\Driver());
+            $img = $manager->read($this->berkas->getRealPath());
+            if ($img->width() > 1600) {
+                $img->scale(width: 1600);
+            }
+
+            $path = 'chat-internal/' . uniqid() . '.jpg';
+            Storage::disk('local')->put($path, $img->toJpeg(80));
+
+            return [
+                'path' => $path,
+                'name' => $nama,
+                'mime' => 'image/jpeg',
+                'size' => Storage::disk('local')->size($path),
+            ];
+        }
+
+        $path = $this->berkas->store('chat-internal', 'local');
+
+        return [
+            'path' => $path,
+            'name' => $nama,
+            'mime' => $mime,
+            'size' => $this->berkas->getSize(),
+        ];
     }
 
     /**

@@ -58,7 +58,31 @@
                         @unless($milikSaya)
                             <p class="text-[10px] font-bold text-gray-500 mb-0.5">{{ $m->sender_name }}</p>
                         @endunless
-                        <p class="text-sm whitespace-pre-wrap break-words">{{ $m->body }}</p>
+                        @if($m->punyaLampiran())
+                            <a href="{{ route('admin.chat.lampiran', $m->id) }}" target="_blank" rel="noopener"
+                               class="block mb-1 rounded overflow-hidden">
+                                @if($m->lampiranGambar())
+                                    {{-- onload menggulir ulang: gambar selesai dimuat SETELAH
+                                         livewire:updated, jadi tanpa ini tampilan berhenti di
+                                         tengah dan pesan terbaru tidak terlihat. --}}
+                                    <img src="{{ route('admin.chat.lampiran', $m->id) }}"
+                                         alt="{{ $m->attachment_name }}"
+                                         onload="this.closest('#m2b-chat-scroll')?.scrollTo(0, 1e6)"
+                                         class="rounded max-h-40 w-auto" loading="lazy">
+                                @else
+                                    <span class="flex items-center gap-2 px-2 py-1.5 rounded {{ $milikSaya ? 'bg-blue-700' : 'bg-gray-100' }}">
+                                        <svg class="w-4 h-4 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 21h10a2 2 0 002-2V9.414a1 1 0 00-.293-.707l-5.414-5.414A1 1 0 0012.586 3H7a2 2 0 00-2 2v14a2 2 0 002 2z"/></svg>
+                                        <span class="text-xs truncate">{{ Str::limit($m->attachment_name, 22) }}</span>
+                                        <span class="text-[10px] opacity-70 shrink-0">{{ $m->ukuranTerbaca() }}</span>
+                                    </span>
+                                @endif
+                            </a>
+                        @endif
+
+                        @if(filled($m->body))
+                            <p class="text-sm whitespace-pre-wrap break-words">{{ $m->body }}</p>
+                        @endif
+
                         <p class="text-[10px] mt-0.5 {{ $milikSaya ? 'text-blue-200' : 'text-gray-400' }}">
                             {{ $m->created_at->format('d/m H:i') }}
                         </p>
@@ -79,12 +103,34 @@
         {{-- Kotak ketik --}}
         <form wire:submit.prevent="kirim" class="p-3 border-t border-gray-200 bg-white rounded-b-xl">
             @error('isi') <p class="text-[11px] text-red-600 mb-1">{{ $message }}</p> @enderror
-            <div class="flex gap-2">
+            @error('berkas') <p class="text-[11px] text-red-600 mb-1">{{ $message }}</p> @enderror
+
+            {{-- Pratinjau file terpilih, sebelum dikirim --}}
+            @if($berkas)
+            <div class="flex items-center gap-2 mb-2 px-2 py-1.5 bg-blue-50 border border-blue-200 rounded-lg">
+                <svg class="w-4 h-4 text-blue-600 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15.172 7l-6.586 6.586a2 2 0 102.828 2.828l6.414-6.586a4 4 0 00-5.656-5.656l-6.415 6.585a6 6 0 108.486 8.486L20.5 13"/></svg>
+                <span class="text-[11px] text-blue-900 truncate flex-1">{{ $berkas->getClientOriginalName() }}</span>
+                <button type="button" wire:click="batalBerkas" class="text-blue-400 hover:text-red-600 text-sm leading-none">&times;</button>
+            </div>
+            @endif
+
+            <div wire:loading wire:target="berkas" class="text-[11px] text-gray-500 mb-1">Mengunggah…</div>
+
+            <div class="flex gap-2 items-center">
+                {{-- Tombol klip: input file disembunyikan, labelnya yang diklik --}}
+                <label class="shrink-0 w-9 h-9 flex items-center justify-center rounded-lg border border-gray-300 text-gray-500 hover:bg-gray-50 hover:text-blue-600 cursor-pointer"
+                       title="Lampirkan gambar atau PDF (maks 5 MB gambar / 10 MB PDF)">
+                    <input type="file" wire:model="berkas" class="hidden"
+                           accept="image/jpeg,image/png,image/webp,image/gif,application/pdf">
+                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15.172 7l-6.586 6.586a2 2 0 102.828 2.828l6.414-6.586a4 4 0 00-5.656-5.656l-6.415 6.585a6 6 0 108.486 8.486L20.5 13"/></svg>
+                </label>
+
                 <input type="text" wire:model="isi" maxlength="2000"
                     placeholder="{{ $lawan === null ? 'Pesan ke semua…' : 'Pesan japri…' }}"
-                    class="flex-1 border-gray-300 rounded-lg text-sm py-2">
-                <button type="submit"
-                    class="px-3 py-2 bg-blue-600 text-white rounded-lg text-sm font-bold hover:bg-blue-700">
+                    class="flex-1 min-w-0 border-gray-300 rounded-lg text-sm py-2">
+
+                <button type="submit" wire:loading.attr="disabled" wire:target="berkas"
+                    class="shrink-0 px-3 py-2 bg-blue-600 text-white rounded-lg text-sm font-bold hover:bg-blue-700 disabled:opacity-50">
                     Kirim
                 </button>
             </div>

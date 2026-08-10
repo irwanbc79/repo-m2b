@@ -365,6 +365,11 @@ Route::middleware(['auth', 'admin'])->prefix('admin')->name('admin.')->group(fun
         Route::get('/profit-report', \App\Livewire\Admin\ProfitReport::class)->name('profit-report');
         Route::get('/email-keluar', \App\Livewire\Admin\OutgoingEmails::class)->name('email-keluar');
         Route::get('/email-statistik', \App\Livewire\Admin\EmailStats::class)->name('email-statistik');
+
+        // Lampiran chat internal. File ada di disk privat, jadi hanya bisa
+        // dibuka lewat sini — hak aksesnya diperiksa di controller.
+        Route::get('/chat/lampiran/{id}', [\App\Http\Controllers\Admin\InternalChatFileController::class, 'show'])
+            ->name('chat.lampiran');
         Route::get('/calculator', AdminCalculator::class)->name('calculator');
 
         // --- PRINT ROUTES (FIX AKSES DITOLAK 403) ---

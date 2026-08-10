@@ -95,11 +95,16 @@ class InternalChatService
         return $this->pesertaLayak()->reject(fn ($u) => (int) $u->id === (int) $me->id)->values();
     }
 
-    public function kirim(User $pengirim, string $body, ?int $recipientId = null): InternalMessage
+    /**
+     * @param array{path:string,name:string,mime:string,size:int}|null $lampiran
+     */
+    public function kirim(User $pengirim, string $body, ?int $recipientId = null, ?array $lampiran = null): InternalMessage
     {
         $body = trim($body);
 
-        if ($body === '') {
+        // Pesan boleh kosong ASAL ada lampiran — mengirim gambar tanpa
+        // keterangan itu wajar.
+        if ($body === '' && ! $lampiran) {
             throw new \InvalidArgumentException('Pesan tidak boleh kosong.');
         }
         if (! $this->boleh($pengirim)) {
@@ -124,7 +129,33 @@ class InternalChatService
             'sender_name'  => $pengirim->name,
             'recipient_id' => $recipientId,
             'body'         => mb_substr($body, 0, 2000),
+
+            'attachment_path' => $lampiran['path'] ?? null,
+            'attachment_name' => $lampiran['name'] ?? null,
+            'attachment_mime' => $lampiran['mime'] ?? null,
+            'attachment_size' => $lampiran['size'] ?? null,
         ]);
+    }
+
+    /**
+     * Bolehkah user ini membuka lampiran pesan tertentu?
+     *
+     * Diperiksa di sini, bukan di controller, supaya aturannya sama dengan
+     * aturan siapa boleh MELIHAT pesannya. Japri hanya boleh dibuka oleh
+     * pengirim & penerimanya.
+     */
+    public function bolehLihatLampiran(User $me, InternalMessage $m): bool
+    {
+        if (! $this->boleh($me) || ! $m->punyaLampiran()) {
+            return false;
+        }
+
+        if ($m->scope === InternalMessage::SCOPE_DM) {
+            return (int) $m->sender_id === (int) $me->id
+                || (int) $m->recipient_id === (int) $me->id;
+        }
+
+        return true;
     }
 
     /**

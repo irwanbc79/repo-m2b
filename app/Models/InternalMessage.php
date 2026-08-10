@@ -17,11 +17,33 @@ class InternalMessage extends Model
     protected $fillable = [
         'conversation_key', 'scope', 'sender_id', 'sender_name',
         'recipient_id', 'body', 'is_pinned',
+        'attachment_path', 'attachment_name', 'attachment_mime', 'attachment_size',
     ];
 
     protected $casts = [
-        'is_pinned' => 'boolean',
+        'is_pinned'       => 'boolean',
+        'attachment_size' => 'integer',
     ];
+
+    public function punyaLampiran(): bool
+    {
+        return ! empty($this->attachment_path);
+    }
+
+    public function lampiranGambar(): bool
+    {
+        return $this->punyaLampiran() && str_starts_with((string) $this->attachment_mime, 'image/');
+    }
+
+    /** Ukuran dalam bentuk yang enak dibaca staf. */
+    public function ukuranTerbaca(): string
+    {
+        $b = (int) $this->attachment_size;
+
+        return $b >= 1048576
+            ? round($b / 1048576, 1) . ' MB'
+            : max(1, (int) round($b / 1024)) . ' KB';
+    }
 
     /**
      * Kunci japri yang sudah dinormalkan: id kecil dulu, supaya pesan A→B dan
