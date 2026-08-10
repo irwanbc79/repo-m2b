@@ -101,7 +101,47 @@
         </div>
 
         {{-- Kotak ketik --}}
-        <form wire:submit.prevent="kirim" class="p-3 border-t border-gray-200 bg-white rounded-b-xl">
+        {{-- Tempel gambar langsung (Ctrl/Cmd+V) — sering dipakai untuk
+             tangkapan layar CEISA/WhatsApp, jauh lebih cepat daripada
+             menyimpan file dulu lalu memilihnya lewat tombol klip.
+
+             Memakai $wire.upload(), API resmi Livewire 3 untuk unggah
+             terprogram, jadi jalurnya sama persis dengan tombol klip —
+             termasuk pemeriksaan jenis & ukuran di sisi server. --}}
+        <form wire:submit.prevent="kirim" class="p-3 border-t border-gray-200 bg-white rounded-b-xl"
+              x-data="{
+                  menempel: false,
+                  emojiBuka: false,
+
+                  sisipEmoji(em) {
+                      $wire.isi = ($wire.isi || '') + em;
+                      this.emojiBuka = false;
+                      this.$refs.kotakIsi?.focus();
+                  },
+
+                  tempel(e) {
+                      const item = [...(e.clipboardData?.items ?? [])]
+                          .find(i => i.type.startsWith('image/'));
+
+                      // Bukan gambar → biarkan tempel teks biasa berjalan normal.
+                      if (!item) return;
+
+                      e.preventDefault();
+                      const blob = item.getAsFile();
+                      if (!blob) return;
+
+                      const ext = (blob.type.split('/')[1] || 'png').replace('jpeg', 'jpg');
+                      const cap = new Date().toISOString().slice(0, 19).replace(/[-:T]/g, '');
+                      const file = new File([blob], `tempelan-${cap}.${ext}`, { type: blob.type });
+
+                      this.menempel = true;
+                      $wire.upload('berkas', file,
+                          () => { this.menempel = false; },
+                          () => { this.menempel = false; }
+                      );
+                  }
+              }"
+              @paste="tempel($event)">
             @error('isi') <p class="text-[11px] text-red-600 mb-1">{{ $message }}</p> @enderror
             @error('berkas') <p class="text-[11px] text-red-600 mb-1">{{ $message }}</p> @enderror
 
@@ -115,8 +155,9 @@
             @endif
 
             <div wire:loading wire:target="berkas" class="text-[11px] text-gray-500 mb-1">Mengunggah…</div>
+            <div x-show="menempel" x-cloak class="text-[11px] text-blue-600 mb-1">Menempel gambar…</div>
 
-            <div class="flex gap-2 items-center">
+            <div class="flex gap-2 items-center" style="position: relative;">
                 {{-- Tombol klip: input file disembunyikan, labelnya yang diklik --}}
                 <label class="shrink-0 w-9 h-9 flex items-center justify-center rounded-lg border border-gray-300 text-gray-500 hover:bg-gray-50 hover:text-blue-600 cursor-pointer"
                        title="Lampirkan gambar atau PDF (maks 5 MB gambar / 10 MB PDF)">
@@ -125,7 +166,38 @@
                     <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15.172 7l-6.586 6.586a2 2 0 102.828 2.828l6.414-6.586a4 4 0 00-5.656-5.656l-6.415 6.585a6 6 0 108.486 8.486L20.5 13"/></svg>
                 </label>
 
-                <input type="text" wire:model="isi" maxlength="2000"
+                {{-- Emoji: palet ringan tanpa pustaka eksternal. Untuk tim 5 orang,
+                     pilihan terkurasi jauh lebih hemat daripada memuat library
+                     emoji penuh di setiap halaman admin. --}}
+                <button type="button" @click="emojiBuka = !emojiBuka"
+                        class="shrink-0 w-9 h-9 flex items-center justify-center rounded-lg border border-gray-300 text-gray-500 hover:bg-gray-50 text-lg leading-none"
+                        title="Emoji">🙂</button>
+
+                <div x-show="emojiBuka" x-cloak @click.away="emojiBuka = false" x-transition
+                     class="bg-white border border-gray-200 rounded-xl shadow-2xl p-2"
+                     style="position: absolute; bottom: 2.75rem; left: 0; width: 17rem; z-index: 9100;">
+                    {{-- Kolom grid ditulis inline: grid-cols-8 tidak ter-generate di
+                         build Tailwind v4 (terverifikasi nol di public/build), sehingga
+                         emoji menumpuk jadi satu kolom. --}}
+                    <div class="gap-0.5 overflow-y-auto"
+                         style="display: grid; grid-template-columns: repeat(8, minmax(0, 1fr)); max-height: 11rem;">
+                        @foreach ([
+                            '👍','🙏','🤲','❤️','🔥','✅','❌','⚠️',
+                            '🙂','😊','😁','😄','😅','😂','🤣','😉',
+                            '😍','🥰','😘','🤗','🤔','🧐','😐','😴',
+                            '😢','😭','😡','😱','😳','🤦','🤷','🫡',
+                            '👌','✌️','🤝','👏','💪','🙌','☝️','👀',
+                            '📄','📎','📌','📦','🚚','🚢','✈️','🏭',
+                            '💰','🧾','📊','📈','📉','⏰','📅','🔔',
+                            '☕','🍽️','🎉','🎊','⭐','💡','🚀','🫶',
+                        ] as $em)
+                            <button type="button" @click="sisipEmoji('{{ $em }}')"
+                                    class="w-7 h-7 flex items-center justify-center rounded hover:bg-gray-100 text-lg leading-none">{{ $em }}</button>
+                        @endforeach
+                    </div>
+                </div>
+
+                <input type="text" wire:model="isi" maxlength="2000" x-ref="kotakIsi"
                     placeholder="{{ $lawan === null ? 'Pesan ke semua…' : 'Pesan japri…' }}"
                     class="flex-1 min-w-0 border-gray-300 rounded-lg text-sm py-2">
 
