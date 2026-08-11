@@ -7,6 +7,8 @@ use Livewire\WithPagination;
 use App\Models\Quotation;
 use App\Models\Customer;
 use App\Models\QuotationItem;
+use App\Models\QuotationCommodity;
+use App\Models\QuotationHsLog;
 use App\Models\Shipment;
 use App\Models\User;
 use Illuminate\Support\Facades\Mail;
@@ -15,6 +17,7 @@ use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Storage;
 use App\Mail\QuotationMail;
+use App\Services\HsCodeFormatter;
 use App\Services\QuotationTranslationService;
 
 class QuotationManager extends Component
@@ -49,6 +52,19 @@ class QuotationManager extends Component
     public $ppn_rate = 11;
     public $pph_rate = 0;
     public $items = [];
+
+    /**
+     * Komoditi & rekomendasi HS Code. Multi-baris sejak awal walau tampilan
+     * default hanya satu baris — memecah teks bebas jadi baris terstruktur
+     * belakangan berarti membedah data yang sudah dikirim ke pelanggan.
+     *
+     * Bentuk tiap baris: ['commodity' => '', 'hs_code' => '']
+     */
+    public $commodities = [];
+
+    /** Saran BTKI untuk baris yang sedang diketik. Tidak ikut disimpan. */
+    public $saranHs = [];
+    public $barisSaranAktif = null;
     public $serviceTotal = 0;
     public $reimbursementTotal = 0;
     public $ppn = 0;
@@ -152,6 +168,9 @@ class QuotationManager extends Component
         $this->quotation_date = now()->format('Y-m-d');
         $this->valid_until = now()->addDays(14)->format('Y-m-d');
         $this->items = [['item_type' => 'service', 'description' => 'Jasa Freight', 'qty' => 1, 'price' => 0]];
+        // Satu baris kosong: strukturnya multi sejak awal, tampilannya tetap
+        // sesederhana sebelumnya supaya staf tidak merasa formnya bertambah berat.
+        $this->commodities = [['commodity' => '', 'hs_code' => '']];
         $this->setDefaultNotes('import');
         $this->calculate();
         $this->isModalOpen = true;
@@ -160,7 +179,7 @@ class QuotationManager extends Component
 
     public function edit($id)
     {
-        $q = Quotation::with('items')->find($id);
+        $q = Quotation::with(['items', 'commodities'])->find($id);
         if($q) {
             $this->isEditing = true;
             $this->editingId = $id;
@@ -197,9 +216,19 @@ class QuotationManager extends Component
                     'price' => $item->price
                 ];
             }
+            $this->commodities = $q->commodities
+                ->map(fn ($c) => ['commodity' => $c->commodity, 'hs_code' => (string) $c->hs_code])
+                ->all();
+
+            // Quotation lama (dibuat sebelum fitur ini) tidak punya komoditi
+            // sama sekali — beri satu baris kosong supaya formnya tetap bisa diisi.
+            if (empty($this->commodities)) {
+                $this->commodities = [['commodity' => '', 'hs_code' => '']];
+            }
+
             $this->calculate();
             $this->isModalOpen = true;
-            
+
             $this->dispatch('set-editor-content', content: $this->notes);
         }
     }
@@ -243,6 +272,7 @@ class QuotationManager extends Component
         }
 
         $this->validate($rules);
+        $this->validasiKomoditi();
         $this->calculate(); // Pastikan total dihitung ulang
 
         // 2. DATA UTAMA (Clean Data)
@@ -314,15 +344,225 @@ class QuotationManager extends Component
             ]);
         }
 
+        $this->simpanKomoditi($qId);
+
         session()->flash('message', $msg);
         $this->closeModal();
     }
 
+    /**
+     * Validasi komoditi.
+     *
+     * Format 4/6/8 digit DIPAKSA — salah ketik satu digit menghasilkan kode
+     * yang tetap terlihat masuk akal. Tapi kode yang formatnya benar namun
+     * tidak ada di BTKI TETAP BOLEH disimpan (hanya diberi peringatan di
+     * layar): HS Code di sini berlabel rekomendasi, dan data BTKI bisa
+     * tertinggal dari tarif yang baru terbit. Memblokir akan menghentikan
+     * staf justru saat mereka benar.
+     */
+    private function validasiKomoditi(): void
+    {
+        $pesan = [];
+
+        foreach ($this->commodities as $i => $b) {
+            $nama   = trim((string) ($b['commodity'] ?? ''));
+            $mentah = trim((string) ($b['hs_code'] ?? ''));
+
+            if ($nama === '' && $mentah === '') {
+                continue;   // baris kosong, nanti dibuang saat simpan
+            }
+
+            if ($nama === '') {
+                $pesan["commodities.{$i}.commodity"] = 'Nama komoditi wajib diisi bila HS Code diisi.';
+            }
+
+            if (mb_strlen($nama) > 200) {
+                $pesan["commodities.{$i}.commodity"] = 'Nama komoditi maksimal 200 karakter.';
+            }
+
+            if ($mentah !== '' && ! HsCodeFormatter::sah($mentah)) {
+                $pesan["commodities.{$i}.hs_code"] = 'HS Code harus 4, 6, atau 8 digit (titik boleh tidak ditulis).';
+            }
+        }
+
+        if ($pesan) {
+            throw \Illuminate\Validation\ValidationException::withMessages($pesan);
+        }
+    }
+
+    /**
+     * Tulis ulang komoditi sambil mencatat jejak perubahannya.
+     *
+     * Sengaja TIDAK sekadar hapus-lalu-buat-ulang seperti items(): jejak audit
+     * harus tahu nilai SEBELUMNYA. Dibandingkan per posisi baris — cukup untuk
+     * menjawab "siapa mengubah HS ini, kapan, dari apa", yang merupakan alasan
+     * fitur ini ada.
+     */
+    private function simpanKomoditi(int $quotationId): void
+    {
+        $lama = QuotationCommodity::where('quotation_id', $quotationId)
+            ->orderBy('sort_order')->get()->values();
+
+        // Buang baris yang benar-benar kosong; staf sering menambah baris lalu
+        // berubah pikiran, dan itu tidak boleh jadi komoditi kosong di PDF.
+        $baru = collect($this->commodities)
+            ->map(fn ($b) => [
+                'commodity' => trim((string) ($b['commodity'] ?? '')),
+                'hs_code'   => HsCodeFormatter::baku($b['hs_code'] ?? null),
+            ])
+            ->filter(fn ($b) => $b['commodity'] !== '' || $b['hs_code'] !== null)
+            ->values();
+
+        QuotationCommodity::where('quotation_id', $quotationId)->delete();
+
+        foreach ($baru as $i => $b) {
+            $c = new QuotationCommodity([
+                'quotation_id' => $quotationId,
+                'sort_order'   => $i,
+                'commodity'    => $b['commodity'],
+                'hs_code'      => $b['hs_code'],
+            ]);
+            $c->lengkapiDariBtki();
+            $c->save();
+
+            $sebelum = $lama->get($i);
+
+            if (! $sebelum) {
+                QuotationHsLog::catat($quotationId, 'ditambah', $c->id, null, $c->commodity, null, $c->hs_code);
+                continue;
+            }
+
+            if ($sebelum->commodity !== $c->commodity || $sebelum->hs_code !== $c->hs_code) {
+                QuotationHsLog::catat(
+                    $quotationId, 'diubah', $c->id,
+                    $sebelum->commodity, $c->commodity,
+                    $sebelum->hs_code, $c->hs_code,
+                );
+            }
+        }
+
+        // Baris yang hilang — justru penghapusan yang paling perlu terekam.
+        foreach ($lama->slice($baru->count()) as $hilang) {
+            QuotationHsLog::catat(
+                $quotationId, 'dihapus', null,
+                $hilang->commodity, null,
+                $hilang->hs_code, null,
+            );
+        }
+    }
+
     // --- UTILS ---
-    public function resetInput() { $this->reset(['customer_id', 'manual_company', 'manual_pic', 'manual_email', 'manual_phone', 'items', 'origin', 'destination', 'service_type', 'quotation_type', 'notes', 'terbilang_lang', 'notes_en', 'notes_en_source_hash', 'editingId', 'isEditing', 'isSendModalOpen']); }
+    public function resetInput() { $this->reset(['customer_id', 'manual_company', 'manual_pic', 'manual_email', 'manual_phone', 'items', 'commodities', 'saranHs', 'barisSaranAktif', 'origin', 'destination', 'service_type', 'quotation_type', 'notes', 'terbilang_lang', 'notes_en', 'notes_en_source_hash', 'editingId', 'isEditing', 'isSendModalOpen']); }
     public function closeModal() { $this->isModalOpen = false; }
     public function addItem() { $this->items[] = ['item_type' => 'service', 'description' => '', 'qty' => 1, 'price' => 0]; }
     public function removeItem($index) { unset($this->items[$index]); $this->items = array_values($this->items); $this->calculate(); }
+
+    // --- KOMODITI & HS CODE ---
+
+    public function addCommodity()
+    {
+        $this->commodities[] = ['commodity' => '', 'hs_code' => ''];
+    }
+
+    public function removeCommodity($index)
+    {
+        unset($this->commodities[$index]);
+        $this->commodities = array_values($this->commodities);
+        $this->saranHs = [];
+        $this->barisSaranAktif = null;
+    }
+
+    /**
+     * Dipicu SETELAH nilai properti benar-benar masuk.
+     *
+     * Sebelumnya pencarian dipasang lewat wire:keyup, dan itu menembak lebih
+     * dulu daripada wire:model.live.debounce menyinkronkan nilainya — yang
+     * dicari selalu nilai SEBELUM ketikan terakhir, sehingga daftar saran
+     * tampak selalu kosong. Kait updated tidak punya balapan itu.
+     */
+    public function updatedCommodities($value, $key): void
+    {
+        if (! str_ends_with((string) $key, '.hs_code')) {
+            return;
+        }
+
+        $this->cariHs((int) explode('.', (string) $key)[0]);
+    }
+
+    /**
+     * Saran BTKI saat staf mengetik. Menerima potongan kode ATAU nama barang
+     * — staf jauh lebih sering hafal namanya ("kain rajut") daripada angkanya.
+     */
+    public function cariHs($index)
+    {
+        $kata = trim((string) ($this->commodities[$index]['hs_code'] ?? ''));
+
+        $this->barisSaranAktif = $index;
+        $this->saranHs = HsCodeFormatter::saran($kata)
+            ->map(fn ($hs) => [
+                'kode'   => $hs->hs_code,
+                'uraian' => HsCodeFormatter::uraian($hs, 'id'),
+            ])->all();
+    }
+
+    /** Cari lewat nama komoditi yang sudah diketik di kolom sebelah. */
+    public function cariHsDariNama($index)
+    {
+        $nama = trim((string) ($this->commodities[$index]['commodity'] ?? ''));
+
+        $this->barisSaranAktif = $index;
+        $this->saranHs = HsCodeFormatter::saran($nama)
+            ->map(fn ($hs) => [
+                'kode'   => $hs->hs_code,
+                'uraian' => HsCodeFormatter::uraian($hs, 'id'),
+            ])->all();
+    }
+
+    public function pilihHs($index, $kode)
+    {
+        $this->commodities[$index]['hs_code'] = $kode;
+        $this->saranHs = [];
+        $this->barisSaranAktif = null;
+    }
+
+    public function tutupSaranHs()
+    {
+        $this->saranHs = [];
+        $this->barisSaranAktif = null;
+    }
+
+    /**
+     * Keadaan tiap baris untuk ditampilkan: sah/tidak, ketemu di BTKI/tidak.
+     * Dihitung di sini supaya blade tidak menyalin ulang aturan formatnya.
+     */
+    public function getKeadaanKomoditiProperty(): array
+    {
+        $hasil = [];
+
+        foreach ($this->commodities as $i => $b) {
+            $mentah = trim((string) ($b['hs_code'] ?? ''));
+
+            if ($mentah === '') {
+                $hasil[$i] = ['status' => 'kosong', 'baku' => null, 'uraian' => null];
+                continue;
+            }
+
+            if (! HsCodeFormatter::sah($mentah)) {
+                $hasil[$i] = ['status' => 'format_salah', 'baku' => null, 'uraian' => null];
+                continue;
+            }
+
+            $hs = HsCodeFormatter::cariPersis($mentah);
+
+            $hasil[$i] = [
+                'status' => $hs ? 'ketemu' : 'tak_ada_di_btki',
+                'baku'   => HsCodeFormatter::baku($mentah),
+                'uraian' => $hs ? HsCodeFormatter::uraian($hs, 'id') : null,
+            ];
+        }
+
+        return $hasil;
+    }
     public function recalculate() { $this->calculate(); }
     public function calculate() {
         $this->serviceTotal = 0; $this->reimbursementTotal = 0;
@@ -354,10 +594,51 @@ class QuotationManager extends Component
         }
         $prefix = match($q->service_type) { 'import'=>'IMP', 'export'=>'EXP', 'domestic'=>'DOM', default=>'JOB' };
         $newRef = $prefix . '-' . date('ymd') . '-' . rand(100,999);
-        Shipment::create(['customer_id'=>$customerId, 'quotation_id'=>$q->id, 'awb_number'=>$newRef, 'origin'=>$q->origin, 'destination'=>$q->destination, 'service_type'=>$q->service_type, 'shipment_type'=>'sea', 'status'=>'pending', 'weight'=>0, 'pieces'=>0, 'notes'=>'Generated from QT']);
+        $salinan = $this->salinKomoditiKeShipment($q);
+
+        Shipment::create(['customer_id'=>$customerId, 'quotation_id'=>$q->id, 'awb_number'=>$newRef, 'origin'=>$q->origin, 'destination'=>$q->destination, 'service_type'=>$q->service_type, 'shipment_type'=>'sea', 'status'=>'pending', 'weight'=>0, 'pieces'=>0, 'commodity'=>$salinan['commodity'], 'hs_code'=>$salinan['hs_code'], 'notes'=>$salinan['notes']]);
         $q->update(['status'=>'accepted']);
         return redirect()->route('admin.shipments.index');
     }
+    /**
+     * Siapkan komoditi quotation untuk disalin ke shipment.
+     *
+     * Shipment hanya punya SATU kolom commodity (200 karakter) dan SATU
+     * hs_code, sedangkan quotation bisa banyak komoditi. Modul shipment sudah
+     * produksi (79 shipment, 60 memakai HS Code) dan sengaja TIDAK diubah
+     * strukturnya hanya demi ini.
+     *
+     * Jalan tengahnya: nama digabung (dipotong aman), hs_code diambil dari
+     * komoditi PERTAMA, dan daftar lengkapnya disalin ke notes — supaya tidak
+     * ada informasi yang hilang diam-diam saat konversi.
+     */
+    private function salinKomoditiKeShipment(Quotation $q): array
+    {
+        $k = $q->commodities()->get();
+
+        if ($k->isEmpty()) {
+            return ['commodity' => null, 'hs_code' => null, 'notes' => 'Generated from QT'];
+        }
+
+        $gabung = $k->pluck('commodity')->filter()->implode(', ');
+
+        $rincian = $k->map(fn ($c, $i) => '  ' . ($i + 1) . '. ' . $c->barisCetak())->implode("\n");
+
+        $catatan = "Generated from QT {$q->quotation_number}\n\n"
+            . "Komoditi & rekomendasi HS Code:\n{$rincian}\n\n"
+            . 'Catatan: HS Code di atas merupakan rekomendasi awal dari quotation dan '
+            . 'wajib diverifikasi berdasarkan spesifikasi teknis, material, fungsi, dan dokumen barang.';
+
+        return [
+            // Dipotong 200 karakter mengikuti lebar kolomnya. Tanpa ini
+            // konversi meledak dengan galat "Data too long" — jenis kegagalan
+            // yang sama seperti bug berat shipment sebelumnya.
+            'commodity' => mb_substr($gabung, 0, 200) ?: null,
+            'hs_code'   => $k->first()->hs_code,
+            'notes'     => $catatan,
+        ];
+    }
+
     public function openSendModal($id) { $q = Quotation::find($id); if($q){ $this->sendingId = $id; $this->sendToEmail = $q->customer ? ($q->customer->user->email ?? $q->customer->email) : $q->manual_email; $this->isSendModalOpen = true; } }
     public function closeSendModal() { $this->isSendModalOpen = false; }
     public function sendQuotation() {
@@ -387,8 +668,10 @@ class QuotationManager extends Component
         session()->flash('success', 'Quotation berhasil dikirim ke ' . $this->sendToEmail);
     }
     public function render() {
-        $query = Quotation::with("customer");
-        
+        // commodities ikut dimuat di muka: tanpa ini tiap baris di daftar
+        // memicu query sendiri (N+1) pada halaman yang sudah berpaginasi.
+        $query = Quotation::with(["customer", "commodities"]);
+
         // Search
         if ($this->search) {
             $query->where(function($q) {
@@ -396,6 +679,12 @@ class QuotationManager extends Component
                   ->orWhere("manual_company", "like", "%".$this->search."%")
                   ->orWhereHas("customer", function($c) {
                       $c->where("company_name", "like", "%".$this->search."%");
+                  })
+                  // Cari juga lewat nama komoditi & HS Code — staf sering
+                  // ingat "quotation kain rajut itu" ketimbang nomornya.
+                  ->orWhereHas("commodities", function($k) {
+                      $k->where("commodity", "like", "%".$this->search."%")
+                        ->orWhere("hs_code", "like", "%".$this->search."%");
                   });
             });
         }

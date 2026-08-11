@@ -144,6 +144,7 @@
                         <th class="px-6 py-3">No Penawaran</th>
                         <th class="px-6 py-3">Customer / Prospek</th>
                         <th class="px-6 py-3">Rute & Service</th>
+                        <th class="px-6 py-3">Komoditi / HS Code</th>
                         <th class="px-6 py-3 text-right">Total (IDR)</th>
                         <th class="px-6 py-3 text-center">Valid Until</th>
                         <th class="px-6 py-3 text-center">Dok TTD</th>
@@ -173,6 +174,66 @@
                         <td class="px-6 py-4 text-xs">
                             <strong class="text-gray-700">{{ $q->origin }} &rarr; {{ $q->destination }}</strong><br>
                             <span class="text-gray-500 uppercase font-semibold">{{ $q->service_type }}</span>
+                        </td>
+                        {{-- Komoditi: tampilkan yang pertama, sisanya diringkas jadi
+                             lencana. Rincian lengkap muncul saat diarahkan — daftar
+                             ini sering panjang dan tidak boleh merusak lebar tabel. --}}
+                        <td class="px-6 py-4 text-xs" style="max-width: 15rem;">
+                            @php $km = $q->commodities; @endphp
+                            @if($km->isEmpty())
+                                <span class="text-gray-400">&mdash;</span>
+                            @else
+                                @php $utama = $km->first(); @endphp
+                                <div x-data="{ buka: false }" style="position: relative;">
+                                    <div class="truncate font-semibold text-gray-800" title="{{ $utama->commodity }}">
+                                        {{ $utama->commodity ?: '—' }}
+                                    </div>
+
+                                    <div class="flex items-center gap-1.5 mt-0.5 flex-wrap">
+                                        @if($utama->hs_code)
+                                            <span class="font-mono text-[11px] text-gray-600">{{ $utama->hs_code }}</span>
+                                            @unless($utama->found_in_btki)
+                                                <span class="text-[10px] text-amber-700" title="Tidak ditemukan di BTKI — perlu diperiksa">⚠</span>
+                                            @endunless
+                                        @else
+                                            <span class="text-[10px] text-gray-400 italic">tanpa HS Code</span>
+                                        @endif
+
+                                        @if($km->count() > 1)
+                                            <button type="button"
+                                                    @click="buka = !buka" @click.outside="buka = false"
+                                                    class="text-[10px] font-bold text-blue-700 bg-blue-50 border border-blue-200 rounded-full px-1.5 py-0.5 hover:bg-blue-100">
+                                                +{{ $km->count() - 1 }} lainnya
+                                            </button>
+                                        @endif
+                                    </div>
+
+                                    @if($km->count() > 1)
+                                        <div x-show="buka" x-cloak
+                                             class="bg-white border border-gray-300 rounded-lg shadow-2xl p-2.5"
+                                             style="position: absolute; top: 100%; left: 0; margin-top: .35rem;
+                                                    min-width: 17rem; max-width: 24rem; z-index: 50;">
+                                            <p class="text-[10px] font-bold text-gray-500 uppercase mb-1.5">Semua komoditi</p>
+                                            <ol class="space-y-1">
+                                                @foreach($km as $c)
+                                                    <li class="text-[11px] leading-snug">
+                                                        <span class="font-semibold text-gray-800">{{ $loop->iteration }}. {{ $c->commodity }}</span>
+                                                        @if($c->hs_code)
+                                                            <span class="font-mono text-gray-600">— {{ $c->hs_code }}</span>
+                                                            @unless($c->found_in_btki)
+                                                                <span class="text-amber-700" title="Tidak ditemukan di BTKI">⚠</span>
+                                                            @endunless
+                                                        @endif
+                                                    </li>
+                                                @endforeach
+                                            </ol>
+                                            <p class="text-[10px] text-gray-500 mt-2 pt-2 border-t border-gray-100 leading-snug">
+                                                HS Code bersifat rekomendasi, wajib diverifikasi.
+                                            </p>
+                                        </div>
+                                    @endif
+                                </div>
+                            @endif
                         </td>
                         <td class="px-6 py-4 text-right font-bold text-gray-800">
                             IDR {{ number_format($q->grand_total, 0, ',', '.') }}
@@ -242,7 +303,7 @@
                         </td>
                     </tr>
                     @empty
-                    <tr><td colspan="7" class="p-8 text-center text-gray-500 italic">Belum ada data quotation.</td></tr>
+                    <tr><td colspan="8" class="p-8 text-center text-gray-500 italic">Belum ada data quotation.</td></tr>
                     @endforelse
                 </tbody>
             </table>
@@ -430,6 +491,125 @@
                     <div><label class="block text-xs font-bold text-gray-500 mb-1">Origin</label><input type="text" wire:model="origin" class="w-full border border-gray-300 rounded-lg p-2.5 text-sm" placeholder="e.g. Shanghai"></div>
                     <div><label class="block text-xs font-bold text-gray-500 mb-1">Destination</label><input type="text" wire:model="destination" class="w-full border border-gray-300 rounded-lg p-2.5 text-sm" placeholder="e.g. Jakarta"></div>
                     @endif
+                </div>
+
+                {{-- ========== KOMODITI & REKOMENDASI HS CODE ========== --}}
+                {{-- TANPA overflow-hidden: daftar saran HS Code melayang keluar dari
+                     kotak ini, dan overflow-hidden memotongnya sehingga hanya
+                     baris pertama yang terlihat & bisa diklik. --}}
+                <div class="border border-amber-200 rounded-xl mb-4 bg-amber-50">
+                    <div class="px-4 py-2.5 border-b border-amber-200 flex items-center justify-between flex-wrap gap-2">
+                        <div class="flex items-center gap-2">
+                            <span class="text-lg">🏷️</span>
+                            <span class="text-sm font-bold text-amber-900">Komoditi &amp; HS Code</span>
+                        </div>
+                        {{-- Label ini bukan hiasan: HS Code adalah keputusan yang bisa
+                             dipersoalkan saat pemeriksaan. Menempel permanen di form,
+                             bukan sekadar muncul di PDF. --}}
+                        <span class="text-[10px] font-bold text-amber-800 bg-amber-200 px-2 py-1 rounded-full">
+                            Rekomendasi — perlu verifikasi final
+                        </span>
+                    </div>
+
+                    <div class="p-3 space-y-2">
+                        @foreach($commodities as $index => $baris)
+                            {{-- SATU BARIS, mengikuti pola yang sudah terbukti jalan di
+                                 view ini. Bentuk blok multi-baris merusak kompilasi
+                                 seluruh berkas — galatnya muncul sebagai "unexpected
+                                 endif" di baris yang sama sekali lain, jadi sangat
+                                 menyesatkan saat dilacak. --}}
+                            @php $keadaan = $this->keadaanKomoditi[$index] ?? ['status' => 'kosong', 'uraian' => null]; @endphp
+                            <div class="bg-white border border-amber-200 rounded-lg p-2.5">
+                                <div class="flex gap-2 items-start">
+                                    <span class="text-xs font-bold text-amber-700 pt-2.5 w-4 shrink-0">{{ $index + 1 }}.</span>
+
+                                    <div class="flex-1 min-w-0">
+                                        <input type="text" wire:model.blur="commodities.{{ $index }}.commodity"
+                                               class="w-full border border-gray-300 rounded-lg p-2 text-sm"
+                                               placeholder="Nama komoditi, mis. Kain rajut / Textile fabric">
+                                        @error("commodities.{$index}.commodity")
+                                            <p class="text-[11px] text-red-600 mt-1">{{ $message }}</p>
+                                        @enderror
+                                    </div>
+
+                                    <div class="w-56 shrink-0 relative">
+                                        <div class="flex gap-1">
+                                            {{-- Pencarian dipicu lewat kait updatedCommodities di
+                                                 komponen, BUKAN wire:keyup: keyup menembak sebelum
+                                                 nilainya tersinkron, jadi yang dicari selalu
+                                                 ketikan sebelumnya dan saran tampak selalu kosong. --}}
+                                            <input type="text" wire:model.live.debounce.400ms="commodities.{{ $index }}.hs_code"
+                                                   class="w-full border border-gray-300 rounded-lg p-2 text-sm font-mono"
+                                                   placeholder="60063290 / nama barang"
+                                                   autocomplete="off">
+                                            <button type="button" wire:click="cariHsDariNama({{ $index }})"
+                                                    class="shrink-0 px-2 rounded-lg bg-amber-100 hover:bg-amber-200 text-amber-800 text-xs font-bold"
+                                                    title="Cari HS Code dari nama komoditi di sebelah kiri">🔍</button>
+                                        </div>
+
+                                        @error("commodities.{$index}.hs_code")
+                                            <p class="text-[11px] text-red-600 mt-1">{{ $message }}</p>
+                                        @enderror
+
+                                        {{-- Keadaan kode: dibedakan antara SALAH FORMAT (harus
+                                             diperbaiki) dan TIDAK ADA DI BTKI (boleh lanjut). --}}
+                                        @if($keadaan['status'] === 'ketemu')
+                                            <p class="text-[11px] text-green-700 mt-1 leading-snug">
+                                                ✓ {{ Str::limit($keadaan['uraian'], 60) }}
+                                            </p>
+                                        @elseif($keadaan['status'] === 'tak_ada_di_btki' && ! ($barisSaranAktif === $index && count($saranHs)))
+                                            {{-- Ditahan HANYA selama daftar saran benar-benar tampil
+                                                 (syaratnya sama persis dengan syarat munculnya daftar
+                                                 di bawah). Kode yang sedang setengah diketik memang
+                                                 belum ada di BTKI, dan memperingatkannya saat itu
+                                                 cuma membuat staf ragu padahal belum selesai — tapi
+                                                 kalau sarannya kosong, peringatan itu justru yang
+                                                 paling perlu terlihat. --}}
+                                            <p class="text-[11px] text-amber-700 mt-1 leading-snug">
+                                                ⚠ Tidak ditemukan di BTKI — pastikan kembali. Tetap bisa disimpan.
+                                            </p>
+                                        @elseif($keadaan['status'] === 'format_salah')
+                                            <p class="text-[11px] text-red-600 mt-1 leading-snug">
+                                                Harus 4, 6, atau 8 digit
+                                            </p>
+                                        @endif
+
+                                        {{-- Daftar saran BTKI. Posisi & z-index inline: build
+                                             Tailwind v4 di project ini tidak selalu meng-generate
+                                             kelas z/posisi baru. --}}
+                                        @if($barisSaranAktif === $index && count($saranHs))
+                                            <div class="bg-white border border-gray-300 rounded-lg shadow-2xl overflow-y-auto"
+                                                 style="position: absolute; top: 100%; left: 0; right: 0; margin-top: .25rem;
+                                                        max-height: 14rem; z-index: 60;">
+                                                @foreach($saranHs as $s)
+                                                    <button type="button" wire:click="pilihHs({{ $index }}, '{{ $s['kode'] }}')"
+                                                            class="w-full text-left px-2.5 py-1.5 hover:bg-amber-50 border-b border-gray-100">
+                                                        <span class="font-mono text-xs font-bold text-gray-900">{{ $s['kode'] }}</span>
+                                                        <span class="block text-[11px] text-gray-600 leading-snug">{{ Str::limit($s['uraian'], 70) }}</span>
+                                                    </button>
+                                                @endforeach
+                                                <button type="button" wire:click="tutupSaranHs"
+                                                        class="w-full text-center px-2 py-1.5 text-[11px] text-gray-500 hover:bg-gray-50">tutup</button>
+                                            </div>
+                                        @endif
+                                    </div>
+
+                                    @if(count($commodities) > 1)
+                                        <button type="button" wire:click="removeCommodity({{ $index }})"
+                                                class="shrink-0 text-red-500 hover:text-red-700 pt-2 px-1" title="Hapus komoditi">&times;</button>
+                                    @endif
+                                </div>
+                            </div>
+                        @endforeach
+                    </div>
+
+                    <div class="px-3 pb-3 flex items-center justify-between flex-wrap gap-2">
+                        <button type="button" wire:click="addCommodity"
+                                class="text-amber-800 font-bold text-xs hover:underline">+ Tambah Komoditi</button>
+                        <span class="text-[10px] text-amber-700">
+                            Titik boleh tidak diketik — <span class="font-mono">60063290</span> otomatis jadi <span class="font-mono">6006.32.90</span>
+                        </span>
+                    </div>
                 </div>
 
                 {{-- ========== QUICK SELECT PRODUCT PANEL ========== --}}

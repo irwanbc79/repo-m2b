@@ -63,4 +63,18 @@ class Quotation extends Model
     {
         return $this->hasMany(QuotationItem::class);
     }
+
+    /**
+     * Komoditi & rekomendasi HS Code. Berbeda dari items() yang berisi baris
+     * BIAYA — dua hal yang kebetulan sama-sama "item" tapi tidak berhubungan.
+     */
+    public function commodities()
+    {
+        return $this->hasMany(QuotationCommodity::class)->orderBy('sort_order');
+    }
+
+    public function hsLogs()
+    {
+        return $this->hasMany(QuotationHsLog::class)->latest();
+    }
 }

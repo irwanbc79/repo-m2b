@@ -181,6 +181,46 @@
             </tr>
         </table>
 
+        {{-- ===== KOMODITI & REKOMENDASI HS CODE =====
+             Disclaimer sengaja jadi bagian tetap dari blok ini, bukan opsi yang
+             bisa dimatikan: begitu HS Code tercetak di dokumen berkop
+             perusahaan, pembacanya cenderung menganggapnya klasifikasi final.
+             Uraian diambil dari salinan yang tersimpan saat quotation dibuat,
+             supaya cetak ulang tetap sama walau data BTKI diperbarui. --}}
+        @php $komoditi = $quotation->commodities; @endphp
+        @if($komoditi->isNotEmpty())
+        <table class="info-table">
+            <tr>
+                <td style="border:1px solid #eee; padding:10px; vertical-align:top;">
+                    <strong style="color:#666; font-size:10px;">COMMODITY &amp; HS CODE RECOMMENDATION:</strong><br>
+                    <table style="width:100%; margin-top:6px; border-collapse:collapse;">
+                        @foreach($komoditi as $c)
+                        <tr>
+                            <td style="width:18px; vertical-align:top; padding:2px 0;">{{ $loop->iteration }}.</td>
+                            <td style="padding:2px 0;">
+                                <strong>{{ $c->commodity }}</strong>
+                                @if($c->hs_code)
+                                    &mdash; HS Code: <strong>{{ $c->hs_code }}</strong>
+                                @endif
+                                @if($c->hs_description_en)
+                                    <br><span style="color:#888; font-size:9px;">{{ $c->hs_description_en }}</span>
+                                @endif
+                            </td>
+                        </tr>
+                        @endforeach
+                    </table>
+                    <div style="margin-top:8px; padding-top:6px; border-top:1px dashed #ddd; color:#666; font-size:9px; line-height:1.5;">
+                        <strong>Note:</strong> HS Code di atas merupakan rekomendasi awal dan wajib diverifikasi
+                        berdasarkan spesifikasi teknis, material, fungsi, dan dokumen barang.
+                        <br>
+                        <em>The HS Code above is a preliminary recommendation and must be verified against the
+                        technical specification, material, function, and shipping documents of the goods.</em>
+                    </div>
+                </td>
+            </tr>
+        </table>
+        @endif
+
         <table class="table-data">
             <thead>
                 <tr><th>Description</th><th width="10%" align="center">Qty</th><th width="20%" align="right">Unit Price</th><th width="20%" align="right">Total</th></tr>
