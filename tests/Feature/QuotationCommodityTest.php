@@ -350,6 +350,23 @@ class QuotationCommodityTest extends TestCase
         $this->assertSame('6006.32.90', $hasil->first()->hs_code);
     }
 
+    public function test_kata_utuh_didahulukan_di_atas_cocokan_di_tengah_kata(): void
+    {
+        // Kasus NYATA dari data BTKI production: mencari "kain" memunculkan
+        // "Kokain" (2939.72.00) di urutan teratas karena LIKE %kain% juga
+        // cocok di TENGAH kata. Rekomendasi semacam itu membuat staf berhenti
+        // mempercayai fitur ini.
+        $this->btki('2939.72.00', 'Kokain dan garamnya', 'Cocaine and its salts');
+        $this->btki('6006.32.90', 'Kain rajutan lainnya', 'Other knitted fabrics');
+        $this->btki('5208.11.00', 'Tenunan dari kain kapas', 'Woven cotton fabrics');
+
+        $urut = HsCodeFormatter::saran('kain')->pluck('hs_code')->all();
+
+        $this->assertNotSame('2939.72.00', $urut[0], 'Kokain tidak boleh jadi saran teratas untuk "kain"');
+        $this->assertSame('6006.32.90', $urut[0], 'yang diawali kata "Kain" harus paling atas');
+        $this->assertContains('2939.72.00', $urut, 'tetap boleh muncul, hanya tidak di atas');
+    }
+
     public function test_saran_bisa_dicari_lewat_potongan_kode(): void
     {
         $this->btki('6006.32.90', 'Kain rajutan lainnya', 'Other knitted fabrics');

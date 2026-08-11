@@ -91,9 +91,26 @@ class HsCodeFormatter
         }
 
         // Diketik sebagai nama barang.
+        //
+        // Urutannya penting, bukan sekadar kosmetik: LIKE %kata% mencocokkan
+        // apa saja, termasuk di TENGAH kata lain. Mencari "kain" pada data
+        // BTKI asli memunculkan "Kokain" (2939.72.00) di urutan teratas —
+        // rekomendasi seperti itu membuat staf berhenti mempercayai fitur ini.
+        // Karena itu yang cocok sebagai KATA UTUH didahulukan.
+        $awalKata = "{$kata}%";
+        $tengah   = "% {$kata}%";
+
         return HsCode::query()
             ->where(fn ($q) => $q->where('description_id', 'like', "%{$kata}%")
                                  ->orWhere('description_en', 'like', "%{$kata}%"))
+            ->orderByRaw(
+                'CASE
+                    WHEN description_id LIKE ? OR description_en LIKE ? THEN 0
+                    WHEN description_id LIKE ? OR description_en LIKE ? THEN 1
+                    ELSE 2
+                 END',
+                [$awalKata, $awalKata, $tengah, $tengah],
+            )
             ->orderByRaw('CASE WHEN LENGTH(hs_code) = 10 THEN 0 ELSE 1 END')
             ->orderBy('hs_code')
             ->limit($batas)
