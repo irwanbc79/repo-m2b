@@ -47,8 +47,11 @@ class EmailHubTabsTest extends TestCase
             ->assertOk()
             ->getContent();
 
-        // Menu tunggal menggantikan empat baris lama.
-        $this->assertStringContainsString('📬 Pusat Email', $html);
+        // Menu tunggal menggantikan empat baris lama. Ikon & label kini
+        // terpisah span (dipakai mode sidebar "Sembunyikan otomatis"),
+        // jadi yang dicek label + emoji-nya, bukan lagi satu untai teks.
+        $this->assertStringContainsString('<span class="sb-txt">Pusat Email</span>', $html);
+        $this->assertStringContainsString('<span class="sb-ico">📬</span>', $html);
         $this->assertStringNotContainsString('📧 Email Inbox', $html);
         $this->assertStringNotContainsString('📤 Email Terkirim', $html);
         $this->assertStringNotContainsString('📊 Status Email Keluar', $html);
