@@ -6,6 +6,7 @@ use Livewire\Component;
 use Livewire\WithPagination;
 use Livewire\WithFileUploads;
 use App\Models\Shipment;
+use App\Models\ShipmentEtaRevision;
 use App\Models\Customer;
 use App\Models\Document;
 use Illuminate\Support\Facades\Auth;
@@ -17,6 +18,7 @@ use Illuminate\Support\Facades\Mail;
 use App\Models\ActivityLog;
 use Carbon\Carbon;
 use Illuminate\Support\Facades\Cache;
+use Illuminate\Support\Facades\DB;
 
 class ShipmentManagement extends Component
 {
@@ -44,6 +46,26 @@ class ShipmentManagement extends Component
     public $quickViewShipment = null;
     public $showDeleteConfirm = false;
     public $deleteId = null;
+
+    // ETA Revision Modal
+    public $showEtaRevisionModal = false;
+    public $etaRevisionShipment = null;
+    public $etaRevisedDate = '';
+    public $etaReasonCode = '';
+    public $etaReasonNotes = '';
+    public $etaSourceParty = '';
+    public $etaInformationReceivedAt = '';
+    public $etaCustomerVisible = false;
+    public $etaCustomerMessage = '';
+    public $etaEvidenceCustomerVisible = false;
+    public $etaEvidence;
+
+    // Publication-only editor: data historis revisi tetap immutable.
+    public $showEtaPublicationModal = false;
+    public $etaPublicationRevision = null;
+    public $publicationCustomerVisible = false;
+    public $publicationCustomerMessage = '';
+    public $publicationEvidenceVisible = false;
 
     // Bulk Actions
     public $selectedShipments = [];
@@ -89,12 +111,44 @@ class ShipmentManagement extends Component
 
     protected $queryString = ['search', 'filterStatus', 'filterCustomer', 'filterServiceType', 'filterLaneStatus', 'filterCustomerData', 'sortField', 'sortDirection'];
 
+    public function mount(): void
+    {
+        $etaRevisionId = request()->integer('eta_revision');
+
+        if ($etaRevisionId > 0) {
+            $this->openEtaRevisionModal($etaRevisionId);
+        }
+    }
+
     public function updatingSearch() { $this->resetPage(); }
     public function updatingFilterStatus() { $this->resetPage(); }
     public function updatingFilterCustomer() { $this->resetPage(); }
     public function updatingFilterServiceType() { $this->resetPage(); }
     public function updatingFilterLaneStatus() { $this->resetPage(); }
     public function updatingFilterCustomerData() { $this->resetPage(); }
+    public function updatingFilterShipmentType() { $this->resetPage(); }
+
+    /**
+     * Buang semua penyaring sekaligus.
+     *
+     * Dipakai tombol "Bersihkan" di bilah penyaring. Pencarian ikut dibuang
+     * karena dari sisi pengguna keduanya sama-sama "kenapa datanya tinggal
+     * sedikit" — memisahkannya justru bikin orang mengira masih ada saringan
+     * tersembunyi.
+     */
+    public function resetFilters()
+    {
+        $this->reset([
+            'search',
+            'filterStatus',
+            'filterShipmentType',
+            'filterServiceType',
+            'filterLaneStatus',
+            'filterCustomerData',
+        ]);
+
+        $this->resetPage();
+    }
 
     public function updatedSelectAll($value)
     {
@@ -143,7 +197,10 @@ class ShipmentManagement extends Component
     {
         $searchTerm = '%' . $this->search . '%';
         
-        return Shipment::with(['customer'])
+        return Shipment::with([
+            'customer',
+            'etaRevisions' => fn ($query) => $query->with(['creator', 'sourceDocument']),
+        ])
             
             ->when($this->search, function($q) use ($searchTerm) {
                 $q->where(function($query) use ($searchTerm) {
@@ -273,12 +330,293 @@ class ShipmentManagement extends Component
         return view('livewire.admin.shipment-management', [
             'shipments' => $shipments,
             'customers' => $customers,
-            'stats' => $stats])->layout('layouts.admin');
+            'stats' => $stats,
+            'etaReasonOptions' => ShipmentEtaRevision::reasonOptions(),
+        ])->layout('layouts.admin');
+    }
+
+    public function openEtaRevisionModal(int $shipmentId): void
+    {
+        abort_unless(Auth::user()->hasPermission('shipment.edit'), 403);
+
+        $this->resetValidation();
+        $this->resetEtaRevisionForm();
+        $this->etaRevisionShipment = Shipment::with('etaRevisions.creator')->findOrFail($shipmentId);
+        $this->etaInformationReceivedAt = now()->format('Y-m-d\TH:i');
+        $this->showEtaRevisionModal = true;
+    }
+
+    public function closeEtaRevisionModal(): void
+    {
+        $this->showEtaRevisionModal = false;
+        $this->etaRevisionShipment = null;
+        $this->resetEtaRevisionForm();
+        $this->resetValidation();
+    }
+
+    public function saveEtaRevision(): void
+    {
+        abort_unless(Auth::user()->hasPermission('shipment.edit'), 403);
+
+        $this->validate([
+            'etaRevisedDate' => 'required|date',
+            'etaReasonCode' => 'required|in:' . implode(',', array_keys(ShipmentEtaRevision::reasonOptions())),
+            'etaReasonNotes' => 'nullable|string|max:1000',
+            'etaSourceParty' => 'nullable|string|max:150',
+            'etaInformationReceivedAt' => 'required|date',
+            'etaCustomerVisible' => 'boolean',
+            'etaCustomerMessage' => 'nullable|required_if:etaCustomerVisible,true|string|max:1000',
+            'etaEvidenceCustomerVisible' => 'boolean',
+            'etaEvidence' => 'nullable|file|mimes:pdf,jpg,jpeg,png,webp|max:5120',
+        ]);
+
+        $shipment = Shipment::findOrFail($this->etaRevisionShipment->id);
+        $previousEta = $shipment->estimated_arrival?->copy()->startOfDay();
+        $revisedEta = Carbon::parse($this->etaRevisedDate)->startOfDay();
+        $changeDays = $previousEta
+            ? (int) $previousEta->diffInDays($revisedEta, false)
+            : 0;
+
+        if ($previousEta && $previousEta->equalTo($revisedEta)) {
+            $this->addError('etaRevisedDate', 'ETA terbaru harus berbeda dari ETA saat ini.');
+            return;
+        }
+
+        $storedPath = null;
+
+        try {
+            if ($this->etaEvidence) {
+                $storedPath = $this->etaEvidence->store("documents/eta_revisions/{$shipment->id}", 'public');
+            }
+
+            DB::transaction(function () use ($shipment, $previousEta, $revisedEta, $changeDays, $storedPath) {
+                $document = null;
+
+                if ($storedPath) {
+                    $document = Document::create([
+                        'shipment_id' => $shipment->id,
+                        'document_type' => 'other',
+                        'filename' => basename($storedPath),
+                        'file_path' => $storedPath,
+                        'description' => 'Bukti revisi ETA: ' . ShipmentEtaRevision::reasonOptions()[$this->etaReasonCode],
+                        'is_internal' => !$this->etaEvidenceCustomerVisible,
+                        'is_public' => $this->etaEvidenceCustomerVisible,
+                        'uploaded_by' => Auth::id(),
+                        'file_size' => $this->etaEvidence->getSize(),
+                        'mime_type' => $this->etaEvidence->getMimeType(),
+                        'uploaded_at' => now(),
+                    ]);
+                }
+
+                ShipmentEtaRevision::create([
+                    'shipment_id' => $shipment->id,
+                    'previous_eta' => $previousEta,
+                    'revised_eta' => $revisedEta,
+                    'change_days' => $changeDays,
+                    'reason_code' => $this->etaReasonCode,
+                    'reason_notes' => $this->etaReasonNotes ?: null,
+                    'source_party' => $this->etaSourceParty ?: null,
+                    'information_received_at' => Carbon::parse($this->etaInformationReceivedAt),
+                    'source_document_id' => $document?->id,
+                    'customer_visible' => $this->etaCustomerVisible,
+                    'customer_message' => $this->etaCustomerVisible ? $this->etaCustomerMessage : null,
+                    'evidence_customer_visible' => $this->etaEvidenceCustomerVisible,
+                    'published_at' => $this->etaCustomerVisible ? now() : null,
+                    'created_by' => Auth::id(),
+                ]);
+
+                $shipment->update(['estimated_arrival' => $revisedEta]);
+            });
+
+            try {
+                ActivityLog::record(
+                    'Shipment',
+                    'REVISI ETA',
+                    $shipment->awb_number,
+                    sprintf(
+                        'ETA %s → %s (%+d hari): %s',
+                        $previousEta?->format('d M Y') ?? 'belum diisi',
+                        $revisedEta->format('d M Y'),
+                        $changeDays,
+                        ShipmentEtaRevision::reasonOptions()[$this->etaReasonCode]
+                    ),
+                    ['estimated_arrival' => $previousEta?->toDateString()],
+                    ['estimated_arrival' => $revisedEta->toDateString()]
+                );
+            } catch (\Throwable $auditError) {
+                report($auditError);
+            }
+        } catch (\Throwable $e) {
+            if ($storedPath) {
+                Storage::disk('public')->delete($storedPath);
+            }
+
+            if (app()->runningUnitTests()) {
+                throw $e;
+            }
+
+            report($e);
+            session()->flash('error', 'Revisi ETA gagal disimpan. Silakan coba kembali.');
+            return;
+        }
+
+        $this->closeEtaRevisionModal();
+        session()->flash('message', 'Revisi ETA berhasil disimpan beserta riwayatnya.');
+    }
+
+    private function resetEtaRevisionForm(): void
+    {
+        $this->reset([
+            'etaRevisedDate',
+            'etaReasonCode',
+            'etaReasonNotes',
+            'etaSourceParty',
+            'etaInformationReceivedAt',
+            'etaCustomerVisible',
+            'etaCustomerMessage',
+            'etaEvidenceCustomerVisible',
+            'etaEvidence',
+        ]);
+    }
+
+    public function openEtaPublicationModal(int $revisionId): void
+    {
+        abort_unless(Auth::user()->hasPermission('shipment.edit'), 403);
+
+        $revision = ShipmentEtaRevision::with(['shipment.customer', 'sourceDocument'])
+            ->findOrFail($revisionId);
+
+        $this->resetValidation();
+        $this->etaPublicationRevision = $revision;
+        $this->publicationCustomerVisible = (bool) $revision->customer_visible;
+        $this->publicationCustomerMessage = (string) ($revision->customer_message ?? '');
+        $this->publicationEvidenceVisible = (bool) $revision->evidence_customer_visible;
+        if ($this->publicationCustomerMessage === '') {
+            $this->publicationCustomerMessage = $this->buildEtaCustomerMessage($revision);
+        }
+        $this->showEtaPublicationModal = true;
+    }
+
+    public function applyEtaPublicationTemplate(): void
+    {
+        abort_unless(Auth::user()->hasPermission('shipment.edit'), 403);
+
+        $revision = ShipmentEtaRevision::with('shipment')->findOrFail($this->etaPublicationRevision->id);
+        $this->publicationCustomerMessage = $this->buildEtaCustomerMessage($revision);
+        $this->resetValidation('publicationCustomerMessage');
+    }
+
+    public function resetEtaPublicationMessage(): void
+    {
+        $this->publicationCustomerMessage = '';
+        $this->resetValidation('publicationCustomerMessage');
+    }
+
+    private function buildEtaCustomerMessage(ShipmentEtaRevision $revision): string
+    {
+        $reasons = [
+            'carrier_schedule' => 'terdapat perubahan jadwal operasional dari shipping line atau maskapai',
+            'rollover' => 'terdapat penyesuaian jadwal pengangkutan atau vessel rollover',
+            'port_congestion' => 'terjadi kepadatan operasional di pelabuhan atau bandara',
+            'weather' => 'terdapat kondisi cuaca yang memengaruhi jadwal perjalanan',
+            'customs' => 'proses penyelesaian kepabeanan masih berlangsung',
+            'transshipment' => 'terdapat penyesuaian jadwal pada proses transshipment',
+            'documents' => 'proses kelengkapan dan verifikasi dokumen masih berlangsung',
+            'vendor' => 'terdapat penyesuaian jadwal operasional vendor atau trucking',
+            'customer_request' => 'terdapat penyesuaian sesuai permintaan customer',
+            'other' => 'terdapat penyesuaian jadwal operasional',
+        ];
+
+        $reference = $revision->shipment?->awb_number ?? 'shipment ini';
+        $previousEta = $revision->previous_eta?->format('d M Y') ?? 'estimasi sebelumnya';
+        $revisedEta = $revision->revised_eta->format('d M Y');
+        $reason = $reasons[$revision->reason_code] ?? $reasons['other'];
+        $source = $revision->source_party
+            ? ' Informasi ini kami terima dari ' . $revision->source_party . '.'
+            : '';
+
+        return "Estimasi tiba shipment {$reference} diperbarui dari {$previousEta} menjadi {$revisedEta} karena {$reason}.{$source} Tim M2B terus memantau pengiriman dan akan menyampaikan pembaruan berikutnya apabila tersedia.";
+    }
+
+    public function closeEtaPublicationModal(): void
+    {
+        $this->showEtaPublicationModal = false;
+        $this->etaPublicationRevision = null;
+        $this->reset([
+            'publicationCustomerVisible',
+            'publicationCustomerMessage',
+            'publicationEvidenceVisible',
+        ]);
+        $this->resetValidation();
+    }
+
+    public function saveEtaPublication(): void
+    {
+        abort_unless(Auth::user()->hasPermission('shipment.edit'), 403);
+
+        $this->validate([
+            'publicationCustomerVisible' => 'boolean',
+            'publicationCustomerMessage' => 'nullable|required_if:publicationCustomerVisible,true|string|max:1000',
+            'publicationEvidenceVisible' => 'boolean',
+        ]);
+
+        if ($this->publicationEvidenceVisible && !$this->publicationCustomerVisible) {
+            $this->addError('publicationEvidenceVisible', 'Publikasikan revisi terlebih dahulu sebelum membagikan bukti.');
+            return;
+        }
+
+        $revision = ShipmentEtaRevision::with(['shipment', 'sourceDocument'])
+            ->findOrFail($this->etaPublicationRevision->id);
+        $wasVisible = (bool) $revision->customer_visible;
+
+        DB::transaction(function () use ($revision, $wasVisible) {
+            $revision->update([
+                'customer_visible' => $this->publicationCustomerVisible,
+                'customer_message' => $this->publicationCustomerVisible ? $this->publicationCustomerMessage : null,
+                'evidence_customer_visible' => $this->publicationEvidenceVisible,
+                'published_at' => $this->publicationCustomerVisible
+                    ? ($wasVisible && $revision->published_at ? $revision->published_at : now())
+                    : null,
+                'viewed_at' => $this->publicationCustomerVisible ? $revision->viewed_at : null,
+            ]);
+
+            if ($revision->sourceDocument) {
+                $revision->sourceDocument->update([
+                    'is_public' => $this->publicationEvidenceVisible,
+                    'is_internal' => !$this->publicationEvidenceVisible,
+                ]);
+            }
+        });
+
+        try {
+            ActivityLog::record(
+                'Shipment',
+                $this->publicationCustomerVisible ? 'PUBLIKASIKAN REVISI ETA' : 'TARIK PUBLIKASI REVISI ETA',
+                $revision->shipment->awb_number,
+                sprintf(
+                    'Revisi ETA %s → %s; bukti customer: %s',
+                    $revision->previous_eta?->format('d M Y') ?? 'belum diisi',
+                    $revision->revised_eta->format('d M Y'),
+                    $this->publicationEvidenceVisible ? 'ya' : 'tidak'
+                )
+            );
+        } catch (\Throwable $auditError) {
+            report($auditError);
+        }
+
+        $this->closeEtaPublicationModal();
+        session()->flash('message', 'Pengaturan publikasi revisi ETA berhasil diperbarui.');
     }
 
     public function quickView($id)
     {
-        $this->quickViewShipment = Shipment::with(['customer', 'invoices'])
+        $this->quickViewShipment = Shipment::with([
+            'customer',
+            'documents',
+            'documentRequirements',
+            'etaRevisions.creator',
+            'etaRevisions.sourceDocument',
+        ])
             ->find($id);
         $this->showQuickView = true;
     }
@@ -287,6 +625,12 @@ class ShipmentManagement extends Component
     {
         $this->showQuickView = false;
         $this->quickViewShipment = null;
+    }
+
+    public function reviseEtaFromQuickView(int $shipmentId): void
+    {
+        $this->closeQuickView();
+        $this->openEtaRevisionModal($shipmentId);
     }
 
     public function quickStatusUpdate($id, $status)

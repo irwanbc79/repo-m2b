@@ -102,8 +102,85 @@
                     @endif
                 </div>
 
-                {{-- Filters + Actions --}}
-                <div class="flex flex-wrap items-center gap-3">
+                {{-- Filters + Actions
+
+                     Enam penyaring memakan hampir 200px tinggi padahal jarang
+                     diubah dalam satu sesi kerja. Sekarang dilipat, dan saat
+                     terlipat penyaring yang sedang aktif tetap tampil sebagai
+                     chip — supaya tidak ada yang bingung "kenapa datanya cuma
+                     sedikit" gara-gara saringan tersembunyi. --}}
+                @php
+                    $filterAktif = collect([
+                        'filterStatus' => ['Status', ['pending' => 'Pending', 'in_progress' => 'In Progress', 'in_transit' => 'In Transit', 'completed' => 'Completed', 'cancel' => 'Cancelled'][$filterStatus] ?? $filterStatus],
+                        'filterShipmentType' => ['Moda', ['air' => 'Air', 'sea' => 'Sea', 'land' => 'Land'][$filterShipmentType] ?? $filterShipmentType],
+                        'filterServiceType' => ['Layanan', ['import' => 'Import', 'export' => 'Export', 'domestic' => 'Domestic'][$filterServiceType] ?? $filterServiceType],
+                        'filterLaneStatus' => ['Jalur', ['green' => 'Jalur Hijau', 'red' => 'Jalur Merah'][$filterLaneStatus] ?? $filterLaneStatus],
+                        'filterCustomerData' => ['Data Customer', 'Perlu Dilengkapi'],
+                    ])->filter(fn ($label, $prop) => filled($this->{$prop}));
+                @endphp
+
+                <div x-data="{ open: {{ $filterAktif->isNotEmpty() ? 'true' : 'false' }} }">
+                    <div class="flex flex-wrap items-center gap-3">
+                        <button type="button" @click="open = !open"
+                            class="flex items-center gap-2 px-4 py-2.5 border border-gray-200 rounded-xl text-sm font-semibold text-gray-700 hover:bg-gray-50"
+                            :aria-expanded="open ? 'true' : 'false'">
+                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 4a1 1 0 011-1h16a1 1 0 011 1v2a1 1 0 01-.293.707L15 12.414V19a1 1 0 01-1.447.894l-4-2A1 1 0 019 17v-4.586L3.293 6.707A1 1 0 013 6V4z"/></svg>
+                            Filter
+                            @if($filterAktif->isNotEmpty())
+                            <span class="min-w-5 h-5 px-1.5 rounded-full bg-blue-600 text-white text-[10px] font-black flex items-center justify-center">{{ $filterAktif->count() }}</span>
+                            @endif
+                            <svg class="w-3.5 h-3.5 text-gray-400 transition-transform" :class="open && 'rotate-180'" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/></svg>
+                        </button>
+
+                        {{-- Chip penyaring aktif: hanya perlu saat panelnya terlipat. --}}
+                        <div x-show="!open" class="flex flex-wrap items-center gap-2">
+                            @foreach($filterAktif as $prop => $info)
+                            <span class="inline-flex items-center gap-1.5 pl-2.5 pr-1.5 py-1 rounded-full bg-blue-50 border border-blue-200 text-xs font-semibold text-blue-800">
+                                <span class="text-blue-500 font-medium">{{ $info[0] }}:</span> {{ $info[1] }}
+                                <button type="button" wire:click="$set('{{ $prop }}', '')" class="text-blue-400 hover:text-blue-700" aria-label="Hapus penyaring {{ $info[0] }}">
+                                    <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
+                                </button>
+                            </span>
+                            @endforeach
+                        </div>
+
+                        @if($filterAktif->isNotEmpty() || filled($search))
+                        <button type="button" wire:click="resetFilters" class="text-xs font-semibold text-gray-500 hover:text-red-600 underline underline-offset-2">
+                            Bersihkan
+                        </button>
+                        @endif
+
+                        @if(count($selectedShipments ?? []) > 0)
+                        <div class="flex items-center gap-2 px-4 py-2 bg-blue-50 rounded-xl">
+                            <span class="text-sm text-blue-700 font-medium">{{ count($selectedShipments) }} dipilih</span>
+                            <select wire:model="bulkStatus" class="text-sm border-0 bg-transparent focus:ring-0 text-blue-700">
+                                <option value="">Ubah Status</option>
+                                <option value="pending">Pending</option>
+                                <option value="in_progress">In Progress</option>
+                                <option value="in_transit">In Transit</option>
+                                <option value="completed">Completed</option>
+                            </select>
+                            <button wire:click="bulkUpdateStatus" class="text-xs bg-blue-600 text-white px-3 py-1 rounded-lg hover:bg-blue-700">Apply</button>
+                        </div>
+                        @endif
+
+                        {{-- Tombol aksi (rata kanan) --}}
+                        <div class="flex items-center gap-3 ml-auto">
+                            <button wire:click="exportExcel" class="flex items-center gap-2 px-4 py-2.5 bg-green-600 text-white rounded-xl hover:bg-green-700 text-sm font-semibold">
+                                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/></svg>
+                                Export
+                            </button>
+
+                            @if(auth()->user()->hasPermission('shipment.create'))
+                            <button wire:click="create" class="flex items-center gap-2 px-4 py-2.5 bg-blue-600 text-white rounded-xl hover:bg-blue-700 text-sm font-semibold">
+                                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/></svg>
+                                Tambah Shipment
+                            </button>
+                            @endif
+                        </div>
+                    </div>
+
+                    <div x-show="open" x-cloak x-collapse class="flex flex-wrap items-center gap-3 pt-3">
                     <select wire:model.live="filterStatus" class="px-4 py-2.5 border border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500 text-sm">
                         <option value="">Semua Status</option>
                         <option value="pending">Pending</option>
@@ -139,39 +216,11 @@
                         <option value="attention">⚠️ Customer Perlu Dilengkapi</option>
                     </select>
 
-                    <select wire:model.live="perPage" class="px-4 py-2.5 border border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500 text-sm">
-                        <option value="10">10</option>
-                        <option value="25">25</option>
-                        <option value="50">50</option>
+                    <select wire:model.live="perPage" class="px-4 py-2.5 border border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500 text-sm" aria-label="Jumlah baris per halaman">
+                        <option value="10">10 baris</option>
+                        <option value="25">25 baris</option>
+                        <option value="50">50 baris</option>
                     </select>
-
-                    @if(count($selectedShipments ?? []) > 0)
-                    <div class="flex items-center gap-2 px-4 py-2 bg-blue-50 rounded-xl">
-                        <span class="text-sm text-blue-700 font-medium">{{ count($selectedShipments) }} dipilih</span>
-                        <select wire:model="bulkStatus" class="text-sm border-0 bg-transparent focus:ring-0 text-blue-700">
-                            <option value="">Ubah Status</option>
-                            <option value="pending">Pending</option>
-                            <option value="in_progress">In Progress</option>
-                            <option value="in_transit">In Transit</option>
-                            <option value="completed">Completed</option>
-                        </select>
-                        <button wire:click="bulkUpdateStatus" class="text-xs bg-blue-600 text-white px-3 py-1 rounded-lg hover:bg-blue-700">Apply</button>
-                    </div>
-                    @endif
-
-                    {{-- Tombol aksi (rata kanan) --}}
-                    <div class="flex items-center gap-3 ml-auto">
-                        <button wire:click="exportExcel" class="flex items-center gap-2 px-4 py-2.5 bg-green-600 text-white rounded-xl hover:bg-green-700 text-sm font-semibold">
-                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/></svg>
-                            Export
-                        </button>
-
-                        @if(auth()->user()->hasPermission('shipment.create'))
-                        <button wire:click="create" class="flex items-center gap-2 px-4 py-2.5 bg-blue-600 text-white rounded-xl hover:bg-blue-700 text-sm font-semibold">
-                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/></svg>
-                            Tambah Shipment
-                        </button>
-                        @endif
                     </div>
                 </div>
             </div>
@@ -192,6 +241,7 @@
                         <th class="px-4 py-3 text-left text-xs font-semibold text-gray-600 uppercase">Route</th>
                         <th class="px-4 py-3 text-left text-xs font-semibold text-gray-600 uppercase">Cargo</th>
                         <th class="px-4 py-3 text-left text-xs font-semibold text-gray-600 uppercase">HS Code / Description</th>
+                        <th class="px-4 py-3 text-left text-xs font-semibold text-gray-600 uppercase">Est. Tiba / Berangkat</th>
                         <th class="px-4 py-3 text-left text-xs font-semibold text-gray-600 uppercase">Docs</th>
                         <th class="px-4 py-3 text-left text-xs font-semibold text-gray-600 uppercase">Status</th>
                         <th class="px-4 py-3 text-center text-xs font-semibold text-gray-600 uppercase">Aksi</th>
@@ -204,8 +254,30 @@
                             <input type="checkbox" wire:model.live="selectedShipments" value="{{ $shipment->id }}" class="rounded border-gray-300 text-blue-600 focus:ring-blue-500">
                         </td>
                         <td class="px-4 py-3">
-                            <p class="font-semibold text-gray-800">{{ $shipment->awb_number ?? 'N/A' }}</p>
-                            <p class="text-xs text-gray-400">{{ $shipment->created_at->format('d M Y') }}</p>
+                            @php
+                                // Awalan nomor (IMP/EXP/DOM) dipisah jadi badge berwarna:
+                                // jenis pekerjaan langsung kebaca tanpa mengeja nomornya,
+                                // dan sisa nomor tidak lagi pecah tiga baris.
+                                $refPrefix = null;
+                                $refRest = $shipment->awb_number ?: 'N/A';
+                                if ($shipment->awb_number && str_contains($shipment->awb_number, '-')) {
+                                    [$refPrefix, $refRest] = explode('-', $shipment->awb_number, 2);
+                                    $refPrefix = strtoupper($refPrefix);
+                                }
+                                $refStyle = match ($refPrefix) {
+                                    'IMP' => 'bg-blue-50 text-blue-700 border-blue-200',
+                                    'EXP' => 'bg-emerald-50 text-emerald-700 border-emerald-200',
+                                    'DOM' => 'bg-violet-50 text-violet-700 border-violet-200',
+                                    default => 'bg-slate-100 text-slate-600 border-slate-200',
+                                };
+                            @endphp
+                            <div class="flex items-baseline gap-1.5">
+                                @if($refPrefix)
+                                <span class="shrink-0 px-1.5 py-0.5 text-[10px] font-black rounded border tracking-wide {{ $refStyle }}">{{ $refPrefix }}</span>
+                                @endif
+                                <p class="font-semibold text-gray-800 whitespace-nowrap">{{ $refRest }}</p>
+                            </div>
+                            <p class="text-xs text-gray-400 mt-1">{{ $shipment->created_at->format('d M Y') }}</p>
                         </td>
                         <td class="px-4 py-3">
                             <div class="flex items-center gap-1.5">
@@ -277,6 +349,106 @@
                                 </div>
                             @endif
                         </td>
+                        <td class="px-4 py-3 whitespace-nowrap">
+                            @if($shipment->estimated_arrival)
+                                @php
+                                    $etaBerjalan = !in_array($shipment->status, ['completed', 'cancel']);
+                                    $etaIsLate = $shipment->estimated_arrival->isPast() && $etaBerjalan;
+                                    // Dua hari ke depan = masih bisa dikejar; lewat dari itu
+                                    // sudah jadi keluhan customer. Karena itu diberi warna
+                                    // sendiri, bukan disamakan dengan tanggal yang masih jauh.
+                                    $etaSegera = !$etaIsLate && $etaBerjalan
+                                        && $shipment->estimated_arrival->lte(now()->addDays(2));
+                                    $etaWarna = $etaIsLate ? 'text-red-600' : ($etaSegera ? 'text-amber-600' : 'text-gray-800');
+                                    $etaRevisionCount = $shipment->etaRevisions->count();
+                                    $latestEtaRevision = $shipment->etaRevisions->first();
+
+                                    // Satu kolom dipakai dua arah: ekspor berangkat, sisanya tiba.
+                                    $etaAdalahKeberangkatan = $shipment->service_type === 'export'
+                                        || str_starts_with(strtoupper($shipment->awb_number ?? ''), 'EXP');
+                                @endphp
+                                <div class="flex items-center gap-1.5">
+                                    <span class="shrink-0 px-1.5 py-0.5 rounded border text-[10px] font-black tracking-wide {{ $etaAdalahKeberangkatan ? 'bg-emerald-50 text-emerald-700 border-emerald-200' : 'bg-blue-50 text-blue-700 border-blue-200' }}"
+                                        title="{{ $etaAdalahKeberangkatan ? 'Estimasi tanggal berangkat' : 'Estimasi tanggal tiba' }}">
+                                        {{ $etaAdalahKeberangkatan ? 'ETD' : 'ETA' }}
+                                    </span>
+                                    <p class="text-sm font-semibold {{ $etaWarna }}">
+                                        {{ $shipment->estimated_arrival->format('d M Y') }}
+                                    </p>
+                                    @if($etaRevisionCount > 0)
+                                    <div x-data="{ open: false }" class="relative">
+                                        <button type="button" @click="open = !open" @keydown.escape.window="open = false"
+                                            class="relative inline-flex w-5 h-5 items-center justify-center rounded-full {{ ($latestEtaRevision->change_days ?? 0) > 3 ? 'bg-red-100 text-red-700' : (($latestEtaRevision->change_days ?? 0) > 0 ? 'bg-amber-100 text-amber-700' : 'bg-blue-100 text-blue-700') }}"
+                                            aria-label="Lihat {{ $etaRevisionCount }} riwayat revisi ETA"
+                                            title="{{ $latestEtaRevision ? sprintf(
+                                                '%s → %s (%+d hari) · %s. Klik untuk riwayat lengkap.',
+                                                $latestEtaRevision->previous_eta?->format('d M Y') ?? 'Belum diisi',
+                                                $latestEtaRevision->revised_eta->format('d M Y'),
+                                                $latestEtaRevision->change_days,
+                                                $latestEtaRevision->reason_label
+                                            ) : 'Klik untuk riwayat revisi' }}">
+                                            <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 2m6-2a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+                                            <span class="absolute -top-2 -right-2 min-w-4 h-4 px-1 rounded-full bg-blue-900 text-white text-[9px] font-black flex items-center justify-center">{{ $etaRevisionCount }}</span>
+                                        </button>
+                                        <div x-show="open" x-cloak @click.away="open = false"
+                                            class="absolute z-50 right-0 mt-2 w-80 rounded-xl border border-slate-200 bg-white p-4 shadow-2xl whitespace-normal">
+                                            <div class="flex items-center justify-between mb-3">
+                                                <p class="text-xs font-black text-slate-800">Riwayat Revisi ETA</p>
+                                                <span class="text-[10px] font-bold text-blue-700 bg-blue-50 px-2 py-0.5 rounded-full">{{ $etaRevisionCount }} revisi</span>
+                                            </div>
+                                            @foreach($shipment->etaRevisions->take(3) as $revision)
+                                            <div class="border-l-2 {{ $revision->change_days > 0 ? 'border-amber-400' : 'border-blue-400' }} pl-3 py-1.5 mb-2 last:mb-0">
+                                                <p class="text-xs font-bold text-slate-800">
+                                                    {{ $revision->previous_eta?->format('d M Y') ?? 'Belum diisi' }}
+                                                    <span class="text-slate-400 mx-1">→</span>
+                                                    {{ $revision->revised_eta->format('d M Y') }}
+                                                    <span class="{{ $revision->change_days > 0 ? 'text-amber-700' : 'text-blue-700' }}">
+                                                        ({{ $revision->change_days > 0 ? '+' : '' }}{{ $revision->change_days }} hari)
+                                                    </span>
+                                                </p>
+                                                <p class="text-[11px] text-slate-600 mt-0.5">{{ $revision->reason_label }}</p>
+                                                <p class="text-[10px] text-slate-400 mt-0.5">
+                                                    {{ $revision->source_party ?: 'Sumber tidak dicatat' }} ·
+                                                    {{ $revision->creator?->name ?: 'Sistem' }} ·
+                                                    {{ $revision->information_received_at->format('d M Y H:i') }}
+                                                </p>
+                                                @if($revision->reason_notes)
+                                                <p class="text-[10px] text-slate-500 mt-1 italic">{{ \Illuminate\Support\Str::limit($revision->reason_notes, 120) }}</p>
+                                                @endif
+                                                <div class="flex items-center justify-between gap-2 mt-2">
+                                                    <span class="text-[9px] font-bold px-2 py-0.5 rounded-full {{ $revision->customer_visible ? 'bg-emerald-100 text-emerald-700' : 'bg-slate-100 text-slate-500' }}">
+                                                        {{ $revision->customer_visible ? ($revision->viewed_at ? 'Dilihat customer' : 'Tampil di customer') : 'Internal M2B' }}
+                                                    </span>
+                                                    @if(auth()->user()->hasPermission('shipment.edit'))
+                                                    <button type="button" wire:click="openEtaPublicationModal({{ $revision->id }})"
+                                                        class="text-[10px] font-bold text-blue-700 hover:text-blue-900 hover:underline">
+                                                        Atur Publikasi
+                                                    </button>
+                                                    @endif
+                                                </div>
+                                            </div>
+                                            @endforeach
+                                            @if($etaRevisionCount > 3)
+                                            <p class="text-[10px] text-slate-400 mt-2">Menampilkan 3 revisi terbaru.</p>
+                                            @endif
+                                        </div>
+                                    </div>
+                                    @endif
+                                    @if(auth()->user()->hasPermission('shipment.edit'))
+                                    <button wire:click="openEtaRevisionModal({{ $shipment->id }})"
+                                        class="text-[10px] font-bold text-blue-700 hover:text-blue-900 hover:underline"
+                                        title="Catat perubahan estimasi tanggal tiba">
+                                        Revisi
+                                    </button>
+                                    @endif
+                                </div>
+                                <p class="text-[11px] {{ $etaIsLate ? 'text-red-500 font-medium' : ($etaSegera ? 'text-amber-600 font-medium' : 'text-gray-400') }}">
+                                    {{ $etaIsLate ? 'Lewat estimasi' : $shipment->estimated_arrival->diffForHumans() }}
+                                </p>
+                            @else
+                                <span class="text-sm text-gray-400">—</span>
+                            @endif
+                        </td>
                         <td class="px-4 py-3">
                             @php $docCount = $shipment->documents->count() ?? 0; @endphp
                             <span class="inline-flex items-center gap-1 px-2 py-1 text-xs font-medium rounded-lg {{ $docCount > 0 ? 'bg-green-100 text-green-700' : 'bg-gray-100 text-gray-500' }}">
@@ -286,9 +458,22 @@
                         </td>
                         <td class="px-4 py-3">
                             @php
-                                $statusColors = ['pending' => 'bg-yellow-100 text-yellow-700', 'in_progress' => 'bg-blue-100 text-blue-700', 'in_transit' => 'bg-purple-100 text-purple-700', 'completed' => 'bg-green-100 text-green-700', 'cancel' => 'bg-red-100 text-red-700'];
+                                $statusColors = ['pending' => 'bg-yellow-100 text-yellow-700', 'document_collection' => 'bg-indigo-100 text-indigo-700', 'in_progress' => 'bg-blue-100 text-blue-700', 'in_transit' => 'bg-purple-100 text-purple-700', 'completed' => 'bg-green-100 text-green-700', 'cancel' => 'bg-red-100 text-red-700'];
                             @endphp
-                            <span class="px-3 py-1 text-xs font-semibold rounded-full {{ $statusColors[$shipment->status] ?? 'bg-gray-100 text-gray-700' }}">{{ ucfirst(str_replace('_', ' ', $shipment->status ?? 'N/A')) }}</span>
+                            @php
+                                // Label pendek supaya chip tidak pecah dua baris dan
+                                // menaikkan tinggi seluruh baris tabel.
+                                $statusLabels = [
+                                    'pending' => 'Pending',
+                                    'document_collection' => 'Dokumen',
+                                    'in_progress' => 'In Progress',
+                                    'in_transit' => 'In Transit',
+                                    'completed' => 'Selesai',
+                                    'cancel' => 'Batal',
+                                ];
+                            @endphp
+                            <span class="inline-block whitespace-nowrap px-3 py-1 text-xs font-semibold rounded-full {{ $statusColors[$shipment->status] ?? 'bg-gray-100 text-gray-700' }}"
+                                title="{{ ucfirst(str_replace('_', ' ', $shipment->status ?? 'N/A')) }}">{{ $statusLabels[$shipment->status] ?? ucfirst(str_replace('_', ' ', $shipment->status ?? 'N/A')) }}</span>
                             @if($shipment->status !== 'pending' && $shipment->lane_status)
                             <div class="flex items-center gap-1 px-2 py-0.5 rounded text-[10px] font-bold mt-1 w-fit {{ $shipment->lane_status == 'green' ? 'bg-green-50 text-green-700 border border-green-200' : 'bg-red-50 text-red-700 border border-red-200' }}">
                                 <span>{{ $shipment->lane_status == 'green' ? '🟩' : '🟥' }}</span>
@@ -297,10 +482,15 @@
                             @endif
                         </td>
                         <td class="px-4 py-3">
-                            <div class="flex items-center justify-center gap-1">
-                                <button wire:click="quickView({{ $shipment->id }})" class="p-2 text-gray-500 hover:text-blue-600 hover:bg-blue-50 rounded-lg" title="Quick View">
+                            <div class="relative flex items-center justify-center gap-1.5" x-data="{ menuOpen: false }">
+                                <button wire:click="quickView({{ $shipment->id }})" class="px-2.5 py-1 bg-blue-900 hover:bg-blue-800 text-white text-xs font-bold rounded-lg shadow-sm flex items-center gap-1 transition" title="Quick View">
                                     <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"/></svg>
+                                    <span>Lihat</span>
                                 </button>
+                                <button @click="menuOpen = !menuOpen" type="button" class="p-1.5 text-gray-500 hover:text-gray-800 hover:bg-gray-100 rounded-lg border border-gray-200 transition" title="Menu Aksi Lainnya">
+                                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 5v.01M12 12v.01M12 19v.01M12 6a1 1 0 110-2 1 1 0 010 2zm0 7a1 1 0 110-2 1 1 0 010 2zm0 7a1 1 0 110-2 1 1 0 010 2z"/></svg>
+                                </button>
+                                <div x-show="menuOpen" @click.away="menuOpen = false" x-cloak class="absolute right-0 top-full mt-1 flex items-center gap-1 bg-white rounded-xl shadow-xl border border-gray-100 z-50 p-1.5">
                                 <a href="{{ url('/admin/shipments/' . $shipment->id) }}" class="p-2 text-gray-500 hover:text-indigo-600 hover:bg-indigo-50 rounded-lg" title="Detail">
                                     <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
                                 </a>
@@ -337,11 +527,13 @@
                                     </svg>
                                 </button>
                             @endif
+                                </div>
+                            </div>
                         </td>
                     </tr>
                     @empty
                     <tr>
-                        <td colspan="8" class="px-4 py-12 text-center">
+                        <td colspan="10" class="px-4 py-12 text-center">
                             <svg class="w-12 h-12 text-gray-300 mx-auto mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20 13V6a2 2 0 00-2-2H6a2 2 0 00-2 2v7m16 0v5a2 2 0 01-2 2H6a2 2 0 01-2-2v-5m16 0h-2.586a1 1 0 00-.707.293l-2.414 2.414a1 1 0 01-.707.293h-3.172a1 1 0 01-.707-.293l-2.414-2.414A1 1 0 006.586 13H4"/></svg>
                             <p class="text-gray-500 font-medium">Tidak ada data shipment</p>
                         </td>
@@ -362,80 +554,113 @@
 
     {{-- Quick View Modal --}}
     @if($showQuickView && $quickViewShipment)
-    <div class="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4" wire:click.self="$set('showQuickView', false)">
-        <div class="bg-white rounded-2xl shadow-2xl max-w-2xl w-full max-h-[90vh] overflow-y-auto">
-            <div class="p-6 border-b border-gray-100 flex items-center justify-between sticky top-0 bg-white">
+    @php
+        $quickRevisions = $quickViewShipment->etaRevisions;
+        $quickLatestRevision = $quickRevisions->first();
+        $quickRequirements = $quickViewShipment->documentRequirements;
+        $quickMandatory = $quickRequirements->where('is_mandatory', true)->where('status', '!=', 'waived');
+        $quickFulfilled = $quickMandatory->where('status', 'fulfilled')->count();
+        $quickRequiredTotal = $quickMandatory->count();
+        $quickReadiness = $quickRequiredTotal > 0 ? (int) round(($quickFulfilled / $quickRequiredTotal) * 100) : 100;
+        $quickNextDocument = $quickMandatory->first(fn ($item) => $item->status !== 'fulfilled');
+        $quickEtaLate = $quickViewShipment->estimated_arrival
+            && $quickViewShipment->estimated_arrival->isPast()
+            && !in_array($quickViewShipment->status, ['completed', 'cancel']);
+        $quickStatusLabels = [
+            'pending' => 'Menunggu',
+            'in_progress' => 'Diproses',
+            'in_transit' => 'Dalam perjalanan',
+            'completed' => 'Selesai',
+            'cancel' => 'Dibatalkan',
+        ];
+    @endphp
+    <div class="fixed inset-0 bg-slate-950/60 backdrop-blur-sm z-50 flex items-center justify-center p-4" wire:click.self="closeQuickView">
+        <div class="bg-white rounded-2xl shadow-2xl max-w-3xl w-full max-h-[92vh] overflow-y-auto ring-1 ring-white/20">
+            <div class="px-6 py-5 border-b border-slate-200 flex items-center justify-between sticky top-0 bg-white/95 backdrop-blur z-10">
                 <div>
-                    <h3 class="text-xl font-bold text-gray-800">Quick View Shipment</h3>
-                    <p class="text-sm text-gray-500">{{ $quickViewShipment->awb_number ?? 'N/A' }}</p>
+                    <p class="text-[10px] font-black tracking-[0.2em] text-blue-700 uppercase">Ringkasan operasional</p>
+                    <h3 class="text-xl font-black text-slate-900 mt-0.5">{{ $quickViewShipment->awb_number ?? 'N/A' }}</h3>
+                    <p class="text-xs text-slate-500">{{ $quickViewShipment->customer->company_name ?? 'Customer belum ditentukan' }}</p>
                 </div>
-                <button wire:click="$set('showQuickView', false)" class="p-2 hover:bg-gray-100 rounded-lg">
+                <button wire:click="closeQuickView" class="p-2 text-slate-400 hover:text-slate-700 hover:bg-slate-100 rounded-lg" aria-label="Tutup ringkasan">
                     <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
                 </button>
             </div>
-            <div class="p-6 space-y-6">
-                {{-- Status Badge --}}
-                <div class="flex items-center gap-3">
-                    @php
-                        $statusColors = ['pending' => 'bg-yellow-100 text-yellow-700 border-yellow-200', 'in_progress' => 'bg-blue-100 text-blue-700 border-blue-200', 'in_transit' => 'bg-purple-100 text-purple-700 border-purple-200', 'completed' => 'bg-green-100 text-green-700 border-green-200', 'cancel' => 'bg-red-100 text-red-700 border-red-200'];
-                    @endphp
-                    <span class="px-4 py-2 text-sm font-semibold rounded-full border {{ $statusColors[$quickViewShipment->status] ?? 'bg-gray-100 text-gray-700' }}">{{ ucfirst(str_replace('_', ' ', $quickViewShipment->status ?? 'N/A')) }}</span>
-                    <span class="px-3 py-1 text-xs font-semibold rounded-lg {{ $quickViewShipment->shipment_type === 'air' ? 'bg-sky-100 text-sky-700' : ($quickViewShipment->shipment_type === 'sea' ? 'bg-blue-100 text-blue-700' : 'bg-amber-100 text-amber-700') }}">{{ strtoupper($quickViewShipment->shipment_type ?? 'N/A') }}</span>
-                </div>
-
-                {{-- Info Grid --}}
-                <div class="grid grid-cols-2 gap-4">
-                    <div class="bg-gray-50 rounded-xl p-4">
-                        <p class="text-xs text-gray-500 mb-1">Customer</p>
-                        <p class="font-semibold text-gray-800">{{ $quickViewShipment->customer->company_name ?? 'N/A' }}</p>
-                        <p class="text-sm text-gray-500">{{ $quickViewShipment->customer->customer_code ?? '' }}</p>
-                    </div>
-                    <div class="bg-gray-50 rounded-xl p-4">
-                        <p class="text-xs text-gray-500 mb-1">No. Shipment</p>
-                        <p class="font-semibold text-gray-800">{{ $quickViewShipment->awb_number ?? '-' }}</p>
-                    </div>
-                    <div class="bg-gray-50 rounded-xl p-4">
-                        <p class="text-xs text-gray-500 mb-1">Origin</p>
-                        <p class="font-semibold text-gray-800">{{ $quickViewShipment->origin ?? '-' }}</p>
-                    </div>
-                    <div class="bg-gray-50 rounded-xl p-4">
-                        <p class="text-xs text-gray-500 mb-1">Destination</p>
-                        <p class="font-semibold text-gray-800">{{ $quickViewShipment->destination ?? '-' }}</p>
-                    </div>
-                </div>
-
-                {{-- Cargo Info --}}
-                <div class="bg-gradient-to-r from-blue-50 to-indigo-50 rounded-xl p-4">
-                    <p class="text-xs text-gray-500 mb-3">Cargo Information</p>
-                    <div class="grid grid-cols-3 gap-4 text-center">
-                        <div>
-                            <p class="text-2xl font-bold text-blue-600">{{ number_format($quickViewShipment->weight ?? 0, 0) }}</p>
-                            <p class="text-xs text-gray-500">Kg</p>
+            <div class="p-6 space-y-5">
+                {{-- Control strip: satu pandangan untuk ETA, dokumen, dan tindakan berikutnya --}}
+                <div class="grid grid-cols-1 md:grid-cols-3 overflow-hidden rounded-xl border border-slate-200 bg-slate-950 text-white">
+                    <div class="p-4 border-b md:border-b-0 md:border-r border-white/10">
+                        <p class="text-[10px] font-bold uppercase tracking-wider text-slate-400">ETA terkini</p>
+                        <div class="flex items-baseline gap-2 mt-1">
+                            <p class="text-xl font-black {{ $quickEtaLate ? 'text-red-300' : 'text-white' }}">{{ $quickViewShipment->estimated_arrival?->format('d M Y') ?? 'Belum diisi' }}</p>
+                            @if($quickRevisions->count())
+                                <span class="text-[10px] font-black px-2 py-0.5 rounded-full bg-amber-400 text-slate-950">Revisi {{ $quickRevisions->count() }}×</span>
+                            @endif
                         </div>
-                        <div>
-                            <p class="text-2xl font-bold text-indigo-600">{{ number_format($quickViewShipment->volume ?? 0, 3) }}</p>
-                            <p class="text-xs text-gray-500">CBM</p>
+                        <p class="text-[11px] mt-1 {{ $quickEtaLate ? 'text-red-300' : 'text-slate-400' }}">
+                            {{ $quickEtaLate ? 'Melewati estimasi' : ($quickLatestRevision ? (($quickLatestRevision->change_days > 0 ? '+' : '').$quickLatestRevision->change_days.' hari dari ETA sebelumnya') : 'Belum pernah direvisi') }}
+                        </p>
+                    </div>
+                    <div class="p-4 border-b md:border-b-0 md:border-r border-white/10">
+                        <p class="text-[10px] font-bold uppercase tracking-wider text-slate-400">Kesiapan dokumen</p>
+                        <div class="flex items-baseline gap-2 mt-1">
+                            <p class="text-xl font-black">{{ $quickFulfilled }}/{{ $quickRequiredTotal }}</p>
+                            <span class="text-xs font-bold text-emerald-300">{{ $quickReadiness }}%</span>
                         </div>
-                        <div>
-                            <p class="text-2xl font-bold text-purple-600">{{ $quickViewShipment->pieces ?? 0 }}</p>
-                            <p class="text-xs text-gray-500">Pieces</p>
-                        </div>
+                        <div class="h-1.5 bg-white/10 rounded-full mt-2 overflow-hidden"><div class="h-full bg-emerald-400 rounded-full" style="width: {{ $quickReadiness }}%"></div></div>
+                    </div>
+                    <div class="p-4 bg-blue-900/40">
+                        <p class="text-[10px] font-bold uppercase tracking-wider text-blue-200">Tindakan berikutnya</p>
+                        <p class="text-sm font-bold mt-1 leading-snug">
+                            {{ $quickNextDocument ? 'Lengkapi '.$quickNextDocument->doc_type : ($quickViewShipment->status === 'completed' ? 'Shipment telah selesai' : 'Pantau progres dan ETA') }}
+                        </p>
+                        <p class="text-[11px] text-blue-200 mt-1">{{ $quickNextDocument ? 'Dokumen wajib belum tersedia' : 'Tidak ada blocker dokumen wajib' }}</p>
                     </div>
                 </div>
 
-                {{-- Additional Info --}}
-                <div class="grid grid-cols-2 gap-4 text-sm">
-                    <div><p class="text-gray-500">Commodity</p><p class="font-medium text-gray-800">{{ $quickViewShipment->commodity ?? '-' }}</p></div>
-                    <div><p class="text-gray-500">Package Type</p><p class="font-medium text-gray-800">{{ $quickViewShipment->package_type ?? '-' }}</p></div>
-                    <div><p class="text-gray-500">Created</p><p class="font-medium text-gray-800">{{ $quickViewShipment->created_at->format('d M Y, H:i') }}</p></div>
-                    <div><p class="text-gray-500">Documents</p><p class="font-medium text-gray-800">{{ $quickViewShipment->documents?->count() ?? 0 ?? 0 }} files</p></div>
+                <div class="flex flex-wrap items-center gap-2">
+                    @php $statusColors = ['pending' => 'bg-yellow-100 text-yellow-800', 'in_progress' => 'bg-blue-100 text-blue-800', 'in_transit' => 'bg-purple-100 text-purple-800', 'completed' => 'bg-green-100 text-green-800', 'cancel' => 'bg-red-100 text-red-800']; @endphp
+                    <span class="px-3 py-1 text-xs font-black rounded-full {{ $statusColors[$quickViewShipment->status] ?? 'bg-gray-100 text-gray-700' }}">{{ $quickStatusLabels[$quickViewShipment->status] ?? ucfirst(str_replace('_', ' ', $quickViewShipment->status ?? 'N/A')) }}</span>
+                    <span class="px-3 py-1 text-xs font-bold rounded-full bg-slate-100 text-slate-700">{{ strtoupper($quickViewShipment->shipment_type ?? 'N/A') }} · {{ strtoupper($quickViewShipment->container_mode ?? '-') }}</span>
+                    @if($quickLatestRevision)
+                        <span class="px-3 py-1 text-xs font-bold rounded-full {{ $quickLatestRevision->customer_visible ? 'bg-emerald-50 text-emerald-700' : 'bg-slate-100 text-slate-500' }}">
+                            {{ $quickLatestRevision->customer_visible ? ($quickLatestRevision->viewed_at ? 'Sudah dilihat customer' : 'Dipublikasikan ke customer') : 'Revisi internal' }}
+                        </span>
+                    @endif
                 </div>
 
-                {{-- Actions --}}
-                <div class="flex gap-3 pt-4 border-t border-gray-100">
-                    <a href="{{ route('admin.shipments.show', $quickViewShipment->id) }}" class="flex-1 py-2.5 bg-blue-600 text-white text-center rounded-xl font-semibold hover:bg-blue-700">Lihat Detail</a>
+                <div class="rounded-xl border border-slate-200 divide-y divide-slate-100">
+                    <div class="grid grid-cols-[1fr_auto_1fr] items-center gap-3 p-4">
+                        <div><p class="text-[10px] font-bold uppercase text-slate-400">Asal</p><p class="font-bold text-slate-900">{{ $quickViewShipment->origin ?? '-' }}</p></div>
+                        <svg class="w-5 h-5 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 12h14m-4-4 4 4-4 4"/></svg>
+                        <div class="text-right"><p class="text-[10px] font-bold uppercase text-slate-400">Tujuan</p><p class="font-bold text-slate-900">{{ $quickViewShipment->destination ?? '-' }}</p></div>
+                    </div>
+                    <div class="grid grid-cols-2 md:grid-cols-4 gap-4 p-4 text-sm">
+                        <div><p class="text-[10px] font-bold uppercase text-slate-400">Muatan</p><p class="font-semibold text-slate-800">{{ \Illuminate\Support\Str::limit($quickViewShipment->container_info ?: ($quickViewShipment->commodity ?: '-'), 32) }}</p></div>
+                        <div><p class="text-[10px] font-bold uppercase text-slate-400">Berat</p><p class="font-semibold text-slate-800">{{ number_format($quickViewShipment->weight ?? 0, 0) }} kg</p></div>
+                        <div><p class="text-[10px] font-bold uppercase text-slate-400">Volume</p><p class="font-semibold text-slate-800">{{ number_format($quickViewShipment->volume ?? 0, 3) }} CBM</p></div>
+                        <div><p class="text-[10px] font-bold uppercase text-slate-400">File</p><p class="font-semibold text-slate-800">{{ $quickViewShipment->documents->count() }} dokumen</p></div>
+                    </div>
+                </div>
+
+                @if($quickLatestRevision)
+                <div class="rounded-xl border border-amber-200 bg-amber-50 p-4">
+                    <div class="flex items-start justify-between gap-4">
+                        <div>
+                            <p class="text-[10px] font-black uppercase tracking-wider text-amber-700">Revisi ETA terbaru</p>
+                            <p class="text-sm font-bold text-slate-900 mt-1">{{ $quickLatestRevision->previous_eta?->format('d M Y') ?? 'Belum diisi' }} → {{ $quickLatestRevision->revised_eta->format('d M Y') }} · {{ $quickLatestRevision->reason_label }}</p>
+                            <p class="text-xs text-slate-600 mt-1">{{ $quickLatestRevision->source_party ?: 'Sumber belum dicatat' }}{{ $quickLatestRevision->reason_notes ? ' · '.\Illuminate\Support\Str::limit($quickLatestRevision->reason_notes, 120) : '' }}</p>
+                        </div>
+                        <span class="text-[10px] font-bold text-amber-800 whitespace-nowrap">{{ $quickLatestRevision->information_received_at->format('d M, H:i') }}</span>
+                    </div>
+                </div>
+                @endif
+
+                <div class="flex flex-col-reverse sm:flex-row gap-3 pt-1">
+                    <a href="{{ route('admin.shipments.show', $quickViewShipment->id) }}" class="flex-1 py-2.5 bg-blue-700 text-white text-center rounded-xl font-bold hover:bg-blue-800 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2">Buka Detail Operasional</a>
                     @if(auth()->user()->hasPermission('shipment.edit'))
-                    <button wire:click="edit({{ $quickViewShipment->id }})" class="flex-1 py-2.5 border border-gray-300 text-gray-700 text-center rounded-xl font-semibold hover:bg-gray-50">Edit</button>
+                    <button wire:click="reviseEtaFromQuickView({{ $quickViewShipment->id }})" class="px-5 py-2.5 border border-amber-300 bg-amber-50 text-amber-800 rounded-xl font-bold hover:bg-amber-100">Revisi ETA</button>
+                    <button wire:click="edit({{ $quickViewShipment->id }})" class="px-5 py-2.5 border border-slate-300 text-slate-700 rounded-xl font-bold hover:bg-slate-50">Edit Data</button>
                     @endif
                 </div>
             </div>
@@ -462,25 +687,35 @@
 
     @if($isModalOpen)
     <div class="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4 backdrop-blur-sm overflow-y-auto">
-        <div class="bg-white rounded-xl shadow-2xl w-full max-w-4xl max-h-[90vh] overflow-hidden flex flex-col animate-fade-in-up">
-            <div class="px-6 py-4 border-b border-slate-100 flex items-center justify-between bg-slate-50">
-                <h3 class="text-lg font-bold text-slate-800">
-                    {{ $isEditing ? 'Edit Shipment Details' : 'Create New Shipment' }}
-                </h3>
-                <button wire:click="closeModal" class="text-slate-400 hover:text-slate-600"><svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg></button>
+        <div style="position: relative; z-index: 10;" class="bg-white rounded-2xl shadow-2xl w-full max-w-6xl max-h-[92vh] overflow-hidden flex flex-col animate-fade-in-up border-t-4 border-blue-900">
+            <div class="px-6 py-4 border-b border-slate-200 flex items-center justify-between bg-gradient-to-r from-slate-50 to-blue-50">
+                <div class="flex items-center gap-3">
+                    <div class="w-10 h-10 rounded-xl bg-blue-900 text-white flex items-center justify-center shadow-sm">
+                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20 8l-8-4-8 4m16 0l-8 4m8-4v8l-8 4m0-8L4 8m8 4v8M4 8v8l8 4"/></svg>
+                    </div>
+                    <div>
+                        <h3 class="text-lg font-black text-slate-900">{{ $isEditing ? 'Edit Shipment' : 'Buat Shipment Baru' }}</h3>
+                        <p class="text-xs text-slate-500">Lengkapi rute, layanan, kargo, dan estimasi tiba.</p>
+                    </div>
+                </div>
+                <button wire:click="closeModal" class="p-2 rounded-lg text-slate-400 hover:text-slate-700 hover:bg-white transition" title="Tutup"><svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg></button>
             </div>
             
-            <div class="p-6 overflow-y-auto">
-                <div class="grid grid-cols-1 md:grid-cols-2 gap-8">
+            <div class="p-6 overflow-y-auto bg-slate-50/50">
+                <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
                     {{-- Left Column --}}
-                    <div class="space-y-5">
+                    <div class="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm space-y-5">
+                        <div class="flex items-center gap-2 pb-3 border-b border-slate-100">
+                            <span class="w-7 h-7 rounded-lg bg-blue-100 text-blue-800 flex items-center justify-center text-xs font-black">01</span>
+                            <div><h4 class="text-sm font-black text-slate-800">Rute & Layanan</h4><p class="text-[11px] text-slate-500">Identitas job dan arah pergerakan barang</p></div>
+                        </div>
                         <div>
-                            <label class="block text-xs font-bold text-slate-500 uppercase mb-1">Reference No</label>
-                            <input type="text" wire:model="form.awb_number" class="w-full border-slate-300 rounded-lg text-sm bg-slate-50" placeholder="(Auto / Dikosongkan)">
+                            <label class="block text-xs font-bold text-slate-600 mb-1">Nomor Shipment <span class="font-normal text-slate-400">(opsional)</span></label>
+                            <input type="text" wire:model="form.awb_number" class="w-full border-slate-300 rounded-xl text-sm bg-slate-50" placeholder="Otomatis dibuat jika dikosongkan">
                             @error('form.awb_number') <span class="text-red-500 text-xs mt-1 block">{{ $message }}</span> @enderror
                         </div>
                         <div>
-                            <label class="block text-xs font-bold text-slate-500 uppercase mb-1">Customer</label>
+                            <label class="block text-xs font-bold text-slate-600 mb-1">Customer <span class="text-red-500">*</span></label>
                             <!-- Searchable Dropdown with Alpine.js -->
                             <div x-data="{
                                 open: false,
@@ -514,7 +749,7 @@
                                 <!-- Display Selected / Search Input -->
                                 <div @click="open = !open" 
                                      class="w-full border border-slate-300 rounded-lg text-sm bg-white cursor-pointer flex items-center justify-between px-3 py-2 hover:border-blue-400 transition">
-                                    <span x-text="selectedName || 'Select Customer'" :class="selectedName ? 'text-slate-800' : 'text-slate-400'"></span>
+                                    <span x-text="selectedName || 'Pilih customer'" :class="selectedName ? 'text-slate-800' : 'text-slate-400'"></span>
                                     <svg class="w-4 h-4 text-slate-400 transition-transform" :class="open && 'rotate-180'" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/>
                                     </svg>
@@ -567,33 +802,67 @@
                             </div>
                             @error('form.customer_id') <span class="text-red-500 text-xs mt-1 block">{{ $message }}</span> @enderror
                         </div>
+                        <div class="flex items-center gap-2 text-[10px] font-bold uppercase tracking-wider text-blue-800">
+                            <span>Asal</span><span class="flex-1 h-px bg-blue-100"></span><span>→</span><span class="flex-1 h-px bg-blue-100"></span><span>Tujuan</span>
+                        </div>
                         <div class="grid grid-cols-2 gap-4">
-                            <div><label class="block text-xs font-bold text-slate-500 uppercase mb-1">Origin</label><input type="text" wire:model="form.origin" class="w-full border-slate-300 rounded-lg text-sm"></div>
-                            <div><label class="block text-xs font-bold text-slate-500 uppercase mb-1">Destination</label><input type="text" wire:model="form.destination" class="w-full border-slate-300 rounded-lg text-sm"></div>
+                            <div><label class="block text-xs font-bold text-slate-600 mb-1">Origin <span class="text-red-500">*</span></label><input type="text" wire:model="form.origin" class="w-full border-slate-300 rounded-xl text-sm" placeholder="Shanghai, China">@error('form.origin') <span class="text-red-500 text-xs mt-1 block">{{ $message }}</span> @enderror</div>
+                            <div><label class="block text-xs font-bold text-slate-600 mb-1">Destination <span class="text-red-500">*</span></label><input type="text" wire:model="form.destination" class="w-full border-slate-300 rounded-xl text-sm" placeholder="Belawan, Indonesia">@error('form.destination') <span class="text-red-500 text-xs mt-1 block">{{ $message }}</span> @enderror</div>
                         </div>
                         <div class="grid grid-cols-2 gap-4">
                             <div>
-                                <label class="block text-xs font-bold text-slate-500 uppercase mb-1">Service Type</label>
-                                <select wire:model="form.service_type" class="w-full border-slate-300 rounded-lg text-sm">
+                                <label class="block text-xs font-bold text-slate-600 mb-1">Jenis Layanan <span class="text-red-500">*</span></label>
+                                <select wire:model="form.service_type" class="w-full border-slate-300 rounded-xl text-sm">
                                     <option value="import">Import</option>
                                     <option value="export">Export</option>
                                     <option value="domestic">Domestic</option>
                                 </select>
                             </div>
                             <div>
-                                <label class="block text-xs font-bold text-slate-500 uppercase mb-1">Transport</label>
-                                <select wire:model="form.shipment_type" class="w-full border-slate-300 rounded-lg text-sm">
+                                <label class="block text-xs font-bold text-slate-600 mb-1">Moda Transportasi</label>
+                                <select wire:model="form.shipment_type" class="w-full border-slate-300 rounded-xl text-sm">
                                     <option value="sea">🚢 Sea</option>
                                     <option value="air">✈️ Air</option>
                                     <option value="land">🚛 Land</option>
                                 </select>
                             </div>
                         </div>
+
+                        <div class="grid grid-cols-2 gap-4">
+                            <div>
+                                <label class="text-xs font-bold text-slate-600 block mb-1">Est. Tgl Tiba</label>
+                                <input type="date" wire:model="form.estimated_arrival" class="w-full border-slate-300 rounded-xl text-sm bg-white">
+                                @error('form.estimated_arrival') <span class="text-red-500 text-xs mt-1 block">{{ $message }}</span> @enderror
+                            </div>
+                            <div>
+                                <label class="text-xs font-bold text-slate-600 block mb-1">Status Jalur</label>
+                                <select wire:model="form.lane_status" class="w-full border-slate-300 rounded-xl text-sm">
+                                    <option value="">Otomatis / Belum ada</option>
+                                    <option value="green">🟩 Jalur Hijau</option>
+                                    <option value="red">🟥 Jalur Merah</option>
+                                </select>
+                            </div>
+                        </div>
+
+                        <div>
+                            <label class="text-xs font-bold text-slate-600 block mb-1">Catatan Operasional</label>
+                            <textarea wire:model="form.notes" rows="2" class="w-full border-slate-300 rounded-xl text-sm resize-none" placeholder="Instruksi khusus, PIC, atau informasi penting shipment"></textarea>
+                        </div>
+
+                        @if($isEditing)
+                        <div class="flex items-center gap-3 bg-green-50 p-3 rounded-xl border border-green-200">
+                            <input type="checkbox" wire:model="mark_as_completed" id="markCompleted" class="w-5 h-5 text-green-600 rounded focus:ring-green-500">
+                            <label for="markCompleted" class="text-sm font-bold text-green-800 cursor-pointer select-none">Tandai shipment selesai</label>
+                        </div>
+                        @endif
                     </div>
 
                     {{-- Right Column (Cargo) --}}
-                    <div class="bg-slate-50 p-5 rounded-xl border border-slate-200 space-y-4">
-                        <h4 class="text-xs font-bold text-blue-900 uppercase tracking-wider mb-2">CARGO DETAILS</h4>
+                    <div class="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm space-y-4">
+                        <div class="flex items-center gap-2 pb-3 border-b border-slate-100">
+                            <span class="w-7 h-7 rounded-lg bg-amber-100 text-amber-800 flex items-center justify-center text-xs font-black">02</span>
+                            <div><h4 class="text-sm font-black text-slate-800">Detail Kargo</h4><p class="text-[11px] text-slate-500">Kemasan, ukuran, dan klasifikasi barang</p></div>
+                        </div>
                         <div class="grid grid-cols-2 gap-3">
                             <div><label class="text-xs font-bold text-slate-500 block mb-1">Mode</label><select wire:model="form.container_mode" class="w-full border-slate-300 rounded-lg text-sm"><option value="LCL">LCL</option><option value="FCL">FCL</option></select></div>
                             <div><label class="text-xs font-bold text-slate-500 block mb-1">Details</label><input type="text" wire:model="form.container_info" class="w-full border-slate-300 rounded-lg text-sm"></div>
@@ -676,6 +945,10 @@
                         </div>
                         <div><label class="text-xs font-bold text-slate-500 block mb-1">Weight (Kg)</label><input type="number" wire:model="form.weight" class="w-full border-slate-300 rounded-lg text-sm"></div>
                         <div><label class="text-xs font-bold text-slate-500 block mb-1">Volume (CBM)</label><input type="number" step="0.001" wire:model="form.volume" class="w-full border-slate-300 rounded-lg text-sm" placeholder="0.000"></div>
+                        <div>
+                            <label class="text-xs font-bold text-slate-500 block mb-1">Commodity / Uraian Barang</label>
+                            <input type="text" wire:model="form.commodity" class="w-full border-slate-300 rounded-lg text-sm" placeholder="Contoh: Spare parts mesin">
+                        </div>
                         <div x-data="hsCodeAutocomplete()" class="relative">
                             <label class="text-xs font-bold text-slate-500 block mb-1">HS Code</label>
                             <input 
@@ -712,39 +985,197 @@
                             <p class="text-xs text-green-600 mt-1" x-show="selectedDesc" x-text="selectedDesc"></p>
                         </div>
                         
-                        <hr class="border-slate-200 my-2">
-                        
-                        {{-- STATUS CHECKBOX --}}
-                        <div class="flex items-center gap-3 bg-white p-3 rounded-lg border border-gray-200 shadow-sm">
-                            <input type="checkbox" wire:model="mark_as_completed" id="markCompleted" class="w-5 h-5 text-green-600 rounded focus:ring-green-500">
-                            <label for="markCompleted" class="text-sm font-bold text-gray-700 cursor-pointer select-none">
-                                Tandai Shipment Selesai (Completed)
-                            </label>
-                        </div>
-
-                        <div>
-                            <label class="text-xs font-bold text-slate-500 block mb-1">Est. Arrival</label>
-                            <input type="date" wire:model="form.estimated_arrival" class="w-full border-slate-300 rounded-lg text-sm bg-white">
-                        </div>
-
-                        {{-- MANUAL LANE STATUS --}}
-                        <div class="mt-2 p-3 rounded-lg border bg-white border-blue-200 shadow-sm">
-                            <label class="text-xs font-bold text-blue-800 uppercase flex items-center gap-1 mb-1">Status Jalur Manual</label>
-                            <select wire:model="form.lane_status" class="w-full rounded-lg text-sm font-bold">
-                                <option value="">-- Otomatis / Belum Ada --</option>
-                                <option value="green">🟩 JALUR HIJAU</option>
-                                <option value="red">🟥 JALUR MERAH</option>
-                            </select>
-                        </div>
                     </div>
                 </div>
             </div>
-            
+
             <div class="bg-slate-50 px-6 py-4 border-t border-slate-200 flex justify-end gap-3">
-                <button wire:click="closeModal" class="px-4 py-2 bg-white border border-slate-300 rounded-lg text-slate-600 font-medium hover:bg-slate-50">Cancel</button>
-                <button type="button" wire:click="save" class="px-6 py-2 bg-m2b-primary text-white rounded-lg text-sm font-bold hover:bg-blue-900 transition shadow-md flex items-center">
-                    <span wire:loading.remove wire:target="save">Save Shipment</span>
-                    <span wire:loading wire:target="save">Saving...</span>
+                <button wire:click="closeModal" class="px-4 py-2 bg-white border border-slate-300 rounded-xl text-slate-600 font-semibold hover:bg-slate-50">Batal</button>
+                <button type="button" wire:click="save" wire:loading.attr="disabled" class="px-6 py-2 bg-blue-900 text-white rounded-xl text-sm font-bold hover:bg-blue-800 disabled:opacity-60 transition shadow-md flex items-center gap-2">
+                    <span wire:loading.remove wire:target="save">{{ $isEditing ? 'Simpan Perubahan' : 'Buat Shipment' }}</span>
+                    <span wire:loading wire:target="save">Menyimpan...</span>
+                </button>
+            </div>
+        </div>
+    </div>
+    @endif
+
+    {{-- ETA REVISION MODAL --}}
+    @if($showEtaRevisionModal && $etaRevisionShipment)
+    <div class="fixed inset-0 z-[60] flex items-center justify-center bg-black/60 p-4 backdrop-blur-sm overflow-y-auto">
+        <div style="position: relative; z-index: 10;" class="bg-white rounded-2xl shadow-2xl w-full max-w-2xl max-h-[92vh] overflow-hidden flex flex-col border-t-4 border-blue-900">
+            <div class="px-6 py-4 border-b border-slate-200 flex items-center justify-between bg-gradient-to-r from-slate-50 to-blue-50">
+                <div>
+                    <h3 class="text-lg font-black text-slate-900">Revisi ETA Shipment</h3>
+                    <p class="text-xs text-slate-500">{{ $etaRevisionShipment->awb_number }} · {{ $etaRevisionShipment->customer?->company_name }}</p>
+                </div>
+                <button wire:click="closeEtaRevisionModal" class="p-2 rounded-lg text-slate-400 hover:text-slate-700 hover:bg-white" title="Tutup">
+                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
+                </button>
+            </div>
+
+            <div class="p-6 overflow-y-auto space-y-5">
+                <div class="grid grid-cols-2 gap-4 p-4 rounded-xl bg-slate-50 border border-slate-200">
+                    <div>
+                        <p class="text-[10px] font-bold uppercase tracking-wider text-slate-400">ETA Saat Ini</p>
+                        <p class="text-lg font-black text-slate-800">{{ $etaRevisionShipment->estimated_arrival?->format('d M Y') ?? 'Belum diisi' }}</p>
+                    </div>
+                    <div>
+                        <p class="text-[10px] font-bold uppercase tracking-wider text-slate-400">Jumlah Revisi</p>
+                        <p class="text-lg font-black text-blue-900">{{ $etaRevisionShipment->etaRevisions->count() }} kali</p>
+                    </div>
+                </div>
+
+                <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    <div>
+                        <label class="block text-xs font-bold text-slate-600 mb-1">ETA Terbaru <span class="text-red-500">*</span></label>
+                        <input type="date" wire:model="etaRevisedDate" class="w-full border-slate-300 rounded-xl text-sm focus:ring-blue-500 focus:border-blue-500">
+                        @error('etaRevisedDate') <span class="text-red-500 text-xs mt-1 block">{{ $message }}</span> @enderror
+                    </div>
+                    <div>
+                        <label class="block text-xs font-bold text-slate-600 mb-1">Informasi Diterima <span class="text-red-500">*</span></label>
+                        <input type="datetime-local" wire:model="etaInformationReceivedAt" class="w-full border-slate-300 rounded-xl text-sm focus:ring-blue-500 focus:border-blue-500">
+                        @error('etaInformationReceivedAt') <span class="text-red-500 text-xs mt-1 block">{{ $message }}</span> @enderror
+                    </div>
+                </div>
+
+                <div>
+                    <label class="block text-xs font-bold text-slate-600 mb-1">Alasan Revisi <span class="text-red-500">*</span></label>
+                    <select wire:model="etaReasonCode" class="w-full border-slate-300 rounded-xl text-sm focus:ring-blue-500 focus:border-blue-500">
+                        <option value="">Pilih alasan revisi</option>
+                        @foreach($etaReasonOptions as $code => $label)
+                        <option value="{{ $code }}">{{ $label }}</option>
+                        @endforeach
+                    </select>
+                    @error('etaReasonCode') <span class="text-red-500 text-xs mt-1 block">{{ $message }}</span> @enderror
+                </div>
+
+                <div>
+                    <label class="block text-xs font-bold text-slate-600 mb-1">Sumber Informasi</label>
+                    <input type="text" wire:model="etaSourceParty" class="w-full border-slate-300 rounded-xl text-sm" placeholder="Contoh: Shipping Line Maersk / Vendor ABC">
+                    @error('etaSourceParty') <span class="text-red-500 text-xs mt-1 block">{{ $message }}</span> @enderror
+                </div>
+
+                <div>
+                    <label class="block text-xs font-bold text-slate-600 mb-1">Keterangan Tambahan</label>
+                    <textarea wire:model="etaReasonNotes" rows="3" class="w-full border-slate-300 rounded-xl text-sm resize-none" placeholder="Nomor voyage, alasan operasional, atau tindak lanjut yang diperlukan"></textarea>
+                    @error('etaReasonNotes') <span class="text-red-500 text-xs mt-1 block">{{ $message }}</span> @enderror
+                </div>
+
+                <div>
+                    <label class="block text-xs font-bold text-slate-600 mb-1">Bukti dari Shipping/Vendor <span class="font-normal text-slate-400">(opsional, maks. 5 MB)</span></label>
+                    <input type="file" wire:model="etaEvidence" accept=".pdf,.jpg,.jpeg,.png,.webp" class="w-full text-sm border border-slate-300 rounded-xl p-2 bg-white">
+                    <div wire:loading wire:target="etaEvidence" class="text-xs text-blue-600 mt-1">Mengunggah bukti...</div>
+                    @error('etaEvidence') <span class="text-red-500 text-xs mt-1 block">{{ $message }}</span> @enderror
+                </div>
+
+                <div x-data="{ publish: @entangle('etaCustomerVisible') }" class="space-y-3">
+                    <label class="flex items-start gap-3 p-3 rounded-xl bg-blue-50 border border-blue-100 cursor-pointer">
+                        <input type="checkbox" wire:model="etaCustomerVisible" x-model="publish" class="mt-0.5 rounded border-blue-300 text-blue-700 focus:ring-blue-500">
+                        <span>
+                            <span class="block text-sm font-bold text-blue-900">Publikasikan pembaruan ke Customer</span>
+                            <span class="block text-xs text-blue-700">Customer akan melihat tanggal baru, alasan, dan pesan pada portal.</span>
+                        </span>
+                    </label>
+                    <div x-show="publish" x-cloak>
+                        <label class="block text-xs font-bold text-slate-600 mb-1">Pesan untuk Customer <span class="text-red-500">*</span></label>
+                        <textarea wire:model="etaCustomerMessage" rows="3" class="w-full border-blue-200 rounded-xl text-sm resize-none bg-blue-50/40" placeholder="Contoh: Estimasi tiba diperbarui berdasarkan perubahan jadwal dari shipping line. Tim M2B terus memantau pengiriman."></textarea>
+                        @error('etaCustomerMessage') <span class="text-red-500 text-xs mt-1 block">{{ $message }}</span> @enderror
+                    </div>
+                </div>
+
+                <label class="flex items-start gap-3 p-3 rounded-xl bg-slate-50 border border-slate-200 cursor-pointer">
+                    <input type="checkbox" wire:model="etaEvidenceCustomerVisible" class="mt-0.5 rounded border-slate-300 text-blue-700 focus:ring-blue-500" @if(!$etaEvidence) disabled @endif>
+                    <span>
+                        <span class="block text-sm font-bold text-slate-800">Bagikan dokumen bukti kepada customer</span>
+                        <span class="block text-xs text-slate-500">Terpisah dari publikasi revisi. Default evidence tetap internal M2B.</span>
+                    </span>
+                </label>
+
+                <div class="rounded-xl border border-amber-200 bg-amber-50 p-3 text-xs text-amber-800">
+                    ETA lama tetap tersimpan sebagai histori. Setelah disimpan, ETA aktif shipment akan diperbarui dan tidak dapat dihapus dari modal ini.
+                </div>
+            </div>
+
+            <div class="bg-slate-50 px-6 py-4 border-t border-slate-200 flex justify-end gap-3">
+                <button wire:click="closeEtaRevisionModal" class="px-4 py-2 bg-white border border-slate-300 rounded-xl text-slate-600 font-semibold hover:bg-slate-100">Batal</button>
+                <button wire:click="saveEtaRevision" wire:loading.attr="disabled" class="px-5 py-2 bg-blue-900 text-white rounded-xl text-sm font-bold hover:bg-blue-800 disabled:opacity-60 shadow-md">
+                    <span wire:loading.remove wire:target="saveEtaRevision">Simpan Revisi ETA</span>
+                    <span wire:loading wire:target="saveEtaRevision">Menyimpan...</span>
+                </button>
+            </div>
+        </div>
+    </div>
+    @endif
+
+    {{-- ETA PUBLICATION MODAL: hanya visibilitas customer, histori tetap terkunci --}}
+    @if($showEtaPublicationModal && $etaPublicationRevision)
+    <div class="fixed inset-0 z-[70] flex items-center justify-center bg-slate-950/60 p-4 backdrop-blur-sm">
+        <div style="position: relative; z-index: 10;" class="bg-white rounded-2xl shadow-2xl w-full max-w-lg overflow-hidden border-t-4 border-emerald-600">
+            <div class="px-6 py-4 border-b border-slate-200 flex items-center justify-between">
+                <div>
+                    <p class="text-[10px] font-black tracking-[0.16em] text-emerald-700 uppercase">Visibilitas customer</p>
+                    <h3 class="text-lg font-black text-slate-900">Atur Publikasi Revisi ETA</h3>
+                    <p class="text-xs text-slate-500">{{ $etaPublicationRevision->shipment?->awb_number }} · {{ $etaPublicationRevision->shipment?->customer?->company_name }}</p>
+                </div>
+                <button wire:click="closeEtaPublicationModal" class="p-2 rounded-lg text-slate-400 hover:bg-slate-100" aria-label="Tutup">&times;</button>
+            </div>
+
+            <div class="p-6 space-y-4">
+                <div class="rounded-xl bg-slate-50 border border-slate-200 p-4">
+                    <p class="text-xs font-black text-slate-900">
+                        {{ $etaPublicationRevision->previous_eta?->format('d M Y') ?? 'Belum diisi' }}
+                        <span class="text-slate-400 mx-1">→</span>
+                        {{ $etaPublicationRevision->revised_eta->format('d M Y') }}
+                    </p>
+                    <p class="text-xs text-slate-600 mt-1">{{ $etaPublicationRevision->reason_label }}</p>
+                    <p class="text-[10px] text-slate-400 mt-1">Tanggal, alasan, dan sumber dikunci untuk menjaga audit trail.</p>
+                </div>
+
+                <div x-data="{ publish: @entangle('publicationCustomerVisible') }" class="space-y-3">
+                    <label class="flex items-start gap-3 p-4 rounded-xl bg-emerald-50 border border-emerald-200 cursor-pointer">
+                        <input type="checkbox" wire:model="publicationCustomerVisible" x-model="publish" class="mt-0.5 rounded border-emerald-300 text-emerald-700 focus:ring-emerald-500">
+                        <span>
+                            <span class="block text-sm font-bold text-emerald-900">Tampilkan revisi ini kepada customer</span>
+                            <span class="block text-xs text-emerald-700">Hanya customer pemilik shipment yang dapat melihat pembaruan.</span>
+                        </span>
+                    </label>
+
+                    <div x-show="publish" x-cloak>
+                        <div class="flex items-center justify-between gap-3 mb-1">
+                            <label class="block text-xs font-bold text-slate-600">Pesan untuk Customer <span class="text-red-500">*</span></label>
+                            <div class="flex items-center gap-2">
+                                <button type="button" wire:click="applyEtaPublicationTemplate" class="text-[10px] font-bold text-blue-700 hover:text-blue-900 hover:underline">Gunakan Template</button>
+                                <button type="button" wire:click="resetEtaPublicationMessage" class="text-[10px] font-bold text-slate-400 hover:text-red-600 hover:underline">Kosongkan</button>
+                            </div>
+                        </div>
+                        <textarea wire:model="publicationCustomerMessage" rows="3" class="w-full border-emerald-200 rounded-xl text-sm resize-none bg-emerald-50/30" placeholder="Jelaskan perubahan jadwal dan tindak lanjut M2B."></textarea>
+                        <p class="text-[10px] text-slate-400 mt-1">Template mengikuti alasan revisi dan tetap dapat diedit sebelum dipublikasikan.</p>
+                        @error('publicationCustomerMessage') <span class="text-red-500 text-xs mt-1 block">{{ $message }}</span> @enderror
+                    </div>
+                </div>
+
+                @if($etaPublicationRevision->sourceDocument)
+                <label class="flex items-start gap-3 p-3 rounded-xl bg-slate-50 border border-slate-200 cursor-pointer">
+                    <input type="checkbox" wire:model="publicationEvidenceVisible" class="mt-0.5 rounded border-slate-300 text-blue-700 focus:ring-blue-500">
+                    <span>
+                        <span class="block text-sm font-bold text-slate-800">Bagikan bukti kepada customer</span>
+                        <span class="block text-xs text-slate-500">{{ $etaPublicationRevision->sourceDocument->filename }}</span>
+                    </span>
+                </label>
+                @error('publicationEvidenceVisible') <span class="text-red-500 text-xs block">{{ $message }}</span> @enderror
+                @endif
+
+                <div class="rounded-xl border border-amber-200 bg-amber-50 p-3 text-xs text-amber-800">
+                    Menonaktifkan publikasi akan menyembunyikan revisi dari portal customer tanpa menghapus histori internal.
+                </div>
+            </div>
+
+            <div class="bg-slate-50 px-6 py-4 border-t border-slate-200 flex justify-end gap-3">
+                <button wire:click="closeEtaPublicationModal" class="px-4 py-2 bg-white border border-slate-300 rounded-xl text-slate-600 font-bold">Batal</button>
+                <button wire:click="saveEtaPublication" wire:loading.attr="disabled" class="px-5 py-2 bg-emerald-700 text-white rounded-xl text-sm font-bold hover:bg-emerald-800 disabled:opacity-60">
+                    <span wire:loading.remove wire:target="saveEtaPublication">Simpan Publikasi</span>
+                    <span wire:loading wire:target="saveEtaPublication">Menyimpan...</span>
                 </button>
             </div>
         </div>
