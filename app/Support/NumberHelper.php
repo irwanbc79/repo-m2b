@@ -56,6 +56,38 @@ class NumberHelper
             return $prefix . '0';
         }
 
-        return $prefix . self::formatCompact($value, $decimals);
+        return $prefix . self::formatCompactRupiah((float) $value, $decimals);
+    }
+
+    /**
+     * Satuan uang gaya Indonesia: rb / jt / M (miliar) / T (triliun).
+     *
+     * Sebelumnya uang ikut memakai satuan Inggris k/M/B, sementara kartu
+     * ringkasan tahunan di dashboard sudah memakai jt/M. Akibatnya "M" berarti
+     * juta di satu kartu dan miliar di kartu sebelahnya — pada layar yang sama,
+     * selisihnya seribu kali. Untuk angka uang, satuan Indonesia yang dipakai.
+     */
+    private static function formatCompactRupiah(float $num, int $decimals = 2): string
+    {
+        $abs = abs($num);
+
+        $satuan = [
+            1_000_000_000_000 => 'T',
+            1_000_000_000     => 'M',
+            1_000_000         => 'jt',
+            1_000             => 'rb',
+        ];
+
+        foreach ($satuan as $batas => $simbol) {
+            if ($abs >= $batas) {
+                $angka = number_format($num / $batas, $decimals);
+
+                return rtrim(rtrim($angka, '0'), '.') . $simbol;
+            }
+        }
+
+        return floor($num) == $num
+            ? number_format($num, 0)
+            : rtrim(rtrim(number_format($num, $decimals), '0'), '.');
     }
 }

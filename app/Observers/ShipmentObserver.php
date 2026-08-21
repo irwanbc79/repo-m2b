@@ -13,18 +13,24 @@ class ShipmentObserver
 {
     /**
      * Invalidate customer dashboard cache when shipment is updated
+     *
+     * Dashboard admin ikut disegarkan: angka kartu, corong pipeline, dan
+     * daftar "perlu tindakan" semuanya bersumber dari shipment, jadi kalau
+     * versinya tidak dinaikkan angkanya tertinggal sampai TTL habis.
      */
     public function updated(Shipment $shipment): void
     {
         CacheHelper::invalidateCustomerDashboard($shipment->customer_id);
+        CacheHelper::invalidateAdminStats();
     }
-    
+
     /**
      * Invalidate cache when new shipment is created
      */
     public function created(Shipment $shipment): void
     {
         CacheHelper::invalidateCustomerDashboard($shipment->customer_id);
+        CacheHelper::invalidateAdminStats();
     }
 
     public function updating(Shipment $shipment): void

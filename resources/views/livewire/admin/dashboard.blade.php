@@ -39,48 +39,56 @@
             </span>
             @endif
         </div>
-        <div class="flex items-center gap-4 text-sm">
+        <div class="flex items-center gap-3 text-sm">
             <span class="px-3 py-1 bg-blue-100 text-blue-700 rounded-full font-medium">
                 📦 {{ $todayStats['shipments_today'] }} Shipment Hari Ini
             </span>
             <span class="px-3 py-1 bg-green-100 text-green-700 rounded-full font-medium">
                 💰 {{ $todayStats['payments_today'] }} Pembayaran Hari Ini
             </span>
+            {{-- Angka dashboard di-cache; tombol ini untuk saat butuh yang
+                 benar-benar detik ini juga. --}}
+            <button wire:click="refreshStats" wire:loading.attr="disabled"
+                class="p-1.5 text-gray-400 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition disabled:opacity-40"
+                title="Perbarui angka">
+                <svg class="w-4 h-4" wire:loading.class="animate-spin" wire:target="refreshStats" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/></svg>
+            </button>
         </div>
     </div>
 
-    {{-- Alert Center --}}
-    @if(count($alerts) > 0)
-    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-3">
-        @foreach($alerts as $alert)
-        <a href="{{ $alert['link'] }}" class="block p-4 rounded-xl border-l-4 transition hover:shadow-md
-            {{ $alert['type'] === 'danger' ? 'bg-red-50 border-red-500' : '' }}
-            {{ $alert['type'] === 'warning' ? 'bg-yellow-50 border-yellow-500' : '' }}
-            {{ $alert['type'] === 'info' ? 'bg-blue-50 border-blue-500' : '' }}
-            {{ $alert['type'] === 'success' ? 'bg-green-50 border-green-500' : '' }}">
-            <div class="flex items-center gap-3">
-                <div class="p-2 rounded-full
-                    {{ $alert['type'] === 'danger' ? 'bg-red-100' : '' }}
-                    {{ $alert['type'] === 'warning' ? 'bg-yellow-100' : '' }}
-                    {{ $alert['type'] === 'info' ? 'bg-blue-100' : '' }}
-                    {{ $alert['type'] === 'success' ? 'bg-green-100' : '' }}">
-                    @if($alert['icon'] === 'exclamation')
-                    <svg class="w-5 h-5 {{ $alert['type'] === 'danger' ? 'text-red-600' : 'text-gray-600' }}" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"/></svg>
-                    @elseif($alert['icon'] === 'clock')
-                    <svg class="w-5 h-5 text-yellow-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
-                    @elseif($alert['icon'] === 'mail')
-                    <svg class="w-5 h-5 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"/></svg>
-                    @else
-                    <svg class="w-5 h-5 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/></svg>
-                    @endif
-                </div>
-                <div>
-                    <p class="font-bold text-sm text-gray-800">{{ $alert['title'] }}</p>
-                    <p class="text-xs text-gray-500">{{ $alert['message'] }}</p>
-                </div>
-            </div>
-        </a>
-        @endforeach
+    {{-- ===== PERLU TINDAKAN =====================================================
+         Menggantikan Alert Center lama. Dashboard sebelumnya melaporkan jumlah,
+         bukan pekerjaan; blok ini menjawab "apa yang harus dikerjakan lebih
+         dulu", diurutkan dari yang paling merugikan kalau didiamkan. --}}
+    @if(count($actionItems) > 0)
+    <div class="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden">
+        <div class="flex items-center justify-between px-4 py-3 border-b border-gray-100">
+            <h3 class="text-xs font-bold text-gray-400 uppercase tracking-wider">Perlu Tindakan</h3>
+            <span class="text-[11px] font-bold text-gray-400">{{ count($actionItems) }} hal</span>
+        </div>
+        <div class="divide-y divide-gray-100">
+            @foreach($actionItems as $item)
+            <a href="{{ $item['link'] }}" class="flex items-center gap-3 px-4 py-3 hover:bg-gray-50 transition group">
+                <span class="shrink-0 w-9 h-9 rounded-lg flex items-center justify-center text-base
+                    {{ $item['level'] === 'danger' ? 'bg-red-50' : ($item['level'] === 'warning' ? 'bg-amber-50' : 'bg-blue-50') }}">
+                    {{ $item['icon'] }}
+                </span>
+                <span class="shrink-0 w-12 text-right text-xl font-black tabular-nums
+                    {{ $item['level'] === 'danger' ? 'text-red-600' : ($item['level'] === 'warning' ? 'text-amber-600' : 'text-blue-600') }}">
+                    {{ $item['count'] }}
+                </span>
+                <span class="flex-1 min-w-0">
+                    <span class="block text-sm font-bold text-gray-800 truncate">{{ $item['title'] }}</span>
+                    <span class="block text-xs text-gray-500 truncate">{{ $item['message'] }}</span>
+                </span>
+                <svg class="w-4 h-4 text-gray-300 group-hover:text-gray-500 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/></svg>
+            </a>
+            @endforeach
+        </div>
+    </div>
+    @else
+    <div class="flex items-center gap-2 px-4 py-3 bg-emerald-50 border border-emerald-100 rounded-xl text-sm text-emerald-800">
+        <span>✅</span> <span class="font-semibold">Tidak ada yang perlu ditindaklanjuti hari ini.</span>
     </div>
     @endif
 
@@ -136,13 +144,13 @@
            title="{{ number_format($mainStats['total_shipments'] ?? 0) }} Total Shipment"
            class="bg-white p-5 rounded-xl shadow-sm border border-gray-100 hover:scale-[1.02] hover:shadow-md transition-all duration-200 block group">
             <div class="flex items-center justify-between mb-2">
-                <span class="text-xs font-bold text-gray-400 uppercase tracking-wider group-hover:text-blue-600 transition-colors">Total Shipment</span>
+                <span class="text-xs font-bold text-gray-400 uppercase tracking-wider group-hover:text-blue-600 transition-colors">Shipment Baru</span>
                 <div class="p-2 bg-blue-100 rounded-lg group-hover:bg-blue-200 transition-colors">
                     <svg class="w-4 h-4 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4"/></svg>
                 </div>
             </div>
-            <p class="text-2xl font-black text-gray-800 tracking-tight">{{ \App\Support\NumberHelper::formatCompact($mainStats['total_shipments'] ?? 0) }}</p>
-            <p class="text-xs text-gray-500 mt-1">{{ \App\Support\NumberHelper::formatCompact($mainStats['current_shipments'] ?? 0) }} periode ini</p>
+            <p class="text-2xl font-black text-gray-800 tracking-tight">{{ \App\Support\NumberHelper::formatCompact($mainStats['current_shipments'] ?? 0) }}</p>
+            <p class="text-xs text-gray-500 mt-1">{{ \App\Support\NumberHelper::formatCompact($mainStats['total_shipments'] ?? 0) }} sepanjang waktu</p>
         </a>
 
         {{-- Active/Pending --}}
@@ -156,7 +164,7 @@
                 </div>
             </div>
             <p class="text-2xl font-black text-yellow-600 tracking-tight">{{ \App\Support\NumberHelper::formatCompact($mainStats['active_shipments'] ?? 0) }}</p>
-            <p class="text-xs text-gray-500 mt-1">Pending & In Transit</p>
+            <p class="text-xs text-gray-500 mt-1">Berjalan saat ini</p>
         </a>
 
         {{-- Completed --}}
@@ -169,8 +177,8 @@
                     <svg class="w-4 h-4 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/></svg>
                 </div>
             </div>
-            <p class="text-2xl font-black text-green-600 tracking-tight">{{ \App\Support\NumberHelper::formatCompact($mainStats['completed_shipments'] ?? 0) }}</p>
-            <p class="text-xs text-gray-500 mt-1">Selesai semua</p>
+            <p class="text-2xl font-black text-green-600 tracking-tight">{{ \App\Support\NumberHelper::formatCompact($mainStats['completed_period'] ?? 0) }}</p>
+            <p class="text-xs text-gray-500 mt-1">{{ \App\Support\NumberHelper::formatCompact($mainStats['completed_shipments'] ?? 0) }} sepanjang waktu</p>
         </a>
 
         {{-- Revenue --}}
@@ -183,11 +191,15 @@
                 </div>
             </div>
             <p class="text-xl font-black text-emerald-600 tracking-tight">{{ \App\Support\NumberHelper::formatCurrencyCompact($mainStats['current_revenue'] ?? 0) }}</p>
-            @if(($mainStats['revenue_growth'] ?? 0) != 0)
-            <p class="text-xs mt-1 font-semibold {{ $mainStats['revenue_growth'] > 0 ? 'text-green-600' : 'text-red-600' }}">
-                {{ $mainStats['revenue_growth'] > 0 ? '↑' : '↓' }} {{ abs($mainStats['revenue_growth']) }}%
+            @php $growth = $mainStats['revenue_growth'] ?? null; @endphp
+            <p class="text-xs mt-1 font-semibold {{ $growth === null ? 'text-gray-400' : ($growth >= 0 ? 'text-green-600' : 'text-red-600') }}">
+                @if($growth === null)
+                    Tidak ada pembanding
+                @else
+                    {{ $growth >= 0 ? '↑' : '↓' }} {{ abs($growth) }}%
+                    <span class="font-normal text-gray-400">{{ $comparisonLabel }}</span>
+                @endif
             </p>
-            @endif
         </div>
 
         {{-- Customers --}}
@@ -201,7 +213,7 @@
                 </div>
             </div>
             <p class="text-2xl font-black text-purple-600 tracking-tight">{{ \App\Support\NumberHelper::formatCompact($mainStats['total_customers'] ?? 0) }}</p>
-            <p class="text-xs text-gray-500 mt-1">+{{ $mainStats['new_customers'] ?? 0 }} baru</p>
+            <p class="text-xs text-gray-500 mt-1">+{{ $mainStats['new_customers'] ?? 0 }} baru periode ini</p>
         </a>
 
         {{-- Vendors --}}
@@ -219,9 +231,20 @@
         </a>
     </div>
 
-    {{-- Financial Summary --}}
+    {{-- ===== RINGKASAN KEUANGAN ==============================================
+         Empat kartu gradien ini memakan ~180px ruang paling mahal di layar.
+         Saat semuanya nol — keadaan yang paling sering — tidak ada gunanya
+         berteriak sebesar itu, jadi diciutkan jadi satu baris tenang. --}}
+    @php
+        $adaAngkaKeuangan = ($financialStats['unpaid_invoices'] ?? 0) > 0
+            || ($financialStats['overdue_invoices'] ?? 0) > 0
+            || ($financialStats['cash_in_today'] ?? 0) > 0
+            || ($financialStats['cash_out_today'] ?? 0) > 0;
+    @endphp
+
+    @if($adaAngkaKeuangan)
     <div class="grid grid-cols-1 md:grid-cols-4 gap-4">
-        <a href="{{ route('admin.invoices.index') }}" 
+        <a href="{{ route('admin.invoices.index') }}"
            title="Total Tagihan Belum Lunas: Rp {{ number_format($financialStats['unpaid_amount'] ?? 0, 0, ',', '.') }}"
            class="bg-gradient-to-br from-red-500 to-red-600 p-5 rounded-xl text-white shadow-sm hover:scale-[1.02] hover:shadow-md transition-all duration-200 block">
             <p class="text-xs font-semibold text-red-100 uppercase tracking-wider">Tagihan Belum Lunas</p>
@@ -229,7 +252,7 @@
             <p class="text-sm font-bold text-red-100 mt-1">{{ \App\Support\NumberHelper::formatCurrencyCompact($financialStats['unpaid_amount'] ?? 0) }}</p>
         </a>
 
-        <a href="{{ route('admin.invoices.index') }}" 
+        <a href="{{ route('admin.invoices.index') }}"
            title="Total Tagihan Jatuh Tempo: Rp {{ number_format($financialStats['overdue_amount'] ?? 0, 0, ',', '.') }}"
            class="bg-gradient-to-br from-orange-500 to-orange-600 p-5 rounded-xl text-white shadow-sm hover:scale-[1.02] hover:shadow-md transition-all duration-200 block">
             <p class="text-xs font-semibold text-orange-100 uppercase tracking-wider">Tagihan Jatuh Tempo</p>
@@ -241,16 +264,23 @@
              class="bg-gradient-to-br from-green-500 to-green-600 p-5 rounded-xl text-white shadow-sm">
             <p class="text-xs font-semibold text-green-100 uppercase tracking-wider">Kas Masuk Hari Ini</p>
             <p class="text-2xl font-black mt-1 tracking-tight">{{ \App\Support\NumberHelper::formatCurrencyCompact($financialStats['cash_in_today'] ?? 0) }}</p>
-            <p class="text-xs text-green-100 mt-1">Cash In Today</p>
         </div>
 
         <div title="Kas Keluar Hari Ini: Rp {{ number_format($financialStats['cash_out_today'] ?? 0, 0, ',', '.') }}"
              class="bg-gradient-to-br from-blue-500 to-blue-600 p-5 rounded-xl text-white shadow-sm">
             <p class="text-xs font-semibold text-blue-100 uppercase tracking-wider">Kas Keluar Hari Ini</p>
             <p class="text-2xl font-black mt-1 tracking-tight">{{ \App\Support\NumberHelper::formatCurrencyCompact($financialStats['cash_out_today'] ?? 0) }}</p>
-            <p class="text-xs text-blue-100 mt-1">Cash Out Today</p>
         </div>
     </div>
+    @else
+    <div class="flex flex-wrap items-center gap-x-6 gap-y-1 px-4 py-2.5 bg-gray-50 border border-gray-100 rounded-xl text-xs text-gray-500">
+        <span class="font-bold text-gray-400 uppercase tracking-wider">Keuangan</span>
+        <span>Tidak ada tagihan belum lunas</span>
+        <span>Tidak ada yang jatuh tempo</span>
+        <span>Belum ada kas masuk/keluar hari ini</span>
+        <a href="{{ route('admin.invoices.index') }}" class="ml-auto font-semibold text-blue-600 hover:underline">Buka Invoicing →</a>
+    </div>
+    @endif
 
     {{-- Charts Row --}}
     <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
@@ -269,15 +299,45 @@
 
     {{-- Bottom Row --}}
     <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        {{-- Shipment Status Pie --}}
+        {{-- ===== CORONG PIPELINE =============================================
+             Donut lama menghitung semua status sepanjang waktu; karena 70 dari
+             80 sudah selesai, 87% lingkarannya hijau — enak dilihat, tidak bisa
+             ditindaklanjuti. Yang dikerjakan orang operasional adalah yang
+             BELUM selesai, jadi itu yang ditampilkan, berurut sesuai alur.
+             Batangnya diberi label langsung sehingga identitas tiap tahap tidak
+             bergantung pada warna saja. --}}
         <div class="bg-white rounded-xl shadow-sm border border-gray-100 p-6">
-            <h3 class="text-lg font-bold text-gray-800 mb-4">📊 Status Shipment</h3>
-            <canvas id="statusChart" height="200"></canvas>
+            <div class="flex items-baseline justify-between mb-1">
+                <h3 class="text-lg font-bold text-gray-800">🚦 Pipeline Berjalan</h3>
+                <span class="text-2xl font-black text-gray-800 tabular-nums">{{ $pipeline['total'] }}</span>
+            </div>
+            <p class="text-xs text-gray-400 mb-5">Belum selesai · {{ number_format($pipeline['completed']) }} sudah selesai sepanjang waktu</p>
+
+            @if($pipeline['total'] > 0)
+            <div class="space-y-3">
+                @foreach($pipeline['stages'] as $stage)
+                <a href="{{ route('admin.shipments.index', ['filterStatus' => $stage['status']]) }}" class="block group">
+                    <div class="flex items-baseline justify-between mb-1">
+                        <span class="text-xs font-bold text-gray-600 group-hover:text-gray-900">{{ $stage['label'] }}</span>
+                        <span class="text-xs text-gray-400 tabular-nums">
+                            <span class="font-black text-sm text-gray-700">{{ $stage['count'] }}</span> · {{ $stage['percent'] }}%
+                        </span>
+                    </div>
+                    <div class="h-2 rounded-full bg-gray-100 overflow-hidden">
+                        <div class="h-full rounded-full transition-all" style="width: {{ max($stage['percent'], $stage['count'] > 0 ? 3 : 0) }}%; background: {{ $stage['color'] }};"></div>
+                    </div>
+                </a>
+                @endforeach
+            </div>
+            @else
+            <p class="text-gray-400 text-sm text-center py-8">Tidak ada shipment berjalan</p>
+            @endif
         </div>
 
         {{-- Top Customers --}}
         <div class="bg-white rounded-xl shadow-sm border border-gray-100 p-6">
-            <h3 class="text-lg font-bold text-gray-800 mb-4">🏆 Top 5 Customers</h3>
+            <h3 class="text-lg font-bold text-gray-800">🏆 Top 5 Customers</h3>
+            <p class="text-xs text-gray-400 mb-4">Berdasarkan nilai invoice periode ini</p>
             @if($topCustomers->count() > 0)
             <div class="space-y-3">
                 @foreach($topCustomers as $index => $customer)
@@ -292,7 +352,10 @@
                             <p class="text-xs text-gray-400">{{ $customer->customer_code }}</p>
                         </div>
                     </div>
-                    <span class="text-sm font-bold text-blue-600">{{ $customer->shipments_count }}x</span>
+                    <div class="text-right shrink-0">
+                        <p class="text-sm font-black text-emerald-700 tabular-nums">{{ \App\Support\NumberHelper::formatCurrencyCompact($customer->invoices_sum_grand_total ?? 0) }}</p>
+                        <p class="text-[11px] text-gray-400">{{ $customer->shipments_count }} job</p>
+                    </div>
                 </div>
                 @endforeach
             </div>
@@ -347,6 +410,60 @@
             </div>
         </div>
 
+        {{-- ===== LABA BERSIH ==================================================
+             Angka paling menentukan di halaman ini sebelumnya tercetak 11px di
+             pojok kartu tahun. Rugi yang menyusut konsisten adalah kabar baik,
+             dan itu harus terbaca sekali lihat — bukan dicari. --}}
+        @if($netProfit)
+        <div class="flex flex-col sm:flex-row sm:items-center gap-4 sm:gap-8 mb-6 p-4 rounded-xl border {{ $netProfit['value'] >= 0 ? 'bg-emerald-50 border-emerald-200' : 'bg-amber-50 border-amber-200' }}">
+            <div>
+                <p class="text-xs font-bold uppercase tracking-wider {{ $netProfit['value'] >= 0 ? 'text-emerald-700' : 'text-amber-700' }}">
+                    Laba Bersih {{ $netProfit['year'] }}
+                </p>
+                <p class="text-3xl font-black tracking-tight tabular-nums {{ $netProfit['value'] >= 0 ? 'text-emerald-700' : 'text-amber-800' }}">
+                    {{ $netProfit['value'] >= 0 ? '+' : '−' }}Rp {{ number_format(abs($netProfit['value'])/1000000, 0, ',', '.') }}jt
+                </p>
+                @if($netProfit['previous'] !== null)
+                <p class="text-xs mt-1 font-semibold {{ $netProfit['improving'] ? 'text-emerald-700' : 'text-red-600' }}">
+                    {{ $netProfit['improving'] ? '↑ Membaik' : '↓ Memburuk' }}
+                    <span class="font-normal text-gray-500">
+                        dari {{ $netProfit['previous'] >= 0 ? '+' : '−' }}Rp {{ number_format(abs($netProfit['previous'])/1000000, 0, ',', '.') }}jt tahun sebelumnya
+                    </span>
+                </p>
+                @endif
+            </div>
+
+            {{-- Sparkline lima tahun terakhir. Rugi digambar TURUN dari garis nol,
+                 bukan naik seperti laba — batang yang sama-sama menjulang untuk
+                 laba dan rugi akan membaca terbalik walau warnanya beda. Tiap
+                 batang diberi label angka supaya tidak bergantung warna saja. --}}
+            <div class="flex items-stretch gap-3 sm:ml-auto">
+                @php $skala = max(array_map(fn ($d) => abs($d['value']), $netProfit['series'])) ?: 1; @endphp
+                @foreach($netProfit['series'] as $titik)
+                @php $tinggi = max(round(abs($titik['value']) / $skala * 100), 6); @endphp
+                <div class="flex flex-col items-center w-12" title="{{ $titik['year'] }}: {{ $titik['value'] >= 0 ? '+' : '−' }}Rp {{ number_format(abs($titik['value'])/1000000, 0, ',', '.') }}jt">
+                    {{-- separuh atas: laba --}}
+                    <div class="w-full h-7 flex flex-col justify-end items-center">
+                        @if($titik['value'] >= 0)
+                        <span class="text-[10px] font-bold tabular-nums text-emerald-700 leading-none mb-0.5">+{{ number_format($titik['value']/1000000, 0) }}</span>
+                        <div class="w-full rounded-t bg-emerald-500" style="height: {{ $tinggi }}%"></div>
+                        @endif
+                    </div>
+                    <div class="w-full border-t border-gray-300"></div>
+                    {{-- separuh bawah: rugi --}}
+                    <div class="w-full h-7 flex flex-col items-center">
+                        @if($titik['value'] < 0)
+                        <div class="w-full rounded-b bg-red-400" style="height: {{ $tinggi }}%"></div>
+                        <span class="text-[10px] font-bold tabular-nums text-red-500 leading-none mt-0.5">−{{ number_format(abs($titik['value'])/1000000, 0) }}</span>
+                        @endif
+                    </div>
+                    <span class="text-[10px] text-gray-400 tabular-nums mt-1">{{ $titik['year'] }}</span>
+                </div>
+                @endforeach
+            </div>
+        </div>
+        @endif
+
         {{-- Annual Summary Cards --}}
         <div class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-3 mb-6">
             @foreach($growthData['annualSummary'] as $year => $data)
@@ -390,10 +507,12 @@
         document.addEventListener('livewire:navigated', initCharts);
         
         function initCharts() {
-            const months = ['Jan', 'Feb', 'Mar', 'Apr', 'Mei', 'Jun', 'Jul', 'Agu', 'Sep', 'Okt', 'Nov', 'Des'];
+            // Label berhenti di bulan berjalan. Sebelumnya Sep–Des ikut digambar
+            // nol sehingga grafik terbaca seolah pendapatan anjlok.
+            const months = @json($chartData['labels']);
             const shipmentData = @json($chartData['shipments']);
             const revenueData = @json($chartData['revenue']);
-            const statusData = @json($shipmentsByStatus);
+            const revenueMedian = @json($chartData['revenue_median']);
 
             Chart.getChart('shipmentChart')?.destroy();
             Chart.getChart('revenueChart')?.destroy();
@@ -471,40 +590,66 @@
                         borderRadius: 6
                     }]
                 },
-                options: { responsive: true, plugins: { legend: { display: false } }, scales: { y: { beginAtZero: true } } }
+                options: {
+                    responsive: true,
+                    plugins: {
+                        legend: { display: false },
+                        tooltip: { callbacks: { label: ctx => ` ${ctx.raw} shipment` } }
+                    },
+                    scales: {
+                        y: { beginAtZero: true, ticks: { precision: 0 } },
+                        x: { grid: { display: false } }
+                    }
+                }
             });
 
+            // Satu bulan yang melonjak membuat bulan lain rata di dasar grafik,
+            // jadi median dipasang sebagai garis pembanding: "bulan biasa segini".
             new Chart(document.getElementById('revenueChart'), {
                 type: 'line',
                 data: {
                     labels: months,
-                    datasets: [{
-                        label: 'Revenue',
-                        data: revenueData,
-                        borderColor: 'rgb(16, 185, 129)',
-                        backgroundColor: 'rgba(16, 185, 129, 0.1)',
-                        fill: true,
-                        tension: 0.3
-                    }]
+                    datasets: [
+                        {
+                            label: 'Revenue',
+                            data: revenueData,
+                            borderColor: 'rgb(16, 185, 129)',
+                            backgroundColor: 'rgba(16, 185, 129, 0.1)',
+                            borderWidth: 2,
+                            pointRadius: 4,
+                            pointHoverRadius: 8,
+                            fill: true,
+                            tension: 0.3
+                        },
+                        {
+                            label: 'Median bulanan',
+                            data: months.map(() => revenueMedian),
+                            borderColor: 'rgba(107, 114, 128, 0.7)',
+                            borderWidth: 2,
+                            borderDash: [5, 4],
+                            pointRadius: 0,
+                            fill: false
+                        }
+                    ]
                 },
-                options: { 
-                    responsive: true, 
-                    plugins: { legend: { display: false } },
-                    scales: { y: { beginAtZero: true, ticks: { callback: v => 'IDR ' + (v/1000000).toFixed(0) + 'jt' } } }
+                options: {
+                    responsive: true,
+                    interaction: { mode: 'index', intersect: false },
+                    plugins: {
+                        legend: { display: true, position: 'bottom', labels: { boxWidth: 12, font: { size: 11 } } },
+                        tooltip: {
+                            callbacks: {
+                                label: ctx => ` ${ctx.dataset.label}: Rp ${(ctx.raw/1000000).toFixed(1)}jt`
+                            }
+                        }
+                    },
+                    scales: {
+                        y: { beginAtZero: true, ticks: { callback: v => 'Rp ' + (v/1000000).toFixed(0) + 'jt' } },
+                        x: { grid: { display: false } }
+                    }
                 }
             });
 
-            const statusLabels = { pending: 'Pending', in_progress: 'In Progress', in_transit: 'In Transit', completed: 'Completed', cancelled: 'Cancelled' };
-            const statusColors = { pending: '#fbbf24', in_progress: '#3b82f6', in_transit: '#8b5cf6', completed: '#22c55e', cancelled: '#ef4444' };
-            
-            new Chart(document.getElementById('statusChart'), {
-                type: 'doughnut',
-                data: {
-                    labels: Object.keys(statusData).map(k => statusLabels[k] || k),
-                    datasets: [{ data: Object.values(statusData), backgroundColor: Object.keys(statusData).map(k => statusColors[k] || '#9ca3af') }]
-                },
-                options: { responsive: true, plugins: { legend: { position: 'bottom', labels: { boxWidth: 12 } } } }
-            });
         }
     </script>
 </div>
