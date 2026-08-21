@@ -72,6 +72,18 @@
         // Label status deskriptif
         $stepLabels = array_column($mainSteps->toArray(), 'label');
         $currentStepLabel = $stepLabels[$currentStep - 1] ?? 'Booking';
+
+        // Ringkasan kontrol operasional
+        $detailReadiness = $this->readiness;
+        $detailChecklist = $this->checklist;
+        $detailNextDocument = $detailChecklist
+            ->where('is_mandatory', true)
+            ->first(fn ($item) => !in_array($item->status, ['fulfilled', 'waived']));
+        $detailRevisions = $shipment->etaRevisions;
+        $detailLatestRevision = $detailRevisions->first();
+        $detailEtaLate = $shipment->estimated_arrival
+            && $shipment->estimated_arrival->isPast()
+            && !in_array($shipment->status, ['completed', 'cancel']);
     @endphp
 
     {{-- Header & Breadcrumb --}}
@@ -79,10 +91,10 @@
         <div class="flex items-center gap-2 text-sm text-gray-500">
             <a href="{{ route('admin.shipments.index') }}" class="hover:text-m2b-primary transition flex items-center gap-1">
                 <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 19l-7-7m0 0l7-7m-7 7h18"></path></svg>
-                Back to Manage Shipments
+                Kembali ke Daftar Shipment
             </a>
             <span>/</span>
-            <span class="font-bold text-gray-800">Detail #{{ $shipment->awb_number }}</span>
+            <span class="font-bold text-gray-800">Detail Shipment #{{ $shipment->awb_number }}</span>
         </div>
         
         @if (session()->has('message'))
@@ -133,22 +145,70 @@
                 </div>
             </div>
         </div>
-        
+
+        {{-- OPERATIONAL CONTROL STRIP --}}
+        <div class="grid grid-cols-1 lg:grid-cols-4 border-b border-slate-200 bg-white">
+            <div class="p-5 border-b lg:border-b-0 lg:border-r border-slate-200">
+                <p class="text-[10px] font-black uppercase tracking-wider text-slate-400">ETA terkini</p>
+                <div class="flex items-center gap-2 mt-1">
+                    <p class="font-mono text-xl font-black {{ $detailEtaLate ? 'text-red-600' : 'text-slate-900' }}">{{ $shipment->estimated_arrival?->format('d M Y') ?? 'Belum diisi' }}</p>
+                    @if($detailRevisions->count())
+                        <span class="text-[10px] font-black px-2 py-0.5 rounded-full bg-amber-100 text-amber-800">{{ $detailRevisions->count() }}× revisi</span>
+                    @endif
+                </div>
+                <p class="text-[11px] mt-1 {{ $detailEtaLate ? 'text-red-600 font-bold' : 'text-slate-500' }}">
+                    {{ $detailEtaLate ? 'Melewati estimasi' : ($detailLatestRevision ? (($detailLatestRevision->change_days > 0 ? '+' : '').$detailLatestRevision->change_days.' hari dari ETA sebelumnya') : 'Belum pernah direvisi') }}
+                </p>
+            </div>
+            <div class="p-5 border-b lg:border-b-0 lg:border-r border-slate-200">
+                <p class="text-[10px] font-black uppercase tracking-wider text-slate-400">Kesiapan dokumen</p>
+                <div class="flex items-baseline gap-2 mt-1">
+                    <p class="text-xl font-black text-slate-900">{{ $detailReadiness['fulfilled'] }}/{{ $detailReadiness['total'] }}</p>
+                    <span class="text-xs font-bold text-emerald-700">{{ $detailReadiness['percent'] }}%</span>
+                </div>
+                <div class="h-1.5 bg-slate-100 rounded-full mt-2 overflow-hidden"><div class="h-full bg-emerald-500 rounded-full" style="width: {{ $detailReadiness['percent'] }}%"></div></div>
+            </div>
+            <div class="p-5 border-b lg:border-b-0 lg:border-r border-slate-200">
+                <p class="text-[10px] font-black uppercase tracking-wider text-slate-400">Tindakan berikutnya</p>
+                <p class="text-sm font-bold text-slate-900 mt-1">{{ $detailNextDocument ? 'Lengkapi '.$detailNextDocument->doc_type : ($shipment->status === 'completed' ? 'Shipment telah selesai' : 'Pantau progres dan ETA') }}</p>
+                <p class="text-[11px] text-slate-500 mt-1">{{ $detailNextDocument ? 'Dokumen wajib belum tersedia' : 'Tidak ada blocker dokumen wajib' }}</p>
+            </div>
+            <div class="p-5 bg-blue-50/60 flex flex-col justify-center gap-2">
+                <button wire:click="openDocReqModal" class="w-full text-xs font-bold bg-blue-700 text-white px-3 py-2 rounded-lg hover:bg-blue-800 transition">Minta Dokumen</button>
+                <button wire:click="edit" class="w-full text-xs font-bold bg-white text-slate-700 border border-slate-300 px-3 py-2 rounded-lg hover:bg-slate-50 transition">Edit Data &amp; Catatan</button>
+            </div>
+        </div>
+
         {{-- INFO GRID & EDIT BUTTON --}}
         <div class="p-6 bg-white border-b border-gray-200">
             <div class="flex justify-between items-start mb-4">
                 <h3 class="font-bold text-gray-800">Informasi Pengiriman</h3>
                 <button wire:click="edit" class="text-xs bg-blue-50 text-blue-600 px-3 py-1.5 rounded-lg font-bold hover:bg-blue-100 flex items-center gap-1 transition">
                     <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"></path></svg>
-                    Edit Data & Notes
+                    Edit Data &amp; Catatan
                 </button>
             </div>
             <div class="grid grid-cols-1 md:grid-cols-4 gap-6">
-                <div><span class="text-[10px] font-bold text-gray-400 uppercase">Service</span><p class="font-bold text-gray-800 capitalize">{{ $shipment->service_type }} ({{ $shipment->shipment_type }})</p></div>
-                <div><span class="text-[10px] font-bold text-gray-400 uppercase">Cargo</span><p class="font-bold text-gray-800">{{ $shipment->container_mode }}</p><p class="text-xs text-gray-500">{{ $shipment->container_info }}</p></div>
-                <div><span class="text-[10px] font-bold text-gray-400 uppercase">Notes</span><p class="text-xs text-gray-600 italic bg-gray-50 p-2 rounded border border-gray-100">{{ $shipment->notes ?: 'Tidak ada catatan.' }}</p></div>
-                <div><span class="text-[10px] font-bold text-gray-400 uppercase">Est. Arrival</span><p class="font-bold text-m2b-primary font-mono text-lg">{{ $shipment->estimated_arrival ? date('d M Y', strtotime($shipment->estimated_arrival)) : 'TBA' }}</p></div>
+                <div><span class="text-[10px] font-bold text-gray-400 uppercase">Layanan</span><p class="font-bold text-gray-800 capitalize">{{ $shipment->service_type }} ({{ $shipment->shipment_type }})</p></div>
+                <div><span class="text-[10px] font-bold text-gray-400 uppercase">Muatan</span><p class="font-bold text-gray-800">{{ $shipment->container_mode }}</p><p class="text-xs text-gray-500">{{ $shipment->container_info }}</p></div>
+                <div><span class="text-[10px] font-bold text-gray-400 uppercase">Catatan</span><p class="text-xs text-gray-600 italic bg-gray-50 p-2 rounded border border-gray-100">{{ $shipment->notes ?: 'Tidak ada catatan.' }}</p></div>
+                <div><span class="text-[10px] font-bold text-gray-400 uppercase">Est. Tgl Tiba</span><p class="font-bold text-m2b-primary font-mono text-lg">{{ $shipment->estimated_arrival ? date('d M Y', strtotime($shipment->estimated_arrival)) : 'Belum diisi' }}</p></div>
             </div>
+            @if($detailLatestRevision)
+            <div id="eta-history" class="mt-5 rounded-xl border border-amber-200 bg-amber-50 p-4">
+                <div class="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-2">
+                    <div>
+                        <p class="text-[10px] font-black uppercase tracking-wider text-amber-700">Revisi ETA terbaru</p>
+                        <p class="text-sm font-bold text-slate-900 mt-1">{{ $detailLatestRevision->previous_eta?->format('d M Y') ?? 'Belum diisi' }} → {{ $detailLatestRevision->revised_eta->format('d M Y') }} · {{ $detailLatestRevision->reason_label }}</p>
+                        <p class="text-xs text-slate-600 mt-1">{{ $detailLatestRevision->source_party ?: 'Sumber belum dicatat' }}{{ $detailLatestRevision->reason_notes ? ' · '.\Illuminate\Support\Str::limit($detailLatestRevision->reason_notes, 160) : '' }}</p>
+                    </div>
+                    <div class="flex flex-wrap gap-2">
+                        <span class="text-[10px] font-bold rounded-full px-2.5 py-1 {{ $detailLatestRevision->customer_visible ? 'bg-emerald-100 text-emerald-800' : 'bg-slate-200 text-slate-600' }}">{{ $detailLatestRevision->customer_visible ? ($detailLatestRevision->viewed_at ? 'Sudah dilihat customer' : 'Dipublikasikan ke customer') : 'Internal M2B' }}</span>
+                        <span class="text-[10px] font-bold rounded-full px-2.5 py-1 bg-white text-amber-800 border border-amber-200">{{ $detailLatestRevision->information_received_at->format('d M Y, H:i') }}</span>
+                    </div>
+                </div>
+            </div>
+            @endif
         </div>
     </div>
 
@@ -160,7 +220,7 @@
             <div class="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
                 <div class="flex items-center gap-3 flex-wrap mb-3">
                     <h3 class="font-bold text-gray-800 flex items-center gap-2">📋 Checklist Dokumen</h3>
-                    @php $rd = $this->readiness; @endphp
+                    @php $rd = $detailReadiness; @endphp
                     <div class="flex items-center gap-2 text-xs">
                         <div class="w-28 h-2 bg-gray-100 rounded-full overflow-hidden"><div class="h-full bg-emerald-500" style="width: {{ $rd['percent'] }}%"></div></div>
                         <span class="font-bold text-emerald-700">{{ $rd['fulfilled'] }}/{{ $rd['total'] }} wajib · {{ $rd['percent'] }}%</span>
@@ -525,40 +585,49 @@
 
     {{-- MODAL EDIT SHIPMENT (CLEAN STATUS) --}}
     @if($isModalOpen)
-    <div class="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4 backdrop-blur-sm overflow-y-auto">
-        <div class="bg-white rounded-xl shadow-2xl w-full max-w-4xl max-h-[90vh] overflow-hidden flex flex-col animate-fade-in-up">
-            <div class="px-6 py-4 border-b border-slate-100 flex items-center justify-between bg-slate-50">
-                <h3 class="text-lg font-bold text-slate-800">Edit Shipment Details</h3>
-                <button wire:click="closeModal" class="text-slate-400 hover:text-slate-600">&times;</button>
+    <div class="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/60 p-4 backdrop-blur-sm overflow-y-auto">
+        <div class="bg-white rounded-2xl shadow-2xl w-full max-w-5xl max-h-[92vh] overflow-hidden flex flex-col animate-fade-in-up ring-1 ring-white/20" style="position: relative; z-index: 10;">
+            <div class="px-6 py-5 border-b border-slate-200 flex items-center justify-between bg-white">
+                <div>
+                    <p class="text-[10px] font-black tracking-[0.2em] text-blue-700 uppercase">Perbarui data operasional</p>
+                    <div class="flex flex-wrap items-center gap-2 mt-1">
+                        <h3 class="text-xl font-black text-slate-900">Edit Shipment</h3>
+                        <span class="text-xs font-mono font-bold text-slate-500 bg-slate-100 px-2 py-1 rounded-md">{{ $shipment->awb_number }}</span>
+                        <span class="text-[10px] font-bold text-blue-700 bg-blue-50 px-2 py-1 rounded-full">Tercatat di audit log</span>
+                    </div>
+                    <p class="text-xs text-slate-500 mt-1">{{ $shipment->customer->company_name ?? 'Customer belum ditentukan' }}</p>
+                </div>
+                <button wire:click="closeModal" class="w-9 h-9 inline-flex items-center justify-center rounded-lg text-slate-400 hover:text-slate-700 hover:bg-slate-100" aria-label="Tutup modal">&times;</button>
             </div>
             <div class="p-6 overflow-y-auto">
-                <div class="grid grid-cols-1 md:grid-cols-2 gap-8">
-                    <div class="space-y-5">
+                <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                    <div class="space-y-5 rounded-xl border border-slate-200 p-5">
+                        <div><h4 class="text-xs font-black text-slate-900">Rute &amp; Layanan</h4><p class="text-[11px] text-slate-500 mt-0.5">Identitas shipment dikunci untuk menjaga konsistensi dokumen.</p></div>
                         <div>
-                            <label class="block text-xs font-bold text-slate-500 uppercase mb-1">Reference No</label>
-                            <input type="text" wire:model="form.awb_number" class="w-full border-slate-300 rounded-lg text-sm bg-slate-50" readonly>
+                            <label class="block text-xs font-bold text-slate-600 mb-1">Nomor Shipment</label>
+                            <input type="text" wire:model="form.awb_number" class="w-full border-slate-200 rounded-lg text-sm bg-slate-100 text-slate-500" readonly>
                         </div>
                         <div>
-                            <label class="block text-xs font-bold text-slate-500 uppercase mb-1">Customer</label>
-                            <select wire:model="form.customer_id" class="w-full border-slate-300 rounded-lg text-sm" disabled>
+                            <label class="block text-xs font-bold text-slate-600 mb-1">Customer</label>
+                            <select wire:model="form.customer_id" class="w-full border-slate-200 rounded-lg text-sm bg-slate-100 text-slate-500" disabled>
                                 @foreach(\App\Models\Customer::all() as $c) <option value="{{ $c->id }}">{{ $c->company_name }}</option> @endforeach
                             </select>
                         </div>
                         <div class="grid grid-cols-2 gap-4">
-                            <div><label class="block text-xs font-bold text-slate-500 uppercase mb-1">Origin</label><input type="text" wire:model="form.origin" class="w-full border-slate-300 rounded-lg text-sm"></div>
-                            <div><label class="block text-xs font-bold text-slate-500 uppercase mb-1">Destination</label><input type="text" wire:model="form.destination" class="w-full border-slate-300 rounded-lg text-sm"></div>
+                            <div><label class="block text-xs font-bold text-slate-600 mb-1">Asal <span class="text-red-500">*</span></label><input type="text" wire:model="form.origin" class="w-full border-slate-300 rounded-lg text-sm bg-white">@error('form.origin')<p class="text-xs text-red-600 mt-1">{{ $message }}</p>@enderror</div>
+                            <div><label class="block text-xs font-bold text-slate-600 mb-1">Tujuan <span class="text-red-500">*</span></label><input type="text" wire:model="form.destination" class="w-full border-slate-300 rounded-lg text-sm bg-white">@error('form.destination')<p class="text-xs text-red-600 mt-1">{{ $message }}</p>@enderror</div>
                         </div>
                         <div class="grid grid-cols-2 gap-4">
-                            <div><label class="block text-xs font-bold text-slate-500 uppercase mb-1">Service Type</label><select wire:model="form.service_type" class="w-full border-slate-300 rounded-lg text-sm"><option value="import">Import</option><option value="export">Export</option><option value="domestic">Domestic</option></select></div>
-                            <div><label class="block text-xs font-bold text-slate-500 uppercase mb-1">Transport</label><select wire:model="form.shipment_type" class="w-full border-slate-300 rounded-lg text-sm"><option value="sea">Sea Freight</option><option value="air">Air Freight</option><option value="land">Land Freight</option></select></div>
+                            <div><label class="block text-xs font-bold text-slate-600 mb-1">Jenis Layanan</label><select wire:model="form.service_type" class="w-full border-slate-300 rounded-lg text-sm bg-white"><option value="import">Import</option><option value="export">Export</option><option value="domestic">Domestik</option></select></div>
+                            <div><label class="block text-xs font-bold text-slate-600 mb-1">Moda Transportasi</label><select wire:model="form.shipment_type" class="w-full border-slate-300 rounded-lg text-sm bg-white"><option value="sea">Laut</option><option value="air">Udara</option><option value="land">Darat</option></select></div>
                         </div>
                         <div class="mt-4">
-                            <label class="block text-xs font-bold text-slate-500 uppercase mb-1">Customer Notes / Catatan</label>
-                            <textarea wire:model="form.notes" rows="3" class="w-full border-slate-300 rounded-lg text-sm bg-slate-50 focus:ring-blue-500 focus:border-blue-500" placeholder="Catatan tambahan..."></textarea>
+                            <label class="block text-xs font-bold text-slate-600 mb-1">Catatan Operasional</label>
+                            <textarea wire:model="form.notes" rows="3" class="w-full border-slate-300 rounded-lg text-sm bg-white focus:ring-blue-500 focus:border-blue-500" placeholder="Tambahkan informasi untuk tim operasional..."></textarea>
                         </div>
                     </div>
                     <div class="bg-slate-50 p-5 rounded-xl border border-slate-200 space-y-4">
-                        <h4 class="text-xs font-bold text-blue-900 uppercase tracking-wider mb-2">CARGO DETAILS</h4>
+                        <div><h4 class="text-xs font-black text-slate-900">Muatan &amp; Kontrol Operasional</h4><p class="text-[11px] text-slate-500 mt-0.5">Data berisiko tinggi diberi penjelasan sebelum disimpan.</p></div>
                         <div class="grid grid-cols-2 gap-3">
                             <div><label class="text-xs font-bold text-slate-500 block mb-1">Mode</label><select wire:model="form.container_mode" class="w-full border-slate-300 rounded-lg text-sm"><option value="LCL">LCL</option><option value="FCL">FCL</option></select></div>
                             <div><label class="text-xs font-bold text-slate-500 block mb-1">Details</label><input type="text" wire:model="form.container_info" class="w-full border-slate-300 rounded-lg text-sm"></div>
@@ -639,7 +708,14 @@
                                 </select>
                             </div>
                         </div>
-                        <div><label class="text-xs font-bold text-slate-500 block mb-1">Weight (Kg)</label><input type="number" wire:model="form.weight" class="w-full border-slate-300 rounded-lg text-sm"></div>
+                        <div>
+                            <label class="text-xs font-bold text-slate-500 block mb-1">Weight (Kg)</label>
+                            <input type="number" step="0.01" min="0" wire:model="form.weight" placeholder="contoh: 15051.2" class="w-full border-slate-300 rounded-lg text-sm">
+                            {{-- Petunjuk format: penyebab error 15.051.200 kg adalah pemisah
+                                 ribuan gaya Indonesia yang ikut terketik jadi angka. --}}
+                            <p class="text-[10px] text-slate-400 mt-1">Pakai titik untuk desimal, tanpa pemisah ribuan.</p>
+                            @error('form.weight') <p class="text-[11px] text-red-600 mt-1">{{ $message }}</p> @enderror
+                        </div>
                         <div x-data="hsCodeAutocomplete()" class="relative">
                             <label class="text-xs font-bold text-slate-500 block mb-1">HS Code</label>
                             <input type="text" x-model="search" @input.debounce.300ms="fetchResults" @focus="showDropdown = true" @click.away="showDropdown = false" wire:model="form.hs_code" class="w-full border-slate-300 rounded-lg text-sm font-mono" placeholder="Ketik HS Code atau deskripsi..." maxlength="12" autocomplete="off">
@@ -656,36 +732,55 @@
                         </div>
                         <hr class="border-slate-200 my-2">
                         
-                        {{-- STATUS REMOVED, REPLACED WITH CHECKBOX --}}
-                        <div class="flex items-center gap-3 bg-white p-3 rounded-lg border border-gray-200 shadow-sm">
+                        {{-- KONTROL OPERASIONAL BERISIKO TINGGI --}}
+                        <div class="rounded-xl border border-blue-200 bg-blue-950 p-4 text-white space-y-4">
+                        <div>
+                            <p class="text-[10px] font-black uppercase tracking-[0.16em] text-blue-300">Kontrol operasional</p>
+                            <p class="text-[11px] text-blue-200 mt-1">Bagian ini memengaruhi tracking dan tampilan customer.</p>
+                        </div>
+                        <div class="flex items-start gap-3 bg-white/10 p-3 rounded-lg border border-white/15">
                             <input type="checkbox" wire:model="mark_as_completed" id="markCompleted" class="w-5 h-5 text-green-600 rounded focus:ring-green-500">
-                            <label for="markCompleted" class="text-sm font-bold text-gray-700 cursor-pointer select-none">
-                                Tandai Shipment Selesai (Completed)
+                            <label for="markCompleted" class="cursor-pointer select-none">
+                                <span class="block text-sm font-bold text-white">Selesaikan Shipment</span>
+                                <span class="block text-[11px] text-blue-200 mt-0.5">Status customer berubah menjadi Selesai setelah data disimpan.</span>
                             </label>
                         </div>
                         
                         <div>
-                            <label class="text-xs font-bold text-slate-500 block mb-1">Est. Arrival</label>
-                            <input type="date" wire:model="form.estimated_arrival" class="w-full border-slate-300 rounded-lg text-sm">
+                            <div class="flex items-center justify-between gap-3 mb-1.5">
+                                <label class="text-xs font-bold text-blue-100">Est. Tgl Tiba</label>
+                                <a href="{{ route('admin.shipments.index', ['eta_revision' => $shipment->id]) }}" class="text-[11px] font-bold text-amber-300 hover:text-amber-200 underline underline-offset-2">Revisi ETA resmi →</a>
+                            </div>
+                            <div class="flex items-center justify-between rounded-lg border border-white/15 bg-white/10 px-3 py-2.5">
+                                <span class="font-mono text-sm font-bold">{{ $shipment->estimated_arrival?->format('d M Y') ?? 'Belum diisi' }}</span>
+                                <span class="text-[10px] font-bold text-blue-200">READ-ONLY</span>
+                            </div>
+                            <p class="text-[10px] text-blue-200 mt-1.5">Perubahan ETA wajib melalui flow revisi agar alasan dan sumber tercatat.</p>
                         </div>
 
                         {{-- STATUS JALUR MANUAL --}}
-                        <div class="mt-2 p-3 rounded-lg border bg-white border-blue-200 shadow-sm">
-                            <label class="text-xs font-bold text-blue-800 uppercase flex items-center gap-1 mb-1">
-                                Status Jalur Manual
-                            </label>
-                            <select wire:model="form.lane_status" class="w-full rounded-lg text-sm font-bold">
+                        <div>
+                            <label class="text-xs font-bold text-blue-100 block mb-1.5">Override Status Jalur</label>
+                            <select wire:model="form.lane_status" class="w-full border-blue-700 bg-white text-slate-900 rounded-lg text-sm font-bold">
                                 <option value="">-- Otomatis / Belum Ada --</option>
                                 <option value="green">🟩 JALUR HIJAU</option>
                                 <option value="red">🟥 JALUR MERAH</option>
                             </select>
+                            <p class="text-[10px] text-amber-300 mt-1.5">Gunakan hanya bila hasil otomatis dari dokumen perlu dikoreksi.</p>
+                        </div>
                         </div>
                     </div>
                 </div>
             </div>
-            <div class="bg-slate-50 px-6 py-4 border-t border-slate-200 flex justify-end gap-3">
-                <button wire:click="closeModal" class="px-4 py-2 bg-white border border-slate-300 rounded-lg text-slate-600 font-medium hover:bg-slate-50">Cancel</button>
-                <button wire:click="save" class="px-6 py-2 bg-slate-900 text-white rounded-lg font-bold hover:bg-slate-800">Save Shipment</button>
+            <div class="bg-slate-50 px-6 py-4 border-t border-slate-200 flex flex-col-reverse sm:flex-row sm:items-center sm:justify-between gap-3">
+                <p class="text-[11px] text-slate-500">Field bertanda <span class="text-red-500">*</span> wajib diisi.</p>
+                <div class="flex justify-end gap-3">
+                    <button wire:click="closeModal" wire:loading.attr="disabled" class="px-4 py-2 bg-white border border-slate-300 rounded-lg text-slate-600 font-bold hover:bg-slate-50 disabled:opacity-50">Batal</button>
+                    <button wire:click="save" wire:loading.attr="disabled" wire:target="save" class="px-6 py-2 bg-blue-700 text-white rounded-lg font-bold hover:bg-blue-800 disabled:opacity-60">
+                        <span wire:loading.remove wire:target="save">Simpan Perubahan</span>
+                        <span wire:loading wire:target="save">Menyimpan...</span>
+                    </button>
+                </div>
             </div>
         </div>
     </div>
