@@ -67,8 +67,13 @@ class ShipmentDetail extends Component
 
     public function mount($id)
     {
-        // Pastikan relasi customer dan user terload
-        $this->shipment = Shipment::with('customer.user')->findOrFail($id);
+        // Pastikan ringkasan operasional dan riwayat ETA siap tanpa query berulang.
+        $this->shipment = Shipment::with([
+            'customer.user',
+            'documents',
+            'etaRevisions.creator',
+            'etaRevisions.sourceDocument',
+        ])->findOrFail($id);
 
         // Bangun checklist dokumen sekali (aditif; aman bila tabel belum ada).
         try {
@@ -421,6 +426,8 @@ class ShipmentDetail extends Component
         }
 
         $oldStatus = $this->shipment->status;
+        // ETA wajib melalui flow Revisi ETA agar alasan, sumber, dan publikasi customer tercatat.
+        unset($this->form['estimated_arrival']);
         $this->shipment->update($this->form);
 
         if ($oldStatus !== $this->form['status']) {

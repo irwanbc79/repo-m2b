@@ -13,6 +13,24 @@
         </div>
     </div>
 
+    @foreach(($etaUpdates ?? collect()) as $update)
+    <div class="rounded-xl border border-amber-300 bg-amber-50 p-5 flex flex-col md:flex-row md:items-center gap-4 shadow-sm">
+        <div class="text-2xl">🕘</div>
+        <div class="flex-1">
+            <div class="flex flex-wrap items-center gap-2">
+                <h3 class="font-black text-slate-900">Pembaruan Jadwal Pengiriman</h3>
+                <span class="text-[10px] font-bold px-2 py-0.5 rounded-full bg-white text-amber-800">{{ $update->shipment->awb_number }}</span>
+            </div>
+            <p class="text-sm font-bold text-slate-700 mt-1">ETA {{ $update->previous_eta?->format('d M Y') ?? 'belum diisi' }} → {{ $update->revised_eta->format('d M Y') }} <span class="text-amber-700">({{ $update->change_days > 0 ? '+' : '' }}{{ $update->change_days }} hari)</span></p>
+            <p class="text-sm text-slate-600 mt-1">{{ $update->customer_message }}</p>
+        </div>
+        <div class="flex gap-2">
+            <a href="{{ route('customer.shipment.show', $update->shipment_id) }}" class="px-3 py-2 text-xs font-bold text-blue-800 border border-blue-200 rounded-lg bg-white">Lihat Detail</a>
+            <button wire:click="acknowledgeEtaRevision({{ $update->id }})" class="px-3 py-2 text-xs font-bold text-white bg-blue-900 rounded-lg">Saya Sudah Membaca</button>
+        </div>
+    </div>
+    @endforeach
+
     {{-- ⭐ Ajakan isi testimoni --}}
     @if(($testimonialCta ?? null) === 'invite')
     <a href="{{ route('customer.testimonial') }}" class="block group">
@@ -173,6 +191,9 @@
                         <td class="px-6 py-4">
                             @if($shipment->estimated_arrival)
                                 <span class="font-mono text-gray-600 text-xs">{{ \Carbon\Carbon::parse($shipment->estimated_arrival)->format('d M Y') }}</span>
+                                @if(($latestEta = $shipment->etaRevisions->first()))
+                                <span class="block text-[10px] font-bold text-amber-700 mt-1">🕘 {{ $shipment->etaRevisions->count() }}× revisi · {{ $latestEta->change_days > 0 ? '+' : '' }}{{ $latestEta->change_days }} hari</span>
+                                @endif
                             @else
                                 <span class="text-gray-400 text-xs italic">TBA</span>
                             @endif

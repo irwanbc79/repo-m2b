@@ -37,6 +37,7 @@ class Document extends Model
     protected $casts = [
         'file_size' => 'integer',
         'is_public' => 'boolean',
+        'is_internal' => 'boolean',
         'uploaded_at' => 'datetime',
     ];
 

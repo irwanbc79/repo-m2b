@@ -152,6 +152,37 @@
         </div>
     </div>
 
+    @if($shipment->etaRevisions->isNotEmpty())
+    <div class="bg-white rounded-xl shadow-sm border border-amber-200 overflow-hidden">
+        <div class="px-6 py-4 bg-amber-50 border-b border-amber-100 flex items-center justify-between">
+            <div>
+                <h3 class="font-black text-slate-900">Riwayat Estimasi Tiba</h3>
+                <p class="text-xs text-slate-500">Pembaruan jadwal yang dipublikasikan oleh tim M2B.</p>
+            </div>
+            <span class="text-xs font-bold text-amber-800 bg-white px-3 py-1 rounded-full border border-amber-200">{{ $shipment->etaRevisions->count() }} revisi</span>
+        </div>
+        <div class="p-6 space-y-4">
+            @foreach($shipment->etaRevisions as $revision)
+            <div class="relative pl-6 border-l-2 {{ $loop->first ? 'border-amber-500' : 'border-slate-200' }}">
+                <span class="absolute -left-[7px] top-1 w-3 h-3 rounded-full {{ $loop->first ? 'bg-amber-500' : 'bg-slate-300' }}"></span>
+                <p class="font-black text-slate-800">{{ $revision->previous_eta?->format('d M Y') ?? 'Belum diisi' }} → {{ $revision->revised_eta->format('d M Y') }} <span class="text-sm text-amber-700">({{ $revision->change_days > 0 ? '+' : '' }}{{ $revision->change_days }} hari)</span></p>
+                <p class="text-sm text-slate-600 mt-1">{{ $revision->customer_message }}</p>
+                <p class="text-[11px] text-slate-400 mt-1">Dipublikasikan {{ $revision->published_at?->format('d M Y H:i') ?? $revision->created_at->format('d M Y H:i') }}</p>
+                @if($revision->evidence_customer_visible && $revision->sourceDocument)
+                <button type="button" wire:click="viewDocument({{ $revision->sourceDocument->id }})"
+                    class="inline-flex items-center gap-1 mt-2 text-xs font-bold text-blue-700 hover:text-blue-900 hover:underline">
+                    📎 Lihat bukti jadwal
+                </button>
+                @endif
+                @if(!$revision->viewed_at)
+                <button wire:click="acknowledgeEtaRevision({{ $revision->id }})" class="ml-3 mt-2 text-xs font-bold text-blue-900 hover:underline">Saya sudah membaca</button>
+                @endif
+            </div>
+            @endforeach
+        </div>
+    </div>
+    @endif
+
     <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
         
         {{-- KOLOM KIRI: LIST DOKUMEN (UPDATED - dengan tombol preview & download) --}}

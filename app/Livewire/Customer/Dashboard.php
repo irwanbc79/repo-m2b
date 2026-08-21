@@ -4,6 +4,7 @@ namespace App\Livewire\Customer;
 
 use Livewire\Component;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Cache;
 use App\Models\Shipment;
 
 class Dashboard extends Component
@@ -23,19 +24,43 @@ class Dashboard extends Component
                 ],
                 'shipments' => [],
                 'docRequests' => collect(),
+                'etaUpdates' => collect(),
                 'testimonialCta' => null,
             ])->layout('layouts.customer');
         }
 
-        // Ambil Statistik
-        $stats = [
-            'total' => $user->customer->shipments()->count(),
-            'active' => $user->customer->shipments()->whereIn('status', ['pending', 'in_progress', 'in_transit'])->count(),
-            'completed' => $user->customer->shipments()->where('status', 'completed')->count(),
-        ];
+        $customerId = $user->customer->id;
+        $cacheKey = 'customer_dashboard_' . $customerId;
+        $cacheVersion = Cache::get('customer_dashboard_version_' . $customerId, 1);
 
-        // Ambil 5 Shipment Terakhir
-        $shipments = $user->customer->shipments()->latest()->take(5)->get();
+        // Cache dashboard data selama 5 menit dengan versioning
+        $cachedData = Cache::remember($cacheKey . '_v' . $cacheVersion, now()->addMinutes(5), function () use ($user, $customerId) {
+            // Ambil Statistik
+            $stats = [
+                'total' => $user->customer->shipments()->count(),
+                'active' => $user->customer->shipments()->whereIn('status', ['pending', 'in_progress', 'in_transit'])->count(),
+                'completed' => $user->customer->shipments()->where('status', 'completed')->count(),
+            ];
+
+            // Ambil 5 Shipment Terakhir
+            $shipments = $user->customer->shipments()
+                ->with(['etaRevisions' => fn ($q) => $q->where('customer_visible', true)])
+                ->latest()->take(5)->get();
+            
+            return compact('stats', 'shipments');
+        });
+        
+        $stats = $cachedData['stats'];
+        $shipments = $cachedData['shipments'];
+
+        $etaUpdates = \App\Models\ShipmentEtaRevision::query()
+            ->where('customer_visible', true)
+            ->whereNull('viewed_at')
+            ->whereHas('shipment', fn ($q) => $q->where('customer_id', $customerId))
+            ->with('shipment:id,customer_id,awb_number')
+            ->latest('published_at')
+            ->take(5)
+            ->get();
 
         // Dokumen yang DIMINTA staf M2B (belum dipenuhi) — lintas semua shipment.
         // Aditif & aman: bila tabel belum ada, kembalikan koleksi kosong.
@@ -75,7 +100,21 @@ class Dashboard extends Component
             'stats' => $stats,
             'shipments' => $shipments,
             'docRequests' => $docRequests,
+            'etaUpdates' => $etaUpdates,
             'testimonialCta' => $testimonialCta,
         ])->layout('layouts.customer');
+    }
+
+    public function acknowledgeEtaRevision(int $revisionId): void
+    {
+        $customerId = Auth::user()->customer?->id;
+
+        $revision = \App\Models\ShipmentEtaRevision::query()
+            ->whereKey($revisionId)
+            ->where('customer_visible', true)
+            ->whereHas('shipment', fn ($q) => $q->where('customer_id', $customerId))
+            ->firstOrFail();
+
+        $revision->update(['viewed_at' => $revision->viewed_at ?? now()]);
     }
 }

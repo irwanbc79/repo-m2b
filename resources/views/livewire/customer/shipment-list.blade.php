@@ -118,6 +118,11 @@
                         <td class="px-6 py-4">
                             @if($shipment->estimated_arrival)
                                 <div class="font-mono text-gray-600">{{ \Carbon\Carbon::parse($shipment->estimated_arrival)->format('d M Y') }}</div>
+                                @if(($latestEta = $shipment->etaRevisions->first()))
+                                <a href="{{ route('customer.shipment.show', $shipment->id) }}" class="inline-flex items-center gap-1 mt-1 text-[10px] font-bold text-amber-700 hover:underline">
+                                    🕘 {{ $shipment->etaRevisions->count() }}× revisi · terakhir {{ $latestEta->change_days > 0 ? '+' : '' }}{{ $latestEta->change_days }} hari
+                                </a>
+                                @endif
                             @else
                                 <span class="text-gray-400 italic text-xs">TBA</span>
                             @endif

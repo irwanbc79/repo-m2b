@@ -738,7 +738,7 @@ Route::middleware(['auth'])->group(function () {
             $user = \Illuminate\Support\Facades\Auth::user();
             if ($user->role === 'customer') {
                 $shipment = $doc->shipment;
-                if ($shipment && $user->customer && $shipment->customer_id !== $user->customer->id) {
+                if (!$shipment || !$user->customer || $shipment->customer_id !== $user->customer->id || $doc->is_internal || !$doc->is_public) {
                     abort(403, 'Akses ditolak.');
                 }
             }
@@ -802,7 +802,7 @@ Route::middleware(['auth'])->group(function () {
             $user = \Illuminate\Support\Facades\Auth::user();
             if ($user->role === 'customer') {
                 $shipment = $doc->shipment;
-                if ($shipment && $user->customer && $shipment->customer_id !== $user->customer->id) {
+                if (!$shipment || !$user->customer || $shipment->customer_id !== $user->customer->id || $doc->is_internal || !$doc->is_public) {
                     abort(403, 'Akses ditolak.');
                 }
             }

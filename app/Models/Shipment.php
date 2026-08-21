@@ -386,6 +386,11 @@ class Shipment extends Model
         return $this->hasMany(Document::class, 'shipment_id');
     }
 
+    public function etaRevisions(): HasMany
+    {
+        return $this->hasMany(ShipmentEtaRevision::class)->latest();
+    }
+
     /**
      * Item checklist kelengkapan dokumen (F1/F2).
      */

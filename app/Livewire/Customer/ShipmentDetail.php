@@ -33,7 +33,12 @@ class ShipmentDetail extends Component
     {
         // LOGIC KEAMANAN PINTAR:
         // 1. Ambil data shipment beserta dokumennya
-        $query = Shipment::with(['customer','statuses','documents'])->where('id', $id);
+        $query = Shipment::with([
+            'customer',
+            'statuses',
+            'documents',
+            'etaRevisions' => fn ($q) => $q->where('customer_visible', true)->with('sourceDocument'),
+        ])->where('id', $id);
 
         // 2. Jika yang akses adalah CUSTOMER, paksa filter hanya miliknya
         if (Auth::user()->role === 'customer') {
@@ -146,7 +151,11 @@ class ShipmentDetail extends Component
     // === METHOD PREVIEW DOCUMENT (BARU - adopsi dari admin) ===
     public function viewDocument($docId)
     {
-        $this->previewDoc = Document::find($docId);
+        // Dokumen preview wajib milik shipment yang sudah lolos ownership check.
+        $this->previewDoc = $this->shipment->documents()
+            ->whereKey($docId)
+            ->where('is_internal', false)
+            ->firstOrFail();
         $this->allPublicDocs = $this->shipment->documents()->where('is_internal', false)->get();
         $this->currentDocIndex = $this->allPublicDocs->search(function($doc) use ($docId) {
             return $doc->id == $docId;
@@ -224,5 +233,18 @@ class ShipmentDetail extends Component
             : 'layouts.customer';
 
         return view('livewire.customer.shipment-detail')->layout($layout);
+    }
+
+    public function acknowledgeEtaRevision(int $revisionId): void
+    {
+        $revision = $this->shipment->etaRevisions()
+            ->whereKey($revisionId)
+            ->where('customer_visible', true)
+            ->firstOrFail();
+
+        $revision->update(['viewed_at' => $revision->viewed_at ?? now()]);
+        $this->shipment->load([
+            'etaRevisions' => fn ($q) => $q->where('customer_visible', true)->with('sourceDocument'),
+        ]);
     }
 }

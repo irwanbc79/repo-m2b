@@ -46,6 +46,7 @@ class ShipmentList extends Component
             'messages as unread_admin_count' => fn ($q) => $q->unreadForCustomer(),
             'documentRequirements as doc_requested_count' => fn ($q) => $q->where('status', 'requested'),
         ])
+        ->with(['etaRevisions' => fn ($q) => $q->where('customer_visible', true)])
         ->latest()
         ->paginate(25);
 
