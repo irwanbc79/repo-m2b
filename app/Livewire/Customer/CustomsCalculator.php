@@ -6,6 +6,7 @@ use Livewire\Component;
 use App\Models\TaxExchangeRate;
 use Carbon\Carbon;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Cache;
 
 class CustomsCalculator extends Component
 {
@@ -90,16 +91,19 @@ class CustomsCalculator extends Component
 
     /**
      * SINKRONISASI KURS (MIRROR DARI ADMIN + FAILSAFE LATEST)
-     * Ini kunci agar tidak kosong/blank lagi.
+     * Dengan caching 1 jam untuk mengurangi query berulang
      */
     public function syncWithTaxRate()
     {
         $code = strtoupper($this->mata_uang);
+        $cacheKey = 'tax_rate_' . $code . '_' . now()->format('Y-m-d');
 
-        // 1. Ambil data kurs terbaru tanpa filter tanggal yang rumit
-        $rate = TaxExchangeRate::where('currency_code', $code)
-            ->orderByDesc('valid_until')
-            ->first();
+        // Cache selama 1 jam - kurs pajak mingguan jarang berubah
+        $rate = Cache::remember($cacheKey, now()->addHour(), function () use ($code) {
+            return TaxExchangeRate::where('currency_code', $code)
+                ->orderByDesc('valid_until')
+                ->first();
+        });
 
         if ($rate) {
             $this->kurs = (float) $rate->rate;

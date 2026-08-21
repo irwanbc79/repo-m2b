@@ -6,10 +6,27 @@ use App\Jobs\SendFollowUpEmailJob;
 use App\Models\Invoice;
 use App\Models\Shipment;
 use App\Models\Testimonial;
+use App\Support\CacheHelper;
 use Illuminate\Support\Facades\Log;
 
 class ShipmentObserver
 {
+    /**
+     * Invalidate customer dashboard cache when shipment is updated
+     */
+    public function updated(Shipment $shipment): void
+    {
+        CacheHelper::invalidateCustomerDashboard($shipment->customer_id);
+    }
+    
+    /**
+     * Invalidate cache when new shipment is created
+     */
+    public function created(Shipment $shipment): void
+    {
+        CacheHelper::invalidateCustomerDashboard($shipment->customer_id);
+    }
+
     public function updating(Shipment $shipment): void
     {
         if (!$shipment->isDirty('status')) {

@@ -123,6 +123,13 @@ class FetchKursPajak extends Command
             cache()->forget('kurs_pajak_customer_active_' . now()->format('Y-m-d'));
             cache()->forget('admin_usd_rate');
             cache()->forget('customer_usd_rate_header');
+            
+            // Clear all tax rate caches for today
+            $currencies = ['USD', 'AUD', 'CAD', 'DKK', 'HKD', 'MYR', 'NZD', 'NOK', 'GBP', 'SGD',
+                          'SEK', 'CHF', 'JPY', 'CNY', 'EUR', 'KRW', 'SAR', 'THB', 'BND', 'INR'];
+            foreach ($currencies as $currency) {
+                cache()->forget('tax_rate_' . $currency . '_' . now()->format('Y-m-d'));
+            }
 
             $this->info("Kurs pajak berhasil diperbarui: {$count} mata uang.");
             return Command::SUCCESS;
