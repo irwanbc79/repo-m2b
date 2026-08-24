@@ -15,7 +15,7 @@ return new class extends Migration
             $table->id();
             $table->foreignId('shipment_id')->constrained()->onDelete('cascade');
             $table->foreignId('uploaded_by')->constrained('users');
-            $table->enum('document_type', ['invoice', 'packing_list', 'certificate', 'other']);
+            $table->string('document_type', 100)->default('other');
             $table->string('filename', 255);
             $table->string('file_path', 500);
             $table->bigInteger('file_size');

@@ -542,13 +542,33 @@
                         </select>
                         @error('doc_type') <span class="text-red-500 text-[10px]">{{ $message }}</span> @enderror
                     </div>
-                    <div><input type="file" wire:model="file_upload" class="w-full text-xs text-slate-500 file:mr-2 file:py-1.5 file:px-3 file:rounded-lg file:border-0 file:text-xs file:font-bold file:bg-white file:text-blue-700 hover:file:bg-blue-100">@error('file_upload') <span class="text-red-500 text-[10px] block mt-1">{{ $message }}</span> @enderror</div>
+                    <div>
+                        <input type="file" wire:model="file_upload" class="w-full text-xs text-slate-500 file:mr-2 file:py-1.5 file:px-3 file:rounded-lg file:border-0 file:text-xs file:font-bold file:bg-white file:text-blue-700 hover:file:bg-blue-100">
+                        <div wire:loading wire:target="file_upload" class="flex items-center gap-2 text-xs text-blue-700 bg-blue-100/80 p-2 rounded-lg mt-1.5 font-medium animate-pulse">
+                            <svg class="animate-spin h-4 w-4 text-blue-600 shrink-0" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                                <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                                <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                            </svg>
+                            <span>Mengunggah file ke server, mohon tunggu...</span>
+                        </div>
+                        @if($file_upload)
+                            <div wire:loading.remove wire:target="file_upload" class="flex items-center justify-between text-xs text-green-700 bg-green-50 border border-green-200 p-1.5 rounded-lg mt-1.5 font-medium">
+                                <span class="truncate">✅ File siap: {{ $file_upload->getClientOriginalName() }}</span>
+                                <span class="shrink-0 text-[10px] text-gray-500 font-mono">({{ number_format($file_upload->getSize() / 1024, 0) }} KB)</span>
+                            </div>
+                        @endif
+                        @error('file_upload') <span class="text-red-500 text-[10px] block mt-1 font-medium">{{ $message }}</span> @enderror
+                    </div>
                     <div><textarea wire:model="custom_note" rows="1" class="w-full border-blue-200 rounded-lg text-xs focus:ring-blue-500 focus:border-blue-500" placeholder="Catatan..."></textarea></div>
                     <div x-data="{ showCustomDesc: @entangle('doc_type') }" x-show="showCustomDesc === 'Dokumen Pendukung Lainnya'" x-transition>
                         <input type="text" wire:model="custom_description" class="w-full border-yellow-300 bg-yellow-50 rounded-lg text-xs focus:ring-yellow-500 focus:border-yellow-500 px-3 py-2" placeholder="⚠️ Wajib: Ketik nama dokumen pendukung..." />
-                        @error('custom_description') <span class="text-red-500 text-[10px] block mt-1">{{ $message }}</span> @enderror
+                        @error('custom_description') <span class="text-red-500 text-[10px] block mt-1 font-medium">{{ $message }}</span> @enderror
                     </div>
-                    <button wire:click="uploadPublic" wire:loading.attr="disabled" class="w-full bg-blue-600 text-white font-bold py-2 rounded-lg hover:bg-blue-700 transition shadow-md flex justify-center items-center gap-2 text-xs uppercase tracking-wider"><span wire:loading.remove wire:target="uploadPublic">Upload ke Customer</span><span wire:loading wire:target="uploadPublic">...</span></button>
+                    <button wire:click="uploadPublic" wire:loading.attr="disabled" wire:target="file_upload, uploadPublic" class="w-full bg-blue-600 text-white font-bold py-2.5 rounded-lg hover:bg-blue-700 transition shadow-md flex justify-center items-center gap-2 text-xs uppercase tracking-wider disabled:opacity-50 disabled:cursor-not-allowed">
+                        <span wire:loading.remove wire:target="file_upload, uploadPublic">Upload ke Customer</span>
+                        <span wire:loading wire:target="file_upload">⏳ Mengunggah File...</span>
+                        <span wire:loading wire:target="uploadPublic">💾 Menyimpan Dokumen...</span>
+                    </button>
                 </div>
             </div>
             
@@ -907,6 +927,20 @@
                         <span class="text-sm font-bold text-purple-700 hover:text-purple-900 block mb-2">Pilih File Foto / Dokumen</span>
                         <input type="file" wire:model="file_upload" class="text-xs text-slate-500 mx-auto">
                     </label>
+                    <div wire:loading wire:target="file_upload" class="flex items-center justify-center gap-2 text-xs text-purple-700 bg-purple-100/80 p-2 rounded-lg mt-2 font-medium animate-pulse">
+                        <svg class="animate-spin h-4 w-4 text-purple-600 shrink-0" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                            <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                            <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                        </svg>
+                        <span>Mengunggah file, mohon tunggu...</span>
+                    </div>
+                    @if($file_upload)
+                        <div wire:loading.remove wire:target="file_upload" class="flex items-center justify-between text-xs text-green-700 bg-green-50 border border-green-200 p-1.5 rounded-lg mt-2 font-medium">
+                            <span class="truncate">✅ File siap: {{ $file_upload->getClientOriginalName() }}</span>
+                            <span class="shrink-0 text-[10px] text-gray-500 font-mono">({{ number_format($file_upload->getSize() / 1024, 0) }} KB)</span>
+                        </div>
+                    @endif
+                    @error('file_upload') <span class="text-red-500 text-[10px] block mt-1 font-medium">{{ $message }}</span> @enderror
                 </div>
                 <div>
                     <label class="text-xs font-bold text-gray-600 uppercase">Keterangan</label>
@@ -915,10 +949,10 @@
             </div>
             <div class="mt-6 flex justify-end gap-3 pt-4 border-t">
                 <button wire:click="closeInternalModal" class="px-4 py-2 bg-gray-100 text-gray-600 rounded-lg text-sm font-bold">Batal</button>
-                {{-- Menggunakan wire:loading.attr="disabled" dan wire:target="uploadInternal" --}}
-                <button wire:click="uploadInternal" wire:loading.attr="disabled" wire:target="uploadInternal" class="px-4 py-2 bg-purple-700 text-white rounded-lg text-sm font-bold hover:bg-purple-800 transition disabled:opacity-50">
-                    <span wire:loading.remove wire:target="uploadInternal">Simpan</span>
-                    <span wire:loading wire:target="uploadInternal">Uploading...</span>
+                <button wire:click="uploadInternal" wire:loading.attr="disabled" wire:target="file_upload, uploadInternal" class="px-4 py-2 bg-purple-700 text-white rounded-lg text-sm font-bold hover:bg-purple-800 transition disabled:opacity-50 disabled:cursor-not-allowed">
+                    <span wire:loading.remove wire:target="file_upload, uploadInternal">Simpan</span>
+                    <span wire:loading wire:target="file_upload">Mengunggah...</span>
+                    <span wire:loading wire:target="uploadInternal">Menyimpan...</span>
                 </button>
             </div>
         </div>

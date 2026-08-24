@@ -463,14 +463,22 @@ class ShipmentDetail extends Component
     protected function processUpload($isInternal)
     {
         $this->validate([
-            'file_upload' => 'required|file|mimes:pdf,jpg,jpeg,png,xls,xlsx,doc,docx,webp|max:10240',
+            'file_upload' => 'required|file|mimes:pdf,jpg,jpeg,png,xls,xlsx,doc,docx,webp|max:20480',
             'doc_type' => 'required|string',
             'custom_description' => 'required_if:doc_type,Dokumen Pendukung Lainnya|string|max:255',
+        ], [
+            'file_upload.required' => 'Pilih file dokumen terlebih dahulu atau tunggu hingga proses unggah selesai.',
+            'file_upload.file' => 'File yang diunggah tidak valid.',
+            'file_upload.mimes' => 'Format file harus berupa PDF, JPG, PNG, XLS, XLSX, DOC, DOCX, atau WEBP.',
+            'file_upload.max' => 'Ukuran file maksimal 20MB.',
+            'doc_type.required' => 'Pilih jenis dokumen terlebih dahulu.',
+            'custom_description.required_if' => 'Wajib mengisi nama dokumen pendukung jika memilih jenis Dokumen Pendukung Lainnya.',
         ]);
 
         $ext = $this->file_upload->getClientOriginalExtension();
-        $cleanRef = str_replace(['/', '\\'], '-', $this->shipment->awb_number);
-        $prefix = $isInternal ? 'INTERNAL' : strtoupper(str_replace(' ', '_', $this->doc_type));
+        $cleanRef = preg_replace('/[^A-Za-z0-9_\-]/', '_', $this->shipment->awb_number);
+        $cleanDoc = preg_replace('/[^A-Za-z0-9_\-]/', '_', $this->doc_type);
+        $prefix = $isInternal ? 'INTERNAL' : strtoupper($cleanDoc);
         $filename = $prefix . '_' . $cleanRef . '_' . time() . '.' . $ext;
         
         $path = $this->file_upload->storeAs('documents/' . ($isInternal ? 'internal' : 'public'), $filename, 'public');
