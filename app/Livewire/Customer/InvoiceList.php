@@ -26,6 +26,10 @@ class InvoiceList extends Component
     public $paymentDate = null;
     public $paymentNote = '';
 
+    // Payment History Modal
+    public $showPaymentHistoryModal = false;
+    public $paymentHistoryInvoice = null;
+
     public function updatingSearch()
     {
         $this->resetPage();
@@ -36,10 +40,33 @@ class InvoiceList extends Component
         $this->resetPage();
     }
 
+    public function openPaymentHistory($invoiceId)
+    {
+        $user = Auth::user();
+        if (!$user->customer) {
+            return;
+        }
+
+        $this->paymentHistoryInvoice = Invoice::with(['shipment', 'payments'])
+            ->where('id', $invoiceId)
+            ->where('customer_id', $user->customer->id)
+            ->first();
+
+        if ($this->paymentHistoryInvoice) {
+            $this->showPaymentHistoryModal = true;
+        }
+    }
+
+    public function closePaymentHistory()
+    {
+        $this->showPaymentHistoryModal = false;
+        $this->paymentHistoryInvoice = null;
+    }
+
     public function openUploadModal($invoiceId)
     {
         $this->selectedInvoiceId = $invoiceId;
-        $this->selectedInvoice = Invoice::with('shipment')->find($invoiceId);
+        $this->selectedInvoice = Invoice::with(['shipment', 'payments'])->find($invoiceId);
         $this->paymentDate = now()->format('Y-m-d');
         $this->paymentProof = null;
         $this->paymentNote = '';
@@ -76,16 +103,16 @@ class InvoiceList extends Component
         $filename = 'payment_' . str_replace(['/', '\\'], '-', $invoice->invoice_number) . '_' . time() . '.' . $this->paymentProof->getClientOriginalExtension();
         $path = $this->paymentProof->storeAs('payment_proofs', $filename, 'public');
 
-        // Update invoice - status tetap unpaid sampai admin verifikasi
+        // Update invoice - simpan bukti bayar
         $invoice->update([
             'payment_proof' => $path,
             'payment_date' => $this->paymentDate,
             'payment_claimed' => true,
             'claimed_at' => now(),
-            'notes' => $invoice->notes . "\n[Customer Upload] " . now()->format('d/m/Y H:i') . " oleh " . $customerName . ": " . $this->paymentNote,
+            'notes' => trim(($invoice->notes ?? '') . "\n[Customer Upload] " . now()->format('d/m/Y H:i') . " oleh " . $customerName . ": " . $this->paymentNote),
         ]);
 
-        // BARU: Catat Activity Log untuk notifikasi ke Admin
+        // Catat Activity Log untuk notifikasi ke Admin
         ActivityLog::create([
             'user_id' => $user->id,
             'action' => 'PAYMENT_PROOF_UPLOADED',
@@ -119,12 +146,16 @@ class InvoiceList extends Component
         $customerId = $user->customer->id;
 
         // Query invoices
-        $query = Invoice::with(['shipment'])
+        $query = Invoice::with(['shipment', 'payments'])
             ->where('customer_id', $customerId);
 
         // Filter by status
         if ($this->filterStatus !== 'all') {
-            $query->where('status', $this->filterStatus);
+            if ($this->filterStatus === 'unpaid') {
+                $query->whereIn('status', ['unpaid', 'partial']);
+            } else {
+                $query->where('status', $this->filterStatus);
+            }
         }
 
         // Search
@@ -141,12 +172,19 @@ class InvoiceList extends Component
 
         // Stats
         $statsQuery = Invoice::where('customer_id', $customerId);
+        $unpaidInvoices = (clone $statsQuery)->whereIn('status', ['unpaid', 'partial'])->get();
+        $totalUnpaidAmount = $unpaidInvoices->sum(function($inv) {
+            if ($inv->status === 'partial') {
+                return (float) $inv->remaining_balance;
+            }
+            return (float) $inv->grand_total;
+        });
 
         $stats = [
             'total' => (clone $statsQuery)->count(),
             'paid' => (clone $statsQuery)->where('status', 'paid')->count(),
-            'unpaid' => (clone $statsQuery)->where('status', 'unpaid')->count(),
-            'total_unpaid_amount' => (clone $statsQuery)->where('status', 'unpaid')->sum('grand_total'),
+            'unpaid' => $unpaidInvoices->count(),
+            'total_unpaid_amount' => $totalUnpaidAmount,
         ];
 
         return view('livewire.customer.invoice-list', [
@@ -165,11 +203,11 @@ class InvoiceList extends Component
         $user = Auth::user();
         $invoice = Invoice::where('id', $invoiceId)
             ->where('customer_id', $user->customer->id)
-            ->where('status', 'paid')
+            ->whereIn('status', ['paid', 'partial'])
             ->first();
 
         if (!$invoice) {
-            session()->flash('error', 'Invoice tidak ditemukan atau belum lunas.');
+            session()->flash('error', 'Invoice tidak ditemukan atau belum ada pembayaran.');
             return;
         }
 
@@ -219,13 +257,13 @@ class InvoiceList extends Component
                 "Tanggal Request: " . now()->format('d/m/Y H:i') . "\n\n" .
                 "Silakan login ke portal admin untuk upload faktur pajak.\n" .
                 url('/admin/invoices'),
-                function ($message) use ($invoice, $customerName) {
-                    $message->to('finance@m2b.co.id')
-                        ->subject("🧾 Request Faktur Pajak - {$invoice->invoice_number} - {$customerName}");
+                function ($message) use ($invoice) {
+                    $message->to(config('mail.finance_email', 'finance@m2b.co.id'))
+                        ->subject("[M2B Portal] Request Faktur Pajak - {$invoice->invoice_number}");
                 }
             );
         } catch (\Exception $e) {
-            \Log::error('Failed to send faktur pajak request email: ' . $e->getMessage());
+            \Log::error('Gagal kirim email request faktur pajak: ' . $e->getMessage());
         }
     }
 
@@ -250,7 +288,7 @@ class InvoiceList extends Component
         $this->previewFakturPajakNumber = null;
     }
 
-    // Upload Bukti Potong PPh (Customer Portal)
+    // === BUKTI POTONG PPH (e-Bupot) ===
     public $showBupotModal = false;
     public $bupotInvoiceId = null;
     public $bupotInvoice = null;
@@ -263,17 +301,18 @@ class InvoiceList extends Component
     {
         $user = Auth::user();
         $invoice = Invoice::where('id', $invoiceId)
-            ->where(function($q) use ($user) {
-                $q->where('customer_id', $user->customer->id ?? 0)
-                  ->orWhereHas('shipment', function($sq) use ($user) {
-                      $sq->where('customer_id', $user->customer->id ?? 0);
-                  });
-            })->firstOrFail();
+            ->where('customer_id', $user->customer->id)
+            ->first();
 
-        $this->bupotInvoiceId = $invoice->id;
+        if (!$invoice) {
+            session()->flash('error', 'Invoice tidak ditemukan.');
+            return;
+        }
+
+        $this->bupotInvoiceId = $invoiceId;
         $this->bupotInvoice = $invoice;
         $this->bupotNumber = $invoice->bukti_potong_number ?? '';
-        $this->bupotAmount = $invoice->bukti_potong_amount ?? ($invoice->pph_amount ?? 0);
+        $this->bupotAmount = $invoice->bukti_potong_amount ? (string)$invoice->bukti_potong_amount : ($invoice->pph_amount ? (string)$invoice->pph_amount : '');
         $this->bupotDate = $invoice->bukti_potong_date ? $invoice->bukti_potong_date->format('Y-m-d') : now()->format('Y-m-d');
         $this->bupotFile = null;
         $this->showBupotModal = true;
