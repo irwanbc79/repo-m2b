@@ -38,27 +38,55 @@ class ChartOfAccounts extends Component
 
     public function mount()
     {
-        abort_unless(auth()->user()->hasPermission('cashier.view'), 403);
+        abort_unless(auth()->user()->hasPermission('cashier.view') || auth()->user()->hasPermission('accounting.view'), 403);
     }
 
     public function updatingSearch() { $this->resetPage(); }
 
     public function getStats()
     {
+        $allAccounts = Account::query()
+            ->select('accounts.id', 'accounts.type', 'accounts.opening_balance')
+            ->selectRaw('(SELECT COALESCE(SUM(debit), 0) FROM journal_items WHERE journal_items.account_id = accounts.id) as total_debit')
+            ->selectRaw('(SELECT COALESCE(SUM(credit), 0) FROM journal_items WHERE journal_items.account_id = accounts.id) as total_credit')
+            ->get();
+
+        $calcSum = function ($types) use ($allAccounts) {
+            if (!is_array($types)) {
+                $types = [$types];
+            }
+            return $allAccounts->whereIn('type', $types)->sum(fn($a) => $a->calculated_balance);
+        };
+
         return [
-            'total_accounts' => Account::count(),
-            'kas_bank' => Account::where('type', 'kas_bank')->sum('current_balance'),
-            'piutang' => Account::where('type', 'piutang')->sum('current_balance'),
-            'hutang' => Account::whereIn('type', ['hutang_lancar', 'hutang_jangka_panjang'])->sum('current_balance'),
-            'pendapatan' => Account::where('type', 'pendapatan')->sum('current_balance'),
-            'beban' => Account::whereIn('type', ['beban_operasional', 'beban_pokok', 'beban_lain'])->sum('current_balance'),
-            'modal' => Account::where('type', 'modal')->sum('current_balance'),
+            'total_accounts' => $allAccounts->count(),
+            'kas_bank' => $calcSum('kas_bank'),
+            'piutang' => $calcSum('piutang'),
+            'hutang' => $calcSum(['hutang_lancar', 'hutang_jangka_panjang']),
+            'pendapatan' => $calcSum('pendapatan'),
+            'beban' => $calcSum(['beban_operasional', 'beban_pokok', 'beban_lain']),
+            'modal' => $calcSum('modal'),
         ];
+    }
+
+    public function syncBalances()
+    {
+        abort_unless(auth()->user()->hasPermission('cashier.view') || auth()->user()->hasPermission('accounting.view'), 403);
+
+        $accounts = Account::all();
+        foreach ($accounts as $acc) {
+            $acc->recalculateBalance();
+        }
+
+        session()->flash('message', 'Semua saldo akun di Bagan Akun (COA) berhasil disinkronkan dengan Buku Besar (General Ledger).');
     }
 
     public function render()
     {
         $accounts = Account::query()
+            ->select('accounts.*')
+            ->selectRaw('(SELECT COALESCE(SUM(debit), 0) FROM journal_items WHERE journal_items.account_id = accounts.id) as total_debit')
+            ->selectRaw('(SELECT COALESCE(SUM(credit), 0) FROM journal_items WHERE journal_items.account_id = accounts.id) as total_credit')
             ->when($this->search, function($q) {
                 $q->where('name', 'like', '%'.$this->search.'%')
                   ->orWhere('code', 'like', '%'.$this->search.'%');
@@ -101,7 +129,7 @@ class ChartOfAccounts extends Component
 
     public function save()
     {
-        abort_unless(auth()->user()->hasPermission('cashier.view'), 403);
+        abort_unless(auth()->user()->hasPermission('cashier.view') || auth()->user()->hasPermission('accounting.view'), 403);
 
         $rules = [
             'name' => 'required|string|max:255',
@@ -121,27 +149,28 @@ class ChartOfAccounts extends Component
         if ($this->isEditing) {
             $acc = Account::find($this->editingId);
 
-            // Saldo berjalan (current_balance) TIDAK boleh ditimpa saat edit master akun,
-            // karena sudah mengandung akumulasi debit/kredit dari jurnal yang sudah posting.
-            // Kalau opening_balance berubah, geser current_balance sebesar selisihnya.
-            $openingDelta = $this->opening_balance - $acc->opening_balance;
-
             $acc->update([
                 'code' => $this->code,
                 'name' => $this->name,
                 'type' => $this->type,
                 'opening_balance' => $this->opening_balance,
-                'current_balance' => $acc->current_balance + $openingDelta,
             ]);
-            session()->flash('message', 'Akun berhasil diperbarui.');
+
+            // Selalu rekalkulasi saldo berjalan berbasis opening_balance + akumulasi jurnal
+            $acc->recalculateBalance();
+
+            session()->flash('message', 'Akun berhasil diperbarui dan saldo disinkronkan.');
         } else {
-            Account::create([
+            $acc = Account::create([
                 'code' => $this->code,
                 'name' => $this->name,
                 'type' => $this->type,
                 'opening_balance' => $this->opening_balance,
                 'current_balance' => $this->opening_balance,
             ]);
+
+            $acc->recalculateBalance();
+
             session()->flash('message', 'Akun baru berhasil dibuat.');
         }
 
@@ -150,7 +179,7 @@ class ChartOfAccounts extends Component
 
     public function delete($id)
     {
-        abort_unless(auth()->user()->hasPermission('cashier.view'), 403);
+        abort_unless(auth()->user()->hasPermission('cashier.view') || auth()->user()->hasPermission('accounting.view'), 403);
 
         $acc = Account::find($id);
         if (!$acc) {

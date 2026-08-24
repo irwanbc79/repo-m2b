@@ -8,6 +8,13 @@
         </div>
     @endif
 
+    @if (session()->has('error'))
+        <div class="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded relative shadow-sm flex items-center gap-2">
+            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg>
+            {{ session('error') }}
+        </div>
+    @endif
+
     {{-- STATS CARDS - Ringkasan Saldo --}}
     <div class="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-7 gap-4">
         <div class="bg-white rounded-xl p-4 shadow-sm border border-gray-100 text-center">
@@ -56,10 +63,19 @@
                 </select>
             </div>
             
-            <button wire:click="create" class="bg-blue-900 hover:bg-blue-800 text-white px-4 py-2 rounded-lg font-bold shadow-sm transition flex items-center gap-2">
-                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"></path></svg>
-                Tambah Akun
-            </button>
+            <div class="flex items-center gap-2 w-full md:w-auto justify-end">
+                <button wire:click="syncBalances" wire:loading.attr="disabled" class="bg-gray-100 hover:bg-gray-200 text-gray-700 px-4 py-2 rounded-lg font-semibold shadow-sm transition flex items-center gap-2 border border-gray-300">
+                    <svg wire:loading.remove wire:target="syncBalances" class="w-4 h-4 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"></path></svg>
+                    <svg wire:loading wire:target="syncBalances" class="animate-spin w-4 h-4 text-blue-600" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg>
+                    <span wire:loading.remove wire:target="syncBalances">Sinkronkan Saldo</span>
+                    <span wire:loading wire:target="syncBalances">Menyinkronkan...</span>
+                </button>
+
+                <button wire:click="create" class="bg-blue-900 hover:bg-blue-800 text-white px-4 py-2 rounded-lg font-bold shadow-sm transition flex items-center gap-2">
+                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"></path></svg>
+                    Tambah Akun
+                </button>
+            </div>
         </div>
 
         <div class="overflow-x-auto">
@@ -70,7 +86,7 @@
                         <th class="px-6 py-3">Nama Akun</th>
                         <th class="px-6 py-3">Tipe</th>
                         <th class="px-6 py-3 text-right">Saldo Awal</th>
-                        <th class="px-6 py-3 text-right">Saldo Saat Ini</th>
+                        <th class="px-6 py-3 text-right">Saldo Saat Ini (GL)</th>
                         <th class="px-6 py-3 text-center w-24">Aksi</th>
                     </tr>
                 </thead>
@@ -95,10 +111,10 @@
                             </span>
                         </td>
                         <td class="px-6 py-4 text-right text-gray-500">{{ number_format($acc->opening_balance, 0, ',', '.') }}</td>
-                        <td class="px-6 py-4 text-right font-bold text-gray-800">{{ number_format($acc->current_balance, 0, ',', '.') }}</td>
+                        <td class="px-6 py-4 text-right font-bold text-gray-800">{{ number_format($acc->calculated_balance, 0, ',', '.') }}</td>
                         <td class="px-6 py-4 text-center flex justify-center gap-2">
-                            <button wire:click="edit({{ $acc->id }})" class="text-blue-600 hover:bg-blue-100 p-1.5 rounded transition"><svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"></path></svg></button>
-                            <button wire:click="delete({{ $acc->id }})" wire:confirm="Hapus Akun ini?" class="text-red-500 hover:bg-red-100 p-1.5 rounded transition"><svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path></svg></button>
+                            <button wire:click="edit({{ $acc->id }})" class="text-blue-600 hover:bg-blue-100 p-1.5 rounded transition" title="Edit Akun"><svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"></path></svg></button>
+                            <button wire:click="delete({{ $acc->id }})" wire:confirm="Hapus Akun ini?" class="text-red-500 hover:bg-red-100 p-1.5 rounded transition" title="Hapus Akun"><svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path></svg></button>
                         </td>
                     </tr>
                     @empty
@@ -111,8 +127,8 @@
     </div>
 
     @if($isModalOpen)
-    <div class="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4 overflow-y-auto">
-        <div class="bg-white w-full max-w-lg rounded-lg shadow-xl transform transition-all">
+    <div class="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4 overflow-y-auto" style="position: fixed; z-index: 50;">
+        <div class="bg-white w-full max-w-lg rounded-lg shadow-xl transform transition-all" style="position: relative; z-index: 10;">
             <div class="p-4 border-b bg-gray-50 flex justify-between items-center rounded-t-lg">
                 <h3 class="font-bold text-lg text-gray-800">{{ $isEditing ? 'Edit Akun' : 'Tambah Akun Baru' }}</h3>
                 <button wire:click="closeModal" class="text-gray-400 hover:text-red-500 text-2xl">&times;</button>
@@ -143,7 +159,8 @@
                 </div>
 
                 <div>
-                    <label class="block text-sm font-bold text-gray-700 mb-1">Saldo Awal (Opening Balance)</label>
+                    <label class="block text-sm font-bold text-gray-700 mb-1">Saldo Awal (Opening Balance Master)</label>
+                    <p class="text-xs text-gray-500 mb-1.5">Saldo awal per tanggal cut-off/migrasi. Saldo berjalan saat ini akan otomatis dihitung dari saldo awal ditambah mutasi buku besar.</p>
                     <div class="relative">
                         <span class="absolute left-3 top-2 text-gray-500 text-sm">Rp</span>
                         <input type="number" wire:model="opening_balance" class="w-full border rounded-lg pl-10 pr-3 py-2 text-sm text-right font-mono">
