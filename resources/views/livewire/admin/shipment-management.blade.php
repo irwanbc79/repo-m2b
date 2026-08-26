@@ -298,22 +298,40 @@
                             <p class="text-xs text-gray-600 mt-1">{{ $shipment->origin ?? '-' }} → {{ $shipment->destination ?? '-' }}</p>
                         </td>
                         <td class="px-4 py-3">
-                            <p class="text-sm text-gray-800">{{ number_format($shipment->weight ?? 0, 0) }} Kg</p>
+                            <p class="text-sm font-semibold text-gray-800">{{ number_format($shipment->weight ?? 0, 0) }} Kg</p>
                             <p class="text-xs text-gray-500">{{ number_format($shipment->volume ?? 0, 3) }} CBM</p>
                             <p class="text-xs text-gray-400">{{ $shipment->pieces ?? 0 }} {{ $shipment->package_type ?? "pcs" }}</p>
+                            @if($shipment->container_info || $shipment->container_mode)
+                            <div class="mt-1">
+                                <span class="inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-bold bg-slate-100 text-slate-700 border border-slate-200" title="Muatan / Kontainer">
+                                    📦 {{ $shipment->container_info ?: $shipment->container_mode }}
+                                </span>
+                            </div>
+                            @endif
                         </td>
-                        <td class="px-4 py-3">
-                            <div class="text-sm text-gray-700 line-clamp-1">{{ $shipment->container_info ?: ($shipment->commodity ?: "-") }}</div>
+                        <td class="px-4 py-3 max-w-xs">
+                            @php
+                                $hsInfo = $shipment->hs_code ? \DB::table('hs_codes')->where('hs_code', $shipment->hs_code)->first() : null;
+                                $displayCommodity = $shipment->commodity ?: ($hsInfo->description_id ?? ($hsInfo->description_en ?? null));
+                            @endphp
+
+                            @if($displayCommodity)
+                                <div class="text-sm font-semibold text-gray-800 line-clamp-2 leading-snug" title="{{ $displayCommodity }}">
+                                    {{ $displayCommodity }}
+                                </div>
+                            @else
+                                <div class="text-xs text-gray-400 italic">
+                                    {{ $shipment->container_info ? 'Muatan: ' . $shipment->container_info : 'Tanpa deskripsi barang' }}
+                                </div>
+                            @endif
+
                             @if($shipment->hs_code)
-                                @php
-                                    $hsInfo = \DB::table('hs_codes')->where('hs_code', $shipment->hs_code)->first();
-                                @endphp
-                                <div x-data="{ showTip: false }" class="relative inline-block">
+                                <div x-data="{ showTip: false }" class="relative inline-block mt-1">
                                     <div @mouseenter="showTip = true" @mouseleave="showTip = false" 
-                                         class="text-xs font-mono text-blue-600 mt-1 cursor-help inline-flex items-center gap-1">
+                                         class="text-xs font-mono font-bold text-blue-600 bg-blue-50 px-1.5 py-0.5 rounded border border-blue-200 cursor-help inline-flex items-center gap-1">
                                         <span>HS: {{ $shipment->hs_code }}</span>
                                         @if($hsInfo)
-                                        <svg class="w-3 h-3 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <svg class="w-3 h-3 text-blue-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/>
                                         </svg>
                                         @endif
@@ -323,7 +341,7 @@
                                          x-transition:enter="transition ease-out duration-200"
                                          x-transition:enter-start="opacity-0 transform scale-95"
                                          x-transition:enter-end="opacity-100 transform scale-100"
-                                         class="absolute z-50 bottom-full left-0 mb-2 w-72 p-3 bg-gray-900 text-white text-xs rounded-lg shadow-xl">
+                                         class="absolute z-50 bottom-full left-0 mb-2 w-72 p-3 bg-gray-900 text-white text-xs rounded-lg shadow-xl pointer-events-none">
                                         <div class="font-bold text-yellow-300 mb-1">{{ $shipment->hs_code }}</div>
                                         <div class="mb-2">
                                             <div class="text-gray-300 text-[10px] uppercase tracking-wide">Indonesia:</div>
