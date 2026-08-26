@@ -199,18 +199,12 @@ class JournalEntry extends Component
 
                 // === ROLE-BASED PERMISSION CHECK ===
                 $user = Auth::user();
-                // hasRole() cek array 'roles' (multi-role) dgn fallback ke kolom 'role' lama —
-                // sebelumnya cek `$user->role === "admin"` gagal utk admin/super_admin/director/manager
-                // yang cuma punya kolom 'roles' (tanpa kolom 'role' legacy).
-                $isAdmin = $user->hasRole(['admin', 'super_admin', 'director', 'manager']);
+                $isAccountingOrAdmin = $user->hasRole(['admin', 'super_admin', 'director', 'manager', 'finance', 'staff_accounting'])
+                    || $user->hasPermission('cashier.*')
+                    || $user->hasPermission('cashier.journal');
 
-                // Staff tidak boleh hapus journal yang sudah posted
-                if (!$isAdmin && $journal->status === "posted") {
-                    throw new \Exception("Anda tidak memiliki izin untuk menghapus jurnal yang sudah POSTED. Hubungi Admin.");
-                }
-                
-                // Staff tidak boleh hapus journal yang dibuat user lain
-                if (!$isAdmin && $journal->created_by !== $user->id) {
+                // Jika bukan admin / finance / accounting, hanya bisa menghapus jurnal yang dibuat sendiri
+                if (!$isAccountingOrAdmin && $journal->created_by !== $user->id) {
                     throw new \Exception("Anda hanya bisa menghapus jurnal yang Anda buat sendiri.");
                 }
 

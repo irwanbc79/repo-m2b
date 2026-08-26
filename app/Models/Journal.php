@@ -27,4 +27,10 @@ class Journal extends Model
     {
         return $this->belongsTo(User::class, 'created_by');
     }
+
+    // Relasi ke Cash Transactions
+    public function cashTransactions()
+    {
+        return $this->hasMany(\App\Models\CashTransaction::class, 'journal_id');
+    }
 }
