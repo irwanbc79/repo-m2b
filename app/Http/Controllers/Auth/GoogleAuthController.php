@@ -181,12 +181,14 @@ class GoogleAuthController extends Controller
     private function loginOrBlock(User $user)
     {
         if (! $user->is_active) {
+            \App\Models\ActivityLog::recordForUser($user, 'Auth', 'LOGIN_BLOCKED', $user->email, 'Login Google ditolak: akun belum aktif / menunggu persetujuan.');
             return redirect()->route('login')->withErrors([
                 'email' => 'Akun Anda belum aktif / masih menunggu persetujuan admin.',
             ]);
         }
 
         Auth::login($user);
+        \App\Models\ActivityLog::recordForUser($user, 'Auth', 'LOGIN_GOOGLE', $user->email, 'User berhasil login via Google SSO.');
         $primaryRole = $user->getPrimaryRole();
 
         return $primaryRole === 'customer'

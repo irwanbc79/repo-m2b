@@ -78,6 +78,8 @@ class ChartOfAccounts extends Component
             $acc->recalculateBalance();
         }
 
+        \App\Models\ActivityLog::record('Accounting', 'SYNC_COA_BALANCES', 'COA-ALL', "Sinkronisasi saldo seluruh bagan akun dengan buku besar.");
+
         session()->flash('message', 'Semua saldo akun di Bagan Akun (COA) berhasil disinkronkan dengan Buku Besar (General Ledger).');
     }
 
@@ -159,6 +161,8 @@ class ChartOfAccounts extends Component
             // Selalu rekalkulasi saldo berjalan berbasis opening_balance + akumulasi jurnal
             $acc->recalculateBalance();
 
+            \App\Models\ActivityLog::record('Accounting', 'UPDATE_COA', $this->code, "Perbarui akun {$this->code} - {$this->name} ({$this->type})");
+
             session()->flash('message', 'Akun berhasil diperbarui dan saldo disinkronkan.');
         } else {
             $acc = Account::create([
@@ -170,6 +174,8 @@ class ChartOfAccounts extends Component
             ]);
 
             $acc->recalculateBalance();
+
+            \App\Models\ActivityLog::record('Accounting', 'CREATE_COA', $this->code, "Tambah akun {$this->code} - {$this->name} ({$this->type})");
 
             session()->flash('message', 'Akun baru berhasil dibuat.');
         }
@@ -191,6 +197,7 @@ class ChartOfAccounts extends Component
             return;
         }
 
+        \App\Models\ActivityLog::record('Accounting', 'DELETE_COA', $acc->code, "Hapus akun {$acc->code} - {$acc->name}");
         $acc->delete();
         session()->flash('message', 'Akun dihapus.');
     }

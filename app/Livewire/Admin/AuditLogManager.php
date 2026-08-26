@@ -36,8 +36,11 @@ class AuditLogManager extends Component
     {
         $todayHighRisk = ActivityLog::whereDate('created_at', today())
             ->where(function($q) {
-                $q->whereIn('action', ['DELETE', 'STATUS_CHANGE', 'DELETE_COST', 'VOID', 'CANCEL'])
-                  ->orWhereIn('module', ['Cashier', 'JobCost', 'VendorBill', 'Invoice', 'Payroll']);
+                $q->whereIn('action', [
+                    'DELETE', 'DELETE_JOURNAL', 'DELETE_USER', 'DELETE_COA', 'DELETE_COST', 
+                    'VOID', 'CANCEL', 'CANCEL_INVOICE', 'UPDATE_ROLE', 'UPDATE_BANK_DETAILS', 
+                    'UPDATE_BALANCE', 'LOGIN_BLOCKED', 'LOGIN_FAILED', 'VERIFY_PAYMENT'
+                ])->orWhereIn('module', ['Cashier', 'JobCost', 'VendorBill', 'Payroll']);
             })->count();
 
         return [
@@ -45,9 +48,9 @@ class AuditLogManager extends Component
             'today' => ActivityLog::whereDate('created_at', today())->count(),
             'this_week' => ActivityLog::whereBetween('created_at', [now()->startOfWeek(), now()->endOfWeek()])->count(),
             'users_active' => ActivityLog::distinct('user_name')->count('user_name'),
-            'creates' => ActivityLog::where('action', 'CREATE')->count(),
+            'creates' => ActivityLog::where('action', 'like', '%CREATE%')->count(),
             'updates' => ActivityLog::where('action', 'like', '%UPDATE%')->count(),
-            'deletes' => ActivityLog::where('action', 'DELETE')->count(),
+            'deletes' => ActivityLog::where('action', 'like', '%DELETE%')->count(),
             'today_high_risk' => $todayHighRisk,
         ];
     }
@@ -149,10 +152,12 @@ class AuditLogManager extends Component
 
         if ($this->search) {
             $query->where(function($q) {
-                $q->where('description', 'like', '%'.$this->search.'%')
-                  ->orWhere('target_ref', 'like', '%'.$this->search.'%')
-                  ->orWhere('user_name', 'like', '%'.$this->search.'%')
-                  ->orWhere('module', 'like', '%'.$this->search.'%');
+                $q->where('user_name', 'like', '%' . $this->search . '%')
+                  ->orWhere('module', 'like', '%' . $this->search . '%')
+                  ->orWhere('action', 'like', '%' . $this->search . '%')
+                  ->orWhere('target_ref', 'like', '%' . $this->search . '%')
+                  ->orWhere('description', 'like', '%' . $this->search . '%')
+                  ->orWhere('ip_address', 'like', '%' . $this->search . '%');
             });
         }
 
@@ -164,29 +169,41 @@ class AuditLogManager extends Component
         if ($this->filterDateTo) $query->whereDate('created_at', '<=', $this->filterDateTo);
 
         if ($this->filterRisk) {
+            $highRiskActions = [
+                'DELETE', 'DELETE_JOURNAL', 'DELETE_USER', 'DELETE_COA', 'DELETE_COST', 
+                'VOID', 'CANCEL', 'CANCEL_INVOICE', 'UPDATE_ROLE', 'UPDATE_BANK_DETAILS', 
+                'UPDATE_BALANCE', 'LOGIN_BLOCKED', 'LOGIN_FAILED', 'VERIFY_PAYMENT'
+            ];
+            $highRiskModules = ['Cashier', 'JobCost', 'VendorBill', 'Payroll'];
+
             if ($this->filterRisk === 'high') {
-                $query->where(function($q) {
-                    $q->whereIn('action', ['DELETE', 'STATUS_CHANGE', 'DELETE_COST', 'VOID', 'CANCEL'])
-                      ->orWhereIn('module', ['Cashier', 'JobCost', 'VendorBill', 'Invoice', 'Payroll']);
+                $query->where(function($q) use ($highRiskActions, $highRiskModules) {
+                    $q->whereIn('action', $highRiskActions)
+                      ->orWhereIn('module', $highRiskModules);
                 });
             } elseif ($this->filterRisk === 'medium') {
-                $query->where(function($q) {
-                    $q->whereNotIn('action', ['DELETE', 'STATUS_CHANGE', 'DELETE_COST', 'VOID', 'CANCEL'])
-                      ->whereNotIn('module', ['Cashier', 'JobCost', 'VendorBill', 'Invoice', 'Payroll'])
+                $query->where(function($q) use ($highRiskActions, $highRiskModules) {
+                    $q->whereNotIn('action', $highRiskActions)
+                      ->whereNotIn('module', $highRiskModules)
                       ->where(function($sub) {
-                          $sub->where('action', 'CREATE')
+                          $sub->where('action', 'like', '%CREATE%')
                               ->orWhere('action', 'like', '%UPDATE%')
-                              ->orWhere('action', 'like', '%EDIT%');
+                              ->orWhere('action', 'like', '%EDIT%')
+                              ->orWhere('action', 'STATUS_CHANGE')
+                              ->orWhere('action', 'CONVERT_TO_SHIPMENT');
                       });
                 });
             } elseif ($this->filterRisk === 'low') {
-                $query->where(function($q) {
-                    $q->whereIn('action', ['LOGIN', 'LOGOUT', 'AUTO STATUS', 'VIEW', 'DOWNLOAD'])
-                      ->orWhere(function($sub) {
-                          $sub->whereNotIn('action', ['DELETE', 'STATUS_CHANGE', 'DELETE_COST', 'VOID', 'CANCEL', 'CREATE'])
-                              ->whereNotIn('action', 'like', '%UPDATE%')
-                              ->whereNotIn('action', 'like', '%EDIT%')
-                              ->whereNotIn('module', ['Cashier', 'JobCost', 'VendorBill', 'Invoice', 'Payroll']);
+                $query->where(function($q) use ($highRiskActions, $highRiskModules) {
+                    $q->whereNotIn('action', $highRiskActions)
+                      ->whereNotIn('module', $highRiskModules)
+                      ->where(function($sub) {
+                          $sub->whereIn('action', ['LOGIN', 'LOGIN_GOOGLE', 'LOGOUT', 'SEND_EMAIL', 'AUTO STATUS', 'SYNC_COA_BALANCES', 'VIEW', 'DOWNLOAD'])
+                              ->orWhere(function($inner) {
+                                  $inner->where('action', 'not like', '%CREATE%')
+                                        ->where('action', 'not like', '%UPDATE%')
+                                        ->where('action', 'not like', '%EDIT%');
+                              });
                       });
                 });
             }
@@ -197,7 +214,15 @@ class AuditLogManager extends Component
 
     public function render()
     {
-        if (!in_array(Auth::user()->role, ['super_admin', 'director', 'admin', 'manager'])) abort(403);
+        $user = Auth::user();
+        $canView = $user && (
+            $user->isAdminLevel() ||
+            $user->hasRole(['super_admin', 'director', 'admin', 'manager', 'auditor']) ||
+            $user->hasPermission('audit_log.view') ||
+            in_array($user->role, ['super_admin', 'director', 'admin', 'manager', 'auditor'])
+        );
+
+        if (!$canView) abort(403);
 
         $query = $this->getFilteredQuery();
         $logs = $query->paginate($this->perPage);

@@ -346,6 +346,13 @@ class QuotationManager extends Component
 
         $this->simpanKomoditi($qId);
 
+        \App\Models\ActivityLog::record(
+            'Quotation',
+            $this->isEditing ? 'UPDATE' : 'CREATE',
+            $this->isEditing ? ($q->quotation_number ?? 'QT-' . $qId) : ($data['quotation_number'] ?? 'QT-' . $qId),
+            ($this->isEditing ? 'Perbarui' : 'Buat') . " penawaran harga (Rp " . number_format($this->grandTotal, 0, ',', '.') . ")"
+        );
+
         session()->flash('message', $msg);
         $this->closeModal();
     }
@@ -575,7 +582,15 @@ class QuotationManager extends Component
         $this->ppn = $this->serviceTotal * ($ppnRate / 100); $this->pph = $this->serviceTotal * ($pphRate / 100);
         $this->grandTotal = ($this->serviceTotal + $this->ppn - $this->pph) + $this->reimbursementTotal;
     }
-    public function delete($id) { if(Quotation::find($id)->delete()) session()->flash('message', 'Deleted.'); }
+    public function delete($id)
+    {
+        $q = Quotation::find($id);
+        if ($q) {
+            \App\Models\ActivityLog::record('Quotation', 'DELETE', $q->quotation_number, "Hapus penawaran harga {$q->quotation_number}");
+            $q->delete();
+            session()->flash('message', 'Deleted.');
+        }
+    }
     
     public function convertToShipment($id) { 
         $q = Quotation::find($id); if (!$q) return;
@@ -598,6 +613,7 @@ class QuotationManager extends Component
 
         Shipment::create(['customer_id'=>$customerId, 'quotation_id'=>$q->id, 'awb_number'=>$newRef, 'origin'=>$q->origin, 'destination'=>$q->destination, 'service_type'=>$q->service_type, 'shipment_type'=>'sea', 'status'=>'pending', 'weight'=>0, 'pieces'=>0, 'commodity'=>$salinan['commodity'], 'hs_code'=>$salinan['hs_code'], 'notes'=>$salinan['notes']]);
         $q->update(['status'=>'accepted']);
+        \App\Models\ActivityLog::record('Quotation', 'CONVERT_TO_SHIPMENT', $q->quotation_number, "Konversi quotation {$q->quotation_number} menjadi shipment {$newRef}");
         return redirect()->route('admin.shipments.index');
     }
     /**
@@ -663,6 +679,8 @@ class QuotationManager extends Component
                 'user_id'   => auth()->id(),
                 'user_name' => auth()->user()->name,
             ]);
+
+            \App\Models\ActivityLog::record('Quotation', 'SEND_EMAIL', $q->quotation_number, "Kirim penawaran {$q->quotation_number} ke {$this->sendToEmail}");
         }
         $this->closeSendModal();
         session()->flash('success', 'Quotation berhasil dikirim ke ' . $this->sendToEmail);

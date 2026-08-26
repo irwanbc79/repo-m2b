@@ -120,13 +120,21 @@
                         <tbody class="divide-y divide-gray-100">
                             @forelse($logs as $log)
                             @php
-                                $isHighRisk = in_array($log->action, ['DELETE', 'STATUS_CHANGE', 'DELETE_COST', 'VOID', 'CANCEL']) || 
-                                              in_array($log->module, ['Cashier', 'JobCost', 'VendorBill', 'Invoice', 'Payroll']);
+                                $highRiskActions = [
+                                    'DELETE', 'DELETE_JOURNAL', 'DELETE_USER', 'DELETE_COA', 'DELETE_COST', 
+                                    'VOID', 'CANCEL', 'CANCEL_INVOICE', 'UPDATE_ROLE', 'UPDATE_BANK_DETAILS', 
+                                    'UPDATE_BALANCE', 'LOGIN_BLOCKED', 'LOGIN_FAILED', 'VERIFY_PAYMENT'
+                                ];
+                                $highRiskModules = ['Cashier', 'JobCost', 'VendorBill', 'Payroll'];
+
+                                $isHighRisk = in_array($log->action, $highRiskActions) || in_array($log->module, $highRiskModules);
                                               
                                 $isMediumRisk = !$isHighRisk && (
-                                    $log->action === 'CREATE' || 
+                                    str_contains($log->action, 'CREATE') || 
                                     str_contains($log->action, 'UPDATE') || 
-                                    str_contains($log->action, 'EDIT')
+                                    str_contains($log->action, 'EDIT') ||
+                                    $log->action === 'STATUS_CHANGE' ||
+                                    $log->action === 'CONVERT_TO_SHIPMENT'
                                 );
                             @endphp
                             <tr class="hover:bg-gray-50 transition">
@@ -160,22 +168,37 @@
                                     @php
                                         $actionColors = [
                                             'CREATE' => 'bg-green-100 text-green-700 border-green-200',
+                                            'CREATE_JOURNAL' => 'bg-green-100 text-green-700 border-green-200',
+                                            'CREATE_COA' => 'bg-green-100 text-green-700 border-green-200',
+                                            'CREATE_USER' => 'bg-emerald-100 text-emerald-800 border-emerald-300',
                                             'UPDATE' => 'bg-blue-100 text-blue-700 border-blue-200',
+                                            'UPDATE_JOURNAL' => 'bg-blue-100 text-blue-700 border-blue-200',
+                                            'UPDATE_COA' => 'bg-blue-100 text-blue-700 border-blue-200',
+                                            'UPDATE_ROLE' => 'bg-rose-100 text-rose-800 border-rose-300',
+                                            'UPDATE_BANK_DETAILS' => 'bg-rose-100 text-rose-800 border-rose-300',
+                                            'VERIFY_PAYMENT' => 'bg-emerald-100 text-emerald-800 border-emerald-300',
                                             'UPDATE STATUS' => 'bg-amber-100 text-amber-700 border-amber-200',
-                                            'STATUS_CHANGE' => 'bg-red-100 text-red-700 border-red-200',
+                                            'STATUS_CHANGE' => 'bg-amber-100 text-amber-700 border-amber-200',
                                             'UPDATE INFO' => 'bg-cyan-100 text-cyan-700 border-cyan-200',
                                             'DELETE' => 'bg-red-100 text-red-700 border-red-200',
+                                            'DELETE_JOURNAL' => 'bg-red-100 text-red-700 border-red-200',
+                                            'DELETE_USER' => 'bg-red-100 text-red-700 border-red-200',
+                                            'DELETE_COA' => 'bg-red-100 text-red-700 border-red-200',
                                             'LOGIN' => 'bg-purple-100 text-purple-700 border-purple-200',
+                                            'LOGIN_GOOGLE' => 'bg-indigo-100 text-indigo-700 border-indigo-200',
+                                            'LOGIN_FAILED' => 'bg-red-100 text-red-700 border-red-200',
+                                            'LOGIN_BLOCKED' => 'bg-red-100 text-red-700 border-red-200',
                                             'LOGOUT' => 'bg-gray-100 text-gray-700 border-gray-200',
+                                            'SEND_EMAIL' => 'bg-sky-100 text-sky-700 border-sky-200',
                                         ];
-                                        $color = $actionColors[$log->action] ?? 'bg-gray-100 text-gray-700 border-gray-200';
+                                        $color = $actionColors[$log->action] ?? (str_contains($log->action, 'DELETE') ? 'bg-red-100 text-red-700 border-red-200' : 'bg-gray-100 text-gray-700 border-gray-200');
                                     @endphp
                                     <span class="inline-flex items-center px-2 py-0.5 rounded text-[10px] font-bold border {{ $color }}">
-                                        @if($log->action == 'CREATE')
+                                        @if(str_contains($log->action, 'CREATE'))
                                             <svg class="w-2.5 h-2.5 mr-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/></svg>
                                         @elseif(str_contains($log->action, 'UPDATE') || $log->action == 'STATUS_CHANGE')
                                             <svg class="w-2.5 h-2.5 mr-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"/></svg>
-                                        @elseif($log->action == 'DELETE')
+                                        @elseif(str_contains($log->action, 'DELETE'))
                                             <svg class="w-2.5 h-2.5 mr-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/></svg>
                                         @endif
                                         {{ $log->action }}

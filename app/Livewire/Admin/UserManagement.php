@@ -125,14 +125,23 @@ class UserManagement extends Component
 
         if ($this->isEditing) {
             $user = User::find($this->editingId);
+            $oldRoles = $user->roles ?? [$user->role];
             $user->update($data);
             
             // Hapus data customer jika user ini dulunya customer (bersih-bersih)
             if($user->customer) { $user->customer->delete(); }
             
+            $rolesChanged = ($oldRoles != $this->selectedRoles);
+            if ($rolesChanged) {
+                \App\Models\ActivityLog::record('UserManagement', 'UPDATE_ROLE', $user->email, "Ubah hak akses staf {$user->name}: " . implode(', ', (array)$oldRoles) . " → " . implode(', ', (array)$this->selectedRoles), ['roles' => $oldRoles], ['roles' => $this->selectedRoles]);
+            } else {
+                \App\Models\ActivityLog::record('UserManagement', 'UPDATE_USER', $user->email, "Perbarui profil staf {$user->name}");
+            }
+
             session()->flash('message', 'Data Staf (Multi-Role) berhasil diperbarui.');
         } else {
-            User::create($data);
+            $newUser = User::create($data);
+            \App\Models\ActivityLog::record('UserManagement', 'CREATE_USER', $newUser->email, "Membuat akun staf baru: {$newUser->name} (" . implode(', ', (array)$this->selectedRoles) . ")");
             session()->flash('message', 'Staf M2B baru berhasil ditambahkan.');
         }
 
@@ -147,6 +156,7 @@ class UserManagement extends Component
         }
         $user = User::find($id);
         if ($user) {
+            \App\Models\ActivityLog::record('UserManagement', 'DELETE_USER', $user->email, "Menghapus akun staf: {$user->name} ({$user->email})");
             $user->delete();
             session()->flash('message', 'User berhasil dihapus.');
         }

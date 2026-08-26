@@ -367,6 +367,13 @@ class InvoiceManager extends Component
             }
         });
 
+        \App\Models\ActivityLog::record(
+            'Invoice',
+            $this->isEditing ? 'UPDATE' : 'CREATE',
+            $this->invoice_number,
+            ($this->isEditing ? 'Perbarui' : 'Buat') . " invoice {$this->type} {$this->invoice_number} (Rp " . number_format($this->grand_total, 0, ',', '.') . ")"
+        );
+
         $this->flushInvoiceDashboardCache();
 
         session()->flash('message', 'Invoice berhasil disimpan.');
@@ -490,6 +497,9 @@ class InvoiceManager extends Component
                 'user_id' => auth()->id(),
                 'user_name' => auth()->user()->name,
             ]);
+
+            \App\Models\ActivityLog::record('Invoice', 'SEND_EMAIL', $invoice->invoice_number, "Kirim tagihan {$invoice->invoice_number} ke {$this->email_recipient}");
+
             session()->flash('message', 'Email tagihan & Attachment berhasil dikirim!');
             $this->closeSendModal();
 
@@ -538,6 +548,7 @@ class InvoiceManager extends Component
     {
         $inv = Invoice::find($id);
         if ($inv) {
+            \App\Models\ActivityLog::record('Invoice', 'DELETE', $inv->invoice_number, "Hapus invoice {$inv->invoice_number} (Rp " . number_format($inv->grand_total, 0, ',', '.') . ")");
             $inv->items()->delete();
             $inv->delete();
             $this->flushInvoiceDashboardCache();
@@ -754,6 +765,8 @@ class InvoiceManager extends Component
                     }
                 }
             });
+
+            \App\Models\ActivityLog::record('Invoice', 'VERIFY_PAYMENT', $inv->invoice_number, "Catat pembayaran invoice {$inv->invoice_number}: Rp " . number_format($this->amount, 0, ',', '.') . " via {$this->payment_method}");
 
             $this->flushInvoiceDashboardCache();
 

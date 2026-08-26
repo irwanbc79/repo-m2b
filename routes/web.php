@@ -89,19 +89,8 @@ Route::get('/admin/inbox/body/{id}', [EmailAttachmentController::class , 'showBo
 // --- GUEST ROUTES (LOGIN, REGISTER, FORGOT PASSWORD) ---
 Route::middleware('guest')->group(function () {
     // Login - throttle 5 percobaan per menit untuk mencegah brute force
-    Route::get('/login', function () {
-            return view('auth.login'); }
-        )->name('login');
-        Route::post('/login', function (Request $request) {
-            $credentials = $request->validate(['email' => 'required', 'password' => 'required']);
-            if (Auth::attempt($credentials)) {
-                $request->session()->regenerate();
-                $primaryRole = Auth::user()->getPrimaryRole();
-                return $primaryRole === 'customer' ? redirect()->intended(route('customer.dashboard')) : redirect()->intended(route('admin.dashboard'));
-            }
-            return back()->withErrors(['email' => 'Email salah.']);
-        }
-        )->middleware('throttle:5,1');
+    Route::get('/login', [\App\Http\Controllers\Auth\LoginController::class, 'showLoginForm'])->name('login');
+    Route::post('/login', [\App\Http\Controllers\Auth\LoginController::class, 'login'])->middleware('throttle:5,1');
 
         // Register
         Route::get('/register', function () {
@@ -240,12 +229,7 @@ Route::post('register/complete', [\App\Http\Controllers\Auth\GoogleAuthControlle
 
 
 // --- AUTH COMMON ---
-Route::post('/logout', function () {
-    Auth::logout();
-    request()->session()->invalidate();
-    request()->session()->regenerateToken();
-    return redirect('/');
-})->name('logout');
+Route::post('/logout', [\App\Http\Controllers\Auth\LoginController::class, 'logout'])->name('logout');
 
 // GET logout dihapus untuk mencegah CSRF attack via <img src="/logout">
 // Gunakan POST /logout saja (sudah ada di atas)

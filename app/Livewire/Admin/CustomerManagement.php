@@ -229,6 +229,8 @@ class CustomerManagement extends Component
                     'preferred_language' => $this->preferred_language ?? 'id',
                 ]);
 
+                \App\Models\ActivityLog::record('Customer', 'UPDATE', $customer->customer_code, "Perbarui data customer {$customer->company_name} ({$customer->customer_code})");
+
                 session()->flash('message', 'Data customer berhasil diperbarui!');
             } else {
                 $user = User::create([
@@ -255,6 +257,8 @@ class CustomerManagement extends Component
                     'payment_terms' => $this->payment_terms ?? 30,
                     'preferred_language' => $this->preferred_language ?? 'id',
                 ]);
+
+                \App\Models\ActivityLog::record('Customer', 'CREATE', $customerCode, "Tambah customer baru: {$this->company_name} ({$customerCode})");
 
                 session()->flash('message', 'Customer berhasil ditambahkan! Code: ' . $customerCode);
             }

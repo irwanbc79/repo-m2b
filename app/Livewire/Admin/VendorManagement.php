@@ -187,12 +187,19 @@ class VendorManagement extends Component
 
                 if ($this->isEditing) {
                     $vendor = Vendor::find($this->editingId);
+                    $oldBank = $vendor->bank_details;
                     $vendor->update($vendorData);
                     
                     $vendor->contacts()->delete();
                     
+                    if ($oldBank !== $this->bank_details) {
+                        \App\Models\ActivityLog::record('Vendor', 'UPDATE_BANK_DETAILS', $vendor->code, "Ubah rekening bank vendor {$vendor->name}: {$oldBank} → {$this->bank_details}", ['bank_details' => $oldBank], ['bank_details' => $this->bank_details]);
+                    } else {
+                        \App\Models\ActivityLog::record('Vendor', 'UPDATE', $vendor->code, "Perbarui data vendor {$vendor->name} ({$vendor->code})");
+                    }
                 } else {
-                    $vendor = Vendor::create($vendorData); // Baris 126
+                    $vendor = Vendor::create($vendorData);
+                    \App\Models\ActivityLog::record('Vendor', 'CREATE', $code, "Tambah vendor baru: {$this->name} ({$code})");
                 }
 
                 // --- FIX: Simpan Kontak Baru menggunakan Relasi HasMany ---
@@ -245,6 +252,8 @@ class VendorManagement extends Component
                      return;
                  }
                  
+                 \App\Models\ActivityLog::record('Vendor', 'DELETE', $vendor->code, "Hapus vendor {$vendor->name} ({$vendor->code})");
+
                  $vendor->contacts()->delete();
                  $vendor->delete();
                  session()->flash('message', 'Vendor berhasil dihapus.');

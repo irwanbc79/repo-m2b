@@ -182,6 +182,8 @@ class JournalEntry extends Component
             }
         });
 
+        \App\Models\ActivityLog::record('Accounting', $this->isEditing ? 'UPDATE_JOURNAL' : 'CREATE_JOURNAL', $this->reference_no ?: ($this->isEditing ? 'JR-' . $this->editingId : 'New Journal'), "Jurnal umum: {$this->description} (Total: Rp " . number_format($this->totalDebit, 0, ',', '.') . ")");
+
         session()->flash('message', 'Jurnal berhasil disimpan & Saldo diperbarui!');
         $this->closeModal();
     }
@@ -238,6 +240,9 @@ class JournalEntry extends Component
                         $acc->save();
                     }
                 }
+
+                // Log sebelum hapus
+                \App\Models\ActivityLog::record('Accounting', 'DELETE_JOURNAL', $journal->journal_number, "Hapus jurnal {$journal->journal_number}: {$journal->description} (Rp " . number_format($journal->items->sum('debit'), 0, ',', '.') . ")");
 
                 // 3. HAPUS DATA JURNAL
                 $journal->items()->delete(); 

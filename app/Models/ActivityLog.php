@@ -41,10 +41,13 @@ class ActivityLog extends Model
     public static function record($module, $action, $targetRef, $description = null, $oldValues = null, $newValues = null)
     {
         if (Auth::check()) {
+            $user = Auth::user();
+            $role = (method_exists($user, 'getPrimaryRole') ? $user->getPrimaryRole() : null) ?? $user->role ?? 'user';
+            
             self::create([
-                'user_id'     => Auth::id(),
-                'user_name'   => Auth::user()->name,
-                'role'        => Auth::user()->role,
+                'user_id'     => $user->id,
+                'user_name'   => $user->name,
+                'role'        => $role,
                 'action'      => $action,
                 'module'      => $module,
                 'target_ref'  => $targetRef,
@@ -55,6 +58,50 @@ class ActivityLog extends Model
                 'user_agent'  => Request::userAgent(),
             ]);
         }
+    }
+
+    /**
+     * Record activity for a specific user instance (e.g. on login/logout)
+     */
+    public static function recordForUser($user, $module, $action, $targetRef, $description = null, $oldValues = null, $newValues = null)
+    {
+        if (!$user) return;
+
+        $role = (method_exists($user, 'getPrimaryRole') ? $user->getPrimaryRole() : null) ?? $user->role ?? 'user';
+
+        self::create([
+            'user_id'     => $user->id,
+            'user_name'   => $user->name,
+            'role'        => $role,
+            'action'      => $action,
+            'module'      => $module,
+            'target_ref'  => $targetRef,
+            'description' => $description,
+            'old_values'  => $oldValues,
+            'new_values'  => $newValues,
+            'ip_address'  => Request::ip(),
+            'user_agent'  => Request::userAgent(),
+        ]);
+    }
+
+    /**
+     * Record unauthenticated or system security events (e.g. failed login attempts)
+     */
+    public static function recordAnonymous($module, $action, $targetRef, $description = null, $userIdentifier = 'Guest', $role = 'guest')
+    {
+        self::create([
+            'user_id'     => null,
+            'user_name'   => $userIdentifier,
+            'role'        => $role,
+            'action'      => $action,
+            'module'      => $module,
+            'target_ref'  => $targetRef,
+            'description' => $description,
+            'old_values'  => null,
+            'new_values'  => null,
+            'ip_address'  => Request::ip() ?? '127.0.0.1',
+            'user_agent'  => Request::userAgent() ?? 'System',
+        ]);
     }
 
     /**
