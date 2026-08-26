@@ -1,123 +1,253 @@
-<div class="space-y-6">
-    @section('header', 'Audit Logs / Rekam Jejak')
+<div class="space-y-6 max-w-[1600px] mx-auto pb-12">
+    @section('header', 'Audit Logs / Rekam Jejak Aktivitas')
 
-    {{-- Stats Cards --}}
-    <div class="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-7 gap-4">
-        <div class="bg-white rounded-xl p-4 shadow-sm border border-gray-100 text-center">
-            <p class="text-2xl font-black text-gray-800">{{ number_format($stats['total'] ?? 0) }}</p>
-            <p class="text-xs text-gray-500">Total Logs</p>
+    {{-- HERO METRICS / STATS CARDS --}}
+    <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+        
+        {{-- Card 1: Total Volume Log --}}
+        <div class="relative overflow-hidden bg-gradient-to-br from-indigo-600 via-indigo-700 to-purple-800 rounded-2xl p-5 text-white shadow-lg shadow-indigo-500/10 border border-indigo-500/20">
+            <div class="flex items-start justify-between">
+                <div>
+                    <p class="text-xs font-semibold uppercase tracking-wider text-indigo-200">Total Rekam Jejak</p>
+                    <h3 class="text-3xl font-black mt-1 tracking-tight">{{ number_format($stats['total'] ?? 0) }}</h3>
+                    <p class="text-xs text-indigo-200/80 mt-2 flex items-center gap-1">
+                        <span class="inline-block w-2 h-2 rounded-full bg-emerald-400 animate-ping"></span>
+                        <span class="font-medium text-white">+{{ number_format($stats['this_week'] ?? 0) }}</span> aktivitas minggu ini
+                    </p>
+                </div>
+                <div class="w-12 h-12 rounded-xl bg-white/10 backdrop-blur-md flex items-center justify-center text-white border border-white/20 shadow-inner">
+                    <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-3 7h3m-3 4h3m-6-4h.01M9 16h.01"/></svg>
+                </div>
+            </div>
+            <div class="absolute -right-6 -bottom-6 w-24 h-24 bg-white/5 rounded-full blur-xl pointer-events-none"></div>
         </div>
-        <div class="bg-blue-50 rounded-xl p-4 shadow-sm border border-blue-100 text-center">
-            <p class="text-2xl font-black text-blue-600">{{ $stats['today'] ?? 0 }}</p>
-            <p class="text-xs text-gray-500">Hari Ini</p>
+
+        {{-- Card 2: Aktivitas Hari Ini & Users Aktif --}}
+        <div class="relative overflow-hidden bg-gradient-to-br from-blue-600 via-blue-700 to-cyan-700 rounded-2xl p-5 text-white shadow-lg shadow-blue-500/10 border border-blue-500/20">
+            <div class="flex items-start justify-between">
+                <div>
+                    <p class="text-xs font-semibold uppercase tracking-wider text-blue-200">Aktivitas Hari Ini</p>
+                    <h3 class="text-3xl font-black mt-1 tracking-tight">{{ number_format($stats['today'] ?? 0) }}</h3>
+                    <p class="text-xs text-blue-100 mt-2 flex items-center gap-1.5">
+                        <span class="px-2 py-0.5 rounded-full bg-white/20 font-bold text-[11px] backdrop-blur-xs">
+                            👥 {{ $stats['users_active'] ?? 0 }} Staf Aktif
+                        </span>
+                    </p>
+                </div>
+                <div class="w-12 h-12 rounded-xl bg-white/10 backdrop-blur-md flex items-center justify-center text-white border border-white/20 shadow-inner">
+                    <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+                </div>
+            </div>
+            <div class="absolute -right-6 -bottom-6 w-24 h-24 bg-white/5 rounded-full blur-xl pointer-events-none"></div>
         </div>
-        <div class="bg-indigo-50 rounded-xl p-4 shadow-sm border border-indigo-100 text-center">
-            <p class="text-2xl font-black text-indigo-600">{{ $stats['this_week'] ?? 0 }}</p>
-            <p class="text-xs text-gray-500">Minggu Ini</p>
+
+        {{-- Card 3: Operasi CRUD Data --}}
+        <div class="relative overflow-hidden bg-white rounded-2xl p-5 text-slate-800 shadow-sm border border-slate-200/80 hover:border-slate-300 transition">
+            <div class="flex items-start justify-between">
+                <div>
+                    <p class="text-xs font-semibold uppercase tracking-wider text-slate-400">Mutasi &amp; Modifikasi Data</p>
+                    <h3 class="text-3xl font-black mt-1 text-slate-800 tracking-tight">{{ number_format(($stats['creates'] ?? 0) + ($stats['updates'] ?? 0)) }}</h3>
+                    <div class="flex items-center gap-3 mt-2 text-xs">
+                        <span class="inline-flex items-center gap-1 text-emerald-600 font-bold bg-emerald-50 px-2 py-0.5 rounded-md border border-emerald-100">
+                            <span class="w-1.5 h-1.5 rounded-full bg-emerald-500"></span> +{{ $stats['creates'] ?? 0 }} Create
+                        </span>
+                        <span class="inline-flex items-center gap-1 text-amber-600 font-bold bg-amber-50 px-2 py-0.5 rounded-md border border-amber-100">
+                            <span class="w-1.5 h-1.5 rounded-full bg-amber-500"></span> ✏️ {{ $stats['updates'] ?? 0 }} Update
+                        </span>
+                    </div>
+                </div>
+                <div class="w-12 h-12 rounded-xl bg-slate-100 flex items-center justify-center text-slate-600 border border-slate-200">
+                    <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/></svg>
+                </div>
+            </div>
         </div>
-        <div class="bg-purple-50 rounded-xl p-4 shadow-sm border border-purple-100 text-center">
-            <p class="text-2xl font-black text-purple-600">{{ $stats['users_active'] ?? 0 }}</p>
-            <p class="text-xs text-gray-500">Users Aktif</p>
+
+        {{-- Card 4: Forensic Risk Warning --}}
+        @php
+            $highRiskCount = $stats['today_high_risk'] ?? 0;
+        @endphp
+        <div wire:click="setRiskFilter('high')" class="cursor-pointer relative overflow-hidden rounded-2xl p-5 text-white transition-all duration-300 {{ $highRiskCount > 0 ? 'bg-gradient-to-br from-rose-600 via-red-600 to-pink-700 shadow-lg shadow-red-500/20 ring-2 ring-red-400 animate-pulse' : 'bg-gradient-to-br from-slate-800 to-slate-900 shadow-sm border border-slate-800' }}">
+            <div class="flex items-start justify-between">
+                <div>
+                    <p class="text-xs font-semibold uppercase tracking-wider {{ $highRiskCount > 0 ? 'text-rose-100' : 'text-slate-400' }}">Forensic Risk Warning</p>
+                    <h3 class="text-3xl font-black mt-1 tracking-tight">{{ $highRiskCount }}</h3>
+                    <p class="text-xs mt-2 font-medium {{ $highRiskCount > 0 ? 'text-white' : 'text-emerald-400 flex items-center gap-1' }}">
+                        @if($highRiskCount > 0)
+                            ⚠️ High Risk Events Hari Ini (Klik Cek)
+                        @else
+                            <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/></svg>
+                            Sistem Aman (0 Insiden Kritis)
+                        @endif
+                    </p>
+                </div>
+                <div class="w-12 h-12 rounded-xl {{ $highRiskCount > 0 ? 'bg-white/20 text-white' : 'bg-slate-700/50 text-emerald-400' }} flex items-center justify-center border border-white/10 shadow-inner">
+                    <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"/></svg>
+                </div>
+            </div>
         </div>
-        <div class="bg-green-50 rounded-xl p-4 shadow-sm border border-green-100 text-center">
-            <p class="text-2xl font-black text-green-600">{{ $stats['creates'] ?? 0 }}</p>
-            <p class="text-xs text-gray-500">Create</p>
-        </div>
-        <div class="bg-amber-50 rounded-xl p-4 shadow-sm border border-amber-100 text-center">
-            <p class="text-2xl font-black text-amber-600">{{ $stats['updates'] ?? 0 }}</p>
-            <p class="text-xs text-gray-500">Update</p>
-        </div>
-        <div class="{{ ($stats['today_high_risk'] ?? 0) > 0 ? 'bg-red-100 border-red-300 ring-2 ring-red-400 animate-pulse' : 'bg-red-50 border-red-100' }} rounded-xl p-4 shadow-sm border text-center transition-colors">
-            <p class="text-2xl font-black text-red-600">{{ $stats['today_high_risk'] ?? 0 }}</p>
-            <p class="text-xs font-bold text-red-700">High Risk Hari Ini</p>
-        </div>
+
     </div>
 
-    {{-- Main Container (2-Column Layout on Large Screens) --}}
-    <div class="grid grid-cols-1 lg:grid-cols-4 gap-6">
+    {{-- MAIN CONTENT GRID: Left (Logs & Control Toolbar) vs Right (Analytics Sidebar) --}}
+    <div class="grid grid-cols-1 xl:grid-cols-4 gap-6 items-start">
         
-        {{-- LEFT COLUMN: Filters, Search and Main Logs Table (Span 3) --}}
-        <div class="lg:col-span-3 space-y-6">
-            <div class="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
-                {{-- Filters & Export --}}
-                <div class="p-6 border-b border-gray-100 bg-gray-50">
-                    <div class="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4 mb-4">
-                        {{-- Search --}}
-                        <div class="relative flex-1 max-w-md">
-                            <svg class="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/></svg>
-                            <input wire:model.live.debounce.300ms="search" type="text" placeholder="Cari log..." class="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
+        {{-- LEFT COLUMN: Main Table & Control Center (Span 3) --}}
+        <div class="xl:col-span-3 space-y-5">
+
+            {{-- CONTROL TOOLBAR / FILTER PANEL --}}
+            <div class="bg-white rounded-2xl shadow-sm border border-slate-200/80 p-5 space-y-4">
+                
+                {{-- Row 1: Search & Risk Pills & Excel Export --}}
+                <div class="flex flex-col lg:flex-row lg:items-center justify-between gap-4">
+                    
+                    {{-- Smart Search Bar --}}
+                    <div class="relative flex-1 max-w-lg">
+                        <div class="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-slate-400">
+                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/></svg>
                         </div>
-
-                        {{-- Export Button --}}
-                        <button wire:click="exportExcel" class="inline-flex items-center gap-2 px-4 py-2 bg-green-600 hover:bg-green-700 text-white rounded-lg font-medium transition shadow-sm">
-                            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/></svg>
-                            Export Excel
-                        </button>
-                    </div>
-
-                    <div class="flex flex-wrap items-center gap-3">
-                        <select wire:model.live="filterUser" class="border-gray-300 rounded-lg text-sm py-2 px-3 focus:ring-2 focus:ring-blue-500">
-                            <option value="">Semua User</option>
-                            @foreach($filterOptions['users'] ?? [] as $user)
-                                <option value="{{ $user }}">{{ $user }}</option>
-                            @endforeach
-                        </select>
-
-                        <select wire:model.live="filterRole" class="border-gray-300 rounded-lg text-sm py-2 px-3 focus:ring-2 focus:ring-blue-500">
-                            <option value="">Semua Role</option>
-                            @foreach($filterOptions['roles'] ?? [] as $role)
-                                <option value="{{ $role }}">{{ strtoupper(str_replace('_', ' ', $role)) }}</option>
-                            @endforeach
-                        </select>
-
-                        <select wire:model.live="filterModule" class="border-gray-300 rounded-lg text-sm py-2 px-3 focus:ring-2 focus:ring-blue-500">
-                            <option value="">Semua Modul</option>
-                            @foreach($filterOptions['modules'] ?? [] as $module)
-                                <option value="{{ $module }}">{{ $module }}</option>
-                            @endforeach
-                        </select>
-
-                        <select wire:model.live="filterAction" class="border-gray-300 rounded-lg text-sm py-2 px-3 focus:ring-2 focus:ring-blue-500">
-                            <option value="">Semua Action</option>
-                            @foreach($filterOptions['actions'] ?? [] as $action)
-                                <option value="{{ $action }}">{{ $action }}</option>
-                            @endforeach
-                        </select>
-
-                        <select wire:model.live="filterRisk" class="border-gray-300 rounded-lg text-sm py-2 px-3 focus:ring-2 focus:ring-blue-500">
-                            <option value="">Semua Risiko</option>
-                            <option value="high">🔴 High Risk</option>
-                            <option value="medium">🟡 Medium Risk</option>
-                            <option value="low">🔵 Low Risk</option>
-                        </select>
-
-                        <input wire:model.live="filterDateFrom" type="date" class="border-gray-300 rounded-lg text-sm py-2 px-3 focus:ring-2 focus:ring-blue-500" title="Dari Tanggal">
-                        <input wire:model.live="filterDateTo" type="date" class="border-gray-300 rounded-lg text-sm py-2 px-3 focus:ring-2 focus:ring-blue-500" title="Sampai Tanggal">
-
-                        @if($filterUser || $filterRole || $filterModule || $filterAction || $filterRisk || $filterDateFrom || $filterDateTo)
-                        <button wire:click="clearFilters" class="text-sm text-red-600 hover:text-red-800 font-medium">
-                            ✕ Reset Filter
+                        <input 
+                            wire:model.live.debounce.300ms="search" 
+                            type="text" 
+                            placeholder="Cari nama staf, no. referensi (INV/JOB/JR), modul, atau aksi..." 
+                            class="w-full pl-10 pr-10 py-2.5 bg-slate-50/70 border border-slate-200 rounded-xl text-sm focus:bg-white focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 transition placeholder:text-slate-400"
+                        >
+                        @if($search)
+                        <button wire:click="$set('search', '')" class="absolute inset-y-0 right-0 pr-3 flex items-center text-slate-400 hover:text-slate-600">
+                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
                         </button>
                         @endif
                     </div>
+
+                    {{-- Risk Filter Quick Tabs & Export --}}
+                    <div class="flex flex-wrap items-center gap-2">
+                        
+                        {{-- Risk Pills --}}
+                        <div class="inline-flex p-1 bg-slate-100/80 rounded-xl border border-slate-200 text-xs font-semibold text-slate-600">
+                            <button 
+                                wire:click="setRiskFilter('')" 
+                                class="px-3 py-1.5 rounded-lg transition {{ empty($filterRisk) ? 'bg-white text-slate-900 shadow-xs font-bold' : 'hover:text-slate-900' }}"
+                            >
+                                Semua
+                            </button>
+                            <button 
+                                wire:click="setRiskFilter('high')" 
+                                class="px-3 py-1.5 rounded-lg transition flex items-center gap-1.5 {{ $filterRisk === 'high' ? 'bg-rose-600 text-white shadow-xs font-bold' : 'text-rose-600 hover:bg-rose-50' }}"
+                            >
+                                <span class="w-1.5 h-1.5 rounded-full {{ $filterRisk === 'high' ? 'bg-white' : 'bg-rose-500' }}"></span>
+                                High Risk
+                            </button>
+                            <button 
+                                wire:click="setRiskFilter('medium')" 
+                                class="px-3 py-1.5 rounded-lg transition flex items-center gap-1.5 {{ $filterRisk === 'medium' ? 'bg-amber-500 text-white shadow-xs font-bold' : 'text-amber-700 hover:bg-amber-50' }}"
+                            >
+                                <span class="w-1.5 h-1.5 rounded-full {{ $filterRisk === 'medium' ? 'bg-white' : 'bg-amber-500' }}"></span>
+                                Medium
+                            </button>
+                            <button 
+                                wire:click="setRiskFilter('low')" 
+                                class="px-3 py-1.5 rounded-lg transition flex items-center gap-1.5 {{ $filterRisk === 'low' ? 'bg-blue-600 text-white shadow-xs font-bold' : 'text-blue-600 hover:bg-blue-50' }}"
+                            >
+                                <span class="w-1.5 h-1.5 rounded-full {{ $filterRisk === 'low' ? 'bg-white' : 'bg-blue-500' }}"></span>
+                                Info / Low
+                            </button>
+                        </div>
+
+                        {{-- Export Excel Button --}}
+                        <button 
+                            wire:click="exportExcel" 
+                            wire:loading.attr="disabled"
+                            class="inline-flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-700 hover:to-teal-700 text-white rounded-xl font-semibold text-xs tracking-wide shadow-sm shadow-emerald-600/20 hover:shadow transition"
+                        >
+                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/></svg>
+                            <span wire:loading.remove wire:target="exportExcel">Export CSV</span>
+                            <span wire:loading wire:target="exportExcel">Menyiapkan...</span>
+                        </button>
+                    </div>
+
                 </div>
 
-                {{-- Table --}}
+                {{-- Row 2: Secondary Dropdown Filters & Date Presets --}}
+                <div class="pt-3 border-t border-slate-100 flex flex-wrap items-center justify-between gap-3">
+                    
+                    <div class="flex flex-wrap items-center gap-2.5">
+                        {{-- Filter User --}}
+                        <select wire:model.live="filterUser" class="bg-slate-50/80 border border-slate-200 rounded-xl text-xs py-2 px-3 focus:bg-white focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 font-medium text-slate-700">
+                            <option value="">👤 Semua Staf</option>
+                            @foreach($filterOptions['users'] ?? [] as $u)
+                                <option value="{{ $u }}">{{ $u }}</option>
+                            @endforeach
+                        </select>
+
+                        {{-- Filter Modul --}}
+                        <select wire:model.live="filterModule" class="bg-slate-50/80 border border-slate-200 rounded-xl text-xs py-2 px-3 focus:bg-white focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 font-medium text-slate-700">
+                            <option value="">📂 Semua Modul</option>
+                            @foreach($filterOptions['modules'] ?? [] as $m)
+                                <option value="{{ $m }}">{{ $m }}</option>
+                            @endforeach
+                        </select>
+
+                        {{-- Filter Aksi --}}
+                        <select wire:model.live="filterAction" class="bg-slate-50/80 border border-slate-200 rounded-xl text-xs py-2 px-3 focus:bg-white focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 font-medium text-slate-700">
+                            <option value="">⚡ Semua Aksi</option>
+                            @foreach($filterOptions['actions'] ?? [] as $a)
+                                <option value="{{ $a }}">{{ $a }}</option>
+                            @endforeach
+                        </select>
+
+                        {{-- Filter Role --}}
+                        <select wire:model.live="filterRole" class="bg-slate-50/80 border border-slate-200 rounded-xl text-xs py-2 px-3 focus:bg-white focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 font-medium text-slate-700">
+                            <option value="">🏷️ Semua Role</option>
+                            @foreach($filterOptions['roles'] ?? [] as $r)
+                                <option value="{{ $r }}">{{ strtoupper(str_replace('_', ' ', $r)) }}</option>
+                            @endforeach
+                        </select>
+                    </div>
+
+                    {{-- Date Filter Presets --}}
+                    <div class="flex items-center gap-2">
+                        <div class="inline-flex p-0.5 bg-slate-100 rounded-lg text-[11px] font-semibold text-slate-600">
+                            <button wire:click="setDatePreset('all')" class="px-2 py-1 rounded-md transition {{ $datePreset === 'all' && empty($filterDateFrom) ? 'bg-white text-slate-900 shadow-xs font-bold' : 'hover:text-slate-900' }}">Semua</button>
+                            <button wire:click="setDatePreset('today')" class="px-2 py-1 rounded-md transition {{ $datePreset === 'today' ? 'bg-white text-slate-900 shadow-xs font-bold' : 'hover:text-slate-900' }}">Hari Ini</button>
+                            <button wire:click="setDatePreset('this_week')" class="px-2 py-1 rounded-md transition {{ $datePreset === 'this_week' ? 'bg-white text-slate-900 shadow-xs font-bold' : 'hover:text-slate-900' }}">Minggu Ini</button>
+                            <button wire:click="setDatePreset('this_month')" class="px-2 py-1 rounded-md transition {{ $datePreset === 'this_month' ? 'bg-white text-slate-900 shadow-xs font-bold' : 'hover:text-slate-900' }}">Bulan Ini</button>
+                        </div>
+
+                        {{-- Date Inputs --}}
+                        <div class="flex items-center gap-1">
+                            <input wire:model.live="filterDateFrom" type="date" class="bg-slate-50 border border-slate-200 rounded-lg text-xs py-1.5 px-2 focus:bg-white focus:ring-2 focus:ring-indigo-500/20 text-slate-700" title="Dari Tanggal">
+                            <span class="text-slate-400 text-xs">-</span>
+                            <input wire:model.live="filterDateTo" type="date" class="bg-slate-50 border border-slate-200 rounded-lg text-xs py-1.5 px-2 focus:bg-white focus:ring-2 focus:ring-indigo-500/20 text-slate-700" title="Sampai Tanggal">
+                        </div>
+
+                        @if($filterUser || $filterRole || $filterModule || $filterAction || $filterRisk || $filterDateFrom || $filterDateTo || $search)
+                        <button wire:click="clearFilters" class="px-2.5 py-1.5 rounded-lg text-xs font-bold text-rose-600 bg-rose-50 hover:bg-rose-100 transition flex items-center gap-1">
+                            <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
+                            Reset
+                        </button>
+                        @endif
+                    </div>
+
+                </div>
+
+            </div>
+
+            {{-- FORENSIC AUDIT TABLE CONTAINER --}}
+            <div class="bg-white rounded-2xl shadow-sm border border-slate-200/80 overflow-hidden">
                 <div class="overflow-x-auto">
-                    <table class="w-full text-sm text-left">
-                        <thead class="bg-gray-800 text-white text-xs uppercase">
-                            <tr>
-                                <th class="px-6 py-3">Waktu</th>
-                                <th class="px-6 py-3">User</th>
-                                <th class="px-6 py-3">Modul</th>
-                                <th class="px-6 py-3">Ref No</th>
-                                <th class="px-6 py-3">Aktivitas</th>
-                                <th class="px-6 py-3 text-center">Risiko</th>
-                                <th class="px-6 py-3">IP Address</th>
-                                <th class="px-6 py-3 text-center">Action</th>
+                    <table class="w-full text-left border-collapse">
+                        <thead>
+                            <tr class="bg-slate-50/80 border-b border-slate-200/80 text-[11px] font-bold uppercase tracking-wider text-slate-500">
+                                <th class="py-3.5 px-4 pl-6">Waktu &amp; Sesi</th>
+                                <th class="py-3.5 px-4">Pelaku (User)</th>
+                                <th class="py-3.5 px-4">Modul</th>
+                                <th class="py-3.5 px-4">No. Referensi</th>
+                                <th class="py-3.5 px-4">Aktivitas &amp; Uraian</th>
+                                <th class="py-3.5 px-3 text-center">Risiko</th>
+                                <th class="py-3.5 px-4">IP &amp; Device</th>
+                                <th class="py-3.5 px-4 pr-6 text-center">Detail</th>
                             </tr>
                         </thead>
-                        <tbody class="divide-y divide-gray-100">
+                        <tbody class="divide-y divide-slate-100 text-sm">
                             @forelse($logs as $log)
                             @php
                                 $highRiskActions = [
@@ -136,105 +266,181 @@
                                     $log->action === 'STATUS_CHANGE' ||
                                     $log->action === 'CONVERT_TO_SHIPMENT'
                                 );
+
+                                // Module Styling & Icons
+                                $moduleStyles = [
+                                    'Accounting' => ['bg' => 'bg-emerald-50 text-emerald-700 border-emerald-200', 'icon' => '💼'],
+                                    'Invoice'    => ['bg' => 'bg-violet-50 text-violet-700 border-violet-200', 'icon' => '🧾'],
+                                    'Shipment'   => ['bg' => 'bg-blue-50 text-blue-700 border-blue-200', 'icon' => '🚢'],
+                                    'Quotation'  => ['bg' => 'bg-amber-50 text-amber-800 border-amber-200', 'icon' => '📋'],
+                                    'Auth'       => ['bg' => 'bg-purple-50 text-purple-700 border-purple-200', 'icon' => '🔐'],
+                                    'UserManagement' => ['bg' => 'bg-indigo-50 text-indigo-700 border-indigo-200', 'icon' => '👥'],
+                                    'Customer'   => ['bg' => 'bg-teal-50 text-teal-700 border-teal-200', 'icon' => '🏢'],
+                                    'Vendor'     => ['bg' => 'bg-cyan-50 text-cyan-700 border-cyan-200', 'icon' => '🚚'],
+                                    'Cashier'    => ['bg' => 'bg-emerald-50 text-emerald-700 border-emerald-200', 'icon' => '💵'],
+                                    'JobCost'    => ['bg' => 'bg-orange-50 text-orange-700 border-orange-200', 'icon' => '📊'],
+                                ];
+                                $modStyle = $moduleStyles[$log->module] ?? ['bg' => 'bg-slate-100 text-slate-700 border-slate-200', 'icon' => '📁'];
+
+                                // Action Badge Styling
+                                $actionColors = [
+                                    'CREATE' => 'bg-emerald-50 text-emerald-700 border-emerald-200',
+                                    'CREATE_JOURNAL' => 'bg-emerald-50 text-emerald-700 border-emerald-200',
+                                    'CREATE_COA' => 'bg-emerald-50 text-emerald-700 border-emerald-200',
+                                    'CREATE_USER' => 'bg-indigo-50 text-indigo-700 border-indigo-200',
+                                    'UPDATE' => 'bg-blue-50 text-blue-700 border-blue-200',
+                                    'UPDATE_JOURNAL' => 'bg-blue-50 text-blue-700 border-blue-200',
+                                    'UPDATE_COA' => 'bg-blue-50 text-blue-700 border-blue-200',
+                                    'UPDATE_ROLE' => 'bg-rose-50 text-rose-700 border-rose-200 font-bold',
+                                    'UPDATE_BANK_DETAILS' => 'bg-rose-50 text-rose-700 border-rose-200 font-bold',
+                                    'VERIFY_PAYMENT' => 'bg-emerald-50 text-emerald-700 border-emerald-200 font-bold',
+                                    'DELETE' => 'bg-rose-50 text-rose-700 border-rose-200 font-bold',
+                                    'DELETE_JOURNAL' => 'bg-rose-50 text-rose-700 border-rose-200 font-bold',
+                                    'DELETE_USER' => 'bg-rose-50 text-rose-700 border-rose-200 font-bold',
+                                    'DELETE_COA' => 'bg-rose-50 text-rose-700 border-rose-200 font-bold',
+                                    'LOGIN' => 'bg-purple-50 text-purple-700 border-purple-200',
+                                    'LOGIN_GOOGLE' => 'bg-indigo-50 text-indigo-700 border-indigo-200',
+                                    'LOGIN_FAILED' => 'bg-rose-100 text-rose-800 border-rose-300 font-bold',
+                                    'LOGIN_BLOCKED' => 'bg-rose-100 text-rose-800 border-rose-300 font-bold',
+                                    'LOGOUT' => 'bg-slate-100 text-slate-700 border-slate-200',
+                                    'SEND_EMAIL' => 'bg-sky-50 text-sky-700 border-sky-200',
+                                ];
+                                $actColor = $actionColors[$log->action] ?? (str_contains($log->action, 'DELETE') ? 'bg-rose-50 text-rose-700 border-rose-200' : 'bg-slate-100 text-slate-700 border-slate-200');
+
+                                // Border indicator styling for rows
+                                $rowBorder = $isHighRisk ? 'border-l-[3px] border-l-rose-500 hover:bg-rose-50/30' : ($isMediumRisk ? 'border-l-[3px] border-l-amber-400 hover:bg-amber-50/20' : 'border-l-[3px] border-l-transparent hover:bg-slate-50/70');
                             @endphp
-                            <tr class="hover:bg-gray-50 transition">
-                                <td class="px-6 py-4 whitespace-nowrap">
-                                    <p class="text-gray-800 font-medium">{{ $log->created_at->format('d M Y') }}</p>
-                                    <p class="text-xs text-gray-500">{{ $log->created_at->format('H:i:s') }}</p>
+
+                            <tr class="transition-colors {{ $rowBorder }}">
+                                
+                                {{-- Waktu --}}
+                                <td class="py-3.5 px-4 pl-6 whitespace-nowrap">
+                                    <p class="font-bold text-slate-800 text-xs">{{ $log->created_at->format('H:i:s') }}</p>
+                                    <p class="text-[11px] text-slate-400 font-medium">{{ $log->created_at->format('d M Y') }}</p>
+                                    <span class="inline-block text-[10px] text-slate-400/80 mt-0.5">
+                                        {{ $log->created_at->diffForHumans() }}
+                                    </span>
                                 </td>
-                                <td class="px-6 py-4">
-                                    <div class="flex items-center gap-3">
+
+                                {{-- User / Pelaku --}}
+                                <td class="py-3.5 px-4">
+                                    <div class="flex items-center gap-2.5">
                                         @php
-                                            $colors = ['A' => 'bg-red-500', 'B' => 'bg-blue-500', 'C' => 'bg-green-500', 'D' => 'bg-yellow-500', 'E' => 'bg-purple-500', 'F' => 'bg-pink-500', 'G' => 'bg-indigo-500', 'H' => 'bg-teal-500', 'I' => 'bg-orange-500', 'J' => 'bg-cyan-500'];
-                                            $initial = strtoupper(substr($log->user_name ?? 'U', 0, 1));
-                                            $bgColor = $colors[$initial] ?? 'bg-gray-500';
+                                            $userInitial = strtoupper(substr($log->user_name ?? 'U', 0, 1));
+                                            $avatarGradients = [
+                                                'A' => 'from-rose-500 to-red-600',
+                                                'B' => 'from-blue-500 to-indigo-600',
+                                                'C' => 'from-emerald-500 to-teal-600',
+                                                'D' => 'from-amber-500 to-orange-600',
+                                                'E' => 'from-purple-500 to-pink-600',
+                                                'K' => 'from-indigo-500 to-blue-600',
+                                                'N' => 'from-teal-500 to-emerald-600',
+                                                'S' => 'from-violet-500 to-purple-600',
+                                            ];
+                                            $avatarGrad = $avatarGradients[$userInitial] ?? 'from-slate-600 to-slate-700';
                                         @endphp
-                                        <div class="w-8 h-8 {{ $bgColor }} rounded-full flex items-center justify-center text-white font-bold text-sm">
-                                            {{ $initial }}
+                                        <div class="w-8 h-8 rounded-full bg-gradient-to-tr {{ $avatarGrad }} flex items-center justify-center text-white font-bold text-xs shadow-xs shrink-0">
+                                            {{ $userInitial }}
                                         </div>
-                                        <div>
-                                            <p class="font-bold text-gray-800 leading-tight">{{ $log->user_name }}</p>
-                                            <p class="text-[10px] text-gray-400 uppercase tracking-wider">{{ str_replace('_', ' ', $log->role) }}</p>
+                                        <div class="min-w-0">
+                                            <p class="font-bold text-slate-800 text-xs truncate">{{ $log->user_name }}</p>
+                                            <span class="inline-block px-1.5 py-0.2 rounded text-[9px] font-semibold bg-slate-100 text-slate-500 uppercase tracking-wider mt-0.5">
+                                                {{ str_replace('_', ' ', $log->role) }}
+                                            </span>
                                         </div>
                                     </div>
                                 </td>
-                                <td class="px-6 py-4">
-                                    <span class="px-2 py-0.5 rounded text-[10px] font-bold bg-slate-100 text-slate-700 uppercase">{{ $log->module }}</span>
-                                </td>
-                                <td class="px-6 py-4 font-mono text-xs text-blue-600 font-medium">
-                                    {{ $log->target_ref ?: '-' }}
-                                </td>
-                                <td class="px-6 py-4">
-                                    @php
-                                        $actionColors = [
-                                            'CREATE' => 'bg-green-100 text-green-700 border-green-200',
-                                            'CREATE_JOURNAL' => 'bg-green-100 text-green-700 border-green-200',
-                                            'CREATE_COA' => 'bg-green-100 text-green-700 border-green-200',
-                                            'CREATE_USER' => 'bg-emerald-100 text-emerald-800 border-emerald-300',
-                                            'UPDATE' => 'bg-blue-100 text-blue-700 border-blue-200',
-                                            'UPDATE_JOURNAL' => 'bg-blue-100 text-blue-700 border-blue-200',
-                                            'UPDATE_COA' => 'bg-blue-100 text-blue-700 border-blue-200',
-                                            'UPDATE_ROLE' => 'bg-rose-100 text-rose-800 border-rose-300',
-                                            'UPDATE_BANK_DETAILS' => 'bg-rose-100 text-rose-800 border-rose-300',
-                                            'VERIFY_PAYMENT' => 'bg-emerald-100 text-emerald-800 border-emerald-300',
-                                            'UPDATE STATUS' => 'bg-amber-100 text-amber-700 border-amber-200',
-                                            'STATUS_CHANGE' => 'bg-amber-100 text-amber-700 border-amber-200',
-                                            'UPDATE INFO' => 'bg-cyan-100 text-cyan-700 border-cyan-200',
-                                            'DELETE' => 'bg-red-100 text-red-700 border-red-200',
-                                            'DELETE_JOURNAL' => 'bg-red-100 text-red-700 border-red-200',
-                                            'DELETE_USER' => 'bg-red-100 text-red-700 border-red-200',
-                                            'DELETE_COA' => 'bg-red-100 text-red-700 border-red-200',
-                                            'LOGIN' => 'bg-purple-100 text-purple-700 border-purple-200',
-                                            'LOGIN_GOOGLE' => 'bg-indigo-100 text-indigo-700 border-indigo-200',
-                                            'LOGIN_FAILED' => 'bg-red-100 text-red-700 border-red-200',
-                                            'LOGIN_BLOCKED' => 'bg-red-100 text-red-700 border-red-200',
-                                            'LOGOUT' => 'bg-gray-100 text-gray-700 border-gray-200',
-                                            'SEND_EMAIL' => 'bg-sky-100 text-sky-700 border-sky-200',
-                                        ];
-                                        $color = $actionColors[$log->action] ?? (str_contains($log->action, 'DELETE') ? 'bg-red-100 text-red-700 border-red-200' : 'bg-gray-100 text-gray-700 border-gray-200');
-                                    @endphp
-                                    <span class="inline-flex items-center px-2 py-0.5 rounded text-[10px] font-bold border {{ $color }}">
-                                        @if(str_contains($log->action, 'CREATE'))
-                                            <svg class="w-2.5 h-2.5 mr-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/></svg>
-                                        @elseif(str_contains($log->action, 'UPDATE') || $log->action == 'STATUS_CHANGE')
-                                            <svg class="w-2.5 h-2.5 mr-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"/></svg>
-                                        @elseif(str_contains($log->action, 'DELETE'))
-                                            <svg class="w-2.5 h-2.5 mr-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/></svg>
-                                        @endif
-                                        {{ $log->action }}
+
+                                {{-- Modul --}}
+                                <td class="py-3.5 px-4 whitespace-nowrap">
+                                    <span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-lg text-xs font-semibold border {{ $modStyle['bg'] }}">
+                                        <span>{{ $modStyle['icon'] }}</span>
+                                        <span>{{ $log->module }}</span>
                                     </span>
-                                    <p class="text-xs text-gray-500 mt-1 max-w-xs truncate" title="{{ $log->description }}">{{ $log->description }}</p>
                                 </td>
-                                <td class="px-6 py-4 text-center whitespace-nowrap">
+
+                                {{-- No Referensi --}}
+                                <td class="py-3.5 px-4 whitespace-nowrap font-mono text-xs font-semibold text-indigo-600">
+                                    @if($log->target_ref)
+                                        <span class="bg-indigo-50/80 px-2 py-1 rounded-md border border-indigo-100/80">{{ $log->target_ref }}</span>
+                                    @else
+                                        <span class="text-slate-300">-</span>
+                                    @endif
+                                </td>
+
+                                {{-- Aktivitas & Uraian --}}
+                                <td class="py-3.5 px-4 max-w-sm">
+                                    <div class="flex items-center gap-1.5 mb-1">
+                                        <span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[10px] font-bold border {{ $actColor }}">
+                                            @if(str_contains($log->action, 'CREATE'))
+                                                <svg class="w-2.5 h-2.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/></svg>
+                                            @elseif(str_contains($log->action, 'DELETE'))
+                                                <svg class="w-2.5 h-2.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/></svg>
+                                            @elseif(str_contains($log->action, 'UPDATE'))
+                                                <svg class="w-2.5 h-2.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"/></svg>
+                                            @endif
+                                            {{ $log->action }}
+                                        </span>
+                                    </div>
+                                    <p class="text-xs text-slate-600 leading-snug line-clamp-2" title="{{ $log->description }}">
+                                        {{ $log->description ?: '-' }}
+                                    </p>
+                                </td>
+
+                                {{-- Tingkat Risiko --}}
+                                <td class="py-3.5 px-3 text-center whitespace-nowrap">
                                     @if($isHighRisk)
-                                        <span class="px-2 py-0.5 rounded-full text-[10px] font-black bg-red-100 text-red-800 border border-red-200">
+                                        <span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-black bg-rose-100 text-rose-800 border border-rose-200 shadow-2xs">
                                             🔴 High
                                         </span>
                                     @elseif($isMediumRisk)
-                                        <span class="px-2 py-0.5 rounded-full text-[10px] font-black bg-amber-100 text-amber-800 border border-amber-200">
-                                            🟡 Medium
+                                        <span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-black bg-amber-100 text-amber-800 border border-amber-200">
+                                            🟡 Med
                                         </span>
                                     @else
-                                        <span class="px-2 py-0.5 rounded-full text-[10px] font-black bg-blue-100 text-blue-800 border border-blue-200">
-                                            🔵 Low
+                                        <span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-black bg-slate-100 text-slate-600 border border-slate-200">
+                                            🔵 Info
                                         </span>
                                     @endif
                                 </td>
-                                <td class="px-6 py-4 text-xs text-gray-400 font-mono">
-                                    {{ $log->ip_address }}
+
+                                {{-- IP & Device --}}
+                                <td class="py-3.5 px-4 whitespace-nowrap text-xs">
+                                    <p class="font-mono text-slate-600 font-semibold">{{ $log->ip_address }}</p>
+                                    @if($log->user_agent)
+                                        <p class="text-[10px] text-slate-400 truncate max-w-[120px]" title="{{ $log->user_agent }}">
+                                            {{ str_contains($log->user_agent, 'Macintosh') ? '💻 Mac' : (str_contains($log->user_agent, 'Windows') ? '💻 Windows' : (str_contains($log->user_agent, 'Android') || str_contains($log->user_agent, 'iPhone') ? '📱 Mobile' : '🖥️ Browser')) }}
+                                        </p>
+                                    @endif
                                 </td>
-                                <td class="px-6 py-4 text-center">
-                                    <button wire:click="viewDetail({{ $log->id }})" class="inline-flex items-center gap-1 px-3 py-1.5 bg-blue-100 hover:bg-blue-200 text-blue-700 rounded-lg text-xs font-medium transition">
-                                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"/></svg>
+
+                                {{-- Action Button --}}
+                                <td class="py-3.5 px-4 pr-6 text-center whitespace-nowrap">
+                                    <button 
+                                        wire:click="viewDetail({{ $log->id }})" 
+                                        class="inline-flex items-center gap-1 px-3 py-1.5 rounded-lg text-xs font-bold text-indigo-600 bg-indigo-50 hover:bg-indigo-100 border border-indigo-100 transition shadow-2xs"
+                                    >
+                                        <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"/></svg>
                                         Detail
                                     </button>
                                 </td>
+
                             </tr>
                             @empty
                             <tr>
-                                <td colspan="8" class="px-6 py-12 text-center">
-                                    <svg class="w-12 h-12 text-gray-300 mx-auto mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/></svg>
-                                    <p class="text-gray-500 font-medium">Belum ada aktivitas terekam</p>
+                                <td colspan="8" class="py-16 px-6 text-center">
+                                    <div class="max-w-sm mx-auto">
+                                        <div class="w-16 h-16 rounded-2xl bg-slate-100 flex items-center justify-center text-slate-400 mx-auto mb-3">
+                                            <svg class="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/></svg>
+                                        </div>
+                                        <h4 class="font-bold text-slate-800 text-sm">Tidak ada log aktivitas</h4>
+                                        <p class="text-xs text-slate-500 mt-1">Coba sesuaikan kata kunci pencarian atau filter tanggal yang dipilih.</p>
+                                        @if($search || $filterUser || $filterModule || $filterAction || $filterRisk || $filterDateFrom)
+                                            <button wire:click="clearFilters" class="mt-3 px-3 py-1.5 rounded-lg text-xs font-bold bg-indigo-50 text-indigo-600 hover:bg-indigo-100 transition">
+                                                Reset Semua Filter
+                                            </button>
+                                        @endif
+                                    </div>
                                 </td>
                             </tr>
                             @endforelse
@@ -242,230 +448,275 @@
                     </table>
                 </div>
 
-                {{-- Pagination --}}
-                <div class="px-6 py-4 border-t border-gray-100 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-                    <p class="text-sm text-gray-600">
-                        Menampilkan {{ $logs->firstItem() ?? 0 }} - {{ $logs->lastItem() ?? 0 }} dari {{ $logs->total() }} log
+                {{-- Pagination Footer --}}
+                <div class="p-4 bg-slate-50/80 border-t border-slate-200/80 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+                    <p class="text-xs font-medium text-slate-500">
+                        Menampilkan <span class="font-bold text-slate-700">{{ $logs->firstItem() ?? 0 }}</span> - <span class="font-bold text-slate-700">{{ $logs->lastItem() ?? 0 }}</span> dari total <span class="font-bold text-slate-700">{{ $logs->total() }}</span> log aktivitas
                     </p>
-                    {{ $logs->links() }}
+                    <div>
+                        {{ $logs->links() }}
+                    </div>
                 </div>
+
             </div>
+
         </div>
 
-        {{-- RIGHT COLUMN: Sidebar Analytics Dashboard (Span 1) --}}
-        <div class="lg:col-span-1 space-y-6">
+        {{-- RIGHT COLUMN: Analytics & Forensic Leaderboard (Span 1) --}}
+        <div class="xl:col-span-1 space-y-5">
             
-            {{-- Card 1: User Activity Leaderboard --}}
-            <div class="bg-white rounded-xl shadow-sm border border-gray-200 p-5 space-y-4">
-                <h4 class="text-sm font-bold text-gray-800 uppercase tracking-wider flex items-center gap-2">
-                    📊 Leaderboard Staf (7 Hari)
-                </h4>
-                <div class="space-y-3">
+            {{-- Widget 1: Leaderboard Staf 7 Hari --}}
+            <div class="bg-white rounded-2xl shadow-sm border border-slate-200/80 p-5 space-y-4">
+                <div class="flex items-center justify-between">
+                    <h4 class="text-xs font-bold text-slate-800 uppercase tracking-wider flex items-center gap-1.5">
+                        <span>🏆</span> Leaderboard Staf (7 Hari)
+                    </h4>
+                    <span class="text-[10px] font-bold text-indigo-600 bg-indigo-50 px-2 py-0.5 rounded-full">Real-time</span>
+                </div>
+
+                <div class="space-y-3.5">
                     @php
                         $maxUserCount = collect($topUsers)->max('count') ?: 1;
+                        $rankMedals = ['🥇', '🥈', '🥉', '4️⃣', '5️⃣'];
                     @endphp
-                    @forelse($topUsers as $user)
-                    <div class="space-y-1">
-                        <div class="flex justify-between text-xs font-semibold text-gray-700 leading-tight">
-                            <span>{{ $user->user_name }}</span>
-                            <span class="text-blue-600">{{ $user->count }} logs</span>
+                    @forelse($topUsers as $index => $user)
+                    <div class="space-y-1.5 p-2 rounded-xl hover:bg-slate-50 transition border border-transparent hover:border-slate-100">
+                        <div class="flex items-center justify-between text-xs">
+                            <div class="flex items-center gap-2 min-w-0">
+                                <span class="text-sm shrink-0">{{ $rankMedals[$index] ?? '#' . ($index + 1) }}</span>
+                                <div class="min-w-0">
+                                    <p class="font-bold text-slate-800 truncate leading-tight">{{ $user->user_name }}</p>
+                                    <p class="text-[9px] text-slate-400 uppercase tracking-wider leading-none mt-0.5">{{ str_replace('_', ' ', $user->role) }}</p>
+                                </div>
+                            </div>
+                            <span class="font-black text-indigo-600 bg-indigo-50/80 px-2 py-0.5 rounded-md text-xs shrink-0 font-mono">
+                                {{ $user->count }} logs
+                            </span>
                         </div>
-                        <p class="text-[9px] text-gray-400 uppercase tracking-wider leading-none">{{ str_replace('_', ' ', $user->role) }}</p>
-                        <div class="w-full bg-gray-100 rounded-full h-1.5 mt-1">
-                            <div class="bg-blue-600 h-1.5 rounded-full transition-all duration-500" style="width: {{ ($user->count / $maxUserCount) * 100 }}%"></div>
+                        <div class="w-full bg-slate-100 rounded-full h-1.5 overflow-hidden">
+                            <div class="bg-gradient-to-r from-indigo-500 to-purple-600 h-1.5 rounded-full transition-all duration-500" style="width: {{ ($user->count / $maxUserCount) * 100 }}%"></div>
                         </div>
                     </div>
                     @empty
-                    <p class="text-xs text-gray-400 text-center py-2">Belum ada data</p>
+                    <p class="text-xs text-slate-400 text-center py-4">Belum ada data aktivitas</p>
                     @endforelse
                 </div>
             </div>
 
-            {{-- Card 2: Modul Teraktif --}}
-            <div class="bg-white rounded-xl shadow-sm border border-gray-200 p-5 space-y-4">
-                <h4 class="text-sm font-bold text-gray-800 uppercase tracking-wider flex items-center gap-2">
-                    📂 Modul Teraktif (7 Hari)
-                </h4>
+            {{-- Widget 2: Modul Teraktif --}}
+            <div class="bg-white rounded-2xl shadow-sm border border-slate-200/80 p-5 space-y-4">
+                <div class="flex items-center justify-between">
+                    <h4 class="text-xs font-bold text-slate-800 uppercase tracking-wider flex items-center gap-1.5">
+                        <span>📊</span> Modul Teraktif (7 Hari)
+                    </h4>
+                </div>
+
                 <div class="space-y-3">
                     @php
                         $maxModuleCount = collect($topModules)->max('count') ?: 1;
+                        $moduleGradients = [
+                            'Shipment' => 'from-blue-500 to-cyan-500',
+                            'Accounting' => 'from-emerald-500 to-teal-500',
+                            'Auth' => 'from-purple-500 to-indigo-500',
+                            'Invoice' => 'from-violet-500 to-purple-500',
+                            'Quotation' => 'from-amber-500 to-orange-500',
+                            'Customer' => 'from-teal-500 to-emerald-500',
+                            'Vendor' => 'from-cyan-500 to-blue-500',
+                        ];
                     @endphp
                     @forelse($topModules as $mod)
+                    @php
+                        $barGrad = $moduleGradients[$mod->module] ?? 'from-slate-600 to-slate-700';
+                    @endphp
                     <div class="space-y-1">
-                        <div class="flex justify-between text-xs font-semibold text-gray-700 leading-tight">
+                        <div class="flex justify-between text-xs font-semibold text-slate-700">
                             <span>{{ $mod->module }}</span>
-                            <span class="text-indigo-600">{{ $mod->count }} logs</span>
+                            <span class="font-bold text-slate-900 font-mono">{{ $mod->count }} logs</span>
                         </div>
-                        <div class="w-full bg-gray-100 rounded-full h-1.5">
-                            <div class="bg-indigo-600 h-1.5 rounded-full transition-all duration-500" style="width: {{ ($mod->count / $maxModuleCount) * 100 }}%"></div>
+                        <div class="w-full bg-slate-100 rounded-full h-1.5 overflow-hidden">
+                            <div class="bg-gradient-to-r {{ $barGrad }} h-1.5 rounded-full transition-all duration-500" style="width: {{ ($mod->count / $maxModuleCount) * 100 }}%"></div>
                         </div>
                     </div>
                     @empty
-                    <p class="text-xs text-gray-400 text-center py-2">Belum ada data</p>
+                    <p class="text-xs text-slate-400 text-center py-4">Belum ada data modul</p>
                     @endforelse
                 </div>
             </div>
 
-            {{-- Card 3: Security & Compliance Card --}}
-            <div class="bg-gradient-to-br from-gray-900 to-slate-800 rounded-xl shadow-sm border border-gray-800 p-5 text-white space-y-3">
-                <div class="w-10 h-10 rounded-lg bg-amber-500/20 flex items-center justify-center text-amber-400">
-                    <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z"/></svg>
+            {{-- Widget 3: Security & Compliance Shield --}}
+            <div class="relative overflow-hidden bg-gradient-to-br from-slate-900 via-slate-900 to-indigo-950 rounded-2xl p-5 text-white shadow-md border border-slate-800 space-y-3.5">
+                <div class="flex items-center gap-3">
+                    <div class="w-9 h-9 rounded-xl bg-amber-400/20 text-amber-400 flex items-center justify-center border border-amber-400/30">
+                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z"/></svg>
+                    </div>
+                    <div>
+                        <h4 class="text-xs font-bold uppercase tracking-wider text-amber-400">Forensic Integrity</h4>
+                        <p class="text-[10px] text-slate-400">COSO &amp; ISO 27001 Standard</p>
+                    </div>
                 </div>
-                <h4 class="text-sm font-bold uppercase tracking-wider text-amber-400">
-                    Security &amp; Compliance
-                </h4>
-                <p class="text-xs text-gray-300 leading-relaxed">
-                    Sistem merekam setiap aktivitas staf secara real-time termasuk alamat IP, User Agent, dan parameter data sebelum &amp; sesudah perubahan (audit trail).
+                
+                <p class="text-xs text-slate-300 leading-relaxed">
+                    Setiap mutasi finansial, eskalasi hak akses, dan perubahan data sensitif dicatat secara permanen bersama identitas IP, browser, serta parameter <span class="text-emerald-400 font-mono">before vs after</span>.
                 </p>
-                <div class="pt-2 border-t border-gray-700 flex justify-between items-center text-[10px] text-gray-400">
-                    <span>IP M2B Security Mode</span>
-                    <span class="text-green-400 font-bold">Active</span>
+
+                <div class="pt-3 border-t border-slate-800/80 space-y-2 text-[11px]">
+                    <div class="flex justify-between items-center text-slate-300">
+                        <span>Immutable Audit Trail</span>
+                        <span class="text-emerald-400 font-bold flex items-center gap-1">
+                            <span class="w-1.5 h-1.5 rounded-full bg-emerald-400"></span> Active
+                        </span>
+                    </div>
+                    <div class="flex justify-between items-center text-slate-300">
+                        <span>Anti-Tamper Signature</span>
+                        <span class="text-indigo-400 font-bold">Enabled</span>
+                    </div>
                 </div>
             </div>
-            
+
         </div>
+
     </div>
 
-    {{-- MODAL: Activity Detail with Before/After Comparison or Created/Deleted Data --}}
+    {{-- MODAL: FORENSIC ACTIVITY DETAIL (BEFORE / AFTER COMPARISON) --}}
     @if($showDetailModal && $selectedLog)
-    <div class="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm p-4" wire:click="closeDetailModal">
-        <div class="bg-white rounded-2xl shadow-2xl w-full max-w-4xl max-h-[90vh] overflow-y-auto" wire:click.stop>
-            {{-- Header --}}
-            <div class="sticky top-0 bg-gradient-to-r from-blue-600 to-indigo-600 text-white px-6 py-4 rounded-t-2xl flex items-center justify-between">
+    <div class="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/60 backdrop-blur-sm p-4 overflow-y-auto" wire:click="closeDetailModal">
+        <div class="bg-white rounded-2xl shadow-2xl w-full max-w-3xl overflow-hidden border border-slate-200 my-8 animate-in fade-in zoom-in duration-200" wire:click.stop>
+            
+            {{-- Modal Header --}}
+            <div class="bg-gradient-to-r from-slate-900 via-indigo-950 to-slate-900 text-white px-6 py-4 flex items-center justify-between">
                 <div class="flex items-center gap-3">
-                    <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/></svg>
-                    <h3 class="text-xl font-bold">Activity Detail</h3>
+                    <div class="w-9 h-9 rounded-xl bg-indigo-500/20 text-indigo-300 flex items-center justify-center border border-indigo-400/30">
+                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/></svg>
+                    </div>
+                    <div>
+                        <h3 class="text-base font-bold">Forensic Log Inspector</h3>
+                        <p class="text-xs text-slate-400">ID Log #{{ $selectedLog->id }} &bull; {{ $selectedLog->created_at->format('d M Y, H:i:s') }}</p>
+                    </div>
                 </div>
-                <button wire:click="closeDetailModal" class="hover:bg-white/20 rounded-lg p-1 transition">
-                    <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
+                <button wire:click="closeDetailModal" class="p-1.5 rounded-lg text-slate-400 hover:text-white hover:bg-white/10 transition">
+                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
                 </button>
             </div>
 
-            {{-- Content --}}
-            <div class="p-6 space-y-6">
-                {{-- Basic Info --}}
-                <div class="grid grid-cols-2 md:grid-cols-3 gap-4">
-                    <div class="bg-gray-50 rounded-lg p-4">
-                        <p class="text-xs text-gray-500 mb-1">Timestamp</p>
-                        <p class="font-bold text-gray-800">{{ $selectedLog->created_at->format('d M Y, H:i:s') }}</p>
+            {{-- Modal Body --}}
+            <div class="p-6 space-y-6 max-h-[75vh] overflow-y-auto">
+                
+                {{-- Meta Grid --}}
+                <div class="grid grid-cols-2 sm:grid-cols-3 gap-3">
+                    <div class="bg-slate-50 rounded-xl p-3.5 border border-slate-200/70">
+                        <p class="text-[11px] font-bold text-slate-400 uppercase">Pelaku (User)</p>
+                        <p class="font-bold text-slate-800 text-sm mt-0.5">{{ $selectedLog->user_name }}</p>
+                        <span class="inline-block px-1.5 py-0.5 rounded text-[9px] font-semibold bg-slate-200 text-slate-600 uppercase mt-1">
+                            {{ str_replace('_', ' ', $selectedLog->role) }}
+                        </span>
                     </div>
-                    <div class="bg-gray-50 rounded-lg p-4">
-                        <p class="text-xs text-gray-500 mb-1">User</p>
-                        <p class="font-bold text-gray-800">{{ $selectedLog->user_name }} <span class="text-xs text-gray-500">({{ strtoupper(str_replace('_', ' ', $selectedLog->role)) }})</span></p>
+
+                    <div class="bg-slate-50 rounded-xl p-3.5 border border-slate-200/70">
+                        <p class="text-[11px] font-bold text-slate-400 uppercase">Modul &amp; Aksi</p>
+                        <p class="font-bold text-indigo-600 text-sm mt-0.5">{{ $selectedLog->module }}</p>
+                        <p class="text-xs font-semibold text-slate-700 mt-1 font-mono">{{ $selectedLog->action }}</p>
                     </div>
-                    <div class="bg-gray-50 rounded-lg p-4">
-                        <p class="text-xs text-gray-500 mb-1">Module</p>
-                        <p class="font-bold text-gray-800">{{ $selectedLog->module }}</p>
+
+                    <div class="bg-slate-50 rounded-xl p-3.5 border border-slate-200/70">
+                        <p class="text-[11px] font-bold text-slate-400 uppercase">No. Referensi</p>
+                        <p class="font-mono font-bold text-blue-600 text-sm mt-0.5">{{ $selectedLog->target_ref ?: '-' }}</p>
                     </div>
-                    <div class="bg-gray-50 rounded-lg p-4">
-                        <p class="text-xs text-gray-500 mb-1">Action</p>
-                        <p class="font-bold text-gray-800">{{ $selectedLog->action }}</p>
+
+                    <div class="bg-slate-50 rounded-xl p-3.5 border border-slate-200/70">
+                        <p class="text-[11px] font-bold text-slate-400 uppercase">IP Address</p>
+                        <p class="font-mono text-xs font-bold text-slate-800 mt-0.5">{{ $selectedLog->ip_address }}</p>
                     </div>
-                    <div class="bg-gray-50 rounded-lg p-4">
-                        <p class="text-xs text-gray-500 mb-1">Reference</p>
-                        <p class="font-bold text-blue-600 font-mono">{{ $selectedLog->target_ref ?: '-' }}</p>
-                    </div>
-                    <div class="bg-gray-50 rounded-lg p-4">
-                        <p class="text-xs text-gray-500 mb-1">IP Address</p>
-                        <p class="font-mono text-sm text-gray-800">{{ $selectedLog->ip_address }}</p>
+
+                    <div class="bg-slate-50 rounded-xl p-3.5 border border-slate-200/70 sm:col-span-2">
+                        <p class="text-[11px] font-bold text-slate-400 uppercase">Perangkat (User Agent)</p>
+                        <p class="font-mono text-[11px] text-slate-600 break-all leading-tight mt-0.5">{{ $selectedLog->user_agent ?: '-' }}</p>
                     </div>
                 </div>
 
-                {{-- Description --}}
-                <div class="bg-blue-50 border border-blue-200 rounded-lg p-4">
-                    <p class="text-xs text-blue-600 font-bold mb-2">DESCRIPTION</p>
-                    <p class="text-gray-800">{{ $selectedLog->description ?: 'No description' }}</p>
+                {{-- Deskripsi Aktivitas --}}
+                <div class="bg-indigo-50/70 border border-indigo-100 rounded-xl p-4">
+                    <p class="text-[11px] font-bold text-indigo-700 uppercase tracking-wider mb-1 flex items-center gap-1.5">
+                        <span>💬</span> Uraian Aktivitas
+                    </p>
+                    <p class="text-sm text-slate-800 leading-relaxed font-medium">
+                        {{ $selectedLog->description ?: 'Tidak ada keterangan tambahan.' }}
+                    </p>
                 </div>
 
-                {{-- Before/After Comparison (Updates) --}}
+                {{-- Before vs After Comparison --}}
                 @if($selectedLog->hasComparison())
-                <div class="border-t border-gray-200 pt-6">
-                    <h4 class="text-lg font-bold text-gray-800 mb-4 flex items-center gap-2">
-                        <svg class="w-5 h-5 text-amber-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 16V4m0 0L3 8m4-4l4 4m6 0v12m0 0l4-4m-4 4l-4-4"/></svg>
-                        Changes Comparison
+                <div class="space-y-3">
+                    <h4 class="text-xs font-bold uppercase tracking-wider text-slate-700 flex items-center gap-1.5">
+                        <span>🔄</span> Perbandingan Perubahan (Before vs After)
                     </h4>
                     
-                    <div class="grid md:grid-cols-2 gap-4">
+                    <div class="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
                         {{-- Before --}}
-                        <div class="bg-red-50 border border-red-200 rounded-lg p-4">
-                            <p class="text-xs text-red-600 font-bold mb-3 flex items-center gap-2">
-                                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 19l-7-7m0 0l7-7m-7 7h18"/></svg>
-                                BEFORE
+                        <div class="bg-rose-50/70 border border-rose-200 rounded-xl p-4 space-y-2.5">
+                            <p class="text-xs font-bold text-rose-700 flex items-center gap-1.5">
+                                <span class="w-2 h-2 rounded-full bg-rose-500"></span> NILAI SEBELUMNYA (BEFORE)
                             </p>
-                            <div class="space-y-2 text-sm">
+                            <div class="space-y-2 text-xs">
                                 @foreach($selectedLog->changes as $field => $change)
-                                <div class="bg-white rounded p-2 border border-red-100">
-                                    <p class="text-xs text-gray-500 font-medium">{{ ucfirst(str_replace('_', ' ', $field)) }}</p>
-                                    <p class="text-gray-800 font-mono break-all">{{ is_array($change['old']) ? json_encode($change['old']) : ($change['old'] ?? 'null') }}</p>
+                                <div class="bg-white rounded-lg p-2.5 border border-rose-100 shadow-2xs">
+                                    <p class="text-[10px] font-bold text-slate-400 uppercase">{{ ucfirst(str_replace('_', ' ', $field)) }}</p>
+                                    <p class="font-mono text-slate-700 break-all mt-0.5">{{ is_array($change['old']) ? json_encode($change['old']) : ($change['old'] ?? 'null') }}</p>
                                 </div>
                                 @endforeach
                             </div>
                         </div>
 
                         {{-- After --}}
-                        <div class="bg-green-50 border border-green-200 rounded-lg p-4">
-                            <p class="text-xs text-green-600 font-bold mb-3 flex items-center gap-2">
-                                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14 5l7 7m0 0l-7 7m7-7H3"/></svg>
-                                AFTER
+                        <div class="bg-emerald-50/70 border border-emerald-200 rounded-xl p-4 space-y-2.5">
+                            <p class="text-xs font-bold text-emerald-700 flex items-center gap-1.5">
+                                <span class="w-2 h-2 rounded-full bg-emerald-500"></span> NILAI SETELAHNYA (AFTER)
                             </p>
-                            <div class="space-y-2 text-sm">
+                            <div class="space-y-2 text-xs">
                                 @foreach($selectedLog->changes as $field => $change)
-                                <div class="bg-white rounded p-2 border border-green-100">
-                                    <p class="text-xs text-gray-500 font-medium">{{ ucfirst(str_replace('_', ' ', $field)) }}</p>
-                                    <p class="text-gray-800 font-mono font-bold break-all">{{ is_array($change['new']) ? json_encode($change['new']) : ($change['new'] ?? 'null') }}</p>
+                                <div class="bg-white rounded-lg p-2.5 border border-emerald-100 shadow-2xs">
+                                    <p class="text-[10px] font-bold text-slate-400 uppercase">{{ ucfirst(str_replace('_', ' ', $field)) }}</p>
+                                    <p class="font-mono font-bold text-slate-900 break-all mt-0.5">{{ is_array($change['new']) ? json_encode($change['new']) : ($change['new'] ?? 'null') }}</p>
                                 </div>
                                 @endforeach
                             </div>
                         </div>
                     </div>
                 </div>
-                {{-- Created/Deleted Data Visualization (when only old or new values exist) --}}
                 @else
                     @php
                         $valuesToShow = $selectedLog->new_values ?: $selectedLog->old_values;
                         $isCreated = !empty($selectedLog->new_values);
                     @endphp
                     @if($valuesToShow)
-                    <div class="border-t border-gray-200 pt-6">
-                        <h4 class="text-lg font-bold text-gray-800 mb-4 flex items-center gap-2">
-                            <svg class="w-5 h-5 {{ $isCreated ? 'text-green-500' : 'text-red-500' }}" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h7"/></svg>
-                            {{ $isCreated ? 'Data Yang Dibuat (Created Data Record)' : 'Data Yang Dihapus (Deleted Data Record)' }}
+                    <div class="space-y-3">
+                        <h4 class="text-xs font-bold uppercase tracking-wider text-slate-700 flex items-center gap-1.5">
+                            <span>📋</span> {{ $isCreated ? 'Data Yang Dibuat (Created Payload)' : 'Data Yang Dihapus (Deleted Payload)' }}
                         </h4>
-                        <div class="bg-gray-50 border border-gray-200 rounded-lg p-4 max-h-[40vh] overflow-y-auto">
-                            <div class="grid grid-cols-1 md:grid-cols-2 gap-3 text-sm">
+                        <div class="bg-slate-50 border border-slate-200 rounded-xl p-4 max-h-60 overflow-y-auto">
+                            <div class="grid grid-cols-1 sm:grid-cols-2 gap-2.5 text-xs">
                                 @foreach($valuesToShow as $key => $val)
-                                <div class="bg-white rounded p-2 border border-gray-100">
-                                    <p class="text-xs text-gray-400 font-medium">{{ ucfirst(str_replace('_', ' ', $key)) }}</p>
-                                    <p class="text-gray-850 font-mono font-semibold break-all">{{ is_array($val) ? json_encode($val) : ($val ?? 'null') }}</p>
+                                <div class="bg-white rounded-lg p-2.5 border border-slate-200/80 shadow-2xs">
+                                    <p class="text-[10px] font-bold text-slate-400 uppercase">{{ ucfirst(str_replace('_', ' ', $key)) }}</p>
+                                    <p class="font-mono font-semibold text-slate-800 break-all mt-0.5">{{ is_array($val) ? json_encode($val) : ($val ?? 'null') }}</p>
                                 </div>
                                 @endforeach
                             </div>
                         </div>
                     </div>
-                    @else
-                    <div class="bg-gray-50 border border-gray-200 rounded-lg p-6 text-center">
-                        <svg class="w-12 h-12 text-gray-300 mx-auto mb-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
-                        <p class="text-gray-500 text-sm">No comparison or detailed data records available</p>
-                    </div>
                     @endif
                 @endif
 
-                {{-- User Agent --}}
-                @if($selectedLog->user_agent)
-                <div class="bg-gray-50 rounded-lg p-4">
-                    <p class="text-xs text-gray-500 mb-1">User Agent</p>
-                    <p class="text-xs text-gray-600 font-mono break-all leading-tight">{{ $selectedLog->user_agent }}</p>
-                </div>
-                @endif
             </div>
 
-            {{-- Footer --}}
-            <div class="sticky bottom-0 bg-gray-50 px-6 py-4 rounded-b-2xl border-t border-gray-200">
-                <button wire:click="closeDetailModal" class="w-full px-4 py-2 bg-gray-800 hover:bg-gray-900 text-white rounded-lg font-medium transition shadow-sm">
-                    Close
+            {{-- Modal Footer --}}
+            <div class="bg-slate-50 px-6 py-4 border-t border-slate-200 flex justify-end">
+                <button wire:click="closeDetailModal" class="px-5 py-2 bg-slate-800 hover:bg-slate-900 text-white rounded-xl text-xs font-bold transition shadow-sm">
+                    Tutup
                 </button>
             </div>
+
         </div>
     </div>
     @endif
+
 </div>

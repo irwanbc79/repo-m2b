@@ -20,6 +20,7 @@ class AuditLogManager extends Component
     public $filterDateFrom = '';
     public $filterDateTo = '';
     public $perPage = 20;
+    public $datePreset = 'all';
 
     // Modal detail
     public $showDetailModal = false;
@@ -31,6 +32,31 @@ class AuditLogManager extends Component
     public function updatingFilterAction() { $this->resetPage(); }
     public function updatingFilterRole() { $this->resetPage(); }
     public function updatingFilterRisk() { $this->resetPage(); }
+
+    public function setRiskFilter($risk)
+    {
+        $this->filterRisk = ($this->filterRisk === $risk) ? '' : $risk;
+        $this->resetPage();
+    }
+
+    public function setDatePreset($preset)
+    {
+        $this->datePreset = $preset;
+        if ($preset === 'today') {
+            $this->filterDateFrom = today()->toDateString();
+            $this->filterDateTo = today()->toDateString();
+        } elseif ($preset === 'this_week') {
+            $this->filterDateFrom = now()->startOfWeek()->toDateString();
+            $this->filterDateTo = now()->endOfWeek()->toDateString();
+        } elseif ($preset === 'this_month') {
+            $this->filterDateFrom = now()->startOfMonth()->toDateString();
+            $this->filterDateTo = now()->endOfMonth()->toDateString();
+        } else {
+            $this->filterDateFrom = '';
+            $this->filterDateTo = '';
+        }
+        $this->resetPage();
+    }
 
     public function getStats()
     {

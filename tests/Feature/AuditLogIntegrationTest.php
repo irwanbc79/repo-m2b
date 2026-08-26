@@ -206,7 +206,7 @@ class AuditLogIntegrationTest extends TestCase
         $this->actingAs($admin);
 
         Livewire::test(AuditLogManager::class)
-            ->assertSee('Total Logs')
+            ->assertSee('Total Rekam Jejak')
             ->set('filterRisk', 'high')
             ->assertSee('DELETE_JOURNAL');
     }
