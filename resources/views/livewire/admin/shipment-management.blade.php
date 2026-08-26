@@ -474,10 +474,13 @@
                             @endphp
                             <span class="inline-block whitespace-nowrap px-3 py-1 text-xs font-semibold rounded-full {{ $statusColors[$shipment->status] ?? 'bg-gray-100 text-gray-700' }}"
                                 title="{{ ucfirst(str_replace('_', ' ', $shipment->status ?? 'N/A')) }}">{{ $statusLabels[$shipment->status] ?? ucfirst(str_replace('_', ' ', $shipment->status ?? 'N/A')) }}</span>
-                            @if($shipment->status !== 'pending' && $shipment->lane_status)
-                            <div class="flex items-center gap-1 px-2 py-0.5 rounded text-[10px] font-bold mt-1 w-fit {{ $shipment->lane_status == 'green' ? 'bg-green-50 text-green-700 border border-green-200' : 'bg-red-50 text-red-700 border border-red-200' }}">
-                                <span>{{ $shipment->lane_status == 'green' ? '🟩' : '🟥' }}</span>
-                                <span>{{ $shipment->lane_status == 'green' ? 'Jalur Hijau' : 'Jalur Merah' }}</span>
+                            @php
+                                $lane = $shipment->lane_status ?: $shipment->computeLaneStatusFromDocuments();
+                            @endphp
+                            @if($shipment->status !== 'pending' && $lane)
+                            <div class="flex items-center gap-1 px-2 py-0.5 rounded text-[10px] font-bold mt-1 w-fit {{ $lane == 'green' ? 'bg-green-50 text-green-700 border border-green-200' : 'bg-red-50 text-red-700 border border-red-200' }}">
+                                <span>{{ $lane == 'green' ? '🟩' : '🟥' }}</span>
+                                <span>{{ $lane == 'green' ? 'Jalur Hijau' : 'Jalur Merah' }}</span>
                             </div>
                             @endif
                         </td>

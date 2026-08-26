@@ -20,4 +20,5 @@ jobs:
             git pull origin main
             php artisan optimize:clear
             php artisan migrate --force
+            php artisan shipments:recalc-status --yes
             echo "Deploy selesai: $(date)"

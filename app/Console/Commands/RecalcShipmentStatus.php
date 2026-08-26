@@ -77,7 +77,47 @@ class RecalcShipmentStatus extends Command
             $count++;
         }
 
-        $this->info("Selesai. {$count} shipment dikoreksi.");
+        // Rekonsiliasi lane_status yang belum terisi di database
+        $laneAffected = Shipment::with('documents')
+            ->get()
+            ->map(function ($s) {
+                $targetLane = $s->computeLaneStatusFromDocuments();
+                return [
+                    'shipment'   => $s,
+                    'targetLane' => $targetLane,
+                ];
+            })
+            ->filter(function ($r) {
+                $s = $r['shipment'];
+                $targetLane = $r['targetLane'];
+                return $targetLane && empty($s->lane_status);
+            })
+            ->values();
+
+        if ($laneAffected->isNotEmpty()) {
+            $this->info("Shipment dengan penjaluran (lane_status) yang belum terisi: {$laneAffected->count()}");
+            $this->table(
+                ['ID', 'Reference', 'Service', 'Dokumen Penjaluran', '→ Set Lane'],
+                $laneAffected->map(fn ($r) => [
+                    $r['shipment']->id,
+                    $r['shipment']->awb_number ?: $r['shipment']->bl_number ?: ('#' . $r['shipment']->id),
+                    $r['shipment']->service_type,
+                    $r['shipment']->documents->pluck('description')->implode(', '),
+                    $r['targetLane'] === 'green' ? '🟩 Jalur Hijau' : '🟥 Jalur Merah',
+                ])
+            );
+
+            if (!$dryRun) {
+                if ($this->option('yes') || $this->confirm("Update lane_status untuk {$laneAffected->count()} shipment ini?")) {
+                    $laneCount = 0;
+                    foreach ($laneAffected as $r) {
+                        $r['shipment']->update(['lane_status' => $r['targetLane']]);
+                        $laneCount++;
+                    }
+                    $this->info("Selesai. {$laneCount} shipment diperbarui status jalurnya.");
+                }
+            }
+        }
 
         return self::SUCCESS;
     }

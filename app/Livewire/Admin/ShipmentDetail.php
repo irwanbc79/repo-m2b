@@ -519,10 +519,25 @@ class ShipmentDetail extends Component
                 $updates['status'] = $target;
             }
 
-            // Deteksi jalur (khusus import): Billing Pungutan = hijau, SPJM = merah.
+            // Deteksi jalur:
+            // Import: SPJM = merah, Billing Pungutan / SPPB = hijau
+            // Export: PPB = merah, NPE / Billing Bea Keluar = hijau
             if (strtolower($this->shipment->service_type) === 'import') {
-                if ($this->doc_type === 'Billing Pungutan')      $updates['lane_status'] = 'green';
-                elseif ($this->doc_type === 'SPJM')              $updates['lane_status'] = 'red';
+                if ($this->doc_type === 'Billing Pungutan' || $this->doc_type === 'SPPB') {
+                    if ($this->shipment->lane_status !== 'red') {
+                        $updates['lane_status'] = 'green';
+                    }
+                } elseif ($this->doc_type === 'SPJM') {
+                    $updates['lane_status'] = 'red';
+                }
+            } elseif (strtolower($this->shipment->service_type) === 'export') {
+                if ($this->doc_type === 'NPE' || $this->doc_type === 'Billing Bea Keluar') {
+                    if ($this->shipment->lane_status !== 'red') {
+                        $updates['lane_status'] = 'green';
+                    }
+                } elseif ($this->doc_type === 'PPB') {
+                    $updates['lane_status'] = 'red';
+                }
             }
 
             if (!empty($updates)) {

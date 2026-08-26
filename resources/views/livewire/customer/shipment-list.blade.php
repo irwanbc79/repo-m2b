@@ -134,7 +134,7 @@
                                 {{-- 1. Status Utama --}}
                                 @php
                                     $st = strtolower($shipment->status);
-                                    $lane = $shipment->lane_status;
+                                    $lane = $shipment->lane_status ?: $shipment->computeLaneStatusFromDocuments();
                                 @endphp
 
                                 <span class="px-3 py-1 rounded-full text-xs font-bold border whitespace-nowrap

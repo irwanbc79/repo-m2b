@@ -64,10 +64,10 @@
             if ($shipment->status === 'completed') $currentStep = 5;
         }
         
-        // Jalur hanya ditentukan dari lane_status di database
-        // (Di-set otomatis saat upload Billing Pungutan → green, atau SPJM → red)
-        $isRedLane = ($shipment->lane_status ?? '') === 'red';
-        $hasLaneStatus = !empty($shipment->lane_status);
+        // Jalur ditentukan dari lane_status di database atau dihitung dari dokumen
+        $lane = $shipment->lane_status ?: $shipment->computeLaneStatusFromDocuments();
+        $isRedLane = ($lane ?? '') === 'red';
+        $hasLaneStatus = !empty($lane);
         
         // Label status deskriptif
         $stepLabels = array_column($mainSteps->toArray(), 'label');
@@ -116,7 +116,7 @@
                 <span class="px-3 py-1 rounded text-xs font-bold uppercase tracking-wider border border-white/20 bg-white/10">
                     {{ strtoupper($currentStepLabel) }}
                 </span>
-                @if($serviceType === 'import' && $hasLaneStatus)
+                @if($hasLaneStatus)
                     <span class="px-3 py-1 rounded text-xs font-bold uppercase tracking-wider flex items-center gap-1 shadow-sm {{ $isRedLane ? 'bg-red-600 text-white' : 'bg-green-500 text-white' }}">
                         {{ $isRedLane ? '🔴 JALUR MERAH' : '🟢 JALUR HIJAU' }}
                     </span>

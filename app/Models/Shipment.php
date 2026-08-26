@@ -216,6 +216,42 @@ class Shipment extends Model
     }
 
     /**
+     * Deteksi jalur (lane_status) otomatis berdasarkan dokumen yang ada:
+     * - Jalur Merah (red): SPJM (import) atau PPB (export)
+     * - Jalur Hijau (green): NPE, Billing Pungutan, Billing Bea Keluar, atau SPPB
+     */
+    public function computeLaneStatusFromDocuments(): ?string
+    {
+        $descs = ($this->relationLoaded('documents') ? $this->documents : $this->documents()->get())
+            ->pluck('description')->filter();
+
+        // SPJM (impor) atau PPB (ekspor) => Jalur Merah
+        if ($descs->contains(fn ($d) => stripos($d, 'SPJM') === 0 || stripos($d, 'PPB') === 0)) {
+            return 'red';
+        }
+
+        // NPE, Billing Pungutan, Billing Bea Keluar, SPPB => Jalur Hijau
+        if ($descs->contains(fn ($d) => 
+            stripos($d, 'NPE') === 0 || 
+            stripos($d, 'Billing Pungutan') === 0 || 
+            stripos($d, 'Billing Bea Keluar') === 0 || 
+            stripos($d, 'SPPB') === 0
+        )) {
+            return 'green';
+        }
+
+        return null;
+    }
+
+    /**
+     * Ambil lane status efektif (dari database, atau dihitung otomatis dari dokumen)
+     */
+    public function getEffectiveLaneStatusAttribute(): ?string
+    {
+        return $this->lane_status ?: $this->computeLaneStatusFromDocuments();
+    }
+
+    /**
      * Urutan (order) sebuah status untuk perbandingan maju/mundur.
      * Mendukung alias operasional (pending/in_progress/dll) di luar flow.
      */

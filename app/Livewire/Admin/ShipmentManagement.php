@@ -199,6 +199,7 @@ class ShipmentManagement extends Component
         
         return Shipment::with([
             'customer',
+            'documents',
             'etaRevisions' => fn ($query) => $query->with(['creator', 'sourceDocument']),
         ])
             

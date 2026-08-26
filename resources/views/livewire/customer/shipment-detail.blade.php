@@ -120,11 +120,21 @@
                     <span class="font-bold">{{ $shipment->destination }}</span>
                 </p>
             </div>
-            <div class="flex flex-col items-end">
-                <span class="text-xs uppercase tracking-widest text-blue-300 mb-1">Status</span>
-                <span class="bg-white/10 px-3 py-1 rounded text-sm font-bold border border-white/20 capitalize">
+            <div class="flex flex-col items-end gap-1.5">
+                <span class="text-xs uppercase tracking-widest text-blue-300">Status</span>
+                <div class="flex items-center gap-2">
+                    <span class="bg-white/10 px-3 py-1 rounded text-sm font-bold border border-white/20 capitalize">
                         {{ $currentStepLabel ?? str_replace('_', ' ', $shipment->status) }}
-                </span>
+                    </span>
+                    @php
+                        $custLane = $shipment->lane_status ?: $shipment->computeLaneStatusFromDocuments();
+                    @endphp
+                    @if(!empty($custLane) && strtolower($shipment->status) !== 'pending')
+                        <span class="px-2.5 py-1 rounded text-xs font-bold uppercase tracking-wider flex items-center gap-1 shadow-sm {{ $custLane === 'red' ? 'bg-red-600 text-white' : 'bg-green-500 text-white' }}">
+                            {{ $custLane === 'red' ? '🔴 Jalur Merah' : '🟢 Jalur Hijau' }}
+                        </span>
+                    @endif
+                </div>
             </div>
         </div>
 
