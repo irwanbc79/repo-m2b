@@ -123,8 +123,11 @@ class SyncEmailInbox extends Command
                     // Body: Utamakan HTML, bersihkan sedikit
                     $rawBody = $message->getHTMLBody() ?: $message->getTextBody() ?: "(Email Kosong)";
                     
+                    // Bersihkan header MIME / DKIM jika terbawa dalam raw text
+                    $cleanedBody = \App\Http\Controllers\Admin\EmailAttachmentController::cleanEmailBody($rawBody);
+
                     // Sanitize UTF-8 untuk menghindari error "Incorrect string value"
-                    $body = mb_convert_encoding($rawBody, 'UTF-8', 'UTF-8');
+                    $body = mb_convert_encoding($cleanedBody, 'UTF-8', 'UTF-8');
                     $subject = mb_convert_encoding($subject, 'UTF-8', 'UTF-8');
                     $fromName = mb_convert_encoding($fromName, 'UTF-8', 'UTF-8');
 
