@@ -93,24 +93,26 @@ class EmailAttachmentController extends Controller
         }
 
         // Jika masih ada boundary multipart MIME yang belum terpecah, ambil isi part-nya
-        if (preg_match('/^--([^\r\n]+)/m', $body, $bMatches)) {
+        if (preg_match('/^--([a-zA-Z0-9\'\(\)\+_\,\-\.\/\:\=\?]{4,70})\s*$/m', $body, $bMatches)) {
             $boundary = preg_quote($bMatches[1], '/');
-            $sections = preg_split('/--' . $boundary . '(--)?/', $body);
-            foreach ($sections as $sec) {
-                $sec = trim($sec);
-                if (empty($sec)) continue;
-                // Jika part memiliki header sendiri (Content-Type: text/html atau text/plain)
-                if (preg_match('/Content-Type:\s*text\/(html|plain)/i', $sec)) {
-                    $subParts = preg_split("/\r?\n\r?\n/", $sec, 2);
-                    if (isset($subParts[1])) {
-                        $partBody = $subParts[1];
-                        if (preg_match('/Content-Transfer-Encoding:\s*quoted-printable/i', $subParts[0])) {
-                            $partBody = quoted_printable_decode($partBody);
-                        } elseif (preg_match('/Content-Transfer-Encoding:\s*base64/i', $subParts[0])) {
-                            $decoded = base64_decode($partBody, true);
-                            if ($decoded !== false) $partBody = $decoded;
+            $sections = @preg_split('/--' . $boundary . '(--)?/', $body);
+            if (is_array($sections)) {
+                foreach ($sections as $sec) {
+                    $sec = trim($sec);
+                    if (empty($sec)) continue;
+                    // Jika part memiliki header sendiri (Content-Type: text/html atau text/plain)
+                    if (preg_match('/Content-Type:\s*text\/(html|plain)/i', $sec)) {
+                        $subParts = preg_split("/\r?\n\r?\n/", $sec, 2);
+                        if (isset($subParts[1])) {
+                            $partBody = $subParts[1];
+                            if (preg_match('/Content-Transfer-Encoding:\s*quoted-printable/i', $subParts[0])) {
+                                $partBody = quoted_printable_decode($partBody);
+                            } elseif (preg_match('/Content-Transfer-Encoding:\s*base64/i', $subParts[0])) {
+                                $decoded = base64_decode($partBody, true);
+                                if ($decoded !== false) $partBody = $decoded;
+                            }
+                            return trim($partBody);
                         }
-                        return trim($partBody);
                     }
                 }
             }
