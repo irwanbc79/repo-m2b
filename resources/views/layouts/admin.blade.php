@@ -260,8 +260,6 @@
                 <a href="{{ route('hs-codes.explorer') }}" class="flex items-center px-4 py-3 text-sm font-medium rounded-lg transition-colors {{ request()->routeIs('hs-codes*') ? 'bg-m2b-accent text-white' : 'hover:bg-gray-800 text-gray-300' }}"><span class="sb-ico">📋</span><span class="sb-txt">HS Code Explorer</span></a>
 
                 <a href="{{ route('admin.field-docs.index') }}" class="flex items-center px-4 py-3 text-sm font-medium rounded-lg transition-colors {{ request()->routeIs('admin.field-docs*') ? 'bg-m2b-accent text-white' : 'hover:bg-gray-800 text-gray-300' }}"><span class="sb-ico">📸</span><span class="sb-txt">Dokumentasi Lapangan</span></a>
-
-                <a href="{{ route('staff.attendance') }}" class="flex items-center px-4 py-3 text-sm font-medium rounded-lg transition-colors {{ request()->routeIs('staff.attendance') ? 'bg-emerald-600 text-white shadow-lg' : 'hover:bg-gray-800 text-emerald-300' }}"><span class="sb-ico">📍</span><span class="sb-txt">Presensi / Absensi Saya</span></a>
                 @endif
                 @endunless
 
@@ -314,9 +312,11 @@
                 @endif
 
                 {{-- HRD & PAYROLL --}}
-                @if(auth()->user()->hasRole(['admin', 'super_admin', 'director', 'finance', 'konsultan_pajak']))
                 <div class="sb-section px-4 py-2 mt-4 text-xs font-bold text-gray-500 uppercase tracking-wider">HRD &amp; Payroll</div>
 
+                <a href="{{ route('staff.attendance') }}" class="flex items-center px-4 py-3 text-sm font-medium rounded-lg transition-colors {{ request()->routeIs('staff.attendance') ? 'bg-emerald-600 text-white shadow-lg' : 'hover:bg-gray-800 text-emerald-300' }}"><span class="sb-ico">📍</span><span class="sb-txt">Presensi / Absensi Saya</span></a>
+
+                @if(auth()->user()->hasRole(['admin', 'super_admin', 'director', 'finance', 'konsultan_pajak']))
                 @unless(auth()->user()->hasRole('konsultan_pajak'))
                 <a href="{{ route('admin.hrd.employees') }}" class="flex items-center px-4 py-3 text-sm font-medium rounded-lg transition-colors {{ request()->routeIs('admin.hrd.employees') ? 'bg-m2b-accent text-white shadow-lg' : 'hover:bg-gray-800 text-gray-300' }}"><span class="sb-ico">👥</span><span class="sb-txt">Karyawan</span></a>
 
@@ -324,7 +324,7 @@
 
                 <a href="{{ route('admin.hrd.payroll-periods') }}" class="flex items-center px-4 py-3 text-sm font-medium rounded-lg transition-colors {{ request()->routeIs('admin.hrd.payroll*') ? 'bg-m2b-accent text-white shadow-lg' : 'hover:bg-gray-800 text-gray-300' }}"><span class="sb-ico">💰</span><span class="sb-txt">Penggajian</span></a>
 
-                <a href="{{ route('admin.attendance.index') }}" class="flex items-center px-4 py-3 text-sm font-medium rounded-lg transition-colors {{ request()->routeIs('admin.attendance*') ? 'bg-m2b-accent text-white shadow-lg' : 'hover:bg-gray-800 text-gray-300' }}"><span class="sb-ico">📍</span><span class="sb-txt">Absensi Mobile</span></a>
+                <a href="{{ route('admin.attendance.index') }}" class="flex items-center px-4 py-3 text-sm font-medium rounded-lg transition-colors {{ request()->routeIs('admin.attendance*') ? 'bg-m2b-accent text-white shadow-lg' : 'hover:bg-gray-800 text-gray-300' }}"><span class="sb-ico">📊</span><span class="sb-txt">Rekap Absensi Mobile</span></a>
 
                 <a href="{{ route('admin.visits') }}" class="flex items-center px-4 py-3 text-sm font-medium rounded-lg transition-colors {{ request()->routeIs('admin.visits') ? 'bg-m2b-accent text-white shadow-lg' : 'hover:bg-gray-800 text-gray-300' }}"><span class="sb-ico">🚗</span><span class="sb-txt">Kunjungan Karyawan</span></a>
                 @endunless
