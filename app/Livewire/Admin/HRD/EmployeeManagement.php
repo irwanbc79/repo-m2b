@@ -9,7 +9,6 @@ use App\Models\Employee;
 use App\Models\Jabatan;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Storage;
-use Intervention\Image\Laravel\Facades\Image;
 
 class EmployeeManagement extends Component
 {
@@ -240,18 +239,60 @@ class EmployeeManagement extends Component
         Storage::disk('public')->makeDirectory($folder);
 
         $filename = uniqid() . '_' . time() . '.jpg';
-        $path     = storage_path("app/public/{$folder}/{$filename}");
+        $fullPath = storage_path("app/public/{$folder}/{$filename}");
+        $realPath = $file->getRealPath();
 
-        $image = Image::read($file->getRealPath());
+        // Cek apakah fungsi GD tersedia
+        if (function_exists('imagecreatefromjpeg') || function_exists('imagecreatefrompng') || function_exists('imagecreatefromwebp')) {
+            try {
+                $imageInfo = @getimagesize($realPath);
+                if ($imageInfo) {
+                    [$origWidth, $origHeight, $imageType] = $imageInfo;
 
-        if ($maxHeight) {
-            $image->scaleDown(width: $maxWidth, height: $maxHeight);
-        } else {
-            $image->scaleDown(width: $maxWidth);
+                    $src = match ($imageType) {
+                        IMAGETYPE_JPEG => @imagecreatefromjpeg($realPath),
+                        IMAGETYPE_PNG  => @imagecreatefrompng($realPath),
+                        IMAGETYPE_WEBP => function_exists('imagecreatefromwebp') ? @imagecreatefromwebp($realPath) : null,
+                        default        => null,
+                    };
+
+                    if ($src && $origWidth > 0 && $origHeight > 0) {
+                        // Hitung dimensi baru proporsional (scale down)
+                        $ratio = $origWidth / $origHeight;
+                        $newWidth = $origWidth;
+                        $newHeight = $origHeight;
+
+                        if ($newWidth > $maxWidth) {
+                            $newWidth = $maxWidth;
+                            $newHeight = (int) round($newWidth / $ratio);
+                        }
+
+                        if ($maxHeight && $newHeight > $maxHeight) {
+                            $newHeight = $maxHeight;
+                            $newWidth = (int) round($newHeight * $ratio);
+                        }
+
+                        $dst = imagecreatetruecolor($newWidth, $newHeight);
+                        // Background putih jika PNG transparan
+                        $white = imagecolorallocate($dst, 255, 255, 255);
+                        imagefilledrectangle($dst, 0, 0, $newWidth, $newHeight, $white);
+
+                        imagecopyresampled($dst, $src, 0, 0, 0, 0, $newWidth, $newHeight, $origWidth, $origHeight);
+                        imagejpeg($dst, $fullPath, 85);
+
+                        imagedestroy($src);
+                        imagedestroy($dst);
+
+                        return "{$folder}/{$filename}";
+                    }
+                }
+            } catch (\Throwable $e) {
+                \Log::warning("GD Image processing fallback for {$filename}: " . $e->getMessage());
+            }
         }
 
-        $image->toJpeg(quality: 82)->save($path);
-
+        // Fallback simpan file langsung
+        Storage::disk('public')->putFileAs($folder, $file, $filename);
         return "{$folder}/{$filename}";
     }
 

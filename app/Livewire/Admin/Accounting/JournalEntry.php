@@ -142,9 +142,22 @@ class JournalEntry extends Component
                 $journal->items()->delete();
                 $journalId = $journal->id;
             } else {
-                // 2. Create New Journal
-                $count = Journal::whereYear('created_at', now()->year)->whereMonth('created_at', now()->month)->count() + 1;
-                $journalNumber = 'JR-' . date('ym') . '-' . str_pad($count, 4, '0', STR_PAD_LEFT);
+                // 2. Create New Journal dengan nomor urut aman anti-duplikat
+                $prefix = 'JR-' . date('ym') . '-';
+                $lastJournal = Journal::where('journal_number', 'like', $prefix . '%')
+                    ->orderByDesc('journal_number')
+                    ->value('journal_number');
+
+                $sequence = 1;
+                if ($lastJournal && preg_match('/' . preg_quote($prefix, '/') . '(\d+)/', $lastJournal, $matches)) {
+                    $sequence = (int) $matches[1] + 1;
+                }
+
+                $journalNumber = $prefix . str_pad($sequence, 4, '0', STR_PAD_LEFT);
+                while (Journal::where('journal_number', $journalNumber)->exists()) {
+                    $sequence++;
+                    $journalNumber = $prefix . str_pad($sequence, 4, '0', STR_PAD_LEFT);
+                }
 
                 $journal = Journal::create([
                     'journal_number' => $journalNumber,
