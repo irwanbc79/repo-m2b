@@ -844,9 +844,16 @@ Route::get('/api/customers/search', function (Illuminate\Http\Request $request) 
     return response()->json($customers);
 })->name('api.customers.search')->middleware(['auth', 'throttle:60,1']);
 
-// ========== KAS KECIL ==========
+// ========== KAS KECIL & ABSENSI ==========
 Route::middleware(['auth', 'admin'])->group(function () {
     Route::get('/admin/kas-kecil', \App\Livewire\Admin\PettyCashManager::class)->name('admin.petty-cash');
     Route::get('/admin/attendance', \App\Livewire\Admin\AttendanceManagement::class)->name('admin.attendance');
     Route::get('/admin/visits', \App\Livewire\Admin\VisitManagement::class)->name('admin.visits');
 });
+
+// Presensi / Absensi Web untuk Staf
+Route::middleware(['auth'])->group(function () {
+    Route::get('/admin/absensi', \App\Livewire\Staff\AttendanceCheckin::class)->name('staff.attendance');
+    Route::get('/absensi', \App\Livewire\Staff\AttendanceCheckin::class);
+});
+

@@ -260,6 +260,8 @@
                 <a href="{{ route('hs-codes.explorer') }}" class="flex items-center px-4 py-3 text-sm font-medium rounded-lg transition-colors {{ request()->routeIs('hs-codes*') ? 'bg-m2b-accent text-white' : 'hover:bg-gray-800 text-gray-300' }}"><span class="sb-ico">📋</span><span class="sb-txt">HS Code Explorer</span></a>
 
                 <a href="{{ route('admin.field-docs.index') }}" class="flex items-center px-4 py-3 text-sm font-medium rounded-lg transition-colors {{ request()->routeIs('admin.field-docs*') ? 'bg-m2b-accent text-white' : 'hover:bg-gray-800 text-gray-300' }}"><span class="sb-ico">📸</span><span class="sb-txt">Dokumentasi Lapangan</span></a>
+
+                <a href="{{ route('staff.attendance') }}" class="flex items-center px-4 py-3 text-sm font-medium rounded-lg transition-colors {{ request()->routeIs('staff.attendance') ? 'bg-emerald-600 text-white shadow-lg' : 'hover:bg-gray-800 text-emerald-300' }}"><span class="sb-ico">📍</span><span class="sb-txt">Presensi / Absensi Saya</span></a>
                 @endif
                 @endunless
 
