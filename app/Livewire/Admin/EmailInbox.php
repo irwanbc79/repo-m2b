@@ -25,6 +25,15 @@ class EmailInbox extends Component
 
     public $activeAccount = 'sales';
     public $mailboxes = ['sales', 'import', 'export', 'finance', 'gmail', 'pajak', 'shipping'];
+    public $mailboxEmails = [
+        'sales' => 'sales@m2b.co.id',
+        'import' => 'import@m2b.co.id',
+        'export' => 'export@m2b.co.id',
+        'finance' => 'finance@m2b.co.id',
+        'gmail' => 'logisolmed@gmail.com',
+        'pajak' => 'moramultiberkahpt@gmail.com',
+        'shipping' => 'shipping@m2b.co.id',
+    ];
     public $emails = [];
     // Jumlah email belum dibaca per mailbox. Dihitung sekali (1 query grouped)
     // di loadEmails(), menggantikan pemanggilan getUnreadCount() per-mailbox di blade.
@@ -568,10 +577,18 @@ class EmailInbox extends Component
         
         // Replace placeholders
         $body = $template["body"];
-        $body = str_replace("{staff_name}", auth()->user()->name, $body);
-        $body = str_replace("{original_subject}", $this->selectedEmail["subject"] ?? "", $body);
+        $body = str_replace("{staff_name}", auth()->user()->name ?? 'Staff M2B', $body);
+        $subjectForTemplate = $this->selectedEmail["subject"] ?? $this->replySubject;
+        $body = str_replace("{original_subject}", $subjectForTemplate, $body);
         
         $this->replyBody = $body;
+
+        // Jika mode compose dan subjek masih kosong, otomatis berikan subjek dari nama template
+        if ($this->emailMode === 'compose' && empty(trim($this->replySubject))) {
+            $cleanedName = preg_replace('/^[\p{Emoji}\p{Symbol}\s]+/u', '', $template['name'] ?? '');
+            $this->replySubject = trim($cleanedName);
+        }
+
         $this->selectedTemplate = "";
     }
 
@@ -580,13 +597,51 @@ class EmailInbox extends Component
         $this->templateLang = $this->templateLang === "ID" ? "EN" : "ID";
     }
 
+    public function openComposeModal()
+    {
+        $this->resetErrorBag();
+        $this->emailMode = 'compose';
+        $this->replyTo = '';
+        $this->replyCc = auth()->user()->email ?? '';
+        $this->replySubject = '';
+        $this->replyBody = '';
+        $this->forwardAttachments = [];
+        $this->resetNewAttachments();
+        $this->showReplyModal = true;
+    }
+
+    public function toggleReplyCcPreset($email)
+    {
+        if (empty($email)) return;
+        
+        $current = array_filter(array_map('trim', preg_split('/[,;\s]+/', $this->replyCc ?? '')));
+        $lowerTarget = strtolower($email);
+        $found = false;
+        $updated = [];
+        
+        foreach ($current as $item) {
+            if (strtolower($item) === $lowerTarget) {
+                $found = true; // toggle off
+            } else {
+                $updated[] = $item;
+            }
+        }
+        
+        if (!$found) {
+            $updated[] = $email;
+        }
+        
+        $this->replyCc = implode(', ', $updated);
+    }
+
     public function openReplyModal()
     {
         if (!$this->selectedEmail) return;
 
+        $this->resetErrorBag();
         $this->emailMode = 'reply';
         $this->replyTo = $this->selectedEmail['from'];
-        $this->replyCc = '';
+        $this->replyCc = auth()->user()->email ?? '';
         $this->replySubject = 'Re: ' . $this->selectedEmail['subject'];
         $this->replyBody = '';
         $this->forwardAttachments = [];
@@ -598,9 +653,10 @@ class EmailInbox extends Component
     {
         if (!$this->selectedEmail) return;
 
+        $this->resetErrorBag();
         $this->emailMode = 'forward';
         $this->replyTo = '';
-        $this->replyCc = '';
+        $this->replyCc = auth()->user()->email ?? '';
         $this->replySubject = 'Fwd: ' . $this->selectedEmail['subject'];
         $this->replyBody = '';
 
@@ -713,36 +769,41 @@ class EmailInbox extends Component
             'newAttachments.*' => 'file|max:10240|mimes:pdf,jpg,jpeg,png,doc,docx,xls,xlsx,zip',
         ];
 
-        $this->validate($rules);
+        $this->validate($rules, [
+            'replyTo.required' => 'Email penerima (To) wajib diisi.',
+            'replyTo.email' => 'Format email penerima tidak valid.',
+            'replySubject.required' => 'Subjek email tidak boleh kosong.',
+            'replyBody.required' => 'Isi pesan email tidak boleh kosong.',
+            'replyBody.min' => 'Isi pesan email minimal 5 karakter.',
+        ]);
 
         // Parse and validate CC
         $ccEmails = [];
         if (!empty($this->replyCc)) {
-            $ccEmails = array_filter(array_map('trim', preg_split('/[,;]/', $this->replyCc)));
-            foreach ($ccEmails as $email) {
-                if (!filter_var($email, FILTER_VALIDATE_EMAIL)) {
-                    $this->addError('replyCc', "Format email '{$email}' tidak valid.");
-                    return;
+            $rawCcs = preg_split('/[,;\s]+/', $this->replyCc);
+            foreach ($rawCcs as $rawCc) {
+                $trimmed = trim($rawCc);
+                if (!empty($trimmed)) {
+                    if (filter_var($trimmed, FILTER_VALIDATE_EMAIL)) {
+                        $ccEmails[] = strtolower($trimmed);
+                    } else {
+                        $this->addError('replyCc', "Format email CC '{$trimmed}' tidak valid.");
+                        return;
+                    }
                 }
             }
         }
+        $ccEmails = array_values(array_unique($ccEmails));
 
         // Mapping mailbox ke email address
-        $mailboxEmails = [
-            'sales' => 'sales@m2b.co.id',
-            'import' => 'import@m2b.co.id',
-            'export' => 'export@m2b.co.id',
-            'finance' => 'finance@m2b.co.id',
-            'gmail' => 'logisolmed@gmail.com',
-            'pajak' => 'moramultiberkahpt@gmail.com',
-            'shipping' => 'shipping@m2b.co.id',
-        ];
-        
-        $fromEmail = $mailboxEmails[$this->activeAccount] ?? config('mail.from.address');
+        $fromEmail = $this->mailboxEmails[$this->activeAccount] ?? config('mail.from.address');
         $fromName = 'M2B - ' . ucfirst($this->activeAccount);
 
-        // Construct HTML body with original email content
-        $originalEmail = DB::table('emails')->where('id', $this->selectedEmail['db_id'])->first();
+        // Construct HTML body with original email content if replying/forwarding
+        $originalEmail = ($this->emailMode !== 'compose' && !empty($this->selectedEmail['db_id']))
+            ? DB::table('emails')->where('id', $this->selectedEmail['db_id'])->first()
+            : null;
+
         $htmlBody = nl2br(e($this->replyBody));
 
         if ($originalEmail) {
@@ -761,10 +822,6 @@ class EmailInbox extends Component
 
         $sentWithCustom = false;
 
-        // Konfigurasi SMTP per-mailbox aktif (BUKAN satu host SMTP default untuk semua).
-        // Mailbox di kerjamail.co (sales/import/export/finance/shipping) beda host SMTP
-        // dari Gmail/Outlook — kalau dipaksa pakai satu host, mailbox non-kerjamail.co akan
-        // selalu gagal auth & diam-diam jatuh ke fallback no_reply@m2b.co.id.
         $imapConfig = config("imap.accounts.{$this->activeAccount}");
         $mailboxSmtp = $imapConfig['smtp'] ?? null;
 
@@ -772,7 +829,6 @@ class EmailInbox extends Component
             try {
                 \Log::info("Mencoba mengirim email via SMTP Dinamis ({$mailboxSmtp['host']}): {$fromEmail}");
 
-                // Konfigurasi mailer dinamis: host/port/encryption ikut mailbox aktif, bukan mailer default
                 config([
                     'mail.mailers.dynamic_smtp' => [
                         'transport' => 'smtp',
@@ -788,7 +844,7 @@ class EmailInbox extends Component
                 \Mail::mailer('dynamic_smtp')->html($htmlBody, function($message) use ($fromEmail, $fromName, $ccEmails) {
                     $message->to($this->replyTo)
                         ->subject($this->replySubject)
-                        ->from($fromEmail, $fromName); // Dari email aktif (misal sales@m2b.co.id)
+                        ->from($fromEmail, $fromName);
                     
                     if (!empty($ccEmails)) {
                         $message->cc($ccEmails);
@@ -822,27 +878,26 @@ class EmailInbox extends Component
                 });
             }
 
-            \Log::info('Email sent successfully, saving to database');
+            $ccString = !empty($ccEmails) ? implode(', ', $ccEmails) : null;
 
             // Simpan ke database sent_emails
             \App\Models\SentEmail::create([
                 'mailbox' => $this->activeAccount,
                 'to_email' => $this->replyTo,
-                'cc_email' => !empty($this->replyCc) ? $this->replyCc : null,
+                'cc_email' => $ccString,
                 'subject' => $this->replySubject,
                 'body' => $this->replyBody,
                 'user_id' => auth()->id(),
                 'user_name' => auth()->user()->name,
             ]);
 
-            \Log::info('Email saved to sent_emails');
+            // Catat ke ActivityLog
+            $logAction = $this->emailMode === 'compose' ? 'COMPOSE_EMAIL' : ($this->emailMode === 'forward' ? 'FORWARD_EMAIL' : 'REPLY_EMAIL');
+            $logDesc = ($this->emailMode === 'compose' ? 'Kirim email baru' : ($this->emailMode === 'forward' ? 'Forward email' : 'Balas email')) . " dari {$fromEmail} ke {$this->replyTo} Subjek: {$this->replySubject}" . ($ccString ? " (CC: {$ccString})" : "");
+            \App\Models\ActivityLog::record('Email', $logAction, $fromEmail, $logDesc);
 
-            // Cap waktu balasan pada email aslinya — dasar perhitungan
-            // "rata-rata waktu balas" & "menggantung > 24 jam" di layar
-            // Statistik. Hanya untuk mode balas; forward bukan jawaban ke
-            // pengirim aslinya. Dibungkus try/catch: gagal mencatat statistik
-            // tidak boleh membatalkan email yang sudah benar-benar terkirim.
-            if ($this->emailMode !== 'forward' && !empty($this->selectedEmail['id'])) {
+            // Cap waktu balasan pada email aslinya jika reply
+            if ($this->emailMode === 'reply' && !empty($this->selectedEmail['id'])) {
                 try {
                     \App\Models\Email::where('id', $this->selectedEmail['id'])
                         ->whereNull('replied_at')
@@ -855,11 +910,13 @@ class EmailInbox extends Component
                 }
             }
 
-            $msgType = $this->emailMode === 'forward' ? 'Forward' : 'Reply';
-            session()->flash('message', "{$msgType} berhasil dikirim ke " . $this->replyTo);
+            $msgType = $this->emailMode === 'compose' ? 'Email baru' : ($this->emailMode === 'forward' ? 'Forward' : 'Reply');
+            $ccFeedback = !empty($ccEmails) ? ' dan tembusan (CC) ke ' . implode(', ', $ccEmails) : '';
+            session()->flash('message', "✅ {$msgType} berhasil dikirim ke {$this->replyTo}{$ccFeedback}!");
+
             $this->showReplyModal = false;
             $this->reset(['replyTo', 'replyCc', 'replySubject', 'replyBody', 'forwardAttachments', 'emailMode']);
-        $this->resetNewAttachments();
+            $this->resetNewAttachments();
             
         } catch (\Exception $e) {
             \Log::error('Failed to send email', [

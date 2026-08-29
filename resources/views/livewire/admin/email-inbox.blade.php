@@ -28,14 +28,23 @@
     <div class="flex-1 flex bg-white border border-gray-200 rounded-xl overflow-hidden shadow-sm">
         
         {{-- 1. SIDEBAR MAILBOX --}}
-        <div class="w-48 bg-slate-900 flex flex-col text-slate-300 border-r border-slate-800 pt-4 shrink-0">
-            <div class="px-4 mb-4 text-[10px] font-bold uppercase tracking-wider text-slate-500">Mailboxes</div>
+        <div class="w-48 bg-slate-900 flex flex-col text-slate-300 border-r border-slate-800 pt-3 shrink-0">
+            <div class="px-3 mb-3">
+                <button type="button" 
+                        wire:click="openComposeModal" 
+                        class="w-full bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-500 hover:to-indigo-500 text-white font-bold px-3 py-2.5 rounded-xl shadow-lg shadow-blue-500/20 flex items-center justify-center gap-2 transition active:scale-95 text-xs">
+                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/></svg>
+                    <span>Tulis Email</span>
+                </button>
+            </div>
+
+            <div class="px-4 mb-2 text-[10px] font-bold uppercase tracking-wider text-slate-500">Mailboxes</div>
             
-            <div class="px-3 mb-4">
+            <div class="px-3 mb-3">
                 <button wire:click="syncNow" 
                         wire:loading.attr="disabled" 
                         wire:target="syncNow"
-                        class="w-full bg-blue-600 hover:bg-blue-700 text-white px-3 py-2 rounded shadow flex items-center justify-center gap-2 transition-all">
+                        class="w-full bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700 text-xs px-3 py-2 rounded-lg shadow-sm flex items-center justify-center gap-2 transition-all">
                     <span wire:loading.remove wire:target="syncNow">🔄 Sync Now</span>
                     <span wire:loading wire:target="syncNow">⏳ Syncing...</span>
                 </button>
@@ -315,9 +324,16 @@
                     @endif
                 </div>
             @else
-                <div class="flex-1 flex flex-col items-center justify-center text-gray-300 bg-gray-50/50">
-                    <svg class="w-16 h-16 opacity-10 mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1" d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"></path></svg>
-                    <p class="text-xs font-black uppercase tracking-widest opacity-50">Pilih email untuk dibaca</p>
+                <div class="flex-1 flex flex-col items-center justify-center text-gray-300 bg-gray-50/50 p-6 text-center">
+                    <div class="w-16 h-16 rounded-3xl bg-blue-50 text-blue-600 flex items-center justify-center mb-4 shadow-sm border border-blue-100">
+                        <svg class="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"/></svg>
+                    </div>
+                    <h4 class="text-sm font-bold text-gray-700 mb-1">Communication Center</h4>
+                    <p class="text-xs text-gray-400 max-w-sm mb-5">Pilih email dari daftar di samping untuk membaca, atau buat pesan baru ke rekan tim & customer.</p>
+                    <button type="button" wire:click="openComposeModal" class="inline-flex items-center gap-2 px-5 py-2.5 bg-blue-900 hover:bg-blue-800 text-white rounded-xl text-xs font-bold shadow-md hover:shadow-lg transition active:scale-95">
+                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/></svg>
+                        <span>Tulis Email Baru</span>
+                    </button>
                 </div>
             @endif
         </div>
@@ -483,15 +499,17 @@
     </div>
     @endif
 
-    {{-- REPLY / FORWARD MODAL --}}
+    {{-- REPLY / FORWARD / COMPOSE MODAL --}}
     @if($showReplyModal)
     @php
         $isReply = $emailMode === 'reply';
-        $modeAccent = $isReply ? 'emerald' : 'indigo';
+        $isForward = $emailMode === 'forward';
+        $isCompose = $emailMode === 'compose';
+        $modeAccent = $isCompose ? 'blue' : ($isReply ? 'emerald' : 'indigo');
         $totalAttachCount = count($newAttachments)
             + ($attachQuotationId ? 1 : 0)
             + ($attachInvoiceId ? 1 : 0)
-            + ($isReply ? 0 : count($forwardAttachments ?? []));
+            + ($isForward ? count($forwardAttachments ?? []) : 0);
     @endphp
     <div class="fixed inset-0 z-[9999] overflow-y-auto" aria-labelledby="modal-title" role="dialog" aria-modal="true">
         <div class="flex items-center justify-center min-h-screen p-4 text-center">
@@ -499,44 +517,82 @@
             <div class="inline-block align-bottom bg-white rounded-3xl text-left overflow-hidden shadow-2xl transform transition-all sm:max-w-2xl sm:w-full relative z-[10000]">
                 <div class="bg-white" x-data="{ attachTab: 'upload' }">
                     {{-- Header --}}
-                    <div class="px-8 py-6 border-b border-gray-50 flex items-center gap-4 bg-gray-50/50">
-                        <div class="w-11 h-11 rounded-2xl flex items-center justify-center text-lg shrink-0
-                            {{ $isReply ? 'bg-emerald-50 text-emerald-600' : 'bg-indigo-50 text-indigo-600' }}">
-                            {{ $isReply ? '↩️' : '➡️' }}
+                    <div class="px-8 py-5 border-b border-gray-100 flex items-center justify-between {{ $isCompose ? 'bg-gradient-to-r from-blue-900 via-indigo-900 to-blue-800 text-white' : 'bg-gray-50/50' }}">
+                        <div class="flex items-center gap-3.5">
+                            <div class="w-10 h-10 rounded-2xl flex items-center justify-center text-base shrink-0
+                                {{ $isCompose ? 'bg-white/10 text-white border border-white/20' : ($isReply ? 'bg-emerald-50 text-emerald-600' : 'bg-indigo-50 text-indigo-600') }}">
+                                {{ $isCompose ? '✏️' : ($isReply ? '↩️' : '➡️') }}
+                            </div>
+                            <div class="min-w-0">
+                                <h3 class="font-black text-sm tracking-widest uppercase {{ $isCompose ? 'text-white' : 'text-gray-800' }}">
+                                    {{ $isCompose ? 'Tulis Email Baru' : ($isReply ? 'Reply Email' : 'Forward Email') }}
+                                </h3>
+                                @if($isCompose)
+                                <div class="flex items-center gap-2 mt-1">
+                                    <span class="text-[11px] text-blue-200">Dari Akun Mailbox:</span>
+                                    <select wire:model.live="activeAccount" class="text-xs font-bold text-gray-900 bg-white/95 rounded-lg px-2.5 py-0.5 border-0 shadow-sm focus:ring-2 focus:ring-blue-400">
+                                        @foreach($mailboxes as $acc)
+                                            <option value="{{ $acc }}">{{ ucfirst($acc) }} ({{ $mailboxEmails[$acc] ?? $acc.'@m2b.co.id' }})</option>
+                                        @endforeach
+                                    </select>
+                                </div>
+                                @elseif($selectedEmail)
+                                <p class="text-xs text-gray-400 font-medium truncate mt-0.5">{{ $selectedEmail['subject'] ?? '' }}</p>
+                                @endif
+                            </div>
                         </div>
-                        <div class="min-w-0">
-                            <h3 class="font-black text-gray-800 uppercase text-sm tracking-widest">
-                                {{ $isReply ? 'Reply Email' : 'Forward Email' }}
-                            </h3>
-                            @if($selectedEmail)
-                            <p class="text-xs text-gray-400 font-medium truncate mt-0.5">{{ $selectedEmail['subject'] ?? '' }}</p>
-                            @endif
-                        </div>
-                        <button wire:click="closeReplyModal" class="ml-auto text-gray-400 hover:text-red-500 transition-colors text-2xl leading-none">&times;</button>
+                        <button wire:click="closeReplyModal" class="{{ $isCompose ? 'text-white/70 hover:text-white hover:bg-white/10' : 'text-gray-400 hover:text-red-500' }} p-1.5 rounded-xl transition-colors text-2xl leading-none">&times;</button>
                     </div>
 
                     <form wire:submit.prevent="sendReply">
-                        <div class="p-8 space-y-6">
+                        <div class="p-6 md:p-8 space-y-5">
 
                             {{-- Recipient card --}}
-                            <div class="border border-gray-200 rounded-2xl divide-y divide-gray-100 overflow-hidden">
+                            <div class="border border-gray-200 rounded-2xl divide-y divide-gray-100 overflow-hidden bg-white shadow-sm">
                                 <div class="flex items-center gap-3 px-4 py-3">
                                     <span class="text-[10px] font-black text-gray-400 uppercase tracking-widest w-9 shrink-0">To</span>
-                                    <input type="email" wire:model="replyTo" placeholder="recipient@example.com"
+                                    <input type="email" wire:model="replyTo" placeholder="penerima@perusahaan.com"
                                            class="flex-1 border-0 focus:ring-0 text-sm font-bold text-gray-800 py-1 px-0 placeholder:text-gray-300">
                                 </div>
-                                <div class="flex items-center gap-3 px-4 py-3">
-                                    <span class="text-[10px] font-black text-gray-400 uppercase tracking-widest w-9 shrink-0">Cc</span>
-                                    <input type="text" wire:model="replyCc" placeholder="cc1@example.com, cc2@example.com"
-                                           class="flex-1 border-0 focus:ring-0 text-sm font-bold text-gray-800 py-1 px-0 placeholder:text-gray-300">
+                                <div class="flex flex-col gap-1 px-4 py-2.5 bg-gray-50/40">
+                                    <div class="flex items-center gap-3">
+                                        <span class="text-[10px] font-black text-gray-400 uppercase tracking-widest w-9 shrink-0">Cc</span>
+                                        <input type="text" wire:model="replyCc" placeholder="staf@m2b.co.id, finance@m2b.co.id"
+                                               class="flex-1 border-0 focus:ring-0 text-xs font-mono text-gray-800 py-1 px-0 bg-transparent placeholder:text-gray-300">
+                                    </div>
+                                    {{-- Quick CC presets --}}
+                                    <div class="flex flex-wrap items-center gap-1.5 pt-1.5 border-t border-gray-100">
+                                        <span class="text-[10px] text-gray-400 font-semibold">CC Cepat:</span>
+                                        @if(auth()->check() && auth()->user()->email)
+                                            @php
+                                                $myEmail = auth()->user()->email;
+                                                $isMyEmailActive = str_contains(strtolower($replyCc ?? ''), strtolower($myEmail));
+                                            @endphp
+                                            <button type="button" 
+                                                    wire:click="toggleReplyCcPreset('{{ $myEmail }}')"
+                                                    class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[11px] font-semibold transition {{ $isMyEmailActive ? 'bg-indigo-600 text-white shadow-sm' : 'bg-white border border-gray-200 text-gray-700 hover:bg-gray-100' }}">
+                                                <span>{{ $isMyEmailActive ? '✓' : '+' }}</span> Email Saya
+                                            </button>
+                                        @endif
+                                        @foreach(['sales@m2b.co.id' => 'Sales', 'finance@m2b.co.id' => 'Finance', 'import@m2b.co.id' => 'Import', 'export@m2b.co.id' => 'Export', 'shipping@m2b.co.id' => 'Shipping'] as $emailPreset => $labelPreset)
+                                            @php
+                                                $isActive = str_contains(strtolower($replyCc ?? ''), strtolower($emailPreset));
+                                            @endphp
+                                            <button type="button" 
+                                                    wire:click="toggleReplyCcPreset('{{ $emailPreset }}')"
+                                                    class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-medium transition {{ $isActive ? 'bg-indigo-600 text-white shadow-sm' : 'bg-white border border-gray-200 text-gray-600 hover:bg-gray-100' }}">
+                                                <span>{{ $isActive ? '✓' : '+' }}</span> {{ $labelPreset }}
+                                            </button>
+                                        @endforeach
+                                    </div>
                                 </div>
                             </div>
-                            @error('replyTo') <span class="text-xs text-red-500 -mt-4 block ml-1">{{ $message }}</span> @enderror
-                            @error('replyCc') <span class="text-xs text-red-500 -mt-4 block ml-1">{{ $message }}</span> @enderror
+                            @error('replyTo') <span class="text-xs text-red-500 -mt-3 block ml-1">{{ $message }}</span> @enderror
+                            @error('replyCc') <span class="text-xs text-red-500 -mt-3 block ml-1">{{ $message }}</span> @enderror
 
                             <div>
-                                <label class="block text-[10px] font-black text-gray-400 uppercase tracking-widest mb-2 ml-1">Subject</label>
-                                <input type="text" wire:model="replySubject" class="w-full border-gray-200 rounded-xl text-sm font-bold focus:ring-blue-500 focus:border-blue-500 py-3 px-4">
+                                <label class="block text-[10px] font-black text-gray-400 uppercase tracking-widest mb-1.5 ml-1">Subjek Email</label>
+                                <input type="text" wire:model="replySubject" placeholder="Tulis subjek email di sini..." class="w-full border-gray-200 rounded-xl text-sm font-bold focus:ring-blue-500 focus:border-blue-500 py-2.5 px-4">
                                 @error('replySubject') <span class="text-xs text-red-500 mt-1 block">{{ $message }}</span> @enderror
                             </div>
 
@@ -704,15 +760,21 @@
                                 @error('replyBody') <span class="text-xs text-red-500 mt-1 block">{{ $message }}</span> @enderror
                             </div>
                         </div>
-                        <div class="px-8 py-5 bg-gray-50 flex justify-end gap-3 border-t border-gray-100">
-                            <button type="button" wire:click="closeReplyModal" class="px-6 py-2.5 text-xs font-black text-gray-400 uppercase tracking-widest hover:text-gray-600 transition-all">Cancel</button>
+                        <div class="px-8 py-5 bg-gray-50 flex justify-end items-center gap-3 border-t border-gray-100">
+                            <button type="button" wire:click="closeReplyModal" class="px-6 py-2.5 text-xs font-black text-gray-400 uppercase tracking-widest hover:text-gray-600 transition-all">Batal</button>
                             <button type="submit" wire:loading.attr="disabled" wire:target="sendReply"
                                     class="px-8 py-2.5 rounded-xl font-black text-xs uppercase tracking-widest shadow-lg transition-all text-white disabled:opacity-60 disabled:cursor-not-allowed
-                                    {{ $isReply ? 'bg-emerald-600 hover:bg-emerald-700 shadow-emerald-100' : 'bg-indigo-600 hover:bg-indigo-700 shadow-indigo-100' }}">
-                                <span wire:loading.remove wire:target="sendReply">
-                                    {{ $isReply ? 'Send Reply' : 'Send Forward' }}{{ $totalAttachCount > 0 ? ' · 📎' . $totalAttachCount : '' }}
+                                    {{ $isCompose ? 'bg-blue-600 hover:bg-blue-700 shadow-blue-200' : ($isReply ? 'bg-emerald-600 hover:bg-emerald-700 shadow-emerald-100' : 'bg-indigo-600 hover:bg-indigo-700 shadow-indigo-100') }}">
+                                <span wire:loading.remove wire:target="sendReply" class="flex items-center gap-2">
+                                    <span>{{ $isCompose ? '🚀 Kirim Email' : ($isReply ? 'Kirim Balasan' : 'Kirim Forward') }}</span>
+                                    @if($totalAttachCount > 0)
+                                        <span class="bg-white/20 px-2 py-0.5 rounded-full text-[10px]">📎 {{ $totalAttachCount }}</span>
+                                    @endif
                                 </span>
-                                <span wire:loading wire:target="sendReply">Mengirim...</span>
+                                <span wire:loading wire:target="sendReply" class="flex items-center gap-2">
+                                    <svg class="animate-spin h-3.5 w-3.5 text-white" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8H4z"></path></svg>
+                                    <span>Mengirim...</span>
+                                </span>
                             </button>
                         </div>
                     </form>
