@@ -31,7 +31,9 @@ class QuotationManager extends Component
     
     public $isSendModalOpen = false;
     public $sendToEmail = '';
+    public $sendToCc = '';
     public $sendingId = null;
+    public $sendingQuotation = null;
     
     public $is_new_customer = false;
     public $customer_id;
@@ -655,35 +657,134 @@ class QuotationManager extends Component
         ];
     }
 
-    public function openSendModal($id) { $q = Quotation::find($id); if($q){ $this->sendingId = $id; $this->sendToEmail = $q->customer ? ($q->customer->user->email ?? $q->customer->email) : $q->manual_email; $this->isSendModalOpen = true; } }
-    public function closeSendModal() { $this->isSendModalOpen = false; }
-    public function sendQuotation() {
-        $q = Quotation::find($this->sendingId);
+    public function openSendModal($id)
+    {
+        $q = Quotation::with(['customer.user', 'commodities'])->find($id);
         if ($q) {
+            $this->resetErrorBag();
+            $this->sendingId = $id;
+            $this->sendingQuotation = $q;
+            $this->sendToEmail = $q->customer ? ($q->customer->user->email ?? $q->customer->email) : $q->manual_email;
+
+            // Default CC: Email staf yang sedang login agar ada copy otomatis di inbox staf
+            $currentUserEmail = auth()->user()->email ?? '';
+            $this->sendToCc = $currentUserEmail;
+
+            $this->isSendModalOpen = true;
+        }
+    }
+
+    public function closeSendModal()
+    {
+        $this->isSendModalOpen = false;
+        $this->reset(['sendingId', 'sendingQuotation', 'sendToEmail', 'sendToCc']);
+        $this->resetErrorBag();
+    }
+
+    public function toggleCcPreset($email)
+    {
+        if (empty($email)) return;
+        
+        $current = array_filter(array_map('trim', preg_split('/[,;\s]+/', $this->sendToCc ?? '')));
+        $lowerTarget = strtolower($email);
+        $found = false;
+        $updated = [];
+        
+        foreach ($current as $item) {
+            if (strtolower($item) === $lowerTarget) {
+                $found = true;
+            } else {
+                $updated[] = $item;
+            }
+        }
+        
+        if (!$found) {
+            $updated[] = $email;
+        }
+        
+        $this->sendToCc = implode(', ', $updated);
+    }
+
+    public function sendQuotation()
+    {
+        $this->validate([
+            'sendToEmail' => 'required|email',
+        ], [
+            'sendToEmail.required' => 'Email customer wajib diisi.',
+            'sendToEmail.email'    => 'Format email customer tidak valid.',
+        ]);
+
+        $q = Quotation::find($this->sendingId);
+        if (!$q) {
+            $this->closeSendModal();
+            session()->flash('error', 'Quotation tidak ditemukan.');
+            return;
+        }
+
+        // Parsing & validasi alamat CC
+        $ccEmails = [];
+        if (!empty(trim($this->sendToCc ?? ''))) {
+            $rawCcs = preg_split('/[,;\s]+/', $this->sendToCc);
+            foreach ($rawCcs as $rawCc) {
+                $trimmed = trim($rawCc);
+                if (!empty($trimmed)) {
+                    if (filter_var($trimmed, FILTER_VALIDATE_EMAIL)) {
+                        $ccEmails[] = strtolower($trimmed);
+                    } else {
+                        $this->addError('sendToCc', "Format email CC '{$trimmed}' tidak valid.");
+                        return;
+                    }
+                }
+            }
+        }
+        $ccEmails = array_values(array_unique($ccEmails));
+
+        try {
             // Generate approval token jika belum ada
             if (!$q->approval_token) {
                 $q->approval_token  = \Illuminate\Support\Str::random(48);
                 $q->approval_status = 'pending';
                 $q->save();
             }
+
             // Update status quotation → sent
             $q->update(['status' => 'sent']);
 
-            Mail::to($this->sendToEmail)->send(new QuotationMail($q));
+            $mail = Mail::to($this->sendToEmail);
+            if (!empty($ccEmails)) {
+                $mail->cc($ccEmails);
+            }
+            $mail->send(new QuotationMail($q));
+
+            $ccString = !empty($ccEmails) ? implode(', ', $ccEmails) : null;
 
             \App\Models\SentEmail::create([
                 'mailbox'   => 'sales',
                 'to_email'  => $this->sendToEmail,
+                'cc_email'  => $ccString,
                 'subject'   => 'Quotation #' . $q->quotation_number,
-                'body'      => 'Penawaran harga untuk customer',
+                'body'      => 'Penawaran harga untuk customer ' . ($q->customer ? $q->customer->company_name : ($q->manual_company ?? '')),
                 'user_id'   => auth()->id(),
                 'user_name' => auth()->user()->name,
             ]);
 
-            \App\Models\ActivityLog::record('Quotation', 'SEND_EMAIL', $q->quotation_number, "Kirim penawaran {$q->quotation_number} ke {$this->sendToEmail}");
+            $logNote = "Kirim penawaran {$q->quotation_number} ke {$this->sendToEmail}" . ($ccString ? " (CC: {$ccString})" : "");
+            \App\Models\ActivityLog::record('Quotation', 'SEND_EMAIL', $q->quotation_number, $logNote);
+
+            $this->closeSendModal();
+
+            $ccFeedback = !empty($ccEmails) ? ' dan tembusan (CC) ke ' . implode(', ', $ccEmails) : '';
+            session()->flash('success', "Quotation {$q->quotation_number} berhasil dikirim ke {$this->sendToEmail}{$ccFeedback}.");
+
+        } catch (\Throwable $e) {
+            \Log::error('Error sending quotation email: ' . $e->getMessage(), [
+                'quotation' => $q->quotation_number,
+                'to'        => $this->sendToEmail,
+                'cc'        => $ccEmails,
+                'trace'     => $e->getTraceAsString(),
+            ]);
+            $this->addError('sendToEmail', 'Gagal mengirim email: ' . $e->getMessage());
         }
-        $this->closeSendModal();
-        session()->flash('success', 'Quotation berhasil dikirim ke ' . $this->sendToEmail);
     }
     public function render() {
         // commodities ikut dimuat di muka: tanpa ini tiap baris di daftar

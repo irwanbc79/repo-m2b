@@ -804,14 +804,158 @@
     </div>
     @endif
 
+    {{-- SEND QUOTATION MODAL DENGAN FITUR CC & PRESET --}}
     @if($isSendModalOpen)
-    <div class="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
-        <div class="bg-white w-full max-w-md rounded-xl shadow-lg p-6">
-            <h3 class="font-bold text-lg mb-4 text-gray-800">Kirim Penawaran</h3>
-            <input type="email" wire:model="sendToEmail" class="w-full border border-gray-300 rounded-lg p-3 text-sm mb-4 focus:ring-2 focus:ring-blue-500 focus:border-transparent" placeholder="Email Customer">
-            <div class="flex justify-end gap-2">
-                <button wire:click="closeSendModal" class="px-4 py-2 border rounded-lg text-gray-600 hover:bg-gray-50">Batal</button>
-                <button wire:click="sendQuotation" class="px-4 py-2 bg-green-600 text-white rounded-lg font-bold hover:bg-green-700 shadow-sm">Kirim</button>
+    <div class="fixed inset-0 bg-black/60 z-50 flex items-center justify-center p-4 backdrop-blur-sm transition-all"
+         x-data
+         x-on:keydown.escape.window="$wire.closeSendModal()">
+        <div class="bg-white w-full max-w-lg rounded-2xl shadow-2xl overflow-hidden border border-gray-100 animate-in fade-in zoom-in-95 duration-200">
+            
+            {{-- Modal Header --}}
+            <div class="bg-gradient-to-r from-blue-900 via-indigo-900 to-blue-800 px-6 py-4 text-white flex items-center justify-between">
+                <div class="flex items-center gap-3">
+                    <div class="w-10 h-10 rounded-xl bg-white/10 flex items-center justify-center backdrop-blur-sm border border-white/20">
+                        <svg class="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"/>
+                        </svg>
+                    </div>
+                    <div>
+                        <h3 class="font-bold text-base leading-tight text-white">Kirim Penawaran Harga</h3>
+                        <p class="text-xs text-blue-200 mt-0.5 font-mono">
+                            Quotation #{{ $sendingQuotation->quotation_number ?? '-' }}
+                        </p>
+                    </div>
+                </div>
+                <button wire:click="closeSendModal" class="text-white/70 hover:text-white hover:bg-white/10 p-1.5 rounded-lg transition" title="Tutup">
+                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
+                </button>
+            </div>
+
+            <div class="p-6 space-y-4">
+                {{-- Quotation Mini Info Card --}}
+                @if($sendingQuotation)
+                <div class="bg-blue-50/70 rounded-xl p-3.5 border border-blue-100 flex items-center justify-between text-xs">
+                    <div class="space-y-0.5">
+                        <div class="text-gray-500 font-medium">Tujuan Customer:</div>
+                        <div class="font-bold text-gray-900 text-sm">
+                            {{ $sendingQuotation->customer ? $sendingQuotation->customer->company_name : ($sendingQuotation->manual_company ?: 'Customer') }}
+                        </div>
+                    </div>
+                    <div class="text-right space-y-0.5">
+                        <div class="text-gray-500 font-medium">Total Penawaran:</div>
+                        <div class="font-bold text-blue-700 text-sm font-mono">
+                            {{ $sendingQuotation->currency ?? 'IDR' }} {{ number_format($sendingQuotation->grand_total, 0, ',', '.') }}
+                        </div>
+                    </div>
+                </div>
+                @endif
+
+                {{-- Input: To Email --}}
+                <div>
+                    <label class="block text-xs font-bold text-gray-700 uppercase tracking-wider mb-1.5 flex items-center gap-1.5">
+                        <svg class="w-4 h-4 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 12a4 4 0 10-8 0 4 4 0 008 0zm0 0v1.5a2.5 2.5 0 005 0V12a9 9 0 10-9 9m4.5-1.206a8.959 8.959 0 01-4.5 1.206"/></svg>
+                        Kepada (Email Customer) <span class="text-red-500">*</span>
+                    </label>
+                    <div class="relative">
+                        <input type="email" 
+                               wire:model="sendToEmail" 
+                               class="w-full border @error('sendToEmail') border-red-500 ring-1 ring-red-500 @else border-gray-300 @enderror rounded-xl pl-3.5 pr-10 py-2.5 text-sm text-gray-900 focus:ring-2 focus:ring-blue-500 focus:border-transparent transition shadow-sm" 
+                               placeholder="contoh: customer@perusahaan.com">
+                        <div class="absolute inset-y-0 right-0 flex items-center pr-3 pointer-events-none text-gray-400">
+                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"/></svg>
+                        </div>
+                    </div>
+                    @error('sendToEmail')
+                        <p class="text-red-500 text-xs mt-1.5 flex items-center gap-1 font-medium">
+                            <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+                            {{ $message }}
+                        </p>
+                    @enderror
+                </div>
+
+                {{-- Input: CC Email --}}
+                <div>
+                    <div class="flex items-center justify-between mb-1.5">
+                        <label class="block text-xs font-bold text-gray-700 uppercase tracking-wider flex items-center gap-1.5">
+                            <svg class="w-4 h-4 text-indigo-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7v8a2 2 0 002 2h6M8 7V5a2 2 0 012-2h4.586a1 1 0 01.707.293l4.414 4.414a1 1 0 01.293.707V15a2 2 0 01-2 2h-2M8 7H6a2 2 0 00-2 2v10a2 2 0 002 2h8a2 2 0 002-2v-2"/></svg>
+                            CC / Tembusan Staf & Tim
+                        </label>
+                        <span class="text-[11px] text-gray-500">Pisahkan dengan koma</span>
+                    </div>
+
+                    <input type="text" 
+                           wire:model="sendToCc" 
+                           class="w-full border @error('sendToCc') border-red-500 ring-1 ring-red-500 @else border-gray-300 @enderror rounded-xl px-3.5 py-2.5 text-xs text-gray-900 focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition shadow-sm font-mono" 
+                           placeholder="staff@m2b.co.id, sales@m2b.co.id">
+
+                    @error('sendToCc')
+                        <p class="text-red-500 text-xs mt-1.5 flex items-center gap-1 font-medium">
+                            <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+                            {{ $message }}
+                        </p>
+                    @enderror
+
+                    {{-- Quick CC Preset Pills --}}
+                    <div class="mt-2 flex flex-wrap items-center gap-1.5">
+                        <span class="text-[11px] text-gray-400 font-medium">Tambah Cepat:</span>
+                        @if(auth()->check() && auth()->user()->email)
+                            @php
+                                $myEmail = auth()->user()->email;
+                                $isMyEmailActive = str_contains(strtolower($sendToCc ?? ''), strtolower($myEmail));
+                            @endphp
+                            <button type="button" 
+                                    wire:click="toggleCcPreset('{{ $myEmail }}')"
+                                    class="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-semibold transition {{ $isMyEmailActive ? 'bg-indigo-600 text-white shadow-sm' : 'bg-gray-100 text-gray-700 hover:bg-gray-200' }}">
+                                <span>{{ $isMyEmailActive ? '✓' : '+' }}</span> Email Saya ({{ Str::before($myEmail, '@') }})
+                            </button>
+                        @endif
+
+                        @foreach(['sales@m2b.co.id' => 'Sales', 'operasional@m2b.co.id' => 'Operasional', 'finance@m2b.co.id' => 'Finance'] as $emailPreset => $labelPreset)
+                            @php
+                                $isActive = str_contains(strtolower($sendToCc ?? ''), strtolower($emailPreset));
+                            @endphp
+                            <button type="button" 
+                                    wire:click="toggleCcPreset('{{ $emailPreset }}')"
+                                    class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[11px] font-medium transition {{ $isActive ? 'bg-indigo-600 text-white shadow-sm' : 'bg-gray-100 text-gray-600 hover:bg-gray-200' }}">
+                                <span>{{ $isActive ? '✓' : '+' }}</span> {{ $labelPreset }}
+                            </button>
+                        @endforeach
+                    </div>
+                </div>
+
+                {{-- Attachment & Info notice --}}
+                <div class="bg-gray-50 rounded-xl p-3 border border-gray-200/70 text-xs text-gray-600 space-y-1">
+                    <div class="flex items-center gap-2 text-gray-700 font-medium">
+                        <svg class="w-4 h-4 text-emerald-600 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15.172 7l-6.586 6.586a2 2 0 102.828 2.828l6.414-6.586a4 4 0 00-5.656-5.656l-6.415 6.585a6 6 0 108.486 8.486L20.5 13"/></svg>
+                        <span>PDF Quotation otomatis terlampir dalam email.</span>
+                    </div>
+                    <p class="text-[11px] text-gray-500 leading-relaxed pl-6">
+                        Staf di CC akan menerima salinan utuh sebagai konfirmasi email berhasil terkirim.
+                    </p>
+                </div>
+            </div>
+
+            {{-- Modal Actions --}}
+            <div class="bg-gray-50 px-6 py-4 border-t border-gray-100 flex items-center justify-end gap-3 rounded-b-2xl">
+                <button type="button" 
+                        wire:click="closeSendModal" 
+                        wire:loading.attr="disabled"
+                        class="px-4 py-2 text-sm font-semibold text-gray-600 hover:text-gray-800 hover:bg-gray-200/60 rounded-xl transition">
+                    Batal
+                </button>
+                <button type="button" 
+                        wire:click="sendQuotation" 
+                        wire:loading.attr="disabled"
+                        class="inline-flex items-center justify-center gap-2 px-5 py-2.5 bg-gradient-to-r from-emerald-600 to-green-600 hover:from-emerald-700 hover:to-green-700 text-white text-sm font-bold rounded-xl shadow-md hover:shadow-lg transition active:scale-95 disabled:opacity-50">
+                    <span wire:loading.remove wire:target="sendQuotation" class="flex items-center gap-1.5">
+                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8"/></svg>
+                        Kirim Sekarang
+                    </span>
+                    <span wire:loading wire:target="sendQuotation" class="flex items-center gap-2">
+                        <svg class="animate-spin h-4 w-4 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg>
+                        Mengirim...
+                    </span>
+                </button>
             </div>
         </div>
     </div>
