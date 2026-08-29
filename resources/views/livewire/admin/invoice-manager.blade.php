@@ -840,53 +840,153 @@
     @endif
 
     @if($isSendModalOpen)
-    <div class="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4 backdrop-blur-sm">
-        <div class="bg-white rounded-3xl shadow-2xl w-full max-w-xl animate-fade-in-up overflow-hidden border-t-8 border-blue-900">
-            <div class="px-8 py-6 border-b bg-gray-50/50 flex justify-between items-center">
-                <div>
-                    <h3 class="font-black text-lg text-gray-800 uppercase tracking-widest flex items-center gap-2">
-                        <svg class="w-5 h-5 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"></path></svg>
-                        Kirim Tagihan Elektronik
-                    </h3>
-                    <p class="text-[10px] text-gray-400 font-bold uppercase tracking-widest mt-1">Otomatisasi Email PT. M2B</p>
+    <div class="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4 backdrop-blur-sm transition-all"
+         x-data
+         x-on:keydown.escape.window="$wire.closeSendModal()">
+        <div class="bg-white rounded-3xl shadow-2xl w-full max-w-xl animate-fade-in-up overflow-hidden border border-gray-100 flex flex-col max-h-[90vh]">
+            
+            {{-- Modal Header --}}
+            <div class="bg-gradient-to-r from-blue-900 via-indigo-900 to-blue-800 px-7 py-5 text-white flex justify-between items-center shrink-0">
+                <div class="flex items-center gap-3">
+                    <div class="w-10 h-10 rounded-2xl bg-white/10 flex items-center justify-center backdrop-blur-sm border border-white/20">
+                        <svg class="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"/></svg>
+                    </div>
+                    <div>
+                        <h3 class="font-black text-base text-white tracking-wide flex items-center gap-2">
+                            Kirim Tagihan Elektronik
+                        </h3>
+                        <p class="text-xs text-blue-200 mt-0.5 font-mono">
+                            {{ $sendingInvoice->invoice_number ?? '-' }} &bull; Otomatisasi Email Finance
+                        </p>
+                    </div>
                 </div>
-                <button wire:click="closeSendModal" class="text-gray-400 hover:text-red-500 transition-colors text-2xl">&times;</button>
+                <button wire:click="closeSendModal" class="text-white/70 hover:text-white hover:bg-white/10 p-1.5 rounded-xl transition" title="Tutup">
+                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
+                </button>
             </div>
             
-            <div class="p-8 space-y-6">
-                <div class="bg-green-50 border border-green-100 rounded-2xl p-5 flex justify-between items-center">
-                    <div class="text-xs text-green-800 flex items-center gap-3">
-                        <div class="bg-green-600 text-white p-2 rounded-xl shadow-lg shadow-green-100"><svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 5h12M9 3v2m1.048 9.5A18.022 18.022 0 016.412 9m6.088 9h7M11 21l5-10 5 10M12.751 5C11.783 10.77 8.07 15.61 3 18.129"></path></svg></div>
-                        <div><span class="font-black block uppercase tracking-wider">Cetak PDF Terlebih Dahulu?</span> Untuk preview visual dokumen sebelum dikirim.</div>
+            <div class="p-6 md:p-7 space-y-4 overflow-y-auto flex-1">
+                {{-- Quick Info Card & PDF Preview --}}
+                @if($sendingInvoice)
+                <div class="bg-gradient-to-br from-blue-50/80 to-indigo-50/50 border border-blue-100 rounded-2xl p-4 flex flex-col sm:flex-row sm:items-center justify-between gap-3 text-xs">
+                    <div class="space-y-1">
+                        <div class="text-gray-500 font-medium">Customer: <strong class="text-gray-900">{{ $sendingInvoice->customer ? $sendingInvoice->customer->company_name : ($sendingInvoice->shipment->customer->company_name ?? 'Customer') }}</strong></div>
+                        <div class="text-gray-500 font-medium">Total Tagihan: <strong class="text-blue-700 font-mono text-sm">Rp {{ number_format($sendingInvoice->grand_total, 0, ',', '.') }}</strong> (Jatuh Tempo: {{ date('d M Y', strtotime($sendingInvoice->due_date)) }})</div>
                     </div>
-                    <button @click="$dispatch('open-doc-viewer', { url: '{{ route('admin.invoices.print', $sendingInvoiceId) }}', title: 'Preview Invoice PDF' })" class="bg-white border border-green-200 text-green-600 text-[10px] px-4 py-2 rounded-xl font-black uppercase tracking-widest hover:bg-green-50 transition-all shadow-sm cursor-pointer">Preview PDF</button>
+                    <button type="button" @click="$dispatch('open-doc-viewer', { url: '{{ route('admin.invoices.print', $sendingInvoiceId) }}', title: 'Preview Invoice PDF' })" class="inline-flex items-center gap-1.5 bg-white border border-blue-200 text-blue-700 text-xs px-3.5 py-2 rounded-xl font-bold hover:bg-blue-50 transition shadow-sm shrink-0">
+                        <svg class="w-4 h-4 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"/></svg>
+                        Preview PDF
+                    </button>
                 </div>
+                @endif
 
                 <div class="space-y-4">
+                    {{-- Email Penerima --}}
                     <div>
-                        <label class="block text-[10px] font-black text-gray-400 uppercase tracking-widest mb-1.5 ml-1">Email Penerima</label>
-                        <input type="email" wire:model="email_recipient" class="w-full border-gray-200 rounded-xl text-sm font-bold focus:border-blue-500 focus:ring-1 focus:ring-blue-500 py-3 shadow-sm" placeholder="finance@customer.com">
-                        @error('email_recipient') <span class="text-[10px] text-red-500 font-bold uppercase ml-1">{{ $message }}</span> @enderror
+                        <label class="block text-xs font-bold text-gray-700 uppercase tracking-wider mb-1.5 flex items-center gap-1.5">
+                            <svg class="w-4 h-4 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 12a4 4 0 10-8 0 4 4 0 008 0zm0 0v1.5a2.5 2.5 0 005 0V12a9 9 0 10-9 9m4.5-1.206a8.959 8.959 0 01-4.5 1.206"/></svg>
+                            Email Penerima (Customer) <span class="text-red-500">*</span>
+                        </label>
+                        <div class="relative">
+                            <input type="email" 
+                                   wire:model="email_recipient" 
+                                   class="w-full border @error('email_recipient') border-red-500 ring-1 ring-red-500 @else border-gray-300 @enderror rounded-xl pl-3.5 pr-10 py-2.5 text-sm text-gray-900 focus:ring-2 focus:ring-blue-500 focus:border-transparent transition shadow-sm" 
+                                   placeholder="finance@customer.com">
+                            <div class="absolute inset-y-0 right-0 flex items-center pr-3 pointer-events-none text-gray-400">
+                                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"/></svg>
+                            </div>
+                        </div>
+                        @error('email_recipient') 
+                            <p class="text-red-500 text-xs mt-1.5 flex items-center gap-1 font-medium">{{ $message }}</p> 
+                        @enderror
                     </div>
+
+                    {{-- CC / Tembusan Staf & Finance --}}
                     <div>
-                        <label class="block text-[10px] font-black text-gray-400 uppercase tracking-widest mb-1.5 ml-1">Subjek Email</label>
-                        <input type="text" wire:model="email_subject" class="w-full border-gray-200 rounded-xl text-sm font-bold focus:border-blue-500 focus:ring-1 focus:ring-blue-500 py-3 shadow-sm">
-                        @error('email_subject') <span class="text-[10px] text-red-500 font-bold uppercase ml-1">{{ $message }}</span> @enderror
+                        <div class="flex items-center justify-between mb-1.5">
+                            <label class="block text-xs font-bold text-gray-700 uppercase tracking-wider flex items-center gap-1.5">
+                                <svg class="w-4 h-4 text-indigo-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7v8a2 2 0 002 2h6M8 7V5a2 2 0 012-2h4.586a1 1 0 01.707.293l4.414 4.414a1 1 0 01.293.707V15a2 2 0 01-2 2h-2M8 7H6a2 2 0 00-2 2v10a2 2 0 002 2h8a2 2 0 002-2v-2"/></svg>
+                                CC / Tembusan Staf & Finance
+                            </label>
+                            <span class="text-[11px] text-gray-500">Pisahkan dengan koma</span>
+                        </div>
+
+                        <input type="text" 
+                               wire:model="email_cc" 
+                               class="w-full border @error('email_cc') border-red-500 ring-1 ring-red-500 @else border-gray-300 @enderror rounded-xl px-3.5 py-2.5 text-xs text-gray-900 focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition shadow-sm font-mono" 
+                               placeholder="finance@m2b.co.id, staff@m2b.co.id">
+
+                        @error('email_cc') 
+                            <p class="text-red-500 text-xs mt-1.5 flex items-center gap-1 font-medium">{{ $message }}</p> 
+                        @enderror
+
+                        {{-- Quick CC Preset Pills --}}
+                        <div class="mt-2 flex flex-wrap items-center gap-1.5">
+                            <span class="text-[11px] text-gray-400 font-medium">Tambah Cepat:</span>
+                            @if(auth()->check() && auth()->user()->email)
+                                @php
+                                    $myEmail = auth()->user()->email;
+                                    $isMyEmailActive = str_contains(strtolower($email_cc ?? ''), strtolower($myEmail));
+                                @endphp
+                                <button type="button" 
+                                        wire:click="toggleCcPreset('{{ $myEmail }}')"
+                                        class="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-semibold transition {{ $isMyEmailActive ? 'bg-indigo-600 text-white shadow-sm' : 'bg-gray-100 text-gray-700 hover:bg-gray-200' }}">
+                                    <span>{{ $isMyEmailActive ? '✓' : '+' }}</span> Email Saya ({{ Str::before($myEmail, '@') }})
+                                </button>
+                            @endif
+
+                            @foreach(['finance@m2b.co.id' => 'Finance', 'accounting@m2b.co.id' => 'Accounting', 'sales@m2b.co.id' => 'Sales', 'operasional@m2b.co.id' => 'Operasional'] as $emailPreset => $labelPreset)
+                                @php
+                                    $isActive = str_contains(strtolower($email_cc ?? ''), strtolower($emailPreset));
+                                @endphp
+                                <button type="button" 
+                                        wire:click="toggleCcPreset('{{ $emailPreset }}')"
+                                        class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[11px] font-medium transition {{ $isActive ? 'bg-indigo-600 text-white shadow-sm' : 'bg-gray-100 text-gray-600 hover:bg-gray-200' }}">
+                                    <span>{{ $isActive ? '✓' : '+' }}</span> {{ $labelPreset }}
+                                </button>
+                            @endforeach
+                        </div>
                     </div>
+
+                    {{-- Subjek Email --}}
                     <div>
-                        <label class="block text-[10px] font-black text-gray-400 uppercase tracking-widest mb-1.5 ml-1">Pesan / Body Email</label>
-                        <textarea wire:model="email_body" rows="6" class="w-full border-gray-200 rounded-xl text-xs focus:border-blue-500 focus:ring-1 focus:ring-blue-500 font-mono py-3 bg-gray-50/50"></textarea>
-                        @error('email_body') <span class="text-[10px] text-red-500 font-bold uppercase ml-1">{{ $message }}</span> @enderror
+                        <label class="block text-xs font-bold text-gray-700 uppercase tracking-wider mb-1.5">Subjek Email</label>
+                        <input type="text" wire:model="email_subject" class="w-full border border-gray-300 rounded-xl text-sm font-semibold focus:border-blue-500 focus:ring-1 focus:ring-blue-500 py-2.5 px-3.5 shadow-sm text-gray-900">
+                        @error('email_subject') <p class="text-red-500 text-xs mt-1.5 font-medium">{{ $message }}</p> @enderror
+                    </div>
+
+                    {{-- Pesan / Body Email --}}
+                    <div>
+                        <label class="block text-xs font-bold text-gray-700 uppercase tracking-wider mb-1.5">Pesan / Body Email</label>
+                        <textarea wire:model="email_body" rows="5" class="w-full border border-gray-300 rounded-xl text-xs focus:border-blue-500 focus:ring-1 focus:ring-blue-500 font-mono py-2.5 px-3.5 bg-gray-50/50 text-gray-800 leading-relaxed"></textarea>
+                        @error('email_body') <p class="text-red-500 text-xs mt-1.5 font-medium">{{ $message }}</p> @enderror
+                    </div>
+
+                    {{-- Attachment Info Notice --}}
+                    <div class="bg-gray-50 rounded-xl p-3 border border-gray-200/70 text-xs text-gray-600 space-y-1">
+                        <div class="flex items-center gap-2 text-gray-700 font-medium">
+                            <svg class="w-4 h-4 text-emerald-600 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15.172 7l-6.586 6.586a2 2 0 102.828 2.828l6.414-6.586a4 4 0 00-5.656-5.656l-6.415 6.585a6 6 0 108.486 8.486L20.5 13"/></svg>
+                            <span>PDF Tagihan resmi otomatis dilampirkan.</span>
+                        </div>
+                        <p class="text-[11px] text-gray-500 leading-relaxed pl-6">
+                            Staf di CC akan menerima salinan utuh termasuk informasi rekening pembayaran dan jatuh tempo.
+                        </p>
                     </div>
                 </div>
             </div>
 
-            <div class="px-8 py-5 bg-gray-50 flex justify-between items-center border-t">
-                <button wire:click="closeSendModal" class="text-xs font-black text-gray-400 uppercase tracking-widest hover:text-gray-600 transition">Batal</button>
-                <button wire:click="sendEmail" wire:loading.attr="disabled" class="bg-blue-900 text-white px-8 py-3 rounded-xl font-black text-xs uppercase tracking-widest hover:bg-blue-800 transition-all shadow-xl flex items-center gap-3">
-                    <span wire:loading.remove wire:target="sendEmail">Kirim Ke Customer 🚀</span>
-                    <svg wire:loading wire:target="sendEmail" class="animate-spin h-4 w-4 text-white" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg>
-                    <span wire:loading wire:target="sendEmail">Mengirim Dokumen...</span>
+            {{-- Modal Actions --}}
+            <div class="px-7 py-4 bg-gray-50 flex justify-between items-center border-t border-gray-100 shrink-0 rounded-b-3xl">
+                <button type="button" wire:click="closeSendModal" class="px-4 py-2 text-sm font-semibold text-gray-600 hover:text-gray-800 hover:bg-gray-200/60 rounded-xl transition">Batal</button>
+                <button type="button" wire:click="sendEmail" wire:loading.attr="disabled" class="inline-flex items-center justify-center gap-2 px-6 py-2.5 bg-gradient-to-r from-blue-900 to-indigo-900 hover:from-blue-800 hover:to-indigo-800 text-white text-sm font-bold rounded-xl shadow-md hover:shadow-lg transition active:scale-95 disabled:opacity-50">
+                    <span wire:loading.remove wire:target="sendEmail" class="flex items-center gap-2">
+                        <span>Kirim Ke Customer</span>
+                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8"/></svg>
+                    </span>
+                    <span wire:loading wire:target="sendEmail" class="flex items-center gap-2">
+                        <svg class="animate-spin h-4 w-4 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg>
+                        <span>Mengirim Dokumen...</span>
+                    </span>
                 </button>
             </div>
         </div>

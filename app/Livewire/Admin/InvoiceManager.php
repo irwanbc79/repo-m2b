@@ -65,9 +65,11 @@ class InvoiceManager extends Component
 
     // Email Data
     public $email_recipient = '';
+    public $email_cc = '';
     public $email_subject = '';
     public $email_body = '';
     public $sendingInvoiceId = null;
+    public $sendingInvoice = null;
 
     // Payment History Modal
     public $paymentHistoryModal = false;
@@ -420,18 +422,24 @@ class InvoiceManager extends Component
         $this->calculateGrandTotal();
     }
 
-    // --- LOGIC EMAIL (DENGAN TRY-CATCH YANG BENAR) ---
+    // --- LOGIC EMAIL (DENGAN CC, TRY-CATCH & AUDIT TRAIL) ---
 
     public function openSendModal($id)
     {
-        $invoice = Invoice::with('customer')->find($id);
+        $invoice = Invoice::with(['customer.user', 'shipment.customer'])->find($id);
         if (!$invoice)
             return;
 
+        $this->resetErrorBag();
         $this->sendingInvoiceId = $id;
+        $this->sendingInvoice = $invoice;
 
         $customer = $invoice->customer ?? ($invoice->shipment->customer ?? null);
-        $this->email_recipient = $customer ? $customer->email : '';
+        $this->email_recipient = $customer ? ($customer->user->email ?? $customer->email ?? '') : '';
+
+        // Default CC: Email staf yang sedang login agar otomatis menerima salinan di inbox pribadi
+        $currentUserEmail = auth()->user()->email ?? '';
+        $this->email_cc = $currentUserEmail;
 
         $prefix = $invoice->type == 'Proforma' ? 'Proforma Invoice' : 'Invoice';
         $this->email_subject = "{$prefix} #{$invoice->invoice_number} - PT. MORA MULTI BERKAH";
@@ -449,37 +457,93 @@ class InvoiceManager extends Component
     public function closeSendModal()
     {
         $this->isSendModalOpen = false;
-        $this->reset(['email_recipient', 'email_subject', 'email_body', 'sendingInvoiceId']);
+        $this->reset(['email_recipient', 'email_cc', 'email_subject', 'email_body', 'sendingInvoiceId', 'sendingInvoice']);
+        $this->resetErrorBag();
+    }
+
+    public function toggleCcPreset($email)
+    {
+        if (empty($email)) return;
+        
+        $current = array_filter(array_map('trim', preg_split('/[,;\s]+/', $this->email_cc ?? '')));
+        $lowerTarget = strtolower($email);
+        $found = false;
+        $updated = [];
+        
+        foreach ($current as $item) {
+            if (strtolower($item) === $lowerTarget) {
+                $found = true; // Toggle off
+            } else {
+                $updated[] = $item;
+            }
+        }
+        
+        if (!$found) {
+            $updated[] = $email;
+        }
+        
+        $this->email_cc = implode(', ', $updated);
     }
 
     public function sendEmail()
     {
         $this->validate([
             'email_recipient' => 'required|email',
-            'email_subject' => 'required',
-            'email_body' => 'required',
+            'email_subject'   => 'required',
+            'email_body'      => 'required',
+        ], [
+            'email_recipient.required' => 'Email penerima wajib diisi.',
+            'email_recipient.email'    => 'Format email penerima tidak valid.',
+            'email_subject.required'   => 'Subjek email tidak boleh kosong.',
+            'email_body.required'      => 'Isi pesan email tidak boleh kosong.',
         ]);
 
         $invoice = Invoice::find($this->sendingInvoiceId);
+        if (!$invoice) {
+            $this->closeSendModal();
+            session()->flash('error', 'Data invoice tidak ditemukan.');
+            return;
+        }
+
+        // Parsing & validasi alamat CC
+        $ccEmails = [];
+        if (!empty(trim($this->email_cc ?? ''))) {
+            $rawCcs = preg_split('/[,;\s]+/', $this->email_cc);
+            foreach ($rawCcs as $rawCc) {
+                $trimmed = trim($rawCc);
+                if (!empty($trimmed)) {
+                    if (filter_var($trimmed, FILTER_VALIDATE_EMAIL)) {
+                        $ccEmails[] = strtolower($trimmed);
+                    } else {
+                        $this->addError('email_cc', "Format email CC '{$trimmed}' tidak valid.");
+                        return;
+                    }
+                }
+            }
+        }
+        $ccEmails = array_values(array_unique($ccEmails));
 
         try {
-            // FIX: Gunakan file 'admin.invoice-print' agar attachment sama dengan tampilan browser
-            // Karena user lebih suka tampilan Tailwind yang modern
+            // FIX: Gunakan file 'admin.invoice-pdf' agar attachment sama dengan tampilan cetak
             $pdf = Pdf::loadView('admin.invoice-pdf', [
                 'invoice' => $invoice,
-                'isPdf' => true // Parameter ini menyembunyikan tombol cetak di PDF
+                'isPdf'   => true // Parameter ini menyembunyikan tombol cetak di PDF
             ]);
             $pdfContent = $pdf->output();
 
             Mail::send('emails.invoice-notification', [
-                'invoice' => $invoice,
+                'invoice'     => $invoice,
                 'bodyMessage' => $this->email_body
-            ], function ($message) use ($invoice, $pdfContent) {
+            ], function ($message) use ($invoice, $pdfContent, $ccEmails) {
 
                 $message->from('no_reply@m2b.co.id', 'Finance - PT. Mora Multi Berkah')
                     ->replyTo('finance@m2b.co.id', 'Finance Dept')
                     ->to($this->email_recipient)
                     ->subject($this->email_subject);
+
+                if (!empty($ccEmails)) {
+                    $message->cc($ccEmails);
+                }
 
                 $cleanNumber = str_replace(['/', '\\'], '-', $invoice->invoice_number);
                 $message->attachData($pdfContent, 'Invoice-' . $cleanNumber . '.pdf', [
@@ -487,25 +551,36 @@ class InvoiceManager extends Component
                 ]);
             });
 
+            $ccString = !empty($ccEmails) ? implode(', ', $ccEmails) : null;
 
             // Simpan ke database sent_emails
             \App\Models\SentEmail::create([
-                'mailbox' => 'finance',
-                'to_email' => $this->email_recipient,
-                'subject' => $this->email_subject,
-                'body' => $this->email_body,
-                'user_id' => auth()->id(),
+                'mailbox'   => 'finance',
+                'to_email'  => $this->email_recipient,
+                'cc_email'  => $ccString,
+                'subject'   => $this->email_subject,
+                'body'      => $this->email_body,
+                'user_id'   => auth()->id(),
                 'user_name' => auth()->user()->name,
             ]);
 
-            \App\Models\ActivityLog::record('Invoice', 'SEND_EMAIL', $invoice->invoice_number, "Kirim tagihan {$invoice->invoice_number} ke {$this->email_recipient}");
+            $logNote = "Kirim tagihan {$invoice->invoice_number} ke {$this->email_recipient}" . ($ccString ? " (CC: {$ccString})" : "");
+            \App\Models\ActivityLog::record('Invoice', 'SEND_EMAIL', $invoice->invoice_number, $logNote);
 
-            session()->flash('message', 'Email tagihan & Attachment berhasil dikirim!');
             $this->closeSendModal();
 
+            $ccFeedback = !empty($ccEmails) ? ' dan tembusan (CC) ke ' . implode(', ', $ccEmails) : '';
+            session()->flash('message', "✅ Tagihan {$invoice->invoice_number} berhasil dikirim ke {$this->email_recipient}{$ccFeedback}!");
+
         }
-        catch (\Exception $e) {
-            session()->flash('error', 'Gagal mengirim email: ' . $e->getMessage());
+        catch (\Throwable $e) {
+            \Log::error('Error sending invoice email: ' . $e->getMessage(), [
+                'invoice' => $invoice->invoice_number,
+                'to'      => $this->email_recipient,
+                'cc'      => $ccEmails,
+                'trace'   => $e->getTraceAsString(),
+            ]);
+            $this->addError('email_recipient', 'Gagal mengirim email: ' . $e->getMessage());
         }
     }
 
