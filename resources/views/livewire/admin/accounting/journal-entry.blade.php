@@ -12,12 +12,29 @@
     @endif
 
     <div class="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
-        <div class="p-6 border-b border-gray-100 flex justify-between items-center bg-gray-50">
-            <div class="relative w-64">
-                <input wire:model.live="search" type="text" placeholder="Cari No Jurnal / Ket..." class="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-blue-500">
-                <svg class="w-5 h-5 text-gray-400 absolute left-3 top-2.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path></svg>
+        <div class="p-6 border-b border-gray-100 flex flex-col md:flex-row md:items-center justify-between gap-4 bg-gray-50">
+            <div class="flex flex-wrap items-center gap-3">
+                <div class="relative w-64">
+                    <input wire:model.live.debounce.300ms="search" type="text" placeholder="Cari No Jurnal / Ket..." class="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg text-sm focus:ring-blue-500">
+                    <svg class="w-5 h-5 text-gray-400 absolute left-3 top-2.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path></svg>
+                </div>
+
+                {{-- Filter Tanggal Transaksi --}}
+                <div class="flex items-center gap-2">
+                    <label class="text-xs font-bold text-gray-500 uppercase">Tgl:</label>
+                    <input type="date" wire:model.live="dateFrom" class="border border-gray-300 rounded-lg px-2.5 py-1.5 text-xs text-gray-700 focus:ring-blue-500" title="Dari Tanggal">
+                    <span class="text-gray-400 text-xs">-</span>
+                    <input type="date" wire:model.live="dateTo" class="border border-gray-300 rounded-lg px-2.5 py-1.5 text-xs text-gray-700 focus:ring-blue-500" title="Sampai Tanggal">
+                </div>
+
+                @if($search || $dateFrom || $dateTo || $sortField !== 'transaction_date' || $sortDirection !== 'desc')
+                <button wire:click="resetFilter" class="text-xs text-blue-600 hover:text-blue-800 font-bold hover:underline">
+                    🔄 Reset Filter
+                </button>
+                @endif
             </div>
-            <button wire:click="create" class="bg-m2b-primary text-white px-4 py-2 rounded-lg font-bold shadow-sm hover:bg-blue-900 transition flex items-center gap-2">
+
+            <button wire:click="create" class="bg-m2b-primary text-white px-4 py-2 rounded-lg font-bold shadow-sm hover:bg-blue-900 transition flex items-center gap-2 text-sm whitespace-nowrap">
                 <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"></path></svg>
                 Buat Jurnal
             </button>
@@ -27,8 +44,18 @@
             <table class="w-full text-sm text-left">
                 <thead class="bg-gray-100 font-bold text-gray-600 uppercase text-xs border-b">
                     <tr>
-                        <th class="px-6 py-3">No Jurnal</th>
-                        <th class="px-6 py-3">Tanggal</th>
+                        <th class="px-6 py-3 cursor-pointer hover:bg-gray-200 transition select-none" wire:click="sortBy('journal_number')" title="Klik untuk mengurutkan nomor jurnal">
+                            No Jurnal
+                            @if($sortField === 'journal_number')
+                                <span class="text-blue-600">{{ $sortDirection === 'asc' ? '▲' : '▼' }}</span>
+                            @endif
+                        </th>
+                        <th class="px-6 py-3 cursor-pointer hover:bg-gray-200 transition select-none" wire:click="sortBy('transaction_date')" title="Klik untuk mengurutkan tanggal transaksi">
+                            📅 Tanggal Transaksi
+                            @if($sortField === 'transaction_date')
+                                <span class="text-blue-600">{{ $sortDirection === 'asc' ? '▲ (Terlama)' : '▼ (Terbaru)' }}</span>
+                            @endif
+                        </th>
                         <th class="px-6 py-3">Keterangan</th>
                         <th class="px-6 py-3 text-center">Total</th>
                         <th class="px-6 py-3 text-center">Oleh</th>

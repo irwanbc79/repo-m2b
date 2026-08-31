@@ -15,6 +15,11 @@ class JournalEntry extends Component
     use WithPagination;
 
     public $search = '';
+    public $dateFrom = '';
+    public $dateTo = '';
+    public $sortField = 'transaction_date';
+    public $sortDirection = 'desc';
+
     public $isModalOpen = false;
     public $isEditing = false;
     public $editingId = null;
@@ -37,13 +42,52 @@ class JournalEntry extends Component
         $this->resetItems();
     }
 
+    public function updatingSearch() { $this->resetPage(); }
+    public function updatingDateFrom() { $this->resetPage(); }
+    public function updatingDateTo() { $this->resetPage(); }
+
+    public function sortBy($field)
+    {
+        if ($this->sortField === $field) {
+            $this->sortDirection = $this->sortDirection === 'asc' ? 'desc' : 'asc';
+        } else {
+            $this->sortField = $field;
+            $this->sortDirection = 'desc';
+        }
+        $this->resetPage();
+    }
+
+    public function resetFilter()
+    {
+        $this->reset(['search', 'dateFrom', 'dateTo']);
+        $this->sortField = 'transaction_date';
+        $this->sortDirection = 'desc';
+        $this->resetPage();
+    }
+
     public function render()
     {
-        $journals = Journal::with(['items.account', 'creator'])
-            ->where('journal_number', 'like', '%'.$this->search.'%')
-            ->orWhere('description', 'like', '%'.$this->search.'%')
-            ->orWhere('reference_no', 'like', '%'.$this->search.'%')
-            ->latest()
+        $query = Journal::with(['items.account', 'creator']);
+
+        if (!empty($this->search)) {
+            $s = trim($this->search);
+            $query->where(function ($q) use ($s) {
+                $q->where('journal_number', 'like', '%' . $s . '%')
+                  ->orWhere('description', 'like', '%' . $s . '%')
+                  ->orWhere('reference_no', 'like', '%' . $s . '%');
+            });
+        }
+
+        if (!empty($this->dateFrom)) {
+            $query->whereDate('transaction_date', '>=', $this->dateFrom);
+        }
+        if (!empty($this->dateTo)) {
+            $query->whereDate('transaction_date', '<=', $this->dateTo);
+        }
+
+        // Urutkan BERDASARKAN TANGGAL TRANSAKSI secara konsisten
+        $journals = $query->orderBy($this->sortField, $this->sortDirection)
+            ->orderBy('id', $this->sortDirection)
             ->paginate(25);
 
         $accounts = Account::orderBy('code')->get();
