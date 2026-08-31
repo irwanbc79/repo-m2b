@@ -222,17 +222,23 @@ class InvoiceManager extends Component
 
         $relatedInvoiceLinks = $this->buildRelatedInvoiceLinksForPage($invoices);
 
-        $stats = Cache::remember('invoice_stats', 300, function () {
-            return [
-            'total' => Invoice::count(),
-            'unpaid' => Invoice::where('status', 'unpaid')->count(),
-            'paid' => Invoice::where('status', 'paid')->count(),
-            'overdue' => Invoice::where('status', 'unpaid')->where('due_date', '<', now())->count(),
-            'total_receivable' => Invoice::whereIn('status', ['unpaid', 'partial'])->sum('grand_total'),
-            'total_collected' => Invoice::where('status', 'paid')->sum('grand_total'),
-            'faktur_pajak_requests' => Invoice::where('status', 'paid')->where('faktur_pajak_requested', true)->whereNull('faktur_pajak_path')->count(),
-            ];
-        });
+        $statsQuery = Invoice::query();
+        if ($this->dateFrom) {
+            $statsQuery->whereDate('invoice_date', '>=', $this->dateFrom);
+        }
+        if ($this->dateTo) {
+            $statsQuery->whereDate('invoice_date', '<=', $this->dateTo);
+        }
+
+        $stats = [
+            'total' => (clone $statsQuery)->count(),
+            'unpaid' => (clone $statsQuery)->where('status', 'unpaid')->count(),
+            'paid' => (clone $statsQuery)->where('status', 'paid')->count(),
+            'overdue' => (clone $statsQuery)->where('status', 'unpaid')->where('due_date', '<', now())->count(),
+            'total_receivable' => (clone $statsQuery)->whereIn('status', ['unpaid', 'partial'])->sum('grand_total'),
+            'total_collected' => (clone $statsQuery)->where('status', 'paid')->sum('grand_total'),
+            'faktur_pajak_requests' => (clone $statsQuery)->where('status', 'paid')->where('faktur_pajak_requested', true)->whereNull('faktur_pajak_path')->count(),
+        ];
 
         $customersList = Cache::remember('invoice_customers_list', 300, function() {
             return Customer::orderBy('company_name')->limit(500)->get();

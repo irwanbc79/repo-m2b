@@ -228,4 +228,69 @@ class DateRangeFiltersTest extends TestCase
         // Total pieces harus 15 (bukan 115)
         $this->assertEquals(15, $stats['total_pieces']);
     }
+
+    public function test_invoice_stats_cards_adjust_dynamically_with_date_filter(): void
+    {
+        $this->actingAs($this->admin);
+
+        Invoice::create([
+            'customer_id' => $this->customer->id,
+            'invoice_number' => 'INV-TODAY-02',
+            'invoice_date' => now()->toDateString(),
+            'due_date' => now()->addDays(7)->toDateString(),
+            'status' => 'unpaid',
+            'type' => 'Commercial',
+            'grand_total' => 1000000,
+        ]);
+
+        Invoice::create([
+            'customer_id' => $this->customer->id,
+            'invoice_number' => 'INV-LASTM-02',
+            'invoice_date' => now()->subMonth()->startOfMonth()->addDays(2)->toDateString(),
+            'due_date' => now()->subMonth()->startOfMonth()->addDays(9)->toDateString(),
+            'status' => 'paid',
+            'type' => 'Commercial',
+            'grand_total' => 5000000,
+        ]);
+
+        // Filter last_month harus menghasilkan total 1 dan total_collected 5.000.000
+        Livewire::test(InvoiceManager::class)
+            ->set('datePreset', 'last_month')
+            ->assertViewHas('stats', function ($stats) {
+                return $stats['total'] === 1 && $stats['paid'] === 1 && $stats['total_collected'] == 5000000;
+            });
+    }
+
+    public function test_quotation_stats_cards_adjust_dynamically_with_date_filter(): void
+    {
+        $this->actingAs($this->admin);
+
+        Quotation::create([
+            'customer_id' => $this->customer->id,
+            'quotation_number' => 'QT-TODAY-02',
+            'quotation_date' => now()->toDateString(),
+            'valid_until' => now()->addDays(14)->toDateString(),
+            'service_type' => 'import',
+            'quotation_type' => 'shipment',
+            'status' => 'sent',
+            'grand_total' => 3000000,
+        ]);
+
+        Quotation::create([
+            'customer_id' => $this->customer->id,
+            'quotation_number' => 'QT-LASTM-02',
+            'quotation_date' => now()->subMonth()->startOfMonth()->addDays(5)->toDateString(),
+            'valid_until' => now()->subMonth()->startOfMonth()->addDays(19)->toDateString(),
+            'service_type' => 'export',
+            'quotation_type' => 'shipment',
+            'status' => 'accepted',
+            'grand_total' => 8000000,
+        ]);
+
+        Livewire::test(QuotationManager::class)
+            ->set('datePreset', 'last_month')
+            ->assertViewHas('stats', function ($stats) {
+                return $stats['total'] === 1 && $stats['accepted'] === 1 && $stats['total_value'] == 8000000;
+            });
+    }
 }

@@ -18,6 +18,33 @@
     </div>
     @endif
 
+    @php
+        $presetNames = [
+            'today' => 'Hari Ini',
+            'this_month' => 'Bulan Ini',
+            'last_month' => 'Bulan Lalu',
+            'this_year' => 'Tahun Ini',
+            'last_year' => 'Tahun Lalu',
+            'custom' => 'Custom Range',
+        ];
+        $activeShipmentDateLabel = $presetNames[$datePreset] ?? (($filterDateFrom || $filterDateTo) ? (($filterDateFrom ?: '...') . ' s/d ' . ($filterDateTo ?: '...')) : null);
+    @endphp
+
+    @if($activeShipmentDateLabel)
+    <div class="flex items-center justify-between bg-blue-50 border border-blue-200 rounded-xl px-4 py-2 text-xs text-blue-900 shadow-sm mb-4">
+        <div class="flex items-center gap-2">
+            <span class="flex h-2 w-2 relative">
+                <span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-blue-400 opacity-75"></span>
+                <span class="relative inline-flex rounded-full h-2 w-2 bg-blue-600"></span>
+            </span>
+            <span>Menampilkan data & statistik untuk periode: <strong>{{ $activeShipmentDateLabel }}</strong> @if($filterDateFrom && $filterDateTo)({{ \Carbon\Carbon::parse($filterDateFrom)->translatedFormat('d M Y') }} &minus; {{ \Carbon\Carbon::parse($filterDateTo)->translatedFormat('d M Y') }})@endif</span>
+        </div>
+        <button type="button" wire:click="resetDateFilter" class="text-blue-700 hover:text-red-600 font-bold hover:underline flex items-center gap-1">
+            Lihat Semua Periode &times;
+        </button>
+    </div>
+    @endif
+
     {{-- Stats Cards --}}
     <div class="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-8 gap-4">
         {{-- Total Card --}}

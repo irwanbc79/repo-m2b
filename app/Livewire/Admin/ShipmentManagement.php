@@ -239,23 +239,31 @@ class ShipmentManagement extends Component
 
     public function getStats()
     {
-        return Cache::remember('shipment_stats', 300, function() {
-            $now = Carbon::now();
-            $startOfMonth = $now->copy()->startOfMonth();
-            $activeQuery = Shipment::whereNotIn('status', ['cancel', 'cancelled']);
+        $now = Carbon::now();
+        $startOfMonth = $now->copy()->startOfMonth();
+        $activeQuery = Shipment::whereNotIn('status', ['cancel', 'cancelled']);
+        $baseQuery = Shipment::query();
 
-            return [
-                'total' => (clone $activeQuery)->count(),
-                'pending' => Shipment::where('status', 'pending')->count(),
-                'in_progress' => Shipment::where('status', 'in_progress')->count(),
-                'in_transit' => Shipment::where('status', 'in_transit')->count(),
-                'completed' => Shipment::where('status', 'completed')->count(),
-                'this_month' => (clone $activeQuery)->where('created_at', '>=', $startOfMonth)->count(),
-                'total_weight' => (clone $activeQuery)->sum('weight'),
-                'total_volume' => (clone $activeQuery)->sum('volume'),
-                'total_pieces' => (clone $activeQuery)->sum('pieces'),
-            ];
-        });
+        if ($this->filterDateFrom) {
+            $activeQuery->whereDate('created_at', '>=', $this->filterDateFrom);
+            $baseQuery->whereDate('created_at', '>=', $this->filterDateFrom);
+        }
+        if ($this->filterDateTo) {
+            $activeQuery->whereDate('created_at', '<=', $this->filterDateTo);
+            $baseQuery->whereDate('created_at', '<=', $this->filterDateTo);
+        }
+
+        return [
+            'total' => (clone $activeQuery)->count(),
+            'pending' => (clone $baseQuery)->where('status', 'pending')->count(),
+            'in_progress' => (clone $baseQuery)->where('status', 'in_progress')->count(),
+            'in_transit' => (clone $baseQuery)->where('status', 'in_transit')->count(),
+            'completed' => (clone $baseQuery)->where('status', 'completed')->count(),
+            'this_month' => Shipment::whereNotIn('status', ['cancel', 'cancelled'])->where('created_at', '>=', $startOfMonth)->count(),
+            'total_weight' => (clone $activeQuery)->sum('weight'),
+            'total_volume' => (clone $activeQuery)->sum('volume'),
+            'total_pieces' => (clone $activeQuery)->sum('pieces'),
+        ];
     }
 
     public function getCustomersList()
