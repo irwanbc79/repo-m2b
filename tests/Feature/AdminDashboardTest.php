@@ -163,4 +163,31 @@ class AdminDashboardTest extends TestCase
         $this->assertSame('Rp 1.3M', NumberHelper::formatCurrencyCompact(1_300_000_000));
         $this->assertSame('Rp 15rb', NumberHelper::formatCurrencyCompact(15_000));
     }
+
+    public function test_shipment_cancel_tidak_dihitung_dalam_statistik_dan_grafik(): void
+    {
+        // 2 shipment aktif, 1 shipment cancel di bulan ini
+        $this->buatShipment(['created_at' => now(), 'status' => 'in_progress']);
+        $this->buatShipment(['created_at' => now(), 'status' => 'completed']);
+        $this->buatShipment(['created_at' => now(), 'status' => 'cancel']);
+
+        $component = Livewire::actingAs($this->admin)->test(Dashboard::class)
+            ->set('period', 'month');
+
+        $mainStats = $component->viewData('mainStats');
+        $chartData = $component->viewData('chartData');
+        $todayStats = $component->viewData('todayStats');
+
+        // Total dan current shipments harus 2 (tidak termasuk cancel)
+        $this->assertSame(2, $mainStats['current_shipments']);
+        $this->assertSame(2, $mainStats['total_shipments']);
+
+        // Data grafik bulan ini harus 2
+        $currentMonthIndex = now()->month - 1;
+        $this->assertSame(2, $chartData['shipments'][$currentMonthIndex]);
+
+        // Today stats harus 2
+        $this->assertSame(2, $todayStats['shipments_today']);
+    }
 }
+

@@ -173,7 +173,9 @@ class Dashboard extends Component
             $startDate = $dateRange["start"];
             $endDate = $dateRange["end"];
 
-            $currentShipments = Shipment::whereBetween('created_at', [$startDate, $endDate])->count();
+            $currentShipments = Shipment::whereNotIn('status', ['cancel', 'cancelled'])
+                ->whereBetween('created_at', [$startDate, $endDate])
+                ->count();
             $currentRevenue = Invoice::whereBetween('invoice_date', [$startDate, $endDate])
                 ->where('status', '!=', 'cancelled')
                 ->sum('grand_total');
@@ -189,7 +191,9 @@ class Dashboard extends Component
             };
             $prevEnd = $startDate->copy()->subDay()->endOfDay();
 
-            $prevShipments = Shipment::whereBetween('created_at', [$prevStart, $prevEnd])->count();
+            $prevShipments = Shipment::whereNotIn('status', ['cancel', 'cancelled'])
+                ->whereBetween('created_at', [$prevStart, $prevEnd])
+                ->count();
             $prevRevenue = Invoice::whereBetween('invoice_date', [$prevStart, $prevEnd])
                 ->where('status', '!=', 'cancelled')
                 ->sum('grand_total');
@@ -207,7 +211,7 @@ class Dashboard extends Component
                 'new_customers'       => Customer::whereBetween('created_at', [$startDate, $endDate])->count(),
 
                 // ── Persediaan: keadaan saat ini, tidak ada kaitan periode ──
-                'total_shipments'     => Shipment::count(),
+                'total_shipments'     => Shipment::whereNotIn('status', ['cancel', 'cancelled'])->count(),
                 'active_shipments'    => Shipment::whereIn('status', ['pending', 'document_collection', 'in_progress', 'in_transit'])->count(),
                 'completed_shipments' => Shipment::where('status', 'completed')->count(),
                 'total_customers'     => Customer::whereHas('user', fn ($q) => $q->where('role', 'customer'))->count(),
@@ -367,7 +371,8 @@ class Dashboard extends Component
         $awal = Carbon::create($year, 1, 1)->startOfDay();
         $akhir = now()->endOfMonth();
 
-        $shipments = Shipment::whereBetween('created_at', [$awal, $akhir])
+        $shipments = Shipment::whereNotIn('status', ['cancel', 'cancelled'])
+            ->whereBetween('created_at', [$awal, $akhir])
             ->selectRaw($this->monthExpr('created_at') . ' as month, COUNT(*) as count')
             ->groupBy('month')
             ->pluck('count', 'month')
@@ -416,7 +421,7 @@ class Dashboard extends Component
             'dashboard_top_customers_v' . $this->statsVersion() . '_' . $this->period . '_' . $this->startDate . '_' . $this->endDate,
             300,
             fn () => Customer::query()
-                ->withCount(['shipments' => fn ($q) => $q->whereBetween('created_at', [$range['start'], $range['end']])])
+                ->withCount(['shipments' => fn ($q) => $q->whereNotIn('status', ['cancel', 'cancelled'])->whereBetween('created_at', [$range['start'], $range['end']])])
                 ->withSum(
                     ['invoices' => fn ($q) => $q->where('status', '!=', 'cancelled')
                         ->whereBetween('invoice_date', [$range['start'], $range['end']])],
@@ -613,7 +618,7 @@ class Dashboard extends Component
     public function getTodayStats()
     {
         return [
-            'shipments_today' => Shipment::whereDate('created_at', today())->count(),
+            'shipments_today' => Shipment::whereNotIn('status', ['cancel', 'cancelled'])->whereDate('created_at', today())->count(),
             'invoices_today' => Invoice::whereDate('invoice_date', today())->count(),
             'payments_today' => Invoice::whereDate('payment_date', today())->where('status', 'paid')->count(),
         ];
