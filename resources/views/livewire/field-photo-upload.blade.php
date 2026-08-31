@@ -42,32 +42,49 @@
                         
                         {{-- Dropdown Results --}}
                         @if($showDropdown && count($searchResults) > 0 && !$shipment)
-                        <div class="absolute z-50 w-full mt-1 bg-white border border-gray-200 rounded-lg shadow-lg max-h-72 overflow-y-auto">
+                        <div class="absolute z-50 w-full mt-1 bg-white border border-gray-200 rounded-xl shadow-xl max-h-80 overflow-y-auto divide-y divide-gray-100">
                             @foreach($searchResults as $result)
+                            @php
+                                $isActive = !in_array(strtolower($result->status ?? ''), ['delivered', 'completed', 'cancelled', 'cancel']);
+                                $isOld = $result->created_at ? $result->created_at->diffInDays(now()) > 30 : false;
+                            @endphp
                             <button type="button"
                                     wire:click="selectShipment({{ $result->id }})"
-                                    class="w-full px-4 py-3 text-left hover:bg-blue-50 focus:bg-blue-50 focus:outline-none border-b border-gray-100 last:border-b-0 transition">
-                                <div class="flex items-start justify-between gap-2">
-                                    <div class="min-w-0 flex-1">
-                                        <p class="font-semibold text-gray-800 truncate">{{ $result->awb_number ?: $result->bl_number ?: 'ID: '.$result->id }}</p>
-                                        <p class="text-sm text-gray-500 truncate">{{ $result->customer->company_name ?? 'N/A' }}</p>
-                                        <div class="flex items-center gap-2 mt-1">
-                                            <span class="text-xs px-2 py-0.5 rounded-full {{ $result->shipment_type === 'import' ? 'bg-blue-100 text-blue-700' : 'bg-green-100 text-green-700' }}">
-                                                {{ ucfirst($result->shipment_type ?? 'N/A') }}
-                                            </span>
-                                            <span class="text-xs text-gray-400">{{ $result->origin }} → {{ $result->destination }}</span>
-                                        </div>
+                                    class="w-full px-4 py-3 text-left hover:bg-indigo-50 focus:bg-indigo-50 focus:outline-none transition flex items-start justify-between gap-3">
+                                <div class="min-w-0 flex-1">
+                                    <div class="flex items-center gap-2">
+                                        <p class="font-bold text-gray-900 truncate">{{ $result->awb_number ?: $result->bl_number ?: 'ID: '.$result->id }}</p>
+                                        @if($isActive)
+                                            <span class="text-[10px] px-2 py-0.5 rounded-full font-bold bg-green-100 text-green-700">🟢 AKTIF</span>
+                                        @else
+                                            <span class="text-[10px] px-2 py-0.5 rounded-full font-bold bg-gray-100 text-gray-500">⚪ {{ strtoupper($result->status ?? 'SELESAI') }}</span>
+                                        @endif
                                     </div>
-                                    <span class="text-xs text-gray-400 whitespace-nowrap">
-                                        {{ $result->created_at->format('d/m/Y') }}
+                                    <p class="text-xs text-gray-600 truncate mt-0.5 font-medium">{{ $result->customer->company_name ?? 'N/A' }}</p>
+                                    <div class="flex items-center gap-2 mt-1.5 flex-wrap">
+                                        <span class="text-[10px] px-2 py-0.5 rounded-full font-medium {{ $result->shipment_type === 'import' ? 'bg-blue-100 text-blue-700' : 'bg-orange-100 text-orange-700' }}">
+                                            {{ ucfirst($result->shipment_type ?? 'N/A') }}
+                                        </span>
+                                        <span class="text-[10px] text-gray-400">{{ $result->origin }} → {{ $result->destination }}</span>
+                                    </div>
+                                </div>
+                                <div class="text-right flex flex-col items-end">
+                                    <span class="text-xs text-gray-500 font-medium">
+                                        {{ $result->created_at ? $result->created_at->format('d/m/Y') : '-' }}
                                     </span>
+                                    <span class="text-[10px] text-gray-400">
+                                        {{ $result->created_at ? $result->created_at->diffForHumans() : '' }}
+                                    </span>
+                                    @if($isOld && !$isActive)
+                                        <span class="text-[9px] text-amber-600 font-bold mt-0.5">⚠️ Data Lama</span>
+                                    @endif
                                 </div>
                             </button>
                             @endforeach
                         </div>
                         @elseif($showDropdown && strlen($searchQuery) >= 2 && count($searchResults) == 0 && !$shipment)
-                        <div wire:loading.remove wire:target="searchQuery" class="absolute z-50 w-full mt-1 bg-white border border-gray-200 rounded-lg shadow-lg p-4 text-center text-gray-500">
-                            <p>Tidak ditemukan shipment untuk "{{ $searchQuery }}"</p>
+                        <div wire:loading.remove wire:target="searchQuery" class="absolute z-50 w-full mt-1 bg-white border border-gray-200 rounded-xl shadow-xl p-4 text-center text-gray-500">
+                            <p class="text-sm">Tidak ditemukan shipment untuk "{{ $searchQuery }}"</p>
                         </div>
                         @endif
                     </div>
@@ -86,35 +103,53 @@
             
             {{-- Selected Shipment Info --}}
             @if($shipment)
-            <div class="mt-3 p-4 bg-green-50 rounded-lg border border-green-200">
+            @php
+                $isShipmentOld = $shipment->created_at ? $shipment->created_at->diffInDays(now()) > 30 : false;
+                $isShipmentCompleted = in_array(strtolower($shipment->status ?? ''), ['delivered', 'completed', 'cancelled', 'cancel']);
+            @endphp
+            <div class="mt-3 p-4 bg-green-50 rounded-xl border border-green-200">
                 <div class="flex items-start justify-between gap-3">
                     <div class="flex-1 min-w-0">
-                        <p class="font-semibold text-green-800 flex items-center gap-2">
+                        <div class="flex items-center gap-2">
                             <span class="text-lg">✅</span>
-                            <span class="truncate">{{ $shipment->awb_number ?: $shipment->bl_number ?: 'Shipment #'.$shipment->id }}</span>
-                        </p>
-                        <p class="text-sm text-green-600 truncate mt-0.5">
+                            <span class="font-bold text-green-900 truncate text-base">{{ $shipment->awb_number ?: $shipment->bl_number ?: 'Shipment #'.$shipment->id }}</span>
+                            @if(!$isShipmentCompleted)
+                                <span class="text-[10px] px-2 py-0.5 rounded-full font-bold bg-green-200 text-green-800">🟢 AKTIF</span>
+                            @else
+                                <span class="text-[10px] px-2 py-0.5 rounded-full font-bold bg-gray-200 text-gray-700">⚪ {{ strtoupper($shipment->status ?? 'SELESAI') }}</span>
+                            @endif
+                        </div>
+                        <p class="text-sm text-green-800 font-semibold truncate mt-1">
                             {{ $shipment->customer->company_name ?? 'N/A' }}
                         </p>
-                        <div class="flex items-center gap-2 mt-1 flex-wrap">
+                        <div class="flex items-center gap-2 mt-1.5 flex-wrap">
                             <span class="text-xs px-2 py-0.5 rounded-full {{ $shipment->shipment_type === 'import' ? 'bg-blue-100 text-blue-700' : 'bg-green-100 text-green-700' }}">
                                 {{ ucfirst($shipment->shipment_type ?? 'N/A') }}
                             </span>
-                            <span class="text-xs text-green-600">{{ $shipment->origin }} → {{ $shipment->destination }}</span>
+                            <span class="text-xs text-green-700">{{ $shipment->origin }} → {{ $shipment->destination }}</span>
+                            <span class="text-xs text-green-600">· Tgl: {{ $shipment->created_at ? $shipment->created_at->format('d M Y') : '-' }}</span>
                         </div>
                     </div>
-                    <div class="flex flex-col gap-1">
+                    <div class="flex flex-col gap-1.5 text-right">
                         <a href="{{ route('admin.field-docs.gallery', $shipment->awb_number ?: $shipment->id) }}" 
-                           class="text-xs text-green-700 hover:underline whitespace-nowrap">
+                           class="text-xs font-semibold text-green-700 hover:underline whitespace-nowrap">
                             Lihat Gallery →
                         </a>
                         <button type="button" 
                                 wire:click="clearShipment"
-                                class="text-xs text-red-600 hover:underline whitespace-nowrap text-left">
+                                class="text-xs text-red-600 hover:underline whitespace-nowrap">
                             Ganti Shipment
                         </button>
                     </div>
                 </div>
+
+                {{-- Warning jika memilih shipment yang sudah lama / selesai --}}
+                @if($isShipmentOld || $isShipmentCompleted)
+                <div class="mt-3 p-2.5 bg-amber-50 border border-amber-200 rounded-lg flex items-start gap-2 text-amber-800 text-xs">
+                    <span class="text-sm">⚠️</span>
+                    <p><strong>Perhatian:</strong> Shipment ini dibuat pada {{ $shipment->created_at ? $shipment->created_at->format('d M Y') : '-' }} (Status: {{ ucfirst($shipment->status ?? 'Selesai') }}). Pastikan ini adalah shipment yang tepat sebelum mengupload foto dokumentasi.</p>
+                </div>
+                @endif
             </div>
             @endif
         </div>

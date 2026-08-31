@@ -698,6 +698,7 @@ Route::middleware(['auth', 'field_uploader'])->prefix('field')->name('field.')->
 Route::middleware(['auth', 'admin'])->prefix('admin/field-docs')->name('admin.field-docs.')->group(function () {
     Route::delete('/photo/{photo}', [App\Http\Controllers\Admin\FieldDocController::class , 'deletePhoto'])->name('delete-photo');
     Route::post('/photos/bulk-delete', [App\Http\Controllers\Admin\FieldDocController::class , 'bulkDeletePhotos'])->name('bulk-delete-photos');
+    Route::post('/photos/reassign', [App\Http\Controllers\Admin\FieldDocController::class , 'reassignPhotos'])->name('reassign-photos');
     Route::get('/download-zip/{shipment}', [App\Http\Controllers\Admin\FieldDocController::class , 'downloadZip'])->name('download-zip');
 });
 

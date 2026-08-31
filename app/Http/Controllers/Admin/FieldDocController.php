@@ -256,6 +256,63 @@ class FieldDocController extends Controller
     }
 
     /**
+     * Reassign / Move Photos to Another Shipment
+     */
+    public function reassignPhotos(Request $request)
+    {
+        try {
+            if (!$this->canDeletePhotos()) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Anda tidak memiliki izin untuk memindahkan foto'
+                ], 403);
+            }
+
+            $photoIds = $request->input('photo_ids', []);
+            $targetShipmentId = $request->input('target_shipment_id');
+
+            if (empty($photoIds) || !$targetShipmentId) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Foto dan shipment tujuan wajib dipilih'
+                ], 400);
+            }
+
+            $targetShipment = Shipment::with('customer')->find($targetShipmentId);
+            if (!$targetShipment) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Shipment tujuan tidak ditemukan'
+                ], 404);
+            }
+
+            $targetLabel = $targetShipment->awb_number ?: $targetShipment->bl_number ?: '#' . $targetShipment->id;
+            $updatedCount = FieldPhoto::whereIn('id', $photoIds)->update([
+                'shipment_id' => $targetShipment->id,
+            ]);
+
+            Log::info('Photos reassigned', [
+                'count' => $updatedCount,
+                'target_shipment_id' => $targetShipment->id,
+                'user' => auth()->id()
+            ]);
+
+            return response()->json([
+                'success' => true,
+                'message' => "{$updatedCount} foto berhasil dipindahkan ke shipment {$targetLabel} (" . ($targetShipment->customer->company_name ?? '-') . ")",
+                'target_url' => route('admin.field-docs.gallery', $targetShipment->awb_number ?: $targetShipment->id),
+            ]);
+
+        } catch (\Exception $e) {
+            Log::error('Reassign photos error', ['error' => $e->getMessage()]);
+            return response()->json([
+                'success' => false,
+                'message' => 'Gagal memindahkan foto: ' . $e->getMessage()
+            ], 500);
+        }
+    }
+
+    /**
      * Check if current user can delete photos
      */
     protected function canDeletePhotos(): bool
@@ -325,7 +382,7 @@ class FieldDocController extends Controller
      */
     public function searchShipments(Request $request)
     {
-        $query = $request->get('q', '');
+        $query = trim($request->get('q', ''));
 
         if (strlen($query) < 2) {
             return response()->json([]);
@@ -339,16 +396,22 @@ class FieldDocController extends Controller
                       $cq->where('company_name', 'LIKE', "%{$query}%");
                   });
             })
+            ->orderByRaw("CASE WHEN status NOT IN ('delivered', 'completed', 'cancelled', 'cancel') THEN 0 ELSE 1 END")
             ->orderBy('created_at', 'desc')
-            ->limit(10)
+            ->limit(15)
             ->get();
 
         return response()->json($shipments->map(function($s) {
+            $isActive = !in_array(strtolower($s->status ?? ''), ['delivered', 'completed', 'cancelled', 'cancel']);
             return [
                 'id' => $s->id,
                 'awb_number' => $s->awb_number,
                 'bl_number' => $s->bl_number,
+                'display' => $s->awb_number ?: $s->bl_number ?: 'ID #' . $s->id,
                 'customer_name' => $s->customer->company_name ?? 'N/A',
+                'status' => $s->status ?? 'Draft',
+                'is_active' => $isActive,
+                'created_at_formatted' => $s->created_at ? $s->created_at->format('d M Y') : '-',
             ];
         }));
     }

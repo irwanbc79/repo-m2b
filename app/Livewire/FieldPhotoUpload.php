@@ -96,8 +96,9 @@ class FieldPhotoUpload extends Component
                           $cq->where('company_name', 'LIKE', "%{$query}%");
                       });
                 })
+                ->orderByRaw("CASE WHEN status NOT IN ('delivered', 'completed', 'cancelled', 'cancel') THEN 0 ELSE 1 END")
                 ->orderBy('created_at', 'desc')
-                ->limit(10)
+                ->limit(15)
                 ->get();
             $this->showDropdown = true;
         } else {

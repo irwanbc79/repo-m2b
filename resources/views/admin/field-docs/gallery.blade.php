@@ -148,6 +148,10 @@
                 📱 QR Code
             </a>
             @if($canDelete ?? false)
+            <button type="button" id="bulk-reassign-btn" onclick="openReassignModal()"
+                    class="hidden items-center gap-2 px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg transition shadow-sm">
+                🔄 <span id="bulk-reassign-count">Pindahkan (0)</span>
+            </button>
             <button type="button" id="bulk-delete-btn" onclick="bulkDeletePhotos()"
                     class="hidden items-center gap-2 px-4 py-2 bg-red-600 hover:bg-red-700 text-white rounded-lg">
                 🗑️ <span id="bulk-delete-count">Hapus (0)</span>
@@ -383,14 +387,22 @@
                             @endif
                         </td>
                     
-                    <td class="px-4 py-3 text-center">
+                    <td class="px-4 py-3 text-center whitespace-nowrap">
                         @if($canDelete ?? false)
-                        <button type="button" 
-                                onclick="event.stopPropagation(); deletePhoto({{ $photo->id }})"
-                                class="btn-delete inline-flex items-center justify-center w-8 h-8 bg-red-500 hover:bg-red-600 text-white rounded-full shadow transition-all hover:scale-110"
-                                title="Hapus foto">
-                            🗑️
-                        </button>
+                        <div class="inline-flex items-center gap-1.5">
+                            <button type="button" 
+                                    onclick="event.stopPropagation(); openSingleReassignModal({{ $photo->id }})"
+                                    class="inline-flex items-center justify-center w-8 h-8 bg-indigo-50 hover:bg-indigo-600 text-indigo-600 hover:text-white rounded-full shadow transition-all hover:scale-110"
+                                    title="Pindahkan foto ke shipment lain">
+                                🔄
+                            </button>
+                            <button type="button" 
+                                    onclick="event.stopPropagation(); deletePhoto({{ $photo->id }})"
+                                    class="btn-delete inline-flex items-center justify-center w-8 h-8 bg-red-500 hover:bg-red-600 text-white rounded-full shadow transition-all hover:scale-110"
+                                    title="Hapus foto">
+                                🗑️
+                            </button>
+                        </div>
                         @else
                         <span class="text-gray-400">-</span>
                         @endif
@@ -444,6 +456,63 @@
                     Ya, Hapus
                 </button>
             </div>
+        </div>
+    </div>
+</div>
+
+{{-- Reassign Modal --}}
+<div id="reassign-modal" class="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50 hidden p-4">
+    <div class="bg-white rounded-2xl p-6 max-w-lg w-full shadow-2xl border border-gray-100 animate-fade-in-up">
+        <div class="flex justify-between items-center pb-4 border-b border-gray-100">
+            <div class="flex items-center gap-2.5">
+                <span class="text-2xl">🔄</span>
+                <div>
+                    <h3 class="text-lg font-bold text-gray-800">Pindahkan Foto ke Shipment Lain</h3>
+                    <p class="text-xs text-gray-500" id="reassign-modal-subtitle">Pindahkan foto yang salah masuk ke nomor shipment yang benar</p>
+                </div>
+            </div>
+            <button onclick="closeReassignModal()" class="text-gray-400 hover:text-gray-600 text-2xl leading-none">&times;</button>
+        </div>
+
+        <div class="py-4 space-y-4">
+            <div>
+                <label class="block text-xs font-bold text-gray-600 uppercase tracking-wider mb-2">Cari Shipment Tujuan (No. AWB / BL / Customer)</label>
+                <div class="relative">
+                    <input type="text" id="reassign-search-input" oninput="debounceSearchShipment(this.value)"
+                           placeholder="Ketik minimal 2 karakter, contoh: EXP, BL, atau nama PT..."
+                           class="w-full px-4 py-2.5 border border-gray-300 rounded-xl text-sm focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500">
+                    <div id="reassign-search-spinner" class="hidden absolute right-3 top-3">
+                        <svg class="animate-spin h-4 w-4 text-indigo-500" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg>
+                    </div>
+                </div>
+            </div>
+
+            {{-- Search results list --}}
+            <div id="reassign-results-container" class="max-h-56 overflow-y-auto space-y-1.5 border border-gray-100 rounded-xl p-2 bg-gray-50/50">
+                <p class="text-xs text-gray-400 text-center py-4">Ketik nama customer atau nomor shipment di atas untuk mencari...</p>
+            </div>
+
+            {{-- Selected Shipment Target Card --}}
+            <div id="reassign-selected-card" class="hidden p-3.5 bg-indigo-50 border border-indigo-200 rounded-xl">
+                <div class="flex items-center justify-between">
+                    <div>
+                        <span class="text-[10px] font-bold text-indigo-500 uppercase tracking-wider">Shipment Tujuan Terpilih:</span>
+                        <div class="font-bold text-indigo-900 text-sm" id="reassign-selected-title">-</div>
+                        <div class="text-xs text-indigo-700" id="reassign-selected-subtitle">-</div>
+                    </div>
+                    <span class="px-2 py-1 bg-indigo-200 text-indigo-800 text-xs font-bold rounded-lg">Target</span>
+                </div>
+            </div>
+        </div>
+
+        <div class="flex justify-end gap-3 pt-4 border-t border-gray-100">
+            <button type="button" onclick="closeReassignModal()" class="px-4 py-2.5 bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-xl text-sm font-semibold transition">
+                Batal
+            </button>
+            <button type="button" id="confirm-reassign-btn" onclick="executeReassign()" disabled
+                    class="px-5 py-2.5 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl text-sm font-bold shadow-md transition disabled:opacity-40 disabled:cursor-not-allowed">
+                Pindahkan Foto Sekarang
+            </button>
         </div>
     </div>
 </div>
@@ -752,12 +821,15 @@ function toggleSelectAll() {
 function updateSelectedCount() {
     const selected = document.querySelectorAll(".photo-select-checkbox:checked").length;
     const bulkDeleteBtn = document.getElementById("bulk-delete-btn");
+    const bulkReassignBtn = document.getElementById("bulk-reassign-btn");
     const bulkDownloadBtn = document.getElementById("btn-download-selected");
     const selectedCountEl = document.getElementById("selected-count");
     const bulkCountEl = document.getElementById("bulk-delete-count");
+    const bulkReassignCountEl = document.getElementById("bulk-reassign-count");
     
     // Update count displays
     if (bulkCountEl) bulkCountEl.textContent = "Hapus (" + selected + ")";
+    if (bulkReassignCountEl) bulkReassignCountEl.textContent = "Pindahkan (" + selected + ")";
     if (selectedCountEl) {
         selectedCountEl.textContent = selected + " dipilih";
         selectedCountEl.classList.toggle("hidden", selected === 0);
@@ -766,9 +838,11 @@ function updateSelectedCount() {
     // Show/hide bulk action buttons
     if (selected > 0) {
         if (bulkDeleteBtn) { bulkDeleteBtn.classList.remove("hidden"); bulkDeleteBtn.classList.add("inline-flex"); }
+        if (bulkReassignBtn) { bulkReassignBtn.classList.remove("hidden"); bulkReassignBtn.classList.add("inline-flex"); }
         if (bulkDownloadBtn) { bulkDownloadBtn.classList.remove("hidden"); bulkDownloadBtn.classList.add("inline-flex"); }
     } else {
         if (bulkDeleteBtn) { bulkDeleteBtn.classList.add("hidden"); bulkDeleteBtn.classList.remove("inline-flex"); }
+        if (bulkReassignBtn) { bulkReassignBtn.classList.add("hidden"); bulkReassignBtn.classList.remove("inline-flex"); }
         if (bulkDownloadBtn) { bulkDownloadBtn.classList.add("hidden"); bulkDownloadBtn.classList.remove("inline-flex"); }
     }
     
@@ -776,6 +850,147 @@ function updateSelectedCount() {
     document.querySelectorAll(".photo-select-checkbox").forEach(cb => {
         const row = cb.closest("tr");
         if (row) row.classList.toggle("bg-blue-50", cb.checked);
+    });
+}
+
+// ========== REASSIGN / MOVE PHOTOS FUNCTIONS ==========
+let reassignPhotoIds = [];
+let selectedTargetShipmentId = null;
+let searchDebounceTimer = null;
+
+function openReassignModal() {
+    const selectedIds = Array.from(document.querySelectorAll('.photo-select-checkbox:checked')).map(cb => cb.value);
+    if (selectedIds.length === 0) {
+        showToast('error', 'Pilih minimal 1 foto untuk dipindahkan');
+        return;
+    }
+    reassignPhotoIds = selectedIds;
+    document.getElementById('reassign-modal-subtitle').textContent = `Memindahkan ${selectedIds.length} foto ke shipment lain`;
+    resetReassignForm();
+    document.getElementById('reassign-modal').classList.remove('hidden');
+}
+
+function openSingleReassignModal(photoId) {
+    reassignPhotoIds = [photoId];
+    document.getElementById('reassign-modal-subtitle').textContent = `Memindahkan 1 foto ke shipment lain`;
+    resetReassignForm();
+    document.getElementById('reassign-modal').classList.remove('hidden');
+}
+
+function closeReassignModal() {
+    document.getElementById('reassign-modal').classList.add('hidden');
+    reassignPhotoIds = [];
+    resetReassignForm();
+}
+
+function resetReassignForm() {
+    selectedTargetShipmentId = null;
+    document.getElementById('reassign-search-input').value = '';
+    document.getElementById('reassign-results-container').innerHTML = '<p class="text-xs text-gray-400 text-center py-4">Ketik nama customer atau nomor shipment di atas untuk mencari...</p>';
+    document.getElementById('reassign-selected-card').classList.add('hidden');
+    document.getElementById('confirm-reassign-btn').disabled = true;
+}
+
+function debounceSearchShipment(query) {
+    clearTimeout(searchDebounceTimer);
+    const spinner = document.getElementById('reassign-search-spinner');
+    const container = document.getElementById('reassign-results-container');
+    
+    if (query.trim().length < 2) {
+        container.innerHTML = '<p class="text-xs text-gray-400 text-center py-4">Ketik minimal 2 karakter untuk mencari...</p>';
+        return;
+    }
+    
+    spinner.classList.remove('hidden');
+    searchDebounceTimer = setTimeout(() => {
+        fetch(`/admin/field-docs/api/shipments/search?q=${encodeURIComponent(query.trim())}`)
+            .then(res => res.json())
+            .then(data => {
+                spinner.classList.add('hidden');
+                const shipments = Array.isArray(data) ? data : (data.data || []);
+                if (shipments.length === 0) {
+                    container.innerHTML = `<p class="text-xs text-gray-400 text-center py-4">Tidak ada shipment ditemukan untuk "${query}"</p>`;
+                    return;
+                }
+                
+                let html = '';
+                shipments.forEach(s => {
+                    const label = s.awb_number || s.bl_number || ('#' + s.id);
+                    const customer = s.customer_name || s.customer || '-';
+                    const statusBadge = s.is_active 
+                        ? '<span class="px-2 py-0.5 text-[10px] font-bold bg-green-100 text-green-700 rounded-full">🟢 Aktif</span>'
+                        : '<span class="px-2 py-0.5 text-[10px] font-bold bg-gray-100 text-gray-500 rounded-full">⚪ ' + (s.status || 'Selesai') + '</span>';
+                    const dateStr = s.created_at_formatted ? `<span class="text-[10px] text-gray-400">${s.created_at_formatted}</span>` : '';
+                    
+                    html += `
+                        <div onclick="selectTargetShipment(${s.id}, '${label.replace(/'/g, "\\'")}', '${customer.replace(/'/g, "\\'")}')"
+                             class="p-2.5 bg-white hover:bg-indigo-50 border border-gray-100 hover:border-indigo-200 rounded-xl cursor-pointer transition flex items-center justify-between">
+                            <div class="min-w-0 flex-1">
+                                <div class="font-bold text-gray-800 text-sm flex items-center gap-2">
+                                    <span>${label}</span>
+                                    ${statusBadge}
+                                </div>
+                                <div class="text-xs text-gray-500 truncate">${customer}</div>
+                            </div>
+                            ${dateStr}
+                        </div>
+                    `;
+                });
+                container.innerHTML = html;
+            })
+            .catch(err => {
+                spinner.classList.add('hidden');
+                container.innerHTML = '<p class="text-xs text-red-500 text-center py-4">Gagal memuat daftar shipment.</p>';
+            });
+    }, 300);
+}
+
+function selectTargetShipment(id, label, customer) {
+    selectedTargetShipmentId = id;
+    document.getElementById('reassign-selected-title').textContent = label;
+    document.getElementById('reassign-selected-subtitle').textContent = customer;
+    document.getElementById('reassign-selected-card').classList.remove('hidden');
+    document.getElementById('confirm-reassign-btn').disabled = false;
+}
+
+function executeReassign() {
+    if (!selectedTargetShipmentId || reassignPhotoIds.length === 0) return;
+    
+    const btn = document.getElementById('confirm-reassign-btn');
+    btn.disabled = true;
+    btn.textContent = 'Memindahkan...';
+    
+    const csrfToken = document.querySelector('meta[name="csrf-token"]')?.content;
+    
+    fetch('/admin/field-docs/photos/reassign', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+            'X-CSRF-TOKEN': csrfToken,
+            'Accept': 'application/json'
+        },
+        body: JSON.stringify({
+            photo_ids: reassignPhotoIds,
+            target_shipment_id: selectedTargetShipmentId
+        })
+    })
+    .then(res => res.json())
+    .then(data => {
+        if (data.success) {
+            showToast('success', data.message);
+            setTimeout(() => {
+                window.location.reload();
+            }, 1200);
+        } else {
+            showToast('error', data.message || 'Gagal memindahkan foto');
+            btn.disabled = false;
+            btn.textContent = 'Pindahkan Foto Sekarang';
+        }
+    })
+    .catch(err => {
+        showToast('error', 'Terjadi kesalahan jaringan');
+        btn.disabled = false;
+        btn.textContent = 'Pindahkan Foto Sekarang';
     });
 }
 function bulkDeletePhotos() {
