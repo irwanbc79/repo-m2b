@@ -111,6 +111,40 @@
                     <option value="consultation">Consultation</option>
                     <option value="reimbursement">Reimbursement</option>
                 </select>
+
+                {{-- Filter Rentang Tanggal --}}
+                <div class="flex items-center gap-1.5 bg-white border border-gray-300 rounded-lg px-2.5 py-1 shadow-sm">
+                    <svg class="w-4 h-4 text-gray-500 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"/></svg>
+                    <select wire:model.live="datePreset" class="border-0 text-sm py-1 pl-1 pr-6 focus:ring-0 text-gray-700 font-medium bg-transparent cursor-pointer">
+                        <option value="">📅 Semua Tanggal</option>
+                        <option value="today">⚡ Hari Ini</option>
+                        <option value="this_month">🗓️ Bulan Ini</option>
+                        <option value="last_month">🗓️ Bulan Lalu</option>
+                        <option value="this_year">📆 Tahun Ini</option>
+                        <option value="last_year">📆 Tahun Lalu</option>
+                        <option value="custom">🎯 Custom Range...</option>
+                    </select>
+
+                    @if($datePreset === 'custom' || ($dateFrom && !in_array($datePreset, ['today', 'this_month', 'last_month', 'this_year', 'last_year'])))
+                    <div class="flex items-center gap-1 pl-2 border-l border-gray-200">
+                        <input type="date" wire:model.live="dateFrom" class="border border-gray-200 rounded px-2 py-0.5 text-xs text-gray-700 focus:ring-1 focus:ring-blue-500" title="Dari Tanggal">
+                        <span class="text-gray-400 text-xs">-</span>
+                        <input type="date" wire:model.live="dateTo" class="border border-gray-200 rounded px-2 py-0.5 text-xs text-gray-700 focus:ring-1 focus:ring-blue-500" title="Sampai Tanggal">
+                    </div>
+                    @endif
+
+                    @if($datePreset || $dateFrom || $dateTo)
+                    <button type="button" wire:click="resetDateFilter" class="text-gray-400 hover:text-red-600 p-0.5 rounded-full" title="Hapus filter tanggal">
+                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
+                    </button>
+                    @endif
+                </div>
+
+                @if($search || $filterStatus || $filterType || $filterCategory || $datePreset || $dateFrom || $dateTo)
+                <button type="button" wire:click="resetAllFilters" class="text-xs font-semibold text-gray-500 hover:text-red-600 underline underline-offset-2">
+                    Bersihkan
+                </button>
+                @endif
             </div>
             
             @unless(auth()->user()->hasRole('auditor'))

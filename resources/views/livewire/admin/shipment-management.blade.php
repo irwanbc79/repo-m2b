@@ -110,13 +110,23 @@
                      chip — supaya tidak ada yang bingung "kenapa datanya cuma
                      sedikit" gara-gara saringan tersembunyi. --}}
                 @php
+                    $dateLabel = [
+                        'today' => 'Hari Ini',
+                        'this_month' => 'Bulan Ini',
+                        'last_month' => 'Bulan Lalu',
+                        'this_year' => 'Tahun Ini',
+                        'last_year' => 'Tahun Lalu',
+                        'custom' => ($filterDateFrom || $filterDateTo) ? (($filterDateFrom ?: '...') . ' s/d ' . ($filterDateTo ?: '...')) : 'Custom'
+                    ][$datePreset] ?? (($filterDateFrom || $filterDateTo) ? (($filterDateFrom ?: '...') . ' s/d ' . ($filterDateTo ?: '...')) : null);
+
                     $filterAktif = collect([
                         'filterStatus' => ['Status', ['pending' => 'Pending', 'in_progress' => 'In Progress', 'in_transit' => 'In Transit', 'completed' => 'Completed', 'cancel' => 'Cancelled'][$filterStatus] ?? $filterStatus],
                         'filterShipmentType' => ['Moda', ['air' => 'Air', 'sea' => 'Sea', 'land' => 'Land'][$filterShipmentType] ?? $filterShipmentType],
                         'filterServiceType' => ['Layanan', ['import' => 'Import', 'export' => 'Export', 'domestic' => 'Domestic'][$filterServiceType] ?? $filterServiceType],
                         'filterLaneStatus' => ['Jalur', ['green' => 'Jalur Hijau', 'red' => 'Jalur Merah'][$filterLaneStatus] ?? $filterLaneStatus],
                         'filterCustomerData' => ['Data Customer', 'Perlu Dilengkapi'],
-                    ])->filter(fn ($label, $prop) => filled($this->{$prop}));
+                        'datePreset' => ['Tanggal', $dateLabel],
+                    ])->filter(fn ($info, $prop) => filled($info[1] ?? null) && (filled($this->{$prop}) || ($prop === 'datePreset' && (filled($this->filterDateFrom) || filled($this->filterDateTo)))));
                 @endphp
 
                 <div x-data="{ open: {{ $filterAktif->isNotEmpty() ? 'true' : 'false' }} }">
@@ -137,7 +147,7 @@
                             @foreach($filterAktif as $prop => $info)
                             <span class="inline-flex items-center gap-1.5 pl-2.5 pr-1.5 py-1 rounded-full bg-blue-50 border border-blue-200 text-xs font-semibold text-blue-800">
                                 <span class="text-blue-500 font-medium">{{ $info[0] }}:</span> {{ $info[1] }}
-                                <button type="button" wire:click="$set('{{ $prop }}', '')" class="text-blue-400 hover:text-blue-700" aria-label="Hapus penyaring {{ $info[0] }}">
+                                <button type="button" wire:click="{{ $prop === 'datePreset' ? 'resetDateFilter' : '$set(\'' . $prop . '\', \'\')' }}" class="text-blue-400 hover:text-blue-700" aria-label="Hapus penyaring {{ $info[0] }}">
                                     <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
                                 </button>
                             </span>
@@ -215,6 +225,34 @@
                         <option value="">Semua Data Customer</option>
                         <option value="attention">⚠️ Customer Perlu Dilengkapi</option>
                     </select>
+
+                    {{-- Filter Rentang Tanggal --}}
+                    <div class="flex items-center gap-1.5 bg-white border border-gray-200 rounded-xl px-3 py-1 shadow-sm">
+                        <svg class="w-4 h-4 text-gray-500 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"/></svg>
+                        <select wire:model.live="datePreset" class="border-0 text-sm py-1.5 pl-1 pr-6 focus:ring-0 text-gray-700 font-medium bg-transparent cursor-pointer">
+                            <option value="">📅 Semua Tanggal</option>
+                            <option value="today">⚡ Hari Ini</option>
+                            <option value="this_month">🗓️ Bulan Ini</option>
+                            <option value="last_month">🗓️ Bulan Lalu</option>
+                            <option value="this_year">📆 Tahun Ini</option>
+                            <option value="last_year">📆 Tahun Lalu</option>
+                            <option value="custom">🎯 Custom Range...</option>
+                        </select>
+
+                        @if($datePreset === 'custom' || ($filterDateFrom && !in_array($datePreset, ['today', 'this_month', 'last_month', 'this_year', 'last_year'])))
+                        <div class="flex items-center gap-1 pl-2 border-l border-gray-200">
+                            <input type="date" wire:model.live="filterDateFrom" class="border border-gray-200 rounded-lg px-2 py-1 text-xs text-gray-700 focus:ring-1 focus:ring-blue-500" title="Dari Tanggal">
+                            <span class="text-gray-400 text-xs">-</span>
+                            <input type="date" wire:model.live="filterDateTo" class="border border-gray-200 rounded-lg px-2 py-1 text-xs text-gray-700 focus:ring-1 focus:ring-blue-500" title="Sampai Tanggal">
+                        </div>
+                        @endif
+
+                        @if($datePreset || $filterDateFrom || $filterDateTo)
+                        <button type="button" wire:click="resetDateFilter" class="text-gray-400 hover:text-red-600 p-0.5 rounded-full" title="Hapus filter tanggal">
+                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
+                        </button>
+                        @endif
+                    </div>
 
                     <select wire:model.live="perPage" class="px-4 py-2.5 border border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500 text-sm" aria-label="Jumlah baris per halaman">
                         <option value="10">10 baris</option>

@@ -74,13 +74,83 @@ class QuotationManager extends Component
     public $grandTotal = 0;
     public $filterStatus = "";
     public $filterType = "";
+    public $datePreset = "";
     public $filterDateFrom = "";
     public $filterDateTo = "";
-
 
     public function updatingSearch() { $this->resetPage(); }
     public function updatingFilterStatus() { $this->resetPage(); }
     public function updatingFilterType() { $this->resetPage(); }
+
+    public function updatedDatePreset($value)
+    {
+        $this->applyDatePreset($value);
+        $this->resetPage();
+    }
+
+    public function updatedFilterDateFrom()
+    {
+        if ($this->datePreset !== 'custom') {
+            $this->datePreset = 'custom';
+        }
+        $this->resetPage();
+    }
+
+    public function updatedFilterDateTo()
+    {
+        if ($this->datePreset !== 'custom') {
+            $this->datePreset = 'custom';
+        }
+        $this->resetPage();
+    }
+
+    public function applyDatePreset($preset)
+    {
+        $now = now();
+        switch ($preset) {
+            case 'today':
+                $this->filterDateFrom = $now->toDateString();
+                $this->filterDateTo = $now->toDateString();
+                break;
+            case 'this_month':
+                $this->filterDateFrom = $now->copy()->startOfMonth()->toDateString();
+                $this->filterDateTo = $now->copy()->endOfMonth()->toDateString();
+                break;
+            case 'last_month':
+                $this->filterDateFrom = $now->copy()->subMonth()->startOfMonth()->toDateString();
+                $this->filterDateTo = $now->copy()->subMonth()->endOfMonth()->toDateString();
+                break;
+            case 'this_year':
+                $this->filterDateFrom = $now->copy()->startOfYear()->toDateString();
+                $this->filterDateTo = $now->copy()->endOfYear()->toDateString();
+                break;
+            case 'last_year':
+                $this->filterDateFrom = $now->copy()->subYear()->startOfYear()->toDateString();
+                $this->filterDateTo = $now->copy()->subYear()->endOfYear()->toDateString();
+                break;
+            case 'custom':
+                break;
+            default:
+                $this->datePreset = '';
+                $this->filterDateFrom = '';
+                $this->filterDateTo = '';
+                break;
+        }
+    }
+
+    public function resetDateFilter()
+    {
+        $this->datePreset = '';
+        $this->filterDateFrom = '';
+        $this->filterDateTo = '';
+        $this->resetPage();
+    }
+
+    public function resetAllFilters()
+    {
+        $this->reset(['search', 'filterStatus', 'filterType', 'datePreset', 'filterDateFrom', 'filterDateTo']);
+        $this->resetPage();
+    }
 
     public function getStats()
     {
@@ -820,6 +890,14 @@ class QuotationManager extends Component
         // Filter by quotation type
         if ($this->filterType) {
             $query->where("quotation_type", $this->filterType);
+        }
+
+        // Filter by date range (quotation_date)
+        if ($this->filterDateFrom) {
+            $query->whereDate("quotation_date", ">=", $this->filterDateFrom);
+        }
+        if ($this->filterDateTo) {
+            $query->whereDate("quotation_date", "<=", $this->filterDateTo);
         }
         
         $quotations = $query->latest()->paginate(25);

@@ -32,11 +32,76 @@ class ShipmentManagement extends Component
     public $filterShipmentType = '';
     public $filterLaneStatus = '';
     public $filterCustomerData = ''; // '' | 'attention' = shipment milik customer yg datanya perlu dilengkapi
+    public $datePreset = '';
     public $filterDateFrom = '';
     public $filterDateTo = '';
     public $sortField = 'created_at';
     public $sortDirection = 'desc';
     public $perPage = 25;
+
+    public function updatedDatePreset($value)
+    {
+        $this->applyDatePreset($value);
+        $this->resetPage();
+    }
+
+    public function updatedFilterDateFrom()
+    {
+        if ($this->datePreset !== 'custom') {
+            $this->datePreset = 'custom';
+        }
+        $this->resetPage();
+    }
+
+    public function updatedFilterDateTo()
+    {
+        if ($this->datePreset !== 'custom') {
+            $this->datePreset = 'custom';
+        }
+        $this->resetPage();
+    }
+
+    public function applyDatePreset($preset)
+    {
+        $now = now();
+        switch ($preset) {
+            case 'today':
+                $this->filterDateFrom = $now->toDateString();
+                $this->filterDateTo = $now->toDateString();
+                break;
+            case 'this_month':
+                $this->filterDateFrom = $now->copy()->startOfMonth()->toDateString();
+                $this->filterDateTo = $now->copy()->endOfMonth()->toDateString();
+                break;
+            case 'last_month':
+                $this->filterDateFrom = $now->copy()->subMonth()->startOfMonth()->toDateString();
+                $this->filterDateTo = $now->copy()->subMonth()->endOfMonth()->toDateString();
+                break;
+            case 'this_year':
+                $this->filterDateFrom = $now->copy()->startOfYear()->toDateString();
+                $this->filterDateTo = $now->copy()->endOfYear()->toDateString();
+                break;
+            case 'last_year':
+                $this->filterDateFrom = $now->copy()->subYear()->startOfYear()->toDateString();
+                $this->filterDateTo = $now->copy()->subYear()->endOfYear()->toDateString();
+                break;
+            case 'custom':
+                break;
+            default:
+                $this->datePreset = '';
+                $this->filterDateFrom = '';
+                $this->filterDateTo = '';
+                break;
+        }
+    }
+
+    public function resetDateFilter()
+    {
+        $this->datePreset = '';
+        $this->filterDateFrom = '';
+        $this->filterDateTo = '';
+        $this->resetPage();
+    }
 
     // Modal States
     public $isModalOpen = false;
@@ -145,6 +210,9 @@ class ShipmentManagement extends Component
             'filterServiceType',
             'filterLaneStatus',
             'filterCustomerData',
+            'datePreset',
+            'filterDateFrom',
+            'filterDateTo',
         ]);
 
         $this->resetPage();

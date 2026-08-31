@@ -26,7 +26,84 @@ class InvoiceManager extends Component
     use WithPagination, WithFileUploads;
 
     public $filterStatus = '', $filterType = '', $filterCategory = '';
+    public $datePreset = '', $dateFrom = '', $dateTo = '';
     public $search = '';
+
+    public function updatedSearch() { $this->resetPage(); }
+    public function updatedFilterStatus() { $this->resetPage(); }
+    public function updatedFilterType() { $this->resetPage(); }
+    public function updatedFilterCategory() { $this->resetPage(); }
+
+    public function updatedDatePreset($value)
+    {
+        $this->applyDatePreset($value);
+        $this->resetPage();
+    }
+
+    public function updatedDateFrom()
+    {
+        if ($this->datePreset !== 'custom') {
+            $this->datePreset = 'custom';
+        }
+        $this->resetPage();
+    }
+
+    public function updatedDateTo()
+    {
+        if ($this->datePreset !== 'custom') {
+            $this->datePreset = 'custom';
+        }
+        $this->resetPage();
+    }
+
+    public function applyDatePreset($preset)
+    {
+        $now = now();
+        switch ($preset) {
+            case 'today':
+                $this->dateFrom = $now->toDateString();
+                $this->dateTo = $now->toDateString();
+                break;
+            case 'this_month':
+                $this->dateFrom = $now->copy()->startOfMonth()->toDateString();
+                $this->dateTo = $now->copy()->endOfMonth()->toDateString();
+                break;
+            case 'last_month':
+                $this->dateFrom = $now->copy()->subMonth()->startOfMonth()->toDateString();
+                $this->dateTo = $now->copy()->subMonth()->endOfMonth()->toDateString();
+                break;
+            case 'this_year':
+                $this->dateFrom = $now->copy()->startOfYear()->toDateString();
+                $this->dateTo = $now->copy()->endOfYear()->toDateString();
+                break;
+            case 'last_year':
+                $this->dateFrom = $now->copy()->subYear()->startOfYear()->toDateString();
+                $this->dateTo = $now->copy()->subYear()->endOfYear()->toDateString();
+                break;
+            case 'custom':
+                // biarkan dateFrom dan dateTo kustom
+                break;
+            default:
+                $this->datePreset = '';
+                $this->dateFrom = '';
+                $this->dateTo = '';
+                break;
+        }
+    }
+
+    public function resetDateFilter()
+    {
+        $this->datePreset = '';
+        $this->dateFrom = '';
+        $this->dateTo = '';
+        $this->resetPage();
+    }
+
+    public function resetAllFilters()
+    {
+        $this->reset(['search', 'filterStatus', 'filterType', 'filterCategory', 'datePreset', 'dateFrom', 'dateTo']);
+        $this->resetPage();
+    }
 
     // Modal State
     public $isModalOpen = false, $isEditing = false;
@@ -128,6 +205,14 @@ class InvoiceManager extends Component
         // Apply product category filter
         if ($this->filterCategory) {
             $query->whereHas('items.product', fn($q) => $q->where('category', $this->filterCategory));
+        }
+
+        // Apply date range filter (invoice_date)
+        if ($this->dateFrom) {
+            $query->whereDate('invoice_date', '>=', $this->dateFrom);
+        }
+        if ($this->dateTo) {
+            $query->whereDate('invoice_date', '<=', $this->dateTo);
         }
 
         $invoices = $query->orderByRaw("CASE WHEN status = 'unpaid' THEN 0 WHEN status = 'partial' THEN 1 ELSE 2 END")
