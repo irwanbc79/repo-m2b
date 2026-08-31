@@ -540,7 +540,7 @@
             </div>
 
             {{-- Sparkline 5 Tahun --}}
-            <div class="flex items-stretch gap-3 sm:ml-auto">
+            <div class="flex items-stretch gap-3 sm:ml-auto overflow-x-auto pb-1 max-w-full">
                 @php $skala = max(array_map(fn ($d) => abs($d['value']), $netProfit['series'])) ?: 1; @endphp
                 @foreach($netProfit['series'] as $titik)
                 @php $tinggi = max(round(abs($titik['value']) / $skala * 100), 6); @endphp
