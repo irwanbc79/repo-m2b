@@ -163,4 +163,69 @@ class DateRangeFiltersTest extends TestCase
             ->assertSee('QT-LASTM-01')
             ->assertDontSee('QT-TODAY-01');
     }
+
+    public function test_shipment_stats_exclude_cancelled_shipments(): void
+    {
+        $this->actingAs($this->admin);
+
+        // Shipment aktif 1
+        Shipment::create([
+            'customer_id' => $this->customer->id,
+            'awb_number' => 'AWB-ACT-01',
+            'origin' => 'Jakarta',
+            'destination' => 'Surabaya',
+            'service_type' => 'domestic',
+            'shipment_type' => 'land',
+            'status' => 'in_progress',
+            'weight' => 500,
+            'volume' => 2.5,
+            'pieces' => 10,
+        ]);
+
+        // Shipment aktif 2
+        Shipment::create([
+            'customer_id' => $this->customer->id,
+            'awb_number' => 'AWB-ACT-02',
+            'origin' => 'Jakarta',
+            'destination' => 'Bali',
+            'service_type' => 'domestic',
+            'shipment_type' => 'air',
+            'status' => 'completed',
+            'weight' => 300,
+            'volume' => 1.5,
+            'pieces' => 5,
+        ]);
+
+        // Shipment Cancel (dibatalkan)
+        Shipment::create([
+            'customer_id' => $this->customer->id,
+            'awb_number' => 'AWB-CAN-01',
+            'origin' => 'Jakarta',
+            'destination' => 'Medan',
+            'service_type' => 'domestic',
+            'shipment_type' => 'sea',
+            'status' => 'cancel',
+            'weight' => 10000,
+            'volume' => 50,
+            'pieces' => 100,
+        ]);
+
+        $component = new ShipmentManagement();
+        $stats = $component->getStats();
+
+        // Total shipment harus 2 (tidak termasuk yang cancel)
+        $this->assertEquals(2, $stats['total']);
+        $this->assertEquals(1, $stats['in_progress']);
+        $this->assertEquals(1, $stats['completed']);
+        $this->assertEquals(2, $stats['this_month']);
+
+        // Total weight harus 800 (bukan 10800)
+        $this->assertEquals(800, $stats['total_weight']);
+
+        // Total volume harus 4.0 (bukan 54.0)
+        $this->assertEquals(4.0, $stats['total_volume']);
+
+        // Total pieces harus 15 (bukan 115)
+        $this->assertEquals(15, $stats['total_pieces']);
+    }
 }

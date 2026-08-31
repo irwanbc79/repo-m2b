@@ -242,17 +242,19 @@ class ShipmentManagement extends Component
         return Cache::remember('shipment_stats', 300, function() {
             $now = Carbon::now();
             $startOfMonth = $now->copy()->startOfMonth();
+            $activeQuery = Shipment::whereNotIn('status', ['cancel', 'cancelled']);
 
             return [
-            'total' => Shipment::count(),
-            'pending' => Shipment::where('status', 'pending')->count(),
-            'in_progress' => Shipment::where('status', 'in_progress')->count(),
-            'in_transit' => Shipment::where('status', 'in_transit')->count(),
-            'completed' => Shipment::where('status', 'completed')->count(),
-            'this_month' => Shipment::where('created_at', '>=', $startOfMonth)->count(),
-            'total_weight' => Shipment::sum('weight'),
-            'total_volume' => Shipment::sum('volume'),
-            'total_pieces' => Shipment::sum('pieces')];
+                'total' => (clone $activeQuery)->count(),
+                'pending' => Shipment::where('status', 'pending')->count(),
+                'in_progress' => Shipment::where('status', 'in_progress')->count(),
+                'in_transit' => Shipment::where('status', 'in_transit')->count(),
+                'completed' => Shipment::where('status', 'completed')->count(),
+                'this_month' => (clone $activeQuery)->where('created_at', '>=', $startOfMonth)->count(),
+                'total_weight' => (clone $activeQuery)->sum('weight'),
+                'total_volume' => (clone $activeQuery)->sum('volume'),
+                'total_pieces' => (clone $activeQuery)->sum('pieces'),
+            ];
         });
     }
 

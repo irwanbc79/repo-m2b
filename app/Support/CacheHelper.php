@@ -54,6 +54,7 @@ class CacheHelper
         $versionKey = 'admin_stats_version';
         $currentVersion = Cache::get($versionKey, 1);
         Cache::put($versionKey, $currentVersion + 1, now()->addDay());
+        Cache::forget('shipment_stats');
     }
     
     /**
