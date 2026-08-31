@@ -632,8 +632,17 @@ class InvoiceManager extends Component
     }
     public function openPaymentModal($id)
     {
+        $this->resetErrorBag();
         $this->paymentHistoryModal = false;
         $this->editingId = $id;
+        $inv = Invoice::find($id);
+        $this->selectedInvoiceForPayment = $inv;
+        if ($inv) {
+            $remaining = (float) $inv->grand_total - (float) ($inv->total_paid ?? 0);
+            $this->amount = max(0, $remaining);
+        } else {
+            $this->amount = 0;
+        }
         $this->payment_date = date('Y-m-d');
         $this->quick_payment_proof = null;
         $this->isPaymentModalOpen = true;
@@ -656,6 +665,8 @@ class InvoiceManager extends Component
     public function closePaymentModal()
     {
         $this->isPaymentModalOpen = false;
+        $this->selectedInvoiceForPayment = null;
+        $this->reset(["quick_payment_proof", "amount", "payment_note"]);
     }
     public function openPaymentPreview($id)
     {
@@ -957,8 +968,14 @@ class InvoiceManager extends Component
                 if ($payment->proof_file && \Storage::disk("public")->exists($payment->proof_file)) {
                     \Storage::disk("public")->delete($payment->proof_file);
                 }
+                // Hapus CashTransaction terkait jika ada
+                \App\Models\CashTransaction::where('invoice_payment_id', $payment->id)->delete();
+
+                $invoice = Invoice::find($payment->invoice_id);
                 $payment->delete();
-                $this->recalculateInvoiceTotals($payment->invoice_id);
+                if ($invoice) {
+                    $invoice->recalculateTotalPaid();
+                }
             });
             session()->flash("message", "Pembayaran berhasil dihapus!");
             $this->openPaymentHistory($invoiceId);
@@ -977,18 +994,7 @@ class InvoiceManager extends Component
     {
         $invoice = Invoice::find($invoiceId);
         if ($invoice) {
-            $totalPaid = \App\Models\InvoicePayment::where("invoice_id", $invoiceId)->sum("amount");
-            $invoice->total_paid = $totalPaid;
-            if ($totalPaid >= $invoice->grand_total || abs($invoice->grand_total - $totalPaid) < 1) {
-                $invoice->status = "paid";
-            }
-            elseif ($totalPaid > 0) {
-                $invoice->status = "partial";
-            }
-            else {
-                $invoice->status = "unpaid";
-            }
-            $invoice->save();
+            $invoice->recalculateTotalPaid();
             $this->flushInvoiceDashboardCache();
         }
     }

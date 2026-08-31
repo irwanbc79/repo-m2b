@@ -81,7 +81,10 @@ class DailyAccountingBriefing extends Command
 
         // --- BELUM TERBUKUKAN (cross-check) ---
         $bookedIds = DB::table('cash_transactions')->whereNotNull('invoice_payment_id')->pluck('invoice_payment_id');
-        $unbooked = InvoicePayment::with('invoice')->whereNotIn('id', $bookedIds)->get();
+        $unbooked = InvoicePayment::with('invoice')
+            ->whereHas('invoice')
+            ->whereNotIn('id', $bookedIds)
+            ->get();
 
         // --- SUSUN ---
         $out  = "ROBOT ACCOUNTANT M2B — BRIEFING HARIAN\n";
@@ -105,8 +108,10 @@ class DailyAccountingBriefing extends Command
         } else {
             $out .= "  ⚠️ {$unbooked->count()} pembayaran BELUM terbukukan (" . $rp($unbooked->sum('amount')) . "):\n";
             foreach ($unbooked as $u) {
+                $isAnomaly = $u->invoice && ((float)$u->amount > (float)$u->invoice->grand_total * 2 && (float)$u->amount >= 1000000);
+                $anomalyTag = $isAnomaly ? " (⚠️ Anomali nominal vs invoice tagihan Rp " . number_format($u->invoice->grand_total, 0, ',', '.') . ")" : "";
                 $out .= "     - " . ($u->invoice->invoice_number ?? ('invoice #' . $u->invoice_id))
-                     . " · " . $rp($u->amount) . " — minta Kasir membukukan.\n";
+                     . " · " . $rp($u->amount) . $anomalyTag . " — minta Kasir membukukan.\n";
             }
         }
         $out .= "\n";
