@@ -80,6 +80,7 @@ class InternalChat extends Component
 
         if ($this->terbuka) {
             $this->tandaiTerbaca();
+            $this->dispatch('scroll-chat-bawah');
         }
     }
 
@@ -87,6 +88,7 @@ class InternalChat extends Component
     {
         $this->lawan = $id ?: null;
         $this->tandaiTerbaca();
+        $this->dispatch('scroll-chat-bawah');
     }
 
     public function kirim(): void
@@ -101,6 +103,7 @@ class InternalChat extends Component
             $this->isi = '';
             $this->berkas = null;
             $this->tandaiTerbaca();
+            $this->dispatch('scroll-chat-bawah');
         } catch (\Throwable $e) {
             $this->addError('isi', $e->getMessage());
         }
@@ -210,6 +213,7 @@ class InternalChat extends Component
 
         if ($this->terbuka) {
             $this->tandaiTerbaca();
+            $this->dispatch('scroll-chat-bawah');
         }
     }
 

@@ -140,7 +140,19 @@
         </div>
 
         {{-- Daftar pesan --}}
-        <div class="flex-1 overflow-y-auto px-3 py-3 space-y-2 bg-gray-50" id="m2b-chat-scroll">
+        <div class="flex-1 overflow-y-auto px-3 py-3 space-y-2 bg-gray-50"
+             id="m2b-chat-scroll"
+             x-data="{
+                 keBawah() {
+                     this.$nextTick(() => {
+                         if (this.$el) this.$el.scrollTop = this.$el.scrollHeight;
+                         setTimeout(() => { if (this.$el) this.$el.scrollTop = this.$el.scrollHeight; }, 50);
+                         setTimeout(() => { if (this.$el) this.$el.scrollTop = this.$el.scrollHeight; }, 180);
+                     });
+                 }
+             }"
+             x-init="keBawah()"
+             @scroll-chat-bawah.window="keBawah()">
             @forelse($pesan as $m)
                 @php($milikSaya = (int) $m->sender_id === (int) auth()->id())
                 <div class="flex {{ $milikSaya ? 'justify-end' : 'justify-start' }}">
@@ -384,11 +396,25 @@
         @endif
     </button>
 
-    {{-- Gulir ke pesan terbaru setiap panel diperbarui. --}}
+    {{-- Gulir otomatis ke pesan terbaru setiap panel dibuka atau pesan diperbarui --}}
     <script>
-        document.addEventListener('livewire:updated', () => {
+        function gulirM2bChatBawah() {
             const el = document.getElementById('m2b-chat-scroll');
-            if (el) el.scrollTop = el.scrollHeight;
+            if (el) {
+                el.scrollTop = el.scrollHeight;
+            }
+        }
+        document.addEventListener('livewire:initialized', () => {
+            Livewire.on('scroll-chat-bawah', () => {
+                gulirM2bChatBawah();
+                setTimeout(gulirM2bChatBawah, 50);
+                setTimeout(gulirM2bChatBawah, 180);
+            });
+        });
+        document.addEventListener('livewire:updated', () => {
+            gulirM2bChatBawah();
+            setTimeout(gulirM2bChatBawah, 50);
+            setTimeout(gulirM2bChatBawah, 180);
         });
     </script>
 
