@@ -104,6 +104,46 @@ class JournalEntry extends Component
     {
         $this->resetInput();
         $this->isEditing = false;
+        $this->editingId = null;
+        $this->isModalOpen = true;
+    }
+
+    public function edit($id)
+    {
+        abort_unless(Auth::user()->hasPermission('cashier.view'), 403);
+
+        $journal = Journal::with('items')->findOrFail($id);
+
+        $user = Auth::user();
+        $isAccountingOrAdmin = $user->hasRole(['admin', 'super_admin', 'director', 'manager', 'finance', 'staff_accounting'])
+            || $user->hasPermission('cashier.*')
+            || $user->hasPermission('cashier.journal');
+
+        if (!$isAccountingOrAdmin && $journal->created_by !== $user->id) {
+            session()->flash('error', 'Anda hanya bisa mengedit jurnal yang Anda buat sendiri.');
+            return;
+        }
+
+        $this->editingId = $journal->id;
+        $this->isEditing = true;
+        $this->transaction_date = $journal->transaction_date ? $journal->transaction_date->format('Y-m-d') : date('Y-m-d');
+        $this->description = $journal->description;
+        $this->reference_no = $journal->reference_no;
+
+        $this->items = [];
+        foreach ($journal->items as $item) {
+            $this->items[] = [
+                'account_id' => $item->account_id,
+                'debit' => (float) $item->debit,
+                'credit' => (float) $item->credit,
+            ];
+        }
+
+        if (count($this->items) < 2) {
+            $this->items[] = ['account_id' => '', 'debit' => 0, 'credit' => 0];
+        }
+
+        $this->calculateTotal();
         $this->isModalOpen = true;
     }
 
@@ -239,7 +279,8 @@ class JournalEntry extends Component
             }
         });
 
-        \App\Models\ActivityLog::record('Accounting', $this->isEditing ? 'UPDATE_JOURNAL' : 'CREATE_JOURNAL', $this->reference_no ?: ($this->isEditing ? 'JR-' . $this->editingId : 'New Journal'), "Jurnal umum: {$this->description} (Total: Rp " . number_format($this->totalDebit, 0, ',', '.') . ")");
+        $logRef = $this->reference_no ?: ($this->isEditing ? (Journal::find($this->editingId)?->journal_number ?? 'JR-'.$this->editingId) : ($journalNumber ?? 'New Journal'));
+        \App\Models\ActivityLog::record('Accounting', $this->isEditing ? 'UPDATE_JOURNAL' : 'CREATE_JOURNAL', $logRef, "Jurnal umum: {$this->description} (Total: Rp " . number_format($this->totalDebit, 0, ',', '.') . ")");
 
         session()->flash('message', 'Jurnal berhasil disimpan & Saldo diperbarui!');
         $this->closeModal();
@@ -319,13 +360,20 @@ class JournalEntry extends Component
         }
     }
 
-    public function closeModal() { $this->isModalOpen = false; }
+    public function closeModal()
+    {
+        $this->isModalOpen = false;
+        $this->isEditing = false;
+        $this->editingId = null;
+    }
     
     private function resetInput()
     {
         $this->transaction_date = date('Y-m-d');
         $this->description = '';
         $this->reference_no = '';
+        $this->isEditing = false;
+        $this->editingId = null;
         $this->resetItems();
     }
 

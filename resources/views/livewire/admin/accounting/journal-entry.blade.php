@@ -77,8 +77,15 @@
                         <td class="px-6 py-4 text-center text-xs text-gray-500">
                             {{ $j->creator->name ?? 'System' }}
                         </td>
-                        <td class="px-6 py-4 text-center">
-                            <button wire:click="delete({{ $j->id }})" wire:confirm="Hapus Jurnal ini? Data akan hilang permanen." class="text-red-500 border border-red-200 px-2 py-1 rounded hover:bg-red-50 text-xs font-bold">Hapus</button>
+                        <td class="px-6 py-4 text-center whitespace-nowrap">
+                            <div class="inline-flex items-center gap-1.5">
+                                <button wire:click="edit({{ $j->id }})" class="text-blue-600 hover:text-blue-800 border border-blue-200 hover:bg-blue-50 px-2.5 py-1 rounded text-xs font-bold transition flex items-center gap-1" title="Edit Jurnal">
+                                    ✏️ Edit
+                                </button>
+                                <button wire:click="delete({{ $j->id }})" wire:confirm="Hapus Jurnal ini? Data akan hilang permanen." class="text-red-500 hover:text-red-700 border border-red-200 hover:bg-red-50 px-2 py-1 rounded text-xs font-bold transition" title="Hapus Jurnal">
+                                    🗑️ Hapus
+                                </button>
+                            </div>
                         </td>
                     </tr>
                     @empty
@@ -94,7 +101,14 @@
     <div class="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4 overflow-y-auto">
         <div class="bg-white w-full max-w-5xl rounded-xl shadow-2xl flex flex-col max-h-[95vh]">
             <div class="p-5 border-b flex justify-between items-center bg-gray-50 rounded-t-xl">
-                <h3 class="font-bold text-lg text-m2b-primary">Input Jurnal Umum</h3>
+                <div>
+                    <h3 class="font-bold text-lg text-m2b-primary">
+                        {{ $isEditing ? '✏️ Edit Jurnal Umum' : '➕ Input Jurnal Umum' }}
+                    </h3>
+                    @if($isEditing)
+                    <p class="text-xs text-gray-500">Koreksi transaksi & memo tanpa mengubah nomor urut jurnal</p>
+                    @endif
+                </div>
                 <button wire:click="closeModal" class="text-2xl text-gray-400 hover:text-red-500">&times;</button>
             </div>
 
@@ -184,7 +198,7 @@
                 <button wire:click="closeModal" class="px-5 py-2.5 border border-gray-300 rounded-lg bg-white text-gray-700 font-medium hover:bg-gray-100 transition">Batal</button>
                 <button wire:click="save" class="px-6 py-2.5 bg-m2b-primary text-white rounded-lg font-bold hover:bg-blue-900 transition shadow-md disabled:opacity-50" 
                         @if($totalDebit != $totalCredit || $totalDebit == 0) disabled @endif>
-                    Simpan Jurnal
+                    {{ $isEditing ? 'Simpan Perubahan' : 'Simpan Jurnal' }}
                 </button>
             </div>
         </div>
