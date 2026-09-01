@@ -350,86 +350,85 @@
 
     {{-- Import Modal --}}
     @if($showImportModal)
-        <div class="fixed inset-0 z-50 overflow-y-auto" aria-labelledby="modal-title" role="dialog" aria-modal="true">
-            <div class="flex items-center justify-center min-h-screen px-4 pt-4 pb-20 text-center sm:block sm:p-0">
-                <div class="fixed inset-0 bg-gray-500 bg-opacity-75 transition-opacity" wire:click="closeImportModal"></div>
+        <div class="fixed inset-0 z-[9999] flex items-center justify-center p-3 sm:p-4 bg-black/60 backdrop-blur-xs overflow-y-auto" role="dialog" aria-modal="true">
+            <div class="fixed inset-0" wire:click="closeImportModal"></div>
 
-                <div style="position: relative; z-index: 10;" class="inline-block align-bottom bg-white rounded-lg text-left overflow-hidden shadow-xl transform transition-all sm:my-8 sm:align-middle sm:max-w-lg sm:w-full">
-                    <div class="bg-white px-4 pt-5 pb-4 sm:p-6 sm:pb-4">
-                        <h3 class="text-lg font-medium text-gray-900 mb-4 flex items-center gap-2">
-                            📤 Import Statement Bank
-                        </h3>
+            <div class="relative bg-white rounded-2xl w-full max-w-lg shadow-2xl overflow-hidden my-auto border border-gray-100 z-10">
+                <div class="bg-gradient-to-r from-blue-900 to-indigo-900 px-5 sm:px-6 py-4 text-white flex items-center justify-between">
+                    <h3 class="text-base sm:text-lg font-bold flex items-center gap-2">
+                        <span>📤</span> Import Statement Bank
+                    </h3>
+                    <button wire:click="closeImportModal" class="text-white/80 hover:text-white text-2xl leading-none">&times;</button>
+                </div>
 
-                        {{-- Import Form --}}
-                        <div class="space-y-4">
-                            <div>
-                                <label class="block text-sm font-medium text-gray-700 mb-1">Pilih Bank</label>
-                                <select wire:model="selectedBank" class="w-full px-3 py-2 border border-gray-300 rounded-lg">
-                                    @foreach($supportedBanks as $key => $name)
-                                        <option value="{{ $key }}">{{ $name }}</option>
-                                    @endforeach
-                                </select>
-                            </div>
+                <div class="p-5 sm:p-6 space-y-4 max-h-[75vh] overflow-y-auto">
+                    {{-- Import Form --}}
+                    <div>
+                        <label class="block text-xs font-bold text-gray-700 mb-1">Pilih Bank</label>
+                        <select wire:model="selectedBank" class="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm bg-white focus:ring-2 focus:ring-blue-500">
+                            @foreach($supportedBanks as $key => $name)
+                                <option value="{{ $key }}">{{ $name }}</option>
+                            @endforeach
+                        </select>
+                    </div>
 
-                            <div>
-                                <label class="block text-sm font-medium text-gray-700 mb-1">File CSV</label>
-                                <input type="file" wire:model="csvFile" accept=".csv,.txt"
-                                       class="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm">
-                                @error('csvFile') 
-                                    <span class="text-red-500 text-xs">{{ $message }}</span> 
-                                @enderror
-                                
-                                <div wire:loading wire:target="csvFile" class="text-sm text-blue-600 mt-1">
-                                    Mengupload file...
-                                </div>
-                            </div>
-
-                            {{-- Format Info --}}
-                            <div class="bg-blue-50 border border-blue-200 rounded-lg p-3 text-sm">
-                                <p class="font-medium text-blue-800 mb-1">Format yang didukung:</p>
-                                <ul class="text-blue-700 text-xs space-y-1">
-                                    <li>• <strong>Bank Mandiri:</strong> CSV dengan separator semicolon (;)</li>
-                                    <li>• <strong>Bank BCA:</strong> CSV dengan separator comma (,)</li>
-                                </ul>
-                            </div>
-
-                            {{-- Import Result --}}
-                            @if($importResult)
-                                <div class="rounded-lg p-3 {{ $importResult['success'] ? 'bg-green-50 border border-green-200' : 'bg-red-50 border border-red-200' }}">
-                                    @if($importResult['success'])
-                                        <p class="text-green-800 font-medium">✅ Import Berhasil!</p>
-                                        <ul class="text-green-700 text-sm mt-1">
-                                            <li>• {{ $importResult['imported'] }} transaksi diimport</li>
-                                            <li>• {{ $importResult['duplicates'] }} duplikat dilewati</li>
-                                            <li>• {{ $importResult['skipped'] }} baris dilewati</li>
-                                        </ul>
-                                    @else
-                                        <p class="text-red-800 font-medium">❌ Import Gagal</p>
-                                        @if(!empty($importResult['errors']))
-                                            <ul class="text-red-700 text-sm mt-1">
-                                                @foreach($importResult['errors'] as $error)
-                                                    <li>• {{ $error }}</li>
-                                                @endforeach
-                                            </ul>
-                                        @endif
-                                    @endif
-                                </div>
-                            @endif
+                    <div>
+                        <label class="block text-xs font-bold text-gray-700 mb-1">File CSV</label>
+                        <input type="file" wire:model="csvFile" accept=".csv,.txt"
+                               class="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm">
+                        @error('csvFile') 
+                            <span class="text-red-500 text-xs">{{ $message }}</span> 
+                        @enderror
+                        
+                        <div wire:loading wire:target="csvFile" class="text-sm text-blue-600 mt-1">
+                            Mengupload file...
                         </div>
                     </div>
 
-                    <div class="bg-gray-50 px-4 py-3 sm:px-6 sm:flex sm:flex-row-reverse gap-2">
-                        <button wire:click="importCsv" 
-                                wire:loading.attr="disabled"
-                                class="w-full sm:w-auto px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50">
-                            <span wire:loading.remove wire:target="importCsv">Import</span>
-                            <span wire:loading wire:target="importCsv">Mengimport...</span>
-                        </button>
-                        <button wire:click="closeImportModal" 
-                                class="w-full sm:w-auto px-4 py-2 bg-gray-200 text-gray-800 rounded-lg hover:bg-gray-300">
-                            Tutup
-                        </button>
+                    {{-- Format Info --}}
+                    <div class="bg-blue-50 border border-blue-200 rounded-xl p-3 text-xs">
+                        <p class="font-bold text-blue-800 mb-1">Format yang didukung:</p>
+                        <ul class="text-blue-700 text-xs space-y-1">
+                            <li>• <strong>Bank Mandiri:</strong> CSV dengan separator semicolon (;)</li>
+                            <li>• <strong>Bank BCA:</strong> CSV dengan separator comma (,)</li>
+                        </ul>
                     </div>
+
+                    {{-- Import Result --}}
+                    @if($importResult)
+                        <div class="rounded-xl p-3 {{ $importResult['success'] ? 'bg-green-50 border border-green-200' : 'bg-red-50 border border-red-200' }}">
+                            @if($importResult['success'])
+                                <p class="text-green-800 font-bold text-sm">✅ Import Berhasil!</p>
+                                <ul class="text-green-700 text-xs mt-1 space-y-0.5">
+                                    <li>• {{ $importResult['imported'] }} transaksi baru diimport</li>
+                                    <li>• {{ $importResult['duplicates'] }} duplikat dilewati</li>
+                                    <li>• {{ $importResult['skipped'] }} baris dilewati</li>
+                                </ul>
+                            @else
+                                <p class="text-red-800 font-bold text-sm">❌ Import Gagal</p>
+                                @if(!empty($importResult['errors']))
+                                    <ul class="text-red-700 text-xs mt-1 space-y-0.5">
+                                        @foreach($importResult['errors'] as $error)
+                                            <li>• {{ $error }}</li>
+                                        @endforeach
+                                    </ul>
+                                @endif
+                            @endif
+                        </div>
+                    @endif
+                </div>
+
+                <div class="bg-gray-50 px-5 sm:px-6 py-3.5 border-t border-gray-200 flex items-center justify-end gap-2.5">
+                    <button wire:click="closeImportModal" 
+                            class="px-4 py-2 border border-gray-300 rounded-lg text-sm text-gray-700 bg-white hover:bg-gray-50">
+                        Tutup
+                    </button>
+                    <button wire:click="importCsv" 
+                            wire:loading.attr="disabled"
+                            class="px-5 py-2 bg-blue-600 hover:bg-blue-700 text-white font-semibold rounded-lg text-sm shadow-sm">
+                        <span wire:loading.remove wire:target="importCsv">Mulai Import</span>
+                        <span wire:loading wire:target="importCsv">Mengimport...</span>
+                    </button>
                 </div>
             </div>
         </div>
@@ -437,79 +436,78 @@
 
     {{-- Match Modal --}}
     @if($showMatchModal && $selectedTransaction)
-        <div class="fixed inset-0 z-50 overflow-y-auto" aria-labelledby="modal-title" role="dialog" aria-modal="true">
-            <div class="flex items-center justify-center min-h-screen px-4 pt-4 pb-20 text-center sm:block sm:p-0">
-                <div class="fixed inset-0 bg-gray-500 bg-opacity-75 transition-opacity" wire:click="closeMatchModal"></div>
+        <div class="fixed inset-0 z-[9999] flex items-center justify-center p-3 sm:p-4 bg-black/60 backdrop-blur-xs overflow-y-auto" role="dialog" aria-modal="true">
+            <div class="fixed inset-0" wire:click="closeMatchModal"></div>
 
-                <div style="position: relative; z-index: 10;" class="inline-block align-bottom bg-white rounded-lg text-left overflow-hidden shadow-xl transform transition-all sm:my-8 sm:align-middle sm:max-w-2xl sm:w-full">
-                    <div class="bg-white px-4 pt-5 pb-4 sm:p-6 sm:pb-4">
-                        <h3 class="text-lg font-medium text-gray-900 mb-4 flex items-center gap-2">
-                            🔗 Match Transaksi dengan Payment
-                        </h3>
+            <div class="relative bg-white rounded-2xl w-full max-w-2xl shadow-2xl overflow-hidden my-auto border border-gray-100 z-10">
+                <div class="bg-gradient-to-r from-blue-900 to-indigo-900 px-5 sm:px-6 py-4 text-white flex items-center justify-between">
+                    <h3 class="text-base sm:text-lg font-bold flex items-center gap-2">
+                        <span>🔗</span> Match Transaksi dengan Invoice
+                    </h3>
+                    <button wire:click="closeMatchModal" class="text-white/80 hover:text-white text-2xl leading-none">&times;</button>
+                </div>
 
-                        {{-- Selected Transaction Info --}}
-                        <div class="bg-blue-50 border border-blue-200 rounded-lg p-3 mb-4">
-                            <p class="text-sm text-blue-800">
-                                <strong>Tanggal:</strong> {{ $selectedTransaction->transaction_date->format('d M Y H:i') }}
-                            </p>
-                            <p class="text-sm text-blue-800">
-                                <strong>Jumlah:</strong> Rp {{ number_format($selectedTransaction->credit_amount, 0, ',', '.') }}
-                            </p>
-                            <p class="text-sm text-blue-800 truncate">
-                                <strong>Deskripsi:</strong> {{ $selectedTransaction->description }}
-                            </p>
+                <div class="p-5 sm:p-6 space-y-4 max-h-[75vh] overflow-y-auto">
+                    {{-- Selected Transaction Info --}}
+                    <div class="bg-blue-50 border border-blue-200 rounded-xl p-3 text-xs space-y-1">
+                        <div class="flex justify-between">
+                            <span class="text-blue-700">Tanggal: <strong>{{ $selectedTransaction->transaction_date->format('d M Y H:i') }}</strong></span>
+                            <span class="text-blue-900 font-bold text-sm">Rp {{ number_format($selectedTransaction->credit_amount, 0, ',', '.') }}</span>
                         </div>
-
-                        {{-- Search Payment --}}
-                        <div class="mb-4">
-                            <input type="text" wire:model.live.debounce.300ms="searchPayment" 
-                                   placeholder="Cari nomor invoice atau nama customer..."
-                                   class="w-full px-3 py-2 border border-gray-300 rounded-lg">
-                        </div>
-
-                        {{-- Matching Payments List --}}
-                        <div class="max-h-64 overflow-y-auto border border-gray-200 rounded-lg">
-                            @forelse($matchingPayments as $payment)
-                                <div class="p-3 border-b border-gray-100 hover:bg-gray-50 flex items-center justify-between">
-                                    <div>
-                                        <p class="text-sm font-medium text-gray-900">
-                                            {{ $payment['invoice']['invoice_number'] ?? 'N/A' }}
-                                        </p>
-                                        <p class="text-xs text-gray-600">
-                                            {{ $payment['invoice']['customer']['company_name'] ?? 'N/A' }}
-                                        </p>
-                                        <p class="text-xs text-gray-500">
-                                            {{ \Carbon\Carbon::parse($payment['payment_date'])->format('d M Y') }} • 
-                                            Rp {{ number_format($payment['amount'], 0, ',', '.') }}
-                                        </p>
-                                    </div>
-                                    <button wire:click="matchWithPayment({{ $payment['id'] }})"
-                                            class="px-3 py-1 bg-green-600 text-white text-sm rounded hover:bg-green-700">
-                                        Match
-                                    </button>
-                                </div>
-                            @empty
-                                <div class="p-4 text-center text-gray-500">
-                                    Tidak ada payment yang cocok
-                                </div>
-                            @endforelse
-                        </div>
-
-                        {{-- Notes --}}
-                        <div class="mt-4">
-                            <label class="block text-sm font-medium text-gray-700 mb-1">Catatan (opsional)</label>
-                            <input type="text" wire:model="matchingNotes" 
-                                   placeholder="Tambahkan catatan..."
-                                   class="w-full px-3 py-2 border border-gray-300 rounded-lg">
-                        </div>
+                        <p class="text-blue-800 font-medium truncate">
+                            {{ $selectedTransaction->description }}
+                        </p>
                     </div>
 
-                    <div class="bg-gray-50 px-4 py-3 sm:px-6 sm:flex sm:flex-row-reverse">
-                        <button wire:click="closeMatchModal" 
-                                class="w-full sm:w-auto px-4 py-2 bg-gray-200 text-gray-800 rounded-lg hover:bg-gray-300">
-                            Tutup
-                        </button>
+                    {{-- Search Payment --}}
+                    <div>
+                        <input type="text" wire:model.live.debounce.300ms="searchPayment" 
+                               placeholder="Cari nomor invoice atau nama customer..."
+                               class="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500">
                     </div>
+
+                    {{-- Matching Payments List --}}
+                    <div class="max-h-64 overflow-y-auto border border-gray-200 rounded-xl divide-y divide-gray-100">
+                        @forelse($matchingPayments as $payment)
+                            <div class="p-3 hover:bg-gray-50 flex items-center justify-between gap-2">
+                                <div>
+                                    <p class="text-sm font-bold text-gray-900">
+                                        {{ $payment['invoice']['invoice_number'] ?? 'N/A' }}
+                                    </p>
+                                    <p class="text-xs text-gray-600 font-medium">
+                                        {{ $payment['invoice']['customer']['company_name'] ?? 'N/A' }}
+                                    </p>
+                                    <p class="text-[11px] text-gray-400 font-mono mt-0.5">
+                                        {{ \Carbon\Carbon::parse($payment['payment_date'])->format('d M Y') }} &bull; 
+                                        Rp {{ number_format($payment['amount'], 0, ',', '.') }}
+                                    </p>
+                                </div>
+                                <button wire:click="matchWithPayment({{ $payment['id'] }})"
+                                        class="px-3.5 py-1.5 bg-green-600 text-white text-xs font-bold rounded-lg hover:bg-green-700 shadow-xs">
+                                    Match
+                                </button>
+                            </div>
+                        @empty
+                            <div class="p-6 text-center text-gray-400 text-xs">
+                                Tidak ada data pembayaran invoice yang cocok
+                            </div>
+                        @endforelse
+                    </div>
+
+                    {{-- Notes --}}
+                    <div>
+                        <label class="block text-xs font-bold text-gray-700 mb-1">Catatan (opsional)</label>
+                        <input type="text" wire:model="matchingNotes" 
+                               placeholder="Tambahkan catatan rekonsiliasi..."
+                               class="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500">
+                    </div>
+                </div>
+
+                <div class="bg-gray-50 px-5 sm:px-6 py-3.5 border-t border-gray-200 flex items-center justify-end">
+                    <button wire:click="closeMatchModal" 
+                            class="px-4 py-2 border border-gray-300 rounded-lg text-sm text-gray-700 bg-white hover:bg-gray-50">
+                        Tutup
+                    </button>
                 </div>
             </div>
         </div>
@@ -517,144 +515,138 @@
 
     {{-- Detail Modal --}}
     @if($showDetailModal && $selectedTransaction)
-        <div class="fixed inset-0 z-50 overflow-y-auto" aria-labelledby="modal-title" role="dialog" aria-modal="true">
-            <div class="flex items-center justify-center min-h-screen px-4 pt-4 pb-20 text-center sm:block sm:p-0">
-                <div class="fixed inset-0 bg-gray-500 bg-opacity-75 transition-opacity" wire:click="closeDetailModal"></div>
+        <div class="fixed inset-0 z-[9999] flex items-center justify-center p-3 sm:p-4 bg-black/60 backdrop-blur-xs overflow-y-auto" role="dialog" aria-modal="true">
+            <div class="fixed inset-0" wire:click="closeDetailModal"></div>
 
-                <div style="position: relative; z-index: 10;" class="inline-block align-bottom bg-white rounded-lg text-left overflow-hidden shadow-xl transform transition-all sm:my-8 sm:align-middle sm:max-w-lg sm:w-full">
-                    <div class="bg-white px-4 pt-5 pb-4 sm:p-6 sm:pb-4">
-                        <h3 class="text-lg font-medium text-gray-900 mb-4 flex items-center gap-2">
-                            📄 Detail Transaksi
-                        </h3>
+            <div class="relative bg-white rounded-2xl w-full max-w-lg shadow-2xl overflow-hidden my-auto border border-gray-100 z-10">
+                <div class="bg-gradient-to-r from-blue-900 to-indigo-900 px-5 sm:px-6 py-4 text-white flex items-center justify-between">
+                    <h3 class="text-base sm:text-lg font-bold flex items-center gap-2">
+                        <span>📄</span> Detail Transaksi Bank
+                    </h3>
+                    <button wire:click="closeDetailModal" class="text-white/80 hover:text-white text-2xl leading-none">&times;</button>
+                </div>
 
-                        <div class="space-y-3">
-                            <div class="grid grid-cols-2 gap-4">
-                                <div>
-                                    <p class="text-xs text-gray-500">Tanggal</p>
-                                    <p class="text-sm font-medium">{{ $selectedTransaction->transaction_date->format('d M Y H:i:s') }}</p>
-                                </div>
-                                <div>
-                                    <p class="text-xs text-gray-500">Bank</p>
-                                    <p class="text-sm font-medium">{{ ucfirst($selectedTransaction->bank_name) }}</p>
-                                </div>
-                            </div>
-
-                            <div>
-                                <p class="text-xs text-gray-500">Deskripsi</p>
-                                <p class="text-sm">{{ $selectedTransaction->description }}</p>
-                            </div>
-
-                            @if($selectedTransaction->additional_description)
-                                <div>
-                                    <p class="text-xs text-gray-500">Deskripsi Tambahan</p>
-                                    <p class="text-sm">{{ $selectedTransaction->additional_description }}</p>
-                                </div>
-                            @endif
-
-                            <div class="grid grid-cols-3 gap-4">
-                                <div>
-                                    <p class="text-xs text-gray-500">Kredit</p>
-                                    <p class="text-sm font-medium text-green-600">
-                                        {{ $selectedTransaction->credit_amount > 0 ? 'Rp ' . number_format($selectedTransaction->credit_amount, 0, ',', '.') : '-' }}
-                                    </p>
-                                </div>
-                                <div>
-                                    <p class="text-xs text-gray-500">Debit</p>
-                                    <p class="text-sm font-medium text-red-600">
-                                        {{ $selectedTransaction->debit_amount > 0 ? 'Rp ' . number_format($selectedTransaction->debit_amount, 0, ',', '.') : '-' }}
-                                    </p>
-                                </div>
-                                <div>
-                                    <p class="text-xs text-gray-500">Saldo</p>
-                                    <p class="text-sm font-medium">Rp {{ number_format($selectedTransaction->balance, 0, ',', '.') }}</p>
-                                </div>
-                            </div>
-
-                            <div class="grid grid-cols-2 gap-4">
-                                <div>
-                                    <p class="text-xs text-gray-500">Kategori</p>
-                                    <p class="text-sm">{{ $categories[$selectedTransaction->category] ?? 'Lainnya' }}</p>
-                                </div>
-                                <div>
-                                    <p class="text-xs text-gray-500">Status</p>
-                                    <p class="text-sm">
-                                        @if($selectedTransaction->is_reconciled)
-                                            <span class="text-green-600">✅ Sudah Direkonsiliasi</span>
-                                        @else
-                                            <span class="text-orange-600">⏳ Belum Direkonsiliasi</span>
-                                        @endif
-                                    </p>
-                                </div>
-                            </div>
-
-                            @if($selectedTransaction->is_reconciled && $selectedTransaction->invoicePayment)
-                                <div class="bg-green-50 border border-green-200 rounded-lg p-3">
-                                    <p class="text-xs text-green-800 font-medium mb-1">Matched dengan Invoice:</p>
-                                    <p class="text-sm text-green-700 font-bold">
-                                        {{ $selectedTransaction->invoicePayment->invoice->invoice_number ?? 'N/A' }}
-                                    </p>
-                                    <p class="text-xs text-green-600">
-                                        Customer: {{ $selectedTransaction->invoicePayment->invoice->customer->company_name ?? 'N/A' }}
-                                    </p>
-                                    @if($selectedTransaction->matchedByUser)
-                                        <p class="text-xs text-green-600 mt-1">
-                                            Matched oleh: {{ $selectedTransaction->matchedByUser->name }} 
-                                            pada {{ $selectedTransaction->matched_at->format('d M Y H:i') }}
-                                        </p>
-                                    @endif
-                                </div>
-                            @elseif($selectedTransaction->is_reconciled && $selectedTransaction->journal)
-                                <div class="bg-indigo-50 border border-indigo-200 rounded-lg p-3">
-                                    <p class="text-xs text-indigo-800 font-medium mb-1">Direkonsiliasi via Jurnal Akuntansi:</p>
-                                    <p class="text-sm font-bold text-indigo-900">
-                                        {{ $selectedTransaction->journal->journal_number }}
-                                    </p>
-                                    <p class="text-xs text-indigo-700 mt-1">
-                                        {{ $selectedTransaction->journal->description }}
-                                    </p>
-                                    <div class="mt-2 pt-2 border-t border-indigo-200 text-xs text-indigo-900 space-y-1">
-                                        @foreach($selectedTransaction->journal->items as $item)
-                                            <div class="flex justify-between font-mono">
-                                                <span>{{ $item->account->code ?? '' }} - {{ $item->account->name ?? 'Akun' }}</span>
-                                                <span>
-                                                    @if($item->debit > 0)
-                                                        (Dr) Rp {{ number_format($item->debit, 0, ',', '.') }}
-                                                    @else
-                                                        (Cr) Rp {{ number_format($item->credit, 0, ',', '.') }}
-                                                    @endif
-                                                </span>
-                                            </div>
-                                        @endforeach
-                                    </div>
-                                    @if($selectedTransaction->matchedByUser)
-                                        <p class="text-xs text-indigo-600 mt-2">
-                                            Dibuat oleh: {{ $selectedTransaction->matchedByUser->name }} 
-                                            pada {{ $selectedTransaction->matched_at->format('d M Y H:i') }}
-                                        </p>
-                                    @endif
-                                </div>
-                            @endif
-
-                            @if($selectedTransaction->reference_number)
-                                <div>
-                                    <p class="text-xs text-gray-500">Reference Number</p>
-                                    <p class="text-sm font-mono">{{ $selectedTransaction->reference_number }}</p>
-                                </div>
-                            @endif
-
-                            <div>
-                                <p class="text-xs text-gray-500">Import Batch</p>
-                                <p class="text-sm font-mono">{{ $selectedTransaction->import_batch }}</p>
-                            </div>
+                <div class="p-5 sm:p-6 space-y-4 max-h-[75vh] overflow-y-auto">
+                    <div class="grid grid-cols-2 gap-4">
+                        <div>
+                            <p class="text-xs text-gray-500 font-medium">Tanggal</p>
+                            <p class="text-sm font-semibold text-gray-800">{{ $selectedTransaction->transaction_date->format('d M Y H:i:s') }}</p>
+                        </div>
+                        <div>
+                            <p class="text-xs text-gray-500 font-medium">Bank</p>
+                            <p class="text-sm font-semibold text-gray-800 uppercase">{{ $selectedTransaction->bank_name }}</p>
                         </div>
                     </div>
 
-                    <div class="bg-gray-50 px-4 py-3 sm:px-6 sm:flex sm:flex-row-reverse">
-                        <button wire:click="closeDetailModal" 
-                                class="w-full sm:w-auto px-4 py-2 bg-gray-200 text-gray-800 rounded-lg hover:bg-gray-300">
-                            Tutup
-                        </button>
+                    <div>
+                        <p class="text-xs text-gray-500 font-medium">Deskripsi</p>
+                        <p class="text-sm text-gray-800">{{ $selectedTransaction->description }}</p>
                     </div>
+
+                    @if($selectedTransaction->additional_description)
+                        <div>
+                            <p class="text-xs text-gray-500 font-medium">Deskripsi Tambahan</p>
+                            <p class="text-sm text-gray-800">{{ $selectedTransaction->additional_description }}</p>
+                        </div>
+                    @endif
+
+                    <div class="grid grid-cols-3 gap-3 p-3 bg-gray-50 rounded-xl border border-gray-100">
+                        <div>
+                            <p class="text-[11px] text-gray-500">Kredit</p>
+                            <p class="text-xs sm:text-sm font-bold text-green-600">
+                                {{ $selectedTransaction->credit_amount > 0 ? '+Rp ' . number_format($selectedTransaction->credit_amount, 0, ',', '.') : '-' }}
+                            </p>
+                        </div>
+                        <div>
+                            <p class="text-[11px] text-gray-500">Debit</p>
+                            <p class="text-xs sm:text-sm font-bold text-red-600">
+                                {{ $selectedTransaction->debit_amount > 0 ? '-Rp ' . number_format($selectedTransaction->debit_amount, 0, ',', '.') : '-' }}
+                            </p>
+                        </div>
+                        <div>
+                            <p class="text-[11px] text-gray-500">Saldo</p>
+                            <p class="text-xs sm:text-sm font-bold text-gray-800">Rp {{ number_format($selectedTransaction->balance, 0, ',', '.') }}</p>
+                        </div>
+                    </div>
+
+                    <div class="grid grid-cols-2 gap-4">
+                        <div>
+                            <p class="text-xs text-gray-500 font-medium">Kategori</p>
+                            <p class="text-sm font-semibold text-gray-800">{{ $categories[$selectedTransaction->category] ?? 'Lainnya' }}</p>
+                        </div>
+                        <div>
+                            <p class="text-xs text-gray-500 font-medium">Status</p>
+                            <p class="text-sm font-bold">
+                                @if($selectedTransaction->is_reconciled)
+                                    <span class="text-green-600">✅ Sudah Direkonsiliasi</span>
+                                @else
+                                    <span class="text-amber-600">⏳ Belum Direkonsiliasi</span>
+                                @endif
+                            </p>
+                        </div>
+                    </div>
+
+                    @if($selectedTransaction->is_reconciled && $selectedTransaction->invoicePayment)
+                        <div class="bg-green-50 border border-green-200 rounded-xl p-3 text-xs">
+                            <p class="text-green-800 font-bold mb-1">Matched dengan Invoice:</p>
+                            <p class="text-sm text-green-900 font-extrabold">
+                                {{ $selectedTransaction->invoicePayment->invoice->invoice_number ?? 'N/A' }}
+                            </p>
+                            <p class="text-green-700">
+                                Customer: {{ $selectedTransaction->invoicePayment->invoice->customer->company_name ?? 'N/A' }}
+                            </p>
+                            @if($selectedTransaction->matchedByUser)
+                                <p class="text-[11px] text-green-600 mt-1">
+                                    Matched oleh: {{ $selectedTransaction->matchedByUser->name }} 
+                                    pada {{ $selectedTransaction->matched_at->format('d M Y H:i') }}
+                                </p>
+                            @endif
+                        </div>
+                    @elseif($selectedTransaction->is_reconciled && $selectedTransaction->journal)
+                        <div class="bg-indigo-50 border border-indigo-200 rounded-xl p-3 text-xs">
+                            <p class="text-indigo-800 font-bold mb-1">Direkonsiliasi via Jurnal Akuntansi:</p>
+                            <p class="text-sm font-extrabold text-indigo-900">
+                                {{ $selectedTransaction->journal->journal_number }}
+                            </p>
+                            <p class="text-indigo-700 mt-0.5">
+                                {{ $selectedTransaction->journal->description }}
+                            </p>
+                            <div class="mt-2 pt-2 border-t border-indigo-200 text-xs text-indigo-900 space-y-1">
+                                @foreach($selectedTransaction->journal->items as $item)
+                                    <div class="flex justify-between font-mono">
+                                        <span>{{ $item->account->code ?? '' }} - {{ $item->account->name ?? 'Akun' }}</span>
+                                        <span class="font-bold">
+                                            @if($item->debit > 0)
+                                                (Dr) Rp {{ number_format($item->debit, 0, ',', '.') }}
+                                            @else
+                                                (Cr) Rp {{ number_format($item->credit, 0, ',', '.') }}
+                                            @endif
+                                        </span>
+                                    </div>
+                                @endforeach
+                            </div>
+                            @if($selectedTransaction->matchedByUser)
+                                <p class="text-[11px] text-indigo-600 mt-2">
+                                    Dibuat oleh: {{ $selectedTransaction->matchedByUser->name }} 
+                                    pada {{ $selectedTransaction->matched_at->format('d M Y H:i') }}
+                                </p>
+                            @endif
+                        </div>
+                    @endif
+
+                    @if($selectedTransaction->reference_number)
+                        <div>
+                            <p class="text-xs text-gray-500 font-medium">Reference Number</p>
+                            <p class="text-sm font-mono font-semibold">{{ $selectedTransaction->reference_number }}</p>
+                        </div>
+                    @endif
+                </div>
+
+                <div class="bg-gray-50 px-5 sm:px-6 py-3.5 border-t border-gray-200 flex items-center justify-end">
+                    <button wire:click="closeDetailModal" 
+                            class="px-4 py-2 border border-gray-300 rounded-lg text-sm text-gray-700 bg-white hover:bg-gray-50">
+                        Tutup
+                    </button>
                 </div>
             </div>
         </div>
@@ -662,144 +654,143 @@
 
     {{-- Create Journal Modal --}}
     @if($showCreateJournalModal && $journalTransaction)
-        <div class="fixed inset-0 z-50 overflow-y-auto" aria-labelledby="modal-title" role="dialog" aria-modal="true">
-            <div class="flex items-center justify-center min-h-screen px-4 pt-4 pb-20 text-center sm:block sm:p-0">
-                <div class="fixed inset-0 bg-gray-500 bg-opacity-75 transition-opacity" wire:click="closeCreateJournalModal"></div>
+        <div class="fixed inset-0 z-[9999] flex items-center justify-center p-3 sm:p-4 bg-black/60 backdrop-blur-xs overflow-y-auto" role="dialog" aria-modal="true">
+            {{-- Backdrop click to close --}}
+            <div class="fixed inset-0" wire:click="closeCreateJournalModal"></div>
 
-                <div style="position: relative; z-index: 10;" class="inline-block align-bottom bg-white rounded-xl text-left overflow-hidden shadow-2xl transform transition-all sm:my-8 sm:align-middle sm:max-w-xl sm:w-full">
-                    <div class="bg-gradient-to-r from-blue-900 to-indigo-900 px-6 py-4 text-white flex items-center justify-between">
-                        <div>
-                            <h3 class="text-base sm:text-lg font-bold flex items-center gap-2">
-                                <span>⚡</span> Buat Jurnal & Rekonsiliasi Otomatis
-                            </h3>
-                            <p class="text-xs text-blue-200 mt-0.5">Catat transaksi rekening koran ini langsung ke Buku Besar (General Ledger)</p>
+            <div class="relative bg-white rounded-2xl w-full max-w-xl shadow-2xl overflow-hidden my-auto border border-gray-100 z-10">
+                <div class="bg-gradient-to-r from-blue-900 to-indigo-900 px-5 sm:px-6 py-4 text-white flex items-center justify-between">
+                    <div>
+                        <h3 class="text-base sm:text-lg font-bold flex items-center gap-2">
+                            <span>⚡</span> Buat Jurnal & Rekonsiliasi Otomatis
+                        </h3>
+                        <p class="text-xs text-blue-200 mt-0.5">Catat transaksi rekening koran ini langsung ke Buku Besar (General Ledger)</p>
+                    </div>
+                    <button wire:click="closeCreateJournalModal" class="text-white/80 hover:text-white text-2xl leading-none">&times;</button>
+                </div>
+
+                <div class="p-5 sm:p-6 space-y-4 max-h-[75vh] overflow-y-auto">
+                    {{-- Ringkasan Transaksi Bank --}}
+                    <div class="rounded-xl p-3.5 border {{ $journalIsExpense ? 'bg-red-50/70 border-red-200' : 'bg-green-50/70 border-green-200' }}">
+                        <div class="flex items-center justify-between text-xs font-semibold {{ $journalIsExpense ? 'text-red-700' : 'text-green-700' }} mb-1">
+                            <span>{{ $journalIsExpense ? '🔻 Kas Keluar (Debit Rekening)' : '🔺 Kas Masuk (Kredit Rekening)' }}</span>
+                            <span class="uppercase tracking-wider px-2 py-0.5 rounded bg-white font-mono text-[10px] border shadow-xs">Bank {{ $journalTransaction->bank_name }}</span>
                         </div>
-                        <button wire:click="closeCreateJournalModal" class="text-white/80 hover:text-white text-2xl leading-none">&times;</button>
+                        <div class="flex items-baseline justify-between gap-2">
+                            <span class="text-sm text-gray-800 font-medium truncate">{{ $journalTransaction->description }}</span>
+                            <span class="text-lg font-black {{ $journalIsExpense ? 'text-red-600' : 'text-green-600' }} whitespace-nowrap">
+                                {{ $journalIsExpense ? '-' : '+' }}Rp {{ number_format($journalAmount, 0, ',', '.') }}
+                            </span>
+                        </div>
                     </div>
 
-                    <div class="p-6 space-y-4 max-h-[75vh] overflow-y-auto">
-                        {{-- Ringkasan Transaksi Bank --}}
-                        <div class="rounded-xl p-3.5 border {{ $journalIsExpense ? 'bg-red-50/70 border-red-200' : 'bg-green-50/70 border-green-200' }}">
-                            <div class="flex items-center justify-between text-xs font-semibold {{ $journalIsExpense ? 'text-red-700' : 'text-green-700' }} mb-1">
-                                <span>{{ $journalIsExpense ? '🔻 Kas Keluar (Debit Rekening)' : '🔺 Kas Masuk (Kredit Rekening)' }}</span>
-                                <span class="uppercase tracking-wider px-2 py-0.5 rounded bg-white font-mono text-[10px] border shadow-xs">Bank {{ $journalTransaction->bank_name }}</span>
-                            </div>
-                            <div class="flex items-baseline justify-between gap-2">
-                                <span class="text-sm text-gray-800 font-medium truncate">{{ $journalTransaction->description }}</span>
-                                <span class="text-lg font-black {{ $journalIsExpense ? 'text-red-600' : 'text-green-600' }} whitespace-nowrap">
-                                    {{ $journalIsExpense ? '-' : '+' }}Rp {{ number_format($journalAmount, 0, ',', '.') }}
-                                </span>
-                            </div>
-                        </div>
-
-                        {{-- Form Field --}}
-                        <div class="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
-                            <div>
-                                <label class="block text-xs font-bold text-gray-700 mb-1">Tanggal Transaksi <span class="text-red-500">*</span></label>
-                                <input type="date" wire:model="journalDate" class="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500">
-                                @error('journalDate') <span class="text-red-500 text-xs">{{ $message }}</span> @enderror
-                            </div>
-
-                            <div>
-                                <label class="block text-xs font-bold text-gray-700 mb-1">No. Referensi</label>
-                                <input type="text" wire:model="journalReference" placeholder="Ref bank / transfer..." class="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 font-mono">
-                            </div>
+                    {{-- Form Field --}}
+                    <div class="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
+                        <div>
+                            <label class="block text-xs font-bold text-gray-700 mb-1">Tanggal Transaksi <span class="text-red-500">*</span></label>
+                            <input type="date" wire:model="journalDate" class="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500">
+                            @error('journalDate') <span class="text-red-500 text-xs">{{ $message }}</span> @enderror
                         </div>
 
                         <div>
-                            <label class="block text-xs font-bold text-gray-700 mb-1">Akun Kas / Bank <span class="text-red-500">*</span></label>
-                            <select wire:model.live="journalBankAccountId" class="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm bg-white focus:ring-2 focus:ring-blue-500">
-                                <option value="">-- Pilih Akun Bank --</option>
-                                @foreach($accounts->where('type', 'kas_bank') as $acc)
-                                    <option value="{{ $acc->id }}">{{ $acc->code }} - {{ $acc->name }}</option>
-                                @endforeach
-                            </select>
-                            @error('journalBankAccountId') <span class="text-red-500 text-xs">{{ $message }}</span> @enderror
+                            <label class="block text-xs font-bold text-gray-700 mb-1">No. Referensi</label>
+                            <input type="text" wire:model="journalReference" placeholder="Ref bank / transfer..." class="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 font-mono">
                         </div>
-
-                        <div>
-                            <div class="flex items-center justify-between mb-1">
-                                <label class="block text-xs font-bold text-gray-700">Akun Lawan (COA) <span class="text-red-500">*</span></label>
-                                <span class="text-[10px] text-indigo-600 font-semibold bg-indigo-50 px-1.5 py-0.5 rounded">💡 Disarankan Otomatis</span>
-                            </div>
-                            <select wire:model.live="journalCounterAccountId" class="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm bg-white focus:ring-2 focus:ring-blue-500">
-                                <option value="">-- Pilih Akun Lawan --</option>
-                                @php
-                                    $groupedAccounts = $accounts->groupBy(function($a) {
-                                        return match($a->type) {
-                                            'beban_operasional' => 'Beban Operasional',
-                                            'beban_pokok' => 'Beban Pokok',
-                                            'beban_lain' => 'Beban Lain-Lain / Pajak / Adm',
-                                            'hutang_lancar' => 'Hutang / Titipan / Jaminan / Refund',
-                                            'pendapatan' => 'Pendapatan / Bunga',
-                                            'piutang' => 'Piutang',
-                                            'aset_lancar_lain' => 'Aset Lainnya',
-                                            'modal' => 'Modal',
-                                            default => 'Lainnya',
-                                        };
-                                    });
-                                @endphp
-                                @foreach($groupedAccounts as $groupName => $accList)
-                                    <optgroup label="{{ $groupName }}">
-                                        @foreach($accList as $acc)
-                                            <option value="{{ $acc->id }}">{{ $acc->code }} - {{ $acc->name }}</option>
-                                        @endforeach
-                                    </optgroup>
-                                @endforeach
-                            </select>
-                            @error('journalCounterAccountId') <span class="text-red-500 text-xs">{{ $message }}</span> @enderror
-                        </div>
-
-                        <div>
-                            <label class="block text-xs font-bold text-gray-700 mb-1">Keterangan Jurnal <span class="text-red-500">*</span></label>
-                            <textarea wire:model="journalDescription" rows="2" class="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500" placeholder="Keterangan transaksi untuk buku besar..."></textarea>
-                            @error('journalDescription') <span class="text-red-500 text-xs">{{ $message }}</span> @enderror
-                        </div>
-
-                        {{-- Double-Entry Simulation Preview --}}
-                        @php
-                            $bankAcc = $accounts->firstWhere('id', $journalBankAccountId);
-                            $counterAcc = $accounts->firstWhere('id', $journalCounterAccountId);
-                        @endphp
-                        @if($bankAcc && $counterAcc)
-                            <div class="bg-gray-50 border border-gray-200 rounded-xl p-3 text-xs">
-                                <p class="font-bold text-gray-700 mb-2 flex items-center gap-1">
-                                    <span>⚖️</span> Pratinjau Entri Jurnal Berpasangan (Balanced):
-                                </p>
-                                <div class="space-y-1.5 font-mono text-[11px]">
-                                    @if($journalIsExpense)
-                                        <div class="flex justify-between text-gray-800 bg-white p-1.5 rounded border border-gray-100">
-                                            <span>(Debit) {{ $counterAcc->code }} - {{ $counterAcc->name }}</span>
-                                            <span class="font-bold text-blue-700">Rp {{ number_format($journalAmount, 0, ',', '.') }}</span>
-                                        </div>
-                                        <div class="flex justify-between text-gray-800 bg-white p-1.5 rounded border border-gray-100 pl-4">
-                                            <span>(Kredit) {{ $bankAcc->code }} - {{ $bankAcc->name }}</span>
-                                            <span class="font-bold text-gray-700">Rp {{ number_format($journalAmount, 0, ',', '.') }}</span>
-                                        </div>
-                                    @else
-                                        <div class="flex justify-between text-gray-800 bg-white p-1.5 rounded border border-gray-100">
-                                            <span>(Debit) {{ $bankAcc->code }} - {{ $bankAcc->name }}</span>
-                                            <span class="font-bold text-blue-700">Rp {{ number_format($journalAmount, 0, ',', '.') }}</span>
-                                        </div>
-                                        <div class="flex justify-between text-gray-800 bg-white p-1.5 rounded border border-gray-100 pl-4">
-                                            <span>(Kredit) {{ $counterAcc->code }} - {{ $counterAcc->name }}</span>
-                                            <span class="font-bold text-gray-700">Rp {{ number_format($journalAmount, 0, ',', '.') }}</span>
-                                        </div>
-                                    @endif
-                                </div>
-                            </div>
-                        @endif
                     </div>
 
-                    <div class="bg-gray-50 px-6 py-3.5 border-t border-gray-200 flex items-center justify-end gap-2.5">
-                        <button type="button" wire:click="closeCreateJournalModal" class="px-4 py-2 border border-gray-300 rounded-lg text-sm text-gray-700 bg-white hover:bg-gray-50">
-                            Batal
-                        </button>
-                        <button type="button" wire:click="saveJournalFromTransaction" wire:loading.attr="disabled" class="px-5 py-2 bg-blue-600 hover:bg-blue-700 text-white font-semibold rounded-lg text-sm shadow-sm flex items-center gap-1.5">
-                            <span wire:loading.remove wire:target="saveJournalFromTransaction">💾 Simpan Jurnal & Rekonsiliasi</span>
-                            <span wire:loading wire:target="saveJournalFromTransaction">⏳ Menyimpan...</span>
-                        </button>
+                    <div>
+                        <label class="block text-xs font-bold text-gray-700 mb-1">Akun Kas / Bank <span class="text-red-500">*</span></label>
+                        <select wire:model.live="journalBankAccountId" class="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm bg-white focus:ring-2 focus:ring-blue-500">
+                            <option value="">-- Pilih Akun Bank --</option>
+                            @foreach($accounts->where('type', 'kas_bank') as $acc)
+                                <option value="{{ $acc->id }}">{{ $acc->code }} - {{ $acc->name }}</option>
+                            @endforeach
+                        </select>
+                        @error('journalBankAccountId') <span class="text-red-500 text-xs">{{ $message }}</span> @enderror
                     </div>
+
+                    <div>
+                        <div class="flex items-center justify-between mb-1">
+                            <label class="block text-xs font-bold text-gray-700">Akun Lawan (COA) <span class="text-red-500">*</span></label>
+                            <span class="text-[10px] text-indigo-600 font-semibold bg-indigo-50 px-1.5 py-0.5 rounded">💡 Disarankan Otomatis</span>
+                        </div>
+                        <select wire:model.live="journalCounterAccountId" class="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm bg-white focus:ring-2 focus:ring-blue-500">
+                            <option value="">-- Pilih Akun Lawan --</option>
+                            @php
+                                $groupedAccounts = $accounts->groupBy(function($a) {
+                                    return match($a->type) {
+                                        'beban_operasional' => 'Beban Operasional',
+                                        'beban_pokok' => 'Beban Pokok',
+                                        'beban_lain' => 'Beban Lain-Lain / Pajak / Adm',
+                                        'hutang_lancar' => 'Hutang / Titipan / Jaminan / Refund',
+                                        'pendapatan' => 'Pendapatan / Bunga',
+                                        'piutang' => 'Piutang',
+                                        'aset_lancar_lain' => 'Aset Lainnya',
+                                        'modal' => 'Modal',
+                                        default => 'Lainnya',
+                                    };
+                                });
+                            @endphp
+                            @foreach($groupedAccounts as $groupName => $accList)
+                                <optgroup label="{{ $groupName }}">
+                                    @foreach($accList as $acc)
+                                        <option value="{{ $acc->id }}">{{ $acc->code }} - {{ $acc->name }}</option>
+                                    @endforeach
+                                </optgroup>
+                            @endforeach
+                        </select>
+                        @error('journalCounterAccountId') <span class="text-red-500 text-xs">{{ $message }}</span> @enderror
+                    </div>
+
+                    <div>
+                        <label class="block text-xs font-bold text-gray-700 mb-1">Keterangan Jurnal <span class="text-red-500">*</span></label>
+                        <textarea wire:model="journalDescription" rows="2" class="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500" placeholder="Keterangan transaksi untuk buku besar..."></textarea>
+                        @error('journalDescription') <span class="text-red-500 text-xs">{{ $message }}</span> @enderror
+                    </div>
+
+                    {{-- Double-Entry Simulation Preview --}}
+                    @php
+                        $bankAcc = $accounts->firstWhere('id', $journalBankAccountId);
+                        $counterAcc = $accounts->firstWhere('id', $journalCounterAccountId);
+                    @endphp
+                    @if($bankAcc && $counterAcc)
+                        <div class="bg-gray-50 border border-gray-200 rounded-xl p-3 text-xs">
+                            <p class="font-bold text-gray-700 mb-2 flex items-center gap-1">
+                                <span>⚖️</span> Pratinjau Entri Jurnal Berpasangan (Balanced):
+                            </p>
+                            <div class="space-y-1.5 font-mono text-[11px]">
+                                @if($journalIsExpense)
+                                    <div class="flex justify-between text-gray-800 bg-white p-1.5 rounded border border-gray-100">
+                                        <span>(Debit) {{ $counterAcc->code }} - {{ $counterAcc->name }}</span>
+                                        <span class="font-bold text-blue-700">Rp {{ number_format($journalAmount, 0, ',', '.') }}</span>
+                                    </div>
+                                    <div class="flex justify-between text-gray-800 bg-white p-1.5 rounded border border-gray-100 pl-4">
+                                        <span>(Kredit) {{ $bankAcc->code }} - {{ $bankAcc->name }}</span>
+                                        <span class="font-bold text-gray-700">Rp {{ number_format($journalAmount, 0, ',', '.') }}</span>
+                                    </div>
+                                @else
+                                    <div class="flex justify-between text-gray-800 bg-white p-1.5 rounded border border-gray-100">
+                                        <span>(Debit) {{ $bankAcc->code }} - {{ $bankAcc->name }}</span>
+                                        <span class="font-bold text-blue-700">Rp {{ number_format($journalAmount, 0, ',', '.') }}</span>
+                                    </div>
+                                    <div class="flex justify-between text-gray-800 bg-white p-1.5 rounded border border-gray-100 pl-4">
+                                        <span>(Kredit) {{ $counterAcc->code }} - {{ $counterAcc->name }}</span>
+                                        <span class="font-bold text-gray-700">Rp {{ number_format($journalAmount, 0, ',', '.') }}</span>
+                                    </div>
+                                @endif
+                            </div>
+                        </div>
+                    @endif
+                </div>
+
+                <div class="bg-gray-50 px-5 sm:px-6 py-3.5 border-t border-gray-200 flex items-center justify-end gap-2.5">
+                    <button type="button" wire:click="closeCreateJournalModal" class="px-4 py-2 border border-gray-300 rounded-lg text-sm text-gray-700 bg-white hover:bg-gray-50">
+                        Batal
+                    </button>
+                    <button type="button" wire:click="saveJournalFromTransaction" wire:loading.attr="disabled" class="px-5 py-2 bg-blue-600 hover:bg-blue-700 text-white font-semibold rounded-lg text-sm shadow-sm flex items-center gap-1.5">
+                        <span wire:loading.remove wire:target="saveJournalFromTransaction">💾 Simpan Jurnal & Rekonsiliasi</span>
+                        <span wire:loading wire:target="saveJournalFromTransaction">⏳ Menyimpan...</span>
+                    </button>
                 </div>
             </div>
         </div>
