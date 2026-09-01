@@ -123,10 +123,55 @@ class InternalChatAttachmentTest extends TestCase
         $this->assertSame(1, InternalMessage::count());
     }
 
-    public function test_jenis_file_selain_gambar_dan_pdf_ditolak(): void
+    public function test_file_csv_rekening_koran_bisa_dilampirkan(): void
     {
-        // Bukan cuma soal disk — mencegah file berbahaya diunggah lalu
-        // terunduh orang lain.
+        Storage::fake('local');
+        $nurul = $this->user('Nurul', 'staff', ['staff']);
+
+        Livewire::actingAs($nurul)
+            ->test(InternalChat::class)
+            ->call('toggle')
+            ->set('berkas', UploadedFile::fake()->create('rekening_koran_bca_agustus.csv', 150, 'text/csv'))
+            ->set('isi', 'ini rekening koran BCA bulan lalu')
+            ->call('kirim')
+            ->assertHasNoErrors();
+
+        $m = InternalMessage::sole();
+
+        $this->assertTrue($m->punyaLampiran());
+        $this->assertSame('rekening_koran_bca_agustus.csv', $m->attachment_name);
+        Storage::disk('local')->assertExists($m->attachment_path);
+    }
+
+    public function test_file_office_excel_dan_word_bisa_dilampirkan(): void
+    {
+        Storage::fake('local');
+        $nurul = $this->user('Nurul', 'staff', ['staff']);
+
+        // 1. Upload Excel (.xlsx)
+        Livewire::actingAs($nurul)
+            ->test(InternalChat::class)
+            ->call('toggle')
+            ->set('berkas', UploadedFile::fake()->create('laporan_keuangan.xlsx', 500, 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'))
+            ->set('isi', 'laporan Excel')
+            ->call('kirim')
+            ->assertHasNoErrors();
+
+        // 2. Upload Word (.docx)
+        Livewire::actingAs($nurul)
+            ->test(InternalChat::class)
+            ->call('toggle')
+            ->set('berkas', UploadedFile::fake()->create('draft_kontrak.docx', 300, 'application/vnd.openxmlformats-officedocument.wordprocessingml.document'))
+            ->set('isi', 'draft Word')
+            ->call('kirim')
+            ->assertHasNoErrors();
+
+        $this->assertSame(2, InternalMessage::count());
+    }
+
+    public function test_jenis_file_berbahaya_ditolak(): void
+    {
+        // Mencegah file executable berbahaya diunggah
         Storage::fake('local');
         $nurul = $this->user('Nurul', 'staff', ['staff']);
 
@@ -141,7 +186,7 @@ class InternalChatAttachmentTest extends TestCase
         $this->assertSame(0, InternalMessage::count());
     }
 
-    public function test_pdf_melebihi_batas_ditolak(): void
+    public function test_dokumen_melebihi_batas_ditolak(): void
     {
         Storage::fake('local');
         $nurul = $this->user('Nurul', 'staff', ['staff']);

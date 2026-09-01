@@ -29,14 +29,41 @@ class InternalChat extends Component
 {
     use WithFileUploads;
 
-    /** Jenis file yang diterima. Menolak sisanya bukan cuma soal disk —
-     *  mencegah file berbahaya diunggah lalu terunduh orang lain. */
+    /** Jenis file yang diterima: Gambar, PDF, Dokumen Office (Word, Excel, PPT), dan CSV/Teks */
     private const MIME_DIIZINKAN = [
-        'image/jpeg', 'image/png', 'image/webp', 'image/gif', 'application/pdf',
+        // Gambar
+        'image/jpeg', 'image/png', 'image/webp', 'image/gif',
+        // Dokumen PDF
+        'application/pdf',
+        // CSV & Text
+        'text/csv', 'text/plain', 'text/x-csv', 'application/csv', 'application/x-csv',
+        'text/comma-separated-values', 'text/x-comma-separated-values',
+        // Excel / Spreadsheet
+        'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet', // .xlsx
+        'application/vnd.ms-excel', // .xls, .csv
+        'application/vnd.oasis.opendocument.spreadsheet', // .ods
+        // Word
+        'application/vnd.openxmlformats-officedocument.wordprocessingml.document', // .docx
+        'application/msword', // .doc
+        'application/vnd.oasis.opendocument.text', // .odt
+        // PowerPoint
+        'application/vnd.openxmlformats-officedocument.presentationml.presentation', // .pptx
+        'application/vnd.ms-powerpoint', // .ppt
+        'application/vnd.oasis.opendocument.presentation', // .odp
     ];
 
-    private const MAKS_GAMBAR_KB = 5120;   // 5 MB
-    private const MAKS_PDF_KB    = 10240;  // 10 MB
+    /** Ekstensi file yang diizinkan sebagai verifikasi pendukung */
+    private const EXT_DIIZINKAN = [
+        'jpg', 'jpeg', 'png', 'webp', 'gif',
+        'pdf',
+        'csv', 'txt', 'tsv',
+        'xlsx', 'xls', 'ods',
+        'docx', 'doc', 'odt',
+        'pptx', 'ppt', 'odp',
+    ];
+
+    private const MAKS_GAMBAR_KB  = 5120;   // 5 MB
+    private const MAKS_DOKUMEN_KB = 10240;  // 10 MB
 
     public bool $terbuka = false;
 
@@ -123,15 +150,19 @@ class InternalChat extends Component
      */
     private function simpanBerkas(): array
     {
-        $mime = $this->berkas->getMimeType();
+        $mime = $this->berkas->getMimeType() ?: 'application/octet-stream';
+        $ext  = strtolower($this->berkas->getClientOriginalExtension() ?: 'bin');
         $kb   = (int) ceil($this->berkas->getSize() / 1024);
 
-        if (! in_array($mime, self::MIME_DIIZINKAN, true)) {
-            throw new \RuntimeException('Hanya gambar (JPG/PNG/WEBP/GIF) dan PDF yang bisa dilampirkan.');
+        $validMime = in_array($mime, self::MIME_DIIZINKAN, true);
+        $validExt  = in_array($ext, self::EXT_DIIZINKAN, true);
+
+        if (! $validMime && ! $validExt) {
+            throw new \RuntimeException('Hanya file gambar, PDF, Office (Word, Excel, PPT), dan CSV yang bisa dilampirkan.');
         }
 
-        $gambar = str_starts_with($mime, 'image/');
-        $maks   = $gambar ? self::MAKS_GAMBAR_KB : self::MAKS_PDF_KB;
+        $gambar = str_starts_with($mime, 'image/') || in_array($ext, ['jpg', 'jpeg', 'png', 'webp', 'gif'], true);
+        $maks   = $gambar ? self::MAKS_GAMBAR_KB : self::MAKS_DOKUMEN_KB;
 
         if ($kb > $maks) {
             throw new \RuntimeException(
@@ -141,7 +172,6 @@ class InternalChat extends Component
         }
 
         $nama = $this->berkas->getClientOriginalName();
-        $ext  = strtolower($this->berkas->getClientOriginalExtension() ?: 'bin');
 
         // Gambar diperkecil dulu — pola yang sama dipakai bukti kas kecil,
         // supaya foto dari HP tidak menghabiskan disk.

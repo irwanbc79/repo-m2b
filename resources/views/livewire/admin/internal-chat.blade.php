@@ -180,11 +180,14 @@
                                 </button>
                             @else
                                 <a href="{{ route('admin.chat.lampiran', $m->id) }}" target="_blank" rel="noopener"
-                                   class="block mb-1 rounded overflow-hidden">
-                                    <span class="flex items-center gap-2 px-2 py-1.5 rounded {{ $milikSaya ? 'bg-blue-700' : 'bg-gray-100' }}">
-                                        <svg class="w-4 h-4 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 21h10a2 2 0 002-2V9.414a1 1 0 00-.293-.707l-5.414-5.414A1 1 0 0012.586 3H7a2 2 0 00-2 2v14a2 2 0 002 2z"/></svg>
-                                        <span class="text-xs truncate">{{ Str::limit($m->attachment_name, 22) }}</span>
-                                        <span class="text-[10px] opacity-70 shrink-0">{{ $m->ukuranTerbaca() }}</span>
+                                   class="block mb-1 rounded-lg overflow-hidden hover:opacity-95 transition">
+                                    <span class="flex items-center gap-2.5 px-3 py-2 rounded-lg {{ $milikSaya ? 'bg-blue-700/80 text-white' : 'bg-gray-100 text-gray-800' }}">
+                                        <span class="shrink-0 text-base">{{ $m->ikonLampiran() }}</span>
+                                        <div class="flex-1 min-w-0">
+                                            <span class="text-xs font-bold block truncate">{{ Str::limit($m->attachment_name, 22) }}</span>
+                                            <span class="text-[10px] opacity-75 font-mono">{{ $m->ekstensiLampiran() }} &bull; {{ $m->ukuranTerbaca() }}</span>
+                                        </div>
+                                        <svg class="w-4 h-4 opacity-70 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"/></svg>
                                     </span>
                                 </a>
                             @endif
@@ -258,10 +261,10 @@
 
             {{-- Pratinjau file terpilih, sebelum dikirim --}}
             @if($berkas)
-            <div class="flex items-center gap-2 mb-2 px-2 py-1.5 bg-blue-50 border border-blue-200 rounded-lg">
+            <div class="flex items-center gap-2 mb-2 px-2.5 py-1.5 bg-blue-50 border border-blue-200 rounded-lg">
                 <svg class="w-4 h-4 text-blue-600 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15.172 7l-6.586 6.586a2 2 0 102.828 2.828l6.414-6.586a4 4 0 00-5.656-5.656l-6.415 6.585a6 6 0 108.486 8.486L20.5 13"/></svg>
-                <span class="text-[11px] text-blue-900 truncate flex-1">{{ $berkas->getClientOriginalName() }}</span>
-                <button type="button" wire:click="batalBerkas" class="text-blue-400 hover:text-red-600 text-sm leading-none">&times;</button>
+                <span class="text-[11px] font-semibold text-blue-900 truncate flex-1">{{ $berkas->getClientOriginalName() }}</span>
+                <button type="button" wire:click="batalBerkas" class="text-blue-400 hover:text-red-600 text-sm leading-none font-bold">&times;</button>
             </div>
             @endif
 
@@ -270,10 +273,10 @@
 
             <div class="flex gap-2 items-center" style="position: relative;">
                 {{-- Tombol klip: input file disembunyikan, labelnya yang diklik --}}
-                <label class="shrink-0 w-9 h-9 flex items-center justify-center rounded-lg border border-gray-300 text-gray-500 hover:bg-gray-50 hover:text-blue-600 cursor-pointer"
-                       title="Lampirkan gambar atau PDF (maks 5 MB gambar / 10 MB PDF)">
+                <label class="shrink-0 w-9 h-9 flex items-center justify-center rounded-lg border border-gray-300 text-gray-500 hover:bg-gray-50 hover:text-blue-600 cursor-pointer transition"
+                       title="Lampirkan Gambar, PDF, Office (Word, Excel, PPT), atau CSV (Maks 10 MB)">
                     <input type="file" wire:model="berkas" class="hidden"
-                           accept="image/jpeg,image/png,image/webp,image/gif,application/pdf">
+                           accept="image/*,.pdf,.doc,.docx,.xls,.xlsx,.ppt,.pptx,.csv,.txt,.tsv,application/pdf,application/vnd.ms-excel,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet,application/msword,application/vnd.openxmlformats-officedocument.wordprocessingml.document,application/vnd.ms-powerpoint,application/vnd.openxmlformats-officedocument.presentationml.presentation,text/csv,text/plain">
                     <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15.172 7l-6.586 6.586a2 2 0 102.828 2.828l6.414-6.586a4 4 0 00-5.656-5.656l-6.415 6.585a6 6 0 108.486 8.486L20.5 13"/></svg>
                 </label>
 
