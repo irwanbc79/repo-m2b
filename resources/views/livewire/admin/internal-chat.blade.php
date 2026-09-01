@@ -189,6 +189,15 @@
                         @unless($milikSaya)
                             <p class="text-[10px] font-bold text-gray-500 mb-0.5">{{ $m->sender_name }}</p>
                         @endunless
+
+                        {{-- Kutipan pesan yang dibalas --}}
+                        @if($m->reply_to_sender)
+                            <div class="mb-1.5 px-2.5 py-1 rounded {{ $milikSaya ? 'bg-blue-800/70 border-l-2 border-white/80 text-blue-100' : 'bg-gray-100 border-l-2 border-blue-600 text-gray-700' }} text-[11px] leading-tight">
+                                <span class="font-bold block {{ $milikSaya ? 'text-white' : 'text-blue-700' }}">{{ $m->reply_to_sender }}</span>
+                                <span class="truncate block opacity-90">{{ Str::limit($m->reply_to_body, 80) }}</span>
+                            </div>
+                        @endif
+
                         @if($m->punyaLampiran())
                             @if($m->lampiranGambar())
                                 {{-- Gambar dibuka sebagai pratinjau melayang, BUKAN tab baru:
@@ -226,9 +235,16 @@
                             <p class="text-sm whitespace-pre-wrap break-words">{{ $m->body }}</p>
                         @endif
 
-                        <p class="text-[10px] mt-0.5 {{ $milikSaya ? 'text-blue-200' : 'text-gray-400' }}">
-                            {{ $m->created_at->format('d/m H:i') }}
-                        </p>
+                        <div class="flex items-center justify-between mt-1 gap-2">
+                            <p class="text-[10px] {{ $milikSaya ? 'text-blue-200' : 'text-gray-400' }}">
+                                {{ $m->created_at->format('d/m H:i') }}
+                            </p>
+                            <button type="button" wire:click="balas({{ $m->id }})"
+                                    class="text-[10px] font-semibold opacity-70 hover:opacity-100 flex items-center gap-0.5 transition {{ $milikSaya ? 'text-blue-100 hover:text-white' : 'text-gray-500 hover:text-blue-600' }}"
+                                    title="Balas pesan ini">
+                                <span>↩</span> Balas
+                            </button>
+                        </div>
                     </div>
                 </div>
             @empty
@@ -284,9 +300,24 @@
                       );
                   }
               }"
+              @fokus-input-chat.window="$nextTick(() => $refs.kotakIsi?.focus())"
               @paste="tempel($event)">
             @error('isi') <p class="text-[11px] text-red-600 mb-1">{{ $message }}</p> @enderror
             @error('berkas') <p class="text-[11px] text-red-600 mb-1">{{ $message }}</p> @enderror
+
+            {{-- Banner Pesan yang sedang Dibalas (Quote Preview) --}}
+            @if($membalasData)
+            <div class="flex items-center justify-between mb-2 px-2.5 py-1.5 bg-blue-50 border-l-4 border-blue-600 rounded-r-lg">
+                <div class="min-w-0 flex-1">
+                    <div class="flex items-center gap-1 text-[11px] font-bold text-blue-900">
+                        <span>↩️ Membalas</span>
+                        <span class="truncate">{{ $membalasData['sender_name'] }}</span>
+                    </div>
+                    <p class="text-[11px] text-gray-600 truncate">{{ $membalasData['body'] }}</p>
+                </div>
+                <button type="button" wire:click="batalBalas" class="text-blue-400 hover:text-red-600 text-base leading-none font-bold ml-2 p-1" title="Batal membalas">&times;</button>
+            </div>
+            @endif
 
             {{-- Pratinjau file terpilih, sebelum dikirim --}}
             @if($berkas)

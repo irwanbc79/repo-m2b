@@ -130,4 +130,44 @@ class InternalChatUiTest extends TestCase
             ->call('denyut')
             ->assertOk();
     }
+
+    public function test_klik_balas_memunculkan_banner_pratinjau_balasan_dan_bisa_dibatalkan(): void
+    {
+        $nurul = $this->user('Nurul', 'staff', ['staff']);
+        $eka   = $this->user('Eka', 'director', ['director']);
+
+        $m = app(InternalChatService::class)->kirim($eka, 'Halo Nurul mohon dicek');
+
+        Livewire::actingAs($nurul)
+            ->test(InternalChat::class)
+            ->call('toggle')
+            ->assertSee('Halo Nurul mohon dicek')
+            ->assertSee('Balas')
+            ->call('balas', $m->id)
+            ->assertSet('membalasId', $m->id)
+            ->assertSee('Membalas')
+            ->assertSee('Eka')
+            ->call('batalBalas')
+            ->assertSet('membalasId', null)
+            ->assertDontSee('Membalas');
+    }
+
+    public function test_kirim_balasan_merender_kutipan_dan_mereset_keadaan_balas(): void
+    {
+        $nurul = $this->user('Nurul', 'staff', ['staff']);
+        $eka   = $this->user('Eka', 'director', ['director']);
+
+        $m = app(InternalChatService::class)->kirim($eka, 'Status shipment PT ABC bagaimana?');
+
+        Livewire::actingAs($nurul)
+            ->test(InternalChat::class)
+            ->call('toggle')
+            ->call('balas', $m->id)
+            ->set('isi', 'Sudah clear bea cukai')
+            ->call('kirim')
+            ->assertSet('membalasId', null)
+            ->assertSee('Sudah clear bea cukai')
+            ->assertSee('Status shipment PT ABC bagaimana?');
+    }
 }
+

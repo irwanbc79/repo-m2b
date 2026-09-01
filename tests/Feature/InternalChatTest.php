@@ -247,4 +247,39 @@ class InternalChatTest extends TestCase
 
         $this->assertSame(1, InternalMessage::count());
     }
+
+    // ── Fitur Balas (Reply) ───────────────────────────────────────────
+
+    public function test_bisa_membalas_pesan_tertentu(): void
+    {
+        $nurul = $this->user('Nurul', 'staff', ['staff']);
+        $eka   = $this->user('Eka', 'director', ['director']);
+
+        $asal = $this->chat->kirim($eka, 'Tolong kirimkan PIB hari ini');
+        $balasan = $this->chat->kirim($nurul, 'Siap pak sudah saya proses', null, null, $asal->id);
+
+        $this->assertTrue($balasan->isReply());
+        $this->assertSame($asal->id, $balasan->reply_to_id);
+        $this->assertSame('Eka', $balasan->reply_to_sender);
+        $this->assertSame('Tolong kirimkan PIB hari ini', $balasan->reply_to_body);
+    }
+
+    public function test_membalas_pesan_berlampiran(): void
+    {
+        $nurul = $this->user('Nurul', 'staff', ['staff']);
+        $eka   = $this->user('Eka', 'director', ['director']);
+
+        $asal = $this->chat->kirim($nurul, '', null, [
+            'path' => 'chat-internal/rekening.csv',
+            'name' => 'rekening_koran.csv',
+            'mime' => 'text/csv',
+            'size' => 1024,
+        ]);
+
+        $balasan = $this->chat->kirim($eka, 'Sudah saya cek rekeningnya', null, null, $asal->id);
+
+        $this->assertSame('Nurul', $balasan->reply_to_sender);
+        $this->assertStringContainsString('rekening_koran.csv', $balasan->reply_to_body);
+    }
 }
+

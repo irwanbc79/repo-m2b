@@ -111,9 +111,39 @@ class InternalChat extends Component
         }
     }
 
+    /** ID pesan yang sedang dibalas (fitur Reply) */
+    public ?int $membalasId = null;
+
+    /** Data pratinjau pesan yang sedang dibalas */
+    public ?array $membalasData = null;
+
+    public function balas(int $id): void
+    {
+        $pesan = \App\Models\InternalMessage::find($id);
+        if (! $pesan) {
+            return;
+        }
+
+        $this->membalasId = $pesan->id;
+        $this->membalasData = [
+            'id'          => $pesan->id,
+            'sender_name' => $pesan->sender_name,
+            'body'        => $pesan->ringkasanBalasan(),
+        ];
+
+        $this->dispatch('fokus-input-chat');
+    }
+
+    public function batalBalas(): void
+    {
+        $this->membalasId = null;
+        $this->membalasData = null;
+    }
+
     public function pilihLawan(?int $id = null): void
     {
         $this->lawan = $id ?: null;
+        $this->batalBalas();
         $this->tandaiTerbaca();
         $this->dispatch('scroll-chat-bawah');
     }
@@ -125,10 +155,12 @@ class InternalChat extends Component
         try {
             $lampiran = $this->berkas ? $this->simpanBerkas() : null;
 
-            $this->svc()->kirim($me, $this->isi, $this->lawan, $lampiran);
+            $this->svc()->kirim($me, $this->isi, $this->lawan, $lampiran, $this->membalasId);
 
             $this->isi = '';
             $this->berkas = null;
+            $this->membalasId = null;
+            $this->membalasData = null;
             $this->tandaiTerbaca();
             $this->dispatch('scroll-chat-bawah');
         } catch (\Throwable $e) {

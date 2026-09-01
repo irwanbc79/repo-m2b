@@ -98,7 +98,7 @@ class InternalChatService
     /**
      * @param array{path:string,name:string,mime:string,size:int}|null $lampiran
      */
-    public function kirim(User $pengirim, string $body, ?int $recipientId = null, ?array $lampiran = null): InternalMessage
+    public function kirim(User $pengirim, string $body, ?int $recipientId = null, ?array $lampiran = null, ?int $replyToId = null): InternalMessage
     {
         $body = trim($body);
 
@@ -120,6 +120,10 @@ class InternalChatService
             }
         }
 
+        $replyTo = $replyToId ? InternalMessage::find($replyToId) : null;
+        $replyToSender = $replyTo?->sender_name;
+        $replyToBody = $replyTo ? $replyTo->ringkasanBalasan() : null;
+
         return InternalMessage::create([
             'conversation_key' => $recipientId
                 ? InternalMessage::dmKey((int) $pengirim->id, (int) $recipientId)
@@ -129,6 +133,10 @@ class InternalChatService
             'sender_name'  => $pengirim->name,
             'recipient_id' => $recipientId,
             'body'         => mb_substr($body, 0, 2000),
+
+            'reply_to_id'     => $replyTo?->id,
+            'reply_to_sender' => $replyToSender,
+            'reply_to_body'   => $replyToBody,
 
             'attachment_path' => $lampiran['path'] ?? null,
             'attachment_name' => $lampiran['name'] ?? null,

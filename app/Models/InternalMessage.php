@@ -17,13 +17,39 @@ class InternalMessage extends Model
     protected $fillable = [
         'conversation_key', 'scope', 'sender_id', 'sender_name',
         'recipient_id', 'body', 'is_pinned',
+        'reply_to_id', 'reply_to_sender', 'reply_to_body',
         'attachment_path', 'attachment_name', 'attachment_mime', 'attachment_size',
     ];
 
     protected $casts = [
         'is_pinned'       => 'boolean',
         'attachment_size' => 'integer',
+        'reply_to_id'     => 'integer',
     ];
+
+    public function replyTo()
+    {
+        return $this->belongsTo(InternalMessage::class, 'reply_to_id');
+    }
+
+    public function isReply(): bool
+    {
+        return ! empty($this->reply_to_sender) || ! empty($this->reply_to_id);
+    }
+
+    /** Ringkasan teks untuk kutipan balasan */
+    public function ringkasanBalasan(): string
+    {
+        if (filled($this->body)) {
+            return mb_substr($this->body, 0, 100);
+        }
+
+        if ($this->punyaLampiran()) {
+            return '📎 ' . ($this->attachment_name ?: 'Lampiran');
+        }
+
+        return 'Pesan';
+    }
 
     public function punyaLampiran(): bool
     {
