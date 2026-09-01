@@ -130,16 +130,9 @@ class BankReconciliation extends Component
         ]);
 
         try {
-            // Simpan file sementara
-            $path = $this->csvFile->store('temp/bank-statements');
-            $fullPath = Storage::path($path);
-
-            // Import
+            // Import langsung dari temporary path upload
             $service = new BankStatementImportService();
-            $this->importResult = $service->import($fullPath, $this->selectedBank);
-
-            // Hapus file temporary
-            Storage::delete($path);
+            $this->importResult = $service->import($this->csvFile->getRealPath(), $this->selectedBank);
 
             if ($this->importResult['success']) {
                 session()->flash('success', "Berhasil mengimport {$this->importResult['imported']} transaksi");

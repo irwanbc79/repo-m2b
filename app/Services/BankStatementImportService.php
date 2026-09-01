@@ -165,15 +165,38 @@ class BankStatementImportService
      */
     protected function parseMandiriDate(string $dateStr): ?Carbon
     {
+        $dateStr = trim($dateStr);
+        if (empty($dateStr)) {
+            return null;
+        }
+
+        // Terjemahkan nama bulan Indonesia jika ada
+        $bulanIndo = [
+            'januari' => 'January', 'februari' => 'February', 'maret' => 'March',
+            'april' => 'April', 'mei' => 'May', 'juni' => 'June',
+            'juli' => 'July', 'agustus' => 'August', 'september' => 'September',
+            'oktober' => 'October', 'november' => 'November', 'desember' => 'December',
+            'agu' => 'Aug', 'agt' => 'Aug', 'ags' => 'Aug', 'des' => 'Dec', 'nop' => 'Nov', 'okt' => 'Oct',
+        ];
+
+        $normalized = str_ireplace(array_keys($bulanIndo), array_values($bulanIndo), $dateStr);
+
         try {
-            // Format: "01 December 2025 11:26:05"
-            return Carbon::createFromFormat('d F Y H:i:s', trim($dateStr));
-        } catch (\Exception $e) {
+            // Format standar: "01 August 2026 11:26:05" atau "01-08-2026"
+            return Carbon::createFromFormat('d F Y H:i:s', $normalized);
+        } catch (\Throwable $e) {
             try {
-                // Alternatif format tanpa waktu
-                return Carbon::createFromFormat('d F Y', trim(explode(' ', $dateStr)[0] . ' ' . explode(' ', $dateStr)[1] . ' ' . explode(' ', $dateStr)[2]));
-            } catch (\Exception $e2) {
-                return null;
+                $parts = explode(' ', $normalized);
+                if (count($parts) >= 3) {
+                    return Carbon::createFromFormat('d F Y', "{$parts[0]} {$parts[1]} {$parts[2]}");
+                }
+                return Carbon::parse($normalized);
+            } catch (\Throwable $e2) {
+                try {
+                    return Carbon::parse($dateStr);
+                } catch (\Throwable $e3) {
+                    return null;
+                }
             }
         }
     }
@@ -387,7 +410,7 @@ class BankStatementImportService
     protected function getResult(?string $batchId = null): array
     {
         return [
-            'success' => empty($this->errors) && $this->importedCount > 0,
+            'success' => empty($this->errors) && ($this->importedCount > 0 || $this->duplicateCount > 0),
             'imported' => $this->importedCount,
             'skipped' => $this->skippedCount,
             'duplicates' => $this->duplicateCount,
