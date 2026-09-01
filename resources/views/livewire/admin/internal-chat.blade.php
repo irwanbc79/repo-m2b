@@ -178,22 +178,36 @@
                          setTimeout(() => { if (this.$el) this.$el.scrollTop = this.$el.scrollHeight; }, 50);
                          setTimeout(() => { if (this.$el) this.$el.scrollTop = this.$el.scrollHeight; }, 180);
                      });
+                 },
+                 lompatKePesan(id) {
+                     if (!id) return;
+                     const el = document.getElementById('pesan-chat-' + id);
+                     if (!el) return;
+                     el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                     el.classList.add('chat-bubble-sorot');
+                     setTimeout(() => {
+                         el.classList.remove('chat-bubble-sorot');
+                     }, 2200);
                  }
              }"
              x-init="keBawah()"
              @scroll-chat-bawah.window="keBawah()">
             @forelse($pesan as $m)
                 @php($milikSaya = (int) $m->sender_id === (int) auth()->id())
-                <div class="flex {{ $milikSaya ? 'justify-end' : 'justify-start' }}">
+                <div id="pesan-chat-{{ $m->id }}" class="flex {{ $milikSaya ? 'justify-end' : 'justify-start' }}">
                     <div class="max-w-[85%] rounded-lg px-3 py-2 {{ $milikSaya ? 'bg-blue-600 text-white' : 'bg-white border border-gray-200 text-gray-800' }}">
                         @unless($milikSaya)
                             <p class="text-[10px] font-bold text-gray-500 mb-0.5">{{ $m->sender_name }}</p>
                         @endunless
 
-                        {{-- Kutipan pesan yang dibalas --}}
+                        {{-- Kutipan pesan yang dibalas (Klik untuk menuju pesan asli) --}}
                         @if($m->reply_to_sender)
-                            <div class="mb-1.5 px-2.5 py-1 rounded {{ $milikSaya ? 'bg-blue-800/70 border-l-2 border-white/80 text-blue-100' : 'bg-gray-100 border-l-2 border-blue-600 text-gray-700' }} text-[11px] leading-tight">
-                                <span class="font-bold block {{ $milikSaya ? 'text-white' : 'text-blue-700' }}">{{ $m->reply_to_sender }}</span>
+                            <div @if($m->reply_to_id) @click="lompatKePesan({{ $m->reply_to_id }})" title="Klik untuk menuju pesan yang dibalas" role="button" @endif
+                                 class="mb-1.5 px-2.5 py-1 rounded select-none cursor-pointer transition hover:opacity-90 active:scale-[0.98] {{ $milikSaya ? 'bg-blue-800/80 hover:bg-blue-900 border-l-2 border-white/90 text-blue-100' : 'bg-gray-100 hover:bg-gray-200 border-l-2 border-blue-600 text-gray-700' }} text-[11px] leading-tight">
+                                <div class="flex items-center justify-between gap-1 mb-0.5">
+                                    <span class="font-bold {{ $milikSaya ? 'text-white' : 'text-blue-700' }} truncate">{{ $m->reply_to_sender }}</span>
+                                    <span class="text-[9px] opacity-75 font-medium shrink-0 flex items-center gap-0.5"><span>↗</span> lihat</span>
+                                </div>
                                 <span class="truncate block opacity-90">{{ Str::limit($m->reply_to_body, 80) }}</span>
                             </div>
                         @endif
@@ -474,12 +488,21 @@
                 setTimeout(gulirM2bChatBawah, 180);
             });
         });
-        document.addEventListener('livewire:updated', () => {
-            gulirM2bChatBawah();
-            setTimeout(gulirM2bChatBawah, 50);
-            setTimeout(gulirM2bChatBawah, 180);
-        });
     </script>
+    <style>
+        @keyframes sorotPesanAnim {
+            0% { transform: scale(1); filter: brightness(1); }
+            20% { transform: scale(1.04); filter: brightness(1.25); box-shadow: 0 0 0 3px #3b82f6; }
+            40% { transform: scale(1.02); filter: brightness(1.3); box-shadow: 0 0 0 5px #f59e0b; }
+            70% { transform: scale(1.04); filter: brightness(1.25); box-shadow: 0 0 0 3px #3b82f6; }
+            100% { transform: scale(1); filter: brightness(1); box-shadow: none; }
+        }
+        .chat-bubble-sorot > div {
+            animation: sorotPesanAnim 1s ease-in-out 2 !important;
+            position: relative;
+            z-index: 20;
+        }
+    </style>
 
     @endif
 </div>
