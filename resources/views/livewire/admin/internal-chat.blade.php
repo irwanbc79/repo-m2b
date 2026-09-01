@@ -93,10 +93,39 @@
     {{-- Posisi ditulis inline, BUKAN lewat class Tailwind: build v4 di project
          ini tidak meng-generate bottom-24/right-6 (terverifikasi nol di
          public/build), sehingga panel akan melayang tanpa posisi. --}}
-    <div class="bg-white rounded-xl shadow-2xl border border-gray-200 flex flex-col"
+    <div class="bg-white rounded-xl shadow-2xl border border-gray-200 flex flex-col overflow-hidden"
          style="position: fixed; bottom: 6rem; right: 1.5rem; z-index: 9000;
                 width: 22rem; max-width: calc(100vw - 3rem);
-                height: 30rem; max-height: calc(100vh - 8rem);">
+                height: 30rem; max-height: calc(100vh - 8rem);"
+         x-data="{
+             menyeret: false,
+             dragCounter: 0,
+             lepasFile(e) {
+                 this.menyeret = false;
+                 this.dragCounter = 0;
+                 const files = e.dataTransfer?.files;
+                 if (!files || files.length === 0) return;
+                 const file = files[0];
+                 $wire.upload('berkas', file);
+             }
+         }"
+         @dragenter.prevent="dragCounter++; menyeret = true"
+         @dragleave.prevent="dragCounter--; if(dragCounter <= 0) { menyeret = false; dragCounter = 0; }"
+         @dragover.prevent
+         @drop.prevent="lepasFile($event)">
+
+        {{-- Drop zone overlay saat file diseret ke panel chat --}}
+        <div x-show="menyeret" x-cloak
+             style="position: absolute; inset: 0; z-index: 9050; background: rgba(30, 58, 138, 0.92); backdrop-filter: blur(2px);"
+             class="flex flex-col items-center justify-center text-white p-6 text-center transition pointer-events-none">
+            <div class="w-14 h-14 rounded-full bg-white/20 flex items-center justify-center mb-3">
+                <svg class="w-7 h-7 text-white animate-bounce" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12"/>
+                </svg>
+            </div>
+            <p class="font-bold text-base">Lepaskan file di sini</p>
+            <p class="text-xs text-blue-200 mt-1">Mendukung CSV Rekening Koran, Excel, Word, PPT, PDF, dan Gambar</p>
+        </div>
 
         {{-- Kepala + pemilih penerima --}}
         <div class="px-4 py-3 border-b border-gray-200 bg-gray-900 rounded-t-xl">
