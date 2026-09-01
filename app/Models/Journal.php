@@ -33,4 +33,10 @@ class Journal extends Model
     {
         return $this->hasMany(\App\Models\CashTransaction::class, 'journal_id');
     }
+
+    // Relasi ke Bank Transaction
+    public function bankTransaction()
+    {
+        return $this->hasOne(\App\Models\BankTransaction::class, 'journal_id');
+    }
 }

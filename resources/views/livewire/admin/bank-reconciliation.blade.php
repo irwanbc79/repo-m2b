@@ -235,8 +235,12 @@
                                     </div>
                                 @endif
                                 @if($trx->invoicePayment)
-                                    <div class="text-xs text-green-600 mt-1">
-                                        ✅ {{ $trx->invoicePayment->invoice->invoice_number ?? 'N/A' }}
+                                    <div class="text-xs text-green-600 mt-1 flex items-center gap-1 font-medium">
+                                        <span>✅</span> <span>Inv: {{ $trx->invoicePayment->invoice->invoice_number ?? 'N/A' }}</span>
+                                    </div>
+                                @elseif($trx->journal)
+                                    <div class="text-xs text-indigo-600 mt-1 flex items-center gap-1 font-semibold">
+                                        <span>📘</span> <span>{{ $trx->journal->journal_number }}</span>
                                     </div>
                                 @endif
                             </td>
@@ -275,41 +279,47 @@
                             </td>
                             <td class="px-4 py-3 whitespace-nowrap text-center">
                                 @if($trx->is_reconciled)
-                                    <span class="px-2 py-1 text-xs rounded-full bg-green-100 text-green-800">
-                                        ✅ Matched
+                                    <span class="px-2.5 py-1 text-xs font-semibold rounded-full bg-green-100 text-green-800 inline-flex items-center gap-1">
+                                        <span>✅</span> <span>Matched</span>
                                     </span>
                                 @else
-                                    <span class="px-2 py-1 text-xs rounded-full bg-orange-100 text-orange-800">
-                                        ⏳ Pending
+                                    <span class="px-2.5 py-1 text-xs font-semibold rounded-full bg-amber-100 text-amber-800 inline-flex items-center gap-1">
+                                        <span>⏳</span> <span>Pending</span>
                                     </span>
                                 @endif
                             </td>
                             <td class="px-4 py-3 whitespace-nowrap text-center">
-                                <div class="flex items-center justify-center gap-1">
+                                <div class="flex items-center justify-center gap-1.5">
                                     <button wire:click="showDetail({{ $trx->id }})" 
-                                            class="p-1 text-blue-600 hover:text-blue-800" title="Detail">
+                                            class="p-1.5 rounded-md hover:bg-gray-100 text-blue-600 hover:text-blue-800" title="Detail Transaksi">
                                         👁️
                                     </button>
-                                    @if(!$trx->is_reconciled && $trx->credit_amount > 0)
-                                        <button wire:click="openMatchModal({{ $trx->id }})" 
-                                                class="p-1 text-green-600 hover:text-green-800" title="Match">
-                                            🔗
+                                    @if(!$trx->is_reconciled)
+                                        @if($trx->credit_amount > 0)
+                                            <button wire:click="openMatchModal({{ $trx->id }})" 
+                                                    class="p-1.5 rounded-md hover:bg-green-50 text-green-600 hover:text-green-800 font-bold" title="Match dengan Invoice">
+                                                🔗
+                                            </button>
+                                        @endif
+                                        <button wire:click="openCreateJournalModal({{ $trx->id }})" 
+                                                class="p-1.5 rounded-md hover:bg-amber-50 text-amber-600 hover:text-amber-800 font-bold" title="Buat Jurnal Otomatis (1-Click)">
+                                            ⚡
                                         </button>
                                     @endif
                                     @if($trx->is_reconciled)
                                         <button wire:click="unmatchTransaction({{ $trx->id }})" 
-                                                wire:confirm="Batalkan matching transaksi ini?"
-                                                class="p-1 text-orange-600 hover:text-orange-800" title="Unmatch">
+                                                wire:confirm="Batalkan matching/jurnal transaksi ini?"
+                                                class="p-1.5 rounded-md hover:bg-orange-50 text-orange-600 hover:text-orange-800" title="Batalkan Rekonsiliasi">
                                             ⛓️‍💥
                                         </button>
                                     @endif
                                     <button onclick="openVoucherModal({{ $trx->id }}, {{ $trx->debit_amount > 0 ? 'true' : 'false' }}, {{ json_encode(Str::limit($trx->description, 80)) }}, '')"
-                                            class="p-1 text-gray-600 hover:text-gray-900" title="Cetak Voucher">
+                                            class="p-1.5 rounded-md hover:bg-gray-100 text-gray-600 hover:text-gray-900" title="Cetak Voucher">
                                         🖨️
                                     </button>
                                     <button wire:click="deleteTransaction({{ $trx->id }})"
                                             wire:confirm="Hapus transaksi ini?"
-                                            class="p-1 text-red-600 hover:text-red-800" title="Hapus">
+                                            class="p-1.5 rounded-md hover:bg-red-50 text-red-600 hover:text-red-800" title="Hapus">
                                         🗑️
                                     </button>
                                 </div>
@@ -579,9 +589,9 @@
 
                             @if($selectedTransaction->is_reconciled && $selectedTransaction->invoicePayment)
                                 <div class="bg-green-50 border border-green-200 rounded-lg p-3">
-                                    <p class="text-xs text-green-800 font-medium mb-1">Matched dengan:</p>
-                                    <p class="text-sm text-green-700">
-                                        Invoice: {{ $selectedTransaction->invoicePayment->invoice->invoice_number ?? 'N/A' }}
+                                    <p class="text-xs text-green-800 font-medium mb-1">Matched dengan Invoice:</p>
+                                    <p class="text-sm text-green-700 font-bold">
+                                        {{ $selectedTransaction->invoicePayment->invoice->invoice_number ?? 'N/A' }}
                                     </p>
                                     <p class="text-xs text-green-600">
                                         Customer: {{ $selectedTransaction->invoicePayment->invoice->customer->company_name ?? 'N/A' }}
@@ -589,6 +599,36 @@
                                     @if($selectedTransaction->matchedByUser)
                                         <p class="text-xs text-green-600 mt-1">
                                             Matched oleh: {{ $selectedTransaction->matchedByUser->name }} 
+                                            pada {{ $selectedTransaction->matched_at->format('d M Y H:i') }}
+                                        </p>
+                                    @endif
+                                </div>
+                            @elseif($selectedTransaction->is_reconciled && $selectedTransaction->journal)
+                                <div class="bg-indigo-50 border border-indigo-200 rounded-lg p-3">
+                                    <p class="text-xs text-indigo-800 font-medium mb-1">Direkonsiliasi via Jurnal Akuntansi:</p>
+                                    <p class="text-sm font-bold text-indigo-900">
+                                        {{ $selectedTransaction->journal->journal_number }}
+                                    </p>
+                                    <p class="text-xs text-indigo-700 mt-1">
+                                        {{ $selectedTransaction->journal->description }}
+                                    </p>
+                                    <div class="mt-2 pt-2 border-t border-indigo-200 text-xs text-indigo-900 space-y-1">
+                                        @foreach($selectedTransaction->journal->items as $item)
+                                            <div class="flex justify-between font-mono">
+                                                <span>{{ $item->account->code ?? '' }} - {{ $item->account->name ?? 'Akun' }}</span>
+                                                <span>
+                                                    @if($item->debit > 0)
+                                                        (Dr) Rp {{ number_format($item->debit, 0, ',', '.') }}
+                                                    @else
+                                                        (Cr) Rp {{ number_format($item->credit, 0, ',', '.') }}
+                                                    @endif
+                                                </span>
+                                            </div>
+                                        @endforeach
+                                    </div>
+                                    @if($selectedTransaction->matchedByUser)
+                                        <p class="text-xs text-indigo-600 mt-2">
+                                            Dibuat oleh: {{ $selectedTransaction->matchedByUser->name }} 
                                             pada {{ $selectedTransaction->matched_at->format('d M Y H:i') }}
                                         </p>
                                     @endif
@@ -613,6 +653,151 @@
                         <button wire:click="closeDetailModal" 
                                 class="w-full sm:w-auto px-4 py-2 bg-gray-200 text-gray-800 rounded-lg hover:bg-gray-300">
                             Tutup
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    @endif
+
+    {{-- Create Journal Modal --}}
+    @if($showCreateJournalModal && $journalTransaction)
+        <div class="fixed inset-0 z-50 overflow-y-auto" aria-labelledby="modal-title" role="dialog" aria-modal="true">
+            <div class="flex items-center justify-center min-h-screen px-4 pt-4 pb-20 text-center sm:block sm:p-0">
+                <div class="fixed inset-0 bg-gray-500 bg-opacity-75 transition-opacity" wire:click="closeCreateJournalModal"></div>
+
+                <div style="position: relative; z-index: 10;" class="inline-block align-bottom bg-white rounded-xl text-left overflow-hidden shadow-2xl transform transition-all sm:my-8 sm:align-middle sm:max-w-xl sm:w-full">
+                    <div class="bg-gradient-to-r from-blue-900 to-indigo-900 px-6 py-4 text-white flex items-center justify-between">
+                        <div>
+                            <h3 class="text-base sm:text-lg font-bold flex items-center gap-2">
+                                <span>⚡</span> Buat Jurnal & Rekonsiliasi Otomatis
+                            </h3>
+                            <p class="text-xs text-blue-200 mt-0.5">Catat transaksi rekening koran ini langsung ke Buku Besar (General Ledger)</p>
+                        </div>
+                        <button wire:click="closeCreateJournalModal" class="text-white/80 hover:text-white text-2xl leading-none">&times;</button>
+                    </div>
+
+                    <div class="p-6 space-y-4 max-h-[75vh] overflow-y-auto">
+                        {{-- Ringkasan Transaksi Bank --}}
+                        <div class="rounded-xl p-3.5 border {{ $journalIsExpense ? 'bg-red-50/70 border-red-200' : 'bg-green-50/70 border-green-200' }}">
+                            <div class="flex items-center justify-between text-xs font-semibold {{ $journalIsExpense ? 'text-red-700' : 'text-green-700' }} mb-1">
+                                <span>{{ $journalIsExpense ? '🔻 Kas Keluar (Debit Rekening)' : '🔺 Kas Masuk (Kredit Rekening)' }}</span>
+                                <span class="uppercase tracking-wider px-2 py-0.5 rounded bg-white font-mono text-[10px] border shadow-xs">Bank {{ $journalTransaction->bank_name }}</span>
+                            </div>
+                            <div class="flex items-baseline justify-between gap-2">
+                                <span class="text-sm text-gray-800 font-medium truncate">{{ $journalTransaction->description }}</span>
+                                <span class="text-lg font-black {{ $journalIsExpense ? 'text-red-600' : 'text-green-600' }} whitespace-nowrap">
+                                    {{ $journalIsExpense ? '-' : '+' }}Rp {{ number_format($journalAmount, 0, ',', '.') }}
+                                </span>
+                            </div>
+                        </div>
+
+                        {{-- Form Field --}}
+                        <div class="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
+                            <div>
+                                <label class="block text-xs font-bold text-gray-700 mb-1">Tanggal Transaksi <span class="text-red-500">*</span></label>
+                                <input type="date" wire:model="journalDate" class="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500">
+                                @error('journalDate') <span class="text-red-500 text-xs">{{ $message }}</span> @enderror
+                            </div>
+
+                            <div>
+                                <label class="block text-xs font-bold text-gray-700 mb-1">No. Referensi</label>
+                                <input type="text" wire:model="journalReference" placeholder="Ref bank / transfer..." class="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 font-mono">
+                            </div>
+                        </div>
+
+                        <div>
+                            <label class="block text-xs font-bold text-gray-700 mb-1">Akun Kas / Bank <span class="text-red-500">*</span></label>
+                            <select wire:model.live="journalBankAccountId" class="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm bg-white focus:ring-2 focus:ring-blue-500">
+                                <option value="">-- Pilih Akun Bank --</option>
+                                @foreach($accounts->where('type', 'kas_bank') as $acc)
+                                    <option value="{{ $acc->id }}">{{ $acc->code }} - {{ $acc->name }}</option>
+                                @endforeach
+                            </select>
+                            @error('journalBankAccountId') <span class="text-red-500 text-xs">{{ $message }}</span> @enderror
+                        </div>
+
+                        <div>
+                            <div class="flex items-center justify-between mb-1">
+                                <label class="block text-xs font-bold text-gray-700">Akun Lawan (COA) <span class="text-red-500">*</span></label>
+                                <span class="text-[10px] text-indigo-600 font-semibold bg-indigo-50 px-1.5 py-0.5 rounded">💡 Disarankan Otomatis</span>
+                            </div>
+                            <select wire:model.live="journalCounterAccountId" class="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm bg-white focus:ring-2 focus:ring-blue-500">
+                                <option value="">-- Pilih Akun Lawan --</option>
+                                @php
+                                    $groupedAccounts = $accounts->groupBy(function($a) {
+                                        return match($a->type) {
+                                            'beban_operasional' => 'Beban Operasional',
+                                            'beban_pokok' => 'Beban Pokok',
+                                            'beban_lain' => 'Beban Lain-Lain / Pajak / Adm',
+                                            'hutang_lancar' => 'Hutang / Titipan / Jaminan / Refund',
+                                            'pendapatan' => 'Pendapatan / Bunga',
+                                            'piutang' => 'Piutang',
+                                            'aset_lancar_lain' => 'Aset Lainnya',
+                                            'modal' => 'Modal',
+                                            default => 'Lainnya',
+                                        };
+                                    });
+                                @endphp
+                                @foreach($groupedAccounts as $groupName => $accList)
+                                    <optgroup label="{{ $groupName }}">
+                                        @foreach($accList as $acc)
+                                            <option value="{{ $acc->id }}">{{ $acc->code }} - {{ $acc->name }}</option>
+                                        @endforeach
+                                    </optgroup>
+                                @endforeach
+                            </select>
+                            @error('journalCounterAccountId') <span class="text-red-500 text-xs">{{ $message }}</span> @enderror
+                        </div>
+
+                        <div>
+                            <label class="block text-xs font-bold text-gray-700 mb-1">Keterangan Jurnal <span class="text-red-500">*</span></label>
+                            <textarea wire:model="journalDescription" rows="2" class="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500" placeholder="Keterangan transaksi untuk buku besar..."></textarea>
+                            @error('journalDescription') <span class="text-red-500 text-xs">{{ $message }}</span> @enderror
+                        </div>
+
+                        {{-- Double-Entry Simulation Preview --}}
+                        @php
+                            $bankAcc = $accounts->firstWhere('id', $journalBankAccountId);
+                            $counterAcc = $accounts->firstWhere('id', $journalCounterAccountId);
+                        @endphp
+                        @if($bankAcc && $counterAcc)
+                            <div class="bg-gray-50 border border-gray-200 rounded-xl p-3 text-xs">
+                                <p class="font-bold text-gray-700 mb-2 flex items-center gap-1">
+                                    <span>⚖️</span> Pratinjau Entri Jurnal Berpasangan (Balanced):
+                                </p>
+                                <div class="space-y-1.5 font-mono text-[11px]">
+                                    @if($journalIsExpense)
+                                        <div class="flex justify-between text-gray-800 bg-white p-1.5 rounded border border-gray-100">
+                                            <span>(Debit) {{ $counterAcc->code }} - {{ $counterAcc->name }}</span>
+                                            <span class="font-bold text-blue-700">Rp {{ number_format($journalAmount, 0, ',', '.') }}</span>
+                                        </div>
+                                        <div class="flex justify-between text-gray-800 bg-white p-1.5 rounded border border-gray-100 pl-4">
+                                            <span>(Kredit) {{ $bankAcc->code }} - {{ $bankAcc->name }}</span>
+                                            <span class="font-bold text-gray-700">Rp {{ number_format($journalAmount, 0, ',', '.') }}</span>
+                                        </div>
+                                    @else
+                                        <div class="flex justify-between text-gray-800 bg-white p-1.5 rounded border border-gray-100">
+                                            <span>(Debit) {{ $bankAcc->code }} - {{ $bankAcc->name }}</span>
+                                            <span class="font-bold text-blue-700">Rp {{ number_format($journalAmount, 0, ',', '.') }}</span>
+                                        </div>
+                                        <div class="flex justify-between text-gray-800 bg-white p-1.5 rounded border border-gray-100 pl-4">
+                                            <span>(Kredit) {{ $counterAcc->code }} - {{ $counterAcc->name }}</span>
+                                            <span class="font-bold text-gray-700">Rp {{ number_format($journalAmount, 0, ',', '.') }}</span>
+                                        </div>
+                                    @endif
+                                </div>
+                            </div>
+                        @endif
+                    </div>
+
+                    <div class="bg-gray-50 px-6 py-3.5 border-t border-gray-200 flex items-center justify-end gap-2.5">
+                        <button type="button" wire:click="closeCreateJournalModal" class="px-4 py-2 border border-gray-300 rounded-lg text-sm text-gray-700 bg-white hover:bg-gray-50">
+                            Batal
+                        </button>
+                        <button type="button" wire:click="saveJournalFromTransaction" wire:loading.attr="disabled" class="px-5 py-2 bg-blue-600 hover:bg-blue-700 text-white font-semibold rounded-lg text-sm shadow-sm flex items-center gap-1.5">
+                            <span wire:loading.remove wire:target="saveJournalFromTransaction">💾 Simpan Jurnal & Rekonsiliasi</span>
+                            <span wire:loading wire:target="saveJournalFromTransaction">⏳ Menyimpan...</span>
                         </button>
                     </div>
                 </div>

@@ -24,6 +24,7 @@ class BankTransaction extends Model
         'category',
         'is_reconciled',
         'invoice_payment_id',
+        'journal_id',
         'matched_by',
         'matched_at',
         'matching_notes',
@@ -40,6 +41,23 @@ class BankTransaction extends Model
         'matched_at' => 'datetime',
         'imported_at' => 'datetime',
     ];
+
+    protected static function booted()
+    {
+        static::creating(function ($model) {
+            if (empty($model->transaction_hash)) {
+                $dateStr = $model->transaction_date ? date('Y-m-d', strtotime((string) $model->transaction_date)) : date('Y-m-d');
+                $model->transaction_hash = sha1(implode('|', [
+                    $model->bank_name ?? '',
+                    $dateStr,
+                    (float) ($model->credit_amount ?? 0),
+                    (float) ($model->debit_amount ?? 0),
+                    $model->description ?? '',
+                    uniqid('', true),
+                ]));
+            }
+        });
+    }
 
     /**
      * Kategori transaksi yang tersedia
@@ -64,6 +82,14 @@ class BankTransaction extends Model
     public function invoicePayment()
     {
         return $this->belongsTo(InvoicePayment::class, 'invoice_payment_id');
+    }
+
+    /**
+     * Relasi ke Journal Entry
+     */
+    public function journal()
+    {
+        return $this->belongsTo(Journal::class, 'journal_id');
     }
 
     /**

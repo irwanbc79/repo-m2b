@@ -8,6 +8,8 @@ use Livewire\WithPagination;
 use Livewire\WithFileUploads;
 use App\Models\BankTransaction;
 use App\Models\InvoicePayment;
+use App\Models\Account;
+use App\Models\Journal;
 use App\Services\BankStatementImportService;
 use App\Services\BankReconciliationService;
 use Illuminate\Support\Facades\Storage;
@@ -29,6 +31,17 @@ class BankReconciliation extends Component
     public $showImportModal = false;
     public $showMatchModal = false;
     public $showDetailModal = false;
+    public $showCreateJournalModal = false;
+
+    // Create Journal State
+    public $journalTransaction = null;
+    public $journalDate = '';
+    public $journalDescription = '';
+    public $journalReference = '';
+    public $journalBankAccountId = null;
+    public $journalCounterAccountId = null;
+    public $journalAmount = 0;
+    public $journalIsExpense = true;
 
     // Import
     public $csvFile;
@@ -281,11 +294,99 @@ class BankReconciliation extends Component
     }
 
     /**
+     * Open create journal modal from bank transaction
+     */
+    public function openCreateJournalModal($transactionId)
+    {
+        $this->journalTransaction = BankTransaction::find($transactionId);
+        if (!$this->journalTransaction) {
+            session()->flash('error', 'Transaksi bank tidak ditemukan');
+            return;
+        }
+
+        $service = new BankReconciliationService();
+        $this->journalIsExpense = (float) $this->journalTransaction->debit_amount > 0;
+        $this->journalAmount = $this->journalIsExpense 
+            ? (float) $this->journalTransaction->debit_amount 
+            : (float) $this->journalTransaction->credit_amount;
+        $this->journalDate = $this->journalTransaction->transaction_date 
+            ? $this->journalTransaction->transaction_date->format('Y-m-d') 
+            : date('Y-m-d');
+        
+        $desc = trim($this->journalTransaction->description);
+        if (!empty($this->journalTransaction->additional_description) && $this->journalTransaction->additional_description !== $this->journalTransaction->description) {
+            $desc .= ' - ' . trim($this->journalTransaction->additional_description);
+        }
+        $this->journalDescription = $desc;
+        $this->journalReference = $this->journalTransaction->reference_number ?: '';
+
+        // Auto-detect akun Bank (Mandiri / BCA) dan Akun Lawan
+        $this->journalBankAccountId = $service->getBankAccountId($this->journalTransaction->bank_name);
+        $this->journalCounterAccountId = $service->suggestCounterAccountId($this->journalTransaction);
+
+        $this->showCreateJournalModal = true;
+    }
+
+    /**
+     * Close create journal modal
+     */
+    public function closeCreateJournalModal()
+    {
+        $this->showCreateJournalModal = false;
+        $this->reset([
+            'journalTransaction', 'journalDate', 'journalDescription', 'journalReference',
+            'journalBankAccountId', 'journalCounterAccountId', 'journalAmount', 'journalIsExpense'
+        ]);
+    }
+
+    /**
+     * Save journal from bank transaction and auto-reconcile
+     */
+    public function saveJournalFromTransaction()
+    {
+        $this->validate([
+            'journalBankAccountId' => 'required|exists:accounts,id',
+            'journalCounterAccountId' => 'required|exists:accounts,id|different:journalBankAccountId',
+            'journalDescription' => 'required|string|max:500',
+            'journalDate' => 'required|date',
+        ], [
+            'journalBankAccountId.required' => 'Pilih Akun Kas/Bank',
+            'journalCounterAccountId.required' => 'Pilih Akun Lawan (COA)',
+            'journalCounterAccountId.different' => 'Akun Lawan tidak boleh sama dengan Akun Kas/Bank',
+            'journalDescription.required' => 'Keterangan jurnal wajib diisi',
+            'journalDate.required' => 'Tanggal transaksi wajib diisi',
+        ]);
+
+        if (!$this->journalTransaction) {
+            session()->flash('error', 'Transaksi tidak ditemukan');
+            return;
+        }
+
+        try {
+            $service = new BankReconciliationService();
+            $journal = $service->createJournalAndReconcile(
+                $this->journalTransaction,
+                (int) $this->journalBankAccountId,
+                (int) $this->journalCounterAccountId,
+                $this->journalDescription,
+                $this->journalReference ?: null,
+                auth()->id()
+            );
+
+            session()->flash('success', "✅ Jurnal {$journal->journal_number} berhasil dibuat & transaksi bank otomatis direkonsiliasi!");
+            $this->closeCreateJournalModal();
+            $this->loadStatistics();
+        } catch (\Exception $e) {
+            session()->flash('error', 'Gagal membuat jurnal: ' . $e->getMessage());
+        }
+    }
+
+    /**
      * Show transaction detail
      */
     public function showDetail($transactionId)
     {
-        $this->selectedTransaction = BankTransaction::with(['invoicePayment.invoice.customer', 'matchedByUser'])
+        $this->selectedTransaction = BankTransaction::with(['invoicePayment.invoice.customer', 'matchedByUser', 'journal.items.account'])
             ->find($transactionId);
         
         if ($this->selectedTransaction) {
@@ -336,7 +437,7 @@ class BankReconciliation extends Component
     public function render()
     {
         $query = BankTransaction::query()
-            ->with(['invoicePayment.invoice.customer', 'matchedByUser']);
+            ->with(['invoicePayment.invoice.customer', 'matchedByUser', 'journal.items.account']);
 
         // Apply filters
         if ($this->search) {
@@ -372,8 +473,11 @@ class BankReconciliation extends Component
         $transactions = $query->orderBy('transaction_date', 'desc')
             ->paginate(20);
 
+        $accounts = Account::orderBy('code')->get();
+
         return view('livewire.admin.bank-reconciliation', [
             'transactions' => $transactions,
+            'accounts' => $accounts,
             'categories' => BankTransaction::CATEGORIES,
             'supportedBanks' => BankStatementImportService::getSupportedBanks(),
         ]);
