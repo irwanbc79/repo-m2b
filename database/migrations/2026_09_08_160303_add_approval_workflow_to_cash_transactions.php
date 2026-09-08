@@ -19,10 +19,16 @@ return new class extends Migration
     public function up(): void
     {
         Schema::table('cash_transactions', function (Blueprint $table) {
+            // after() dipasang hanya kalau kolom acuannya benar-benar ada —
+            // schema produksi punya riwayat drift, dan after() ke kolom yang
+            // tidak ada bikin migrasi gagal di tengah jalan.
+            $after = fn (string $column) => Schema::hasColumn('cash_transactions', $column) ? $column : null;
+
             if (! Schema::hasColumn('cash_transactions', 'approval_status')) {
-                $table->enum('approval_status', ['pending', 'approved', 'rejected'])
-                    ->default('pending')
-                    ->after('is_posted');
+                $column = $table->enum('approval_status', ['pending', 'approved', 'rejected'])->default('pending');
+                if ($ref = $after('is_posted')) {
+                    $column->after($ref);
+                }
                 $table->index('approval_status');
             }
             if (! Schema::hasColumn('cash_transactions', 'submitted_at')) {

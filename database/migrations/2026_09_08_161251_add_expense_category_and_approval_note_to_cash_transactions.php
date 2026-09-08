@@ -16,7 +16,11 @@ return new class extends Migration
     {
         Schema::table('cash_transactions', function (Blueprint $table) {
             if (! Schema::hasColumn('cash_transactions', 'expense_category')) {
-                $table->string('expense_category', 50)->nullable()->after('cost_category');
+                $column = $table->string('expense_category', 50)->nullable();
+                // Lihat catatan drift schema di migrasi 2026_09_08_160303.
+                if (Schema::hasColumn('cash_transactions', 'cost_category')) {
+                    $column->after('cost_category');
+                }
                 $table->index('expense_category');
             }
             if (! Schema::hasColumn('cash_transactions', 'approval_note')) {
