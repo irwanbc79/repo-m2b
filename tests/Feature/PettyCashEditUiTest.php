@@ -25,7 +25,7 @@ class PettyCashEditUiTest extends TestCase
         parent::setUp();
 
         foreach ([['1102', 'kas_bank'], ['6202', 'beban_operasional'], ['6201', 'beban_operasional']] as [$kode, $tipe]) {
-            Account::create(['code' => $kode, 'name' => 'Akun ' . $kode, 'type' => $tipe]);
+            $this->makeAccount(['code' => $kode, 'name' => 'Akun ' . $kode, 'type' => $tipe]);
         }
 
         $this->nurul     = User::factory()->create(['role' => 'staff', 'name' => 'Nurul Asyikin']);

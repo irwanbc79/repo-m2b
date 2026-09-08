@@ -159,7 +159,7 @@ class AuditLogIntegrationTest extends TestCase
             'role' => 'staff_accounting',
         ]);
 
-        $kas = Account::create([
+        $kas = $this->makeAccount([
             'code' => '11110',
             'name' => 'Kas Operasional',
             'type' => 'kas_bank',
@@ -167,7 +167,7 @@ class AuditLogIntegrationTest extends TestCase
             'current_balance' => 10000000,
         ]);
 
-        $beban = Account::create([
+        $beban = $this->makeAccount([
             'code' => '51100',
             'name' => 'Beban Operasional',
             'type' => 'beban_operasional',

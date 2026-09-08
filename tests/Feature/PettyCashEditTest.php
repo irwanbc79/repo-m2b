@@ -34,7 +34,7 @@ class PettyCashEditTest extends TestCase
             ['6202', 'Beban Konsumsi'],
             ['6201', 'Beban Transport'],
         ] as [$kode, $nama]) {
-            Account::create([
+            $this->makeAccount([
                 'code' => $kode, 'name' => $nama,
                 'type' => $kode === '1102' ? 'kas_bank' : 'beban_operasional',
             ]);

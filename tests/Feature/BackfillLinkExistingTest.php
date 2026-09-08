@@ -32,8 +32,8 @@ class BackfillLinkExistingTest extends TestCase
         $this->admin = User::factory()->create(['role' => 'admin']);
         $this->actingAs($this->admin);
 
-        $this->bank = Account::create(['code' => '1103', 'name' => 'Bank Mandiri', 'type' => 'kas_bank', 'opening_balance' => 0, 'current_balance' => 0]);
-        $this->piutang = Account::create(['code' => '1201', 'name' => 'Piutang Usaha', 'type' => 'piutang', 'opening_balance' => 0, 'current_balance' => 0]);
+        $this->bank = $this->makeAccount(['code' => '1103', 'name' => 'Bank Mandiri', 'type' => 'kas_bank', 'opening_balance' => 0, 'current_balance' => 0]);
+        $this->piutang = $this->makeAccount(['code' => '1201', 'name' => 'Piutang Usaha', 'type' => 'piutang', 'opening_balance' => 0, 'current_balance' => 0]);
     }
 
     protected function makePaidInvoiceWithPayJournal(float $payAmount, float $journalAmount): InvoicePayment
