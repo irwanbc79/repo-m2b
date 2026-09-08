@@ -27,7 +27,7 @@ class ChartOfAccountsSyncTest extends TestCase
             'roles' => ['admin'],
         ]);
 
-        $this->bankAccount = Account::create([
+        $this->bankAccount = $this->makeAccount([
             'code' => '1103',
             'name' => 'Bank Mandiri IDR',
             'type' => 'kas_bank',

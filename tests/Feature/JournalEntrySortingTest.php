@@ -28,14 +28,14 @@ class JournalEntrySortingTest extends TestCase
     {
         $user = $this->createStaff();
 
-        $kas = Account::create([
+        $kas = $this->makeAccount([
             'code' => '1101',
             'name' => 'Kas Operasional',
             'type' => 'kas_bank',
             'current_balance' => 0
         ]);
 
-        $modal = Account::create([
+        $modal = $this->makeAccount([
             'code' => '5101',
             'name' => 'Beban Operasional',
             'type' => 'beban_operasional',

@@ -39,6 +39,214 @@ class CashierService
         });
     }
 
+    /* ==================================================================
+     | FASE 2 — MAKER / CHECKER
+     |
+     | Kasir menyimpan transaksi → tersimpan sebagai 'pending' TANPA jurnal
+     | dan tanpa efek samping (invoice/job cost/vendor bill tidak disentuh).
+     | Accounting memverifikasi → baru jurnal dibentuk lewat jalur yang sama
+     | persis dengan processPayment(), jadi pemilihan akunnya tidak berubah.
+     ================================================================== */
+
+    /**
+     * Fase 1 — cari transaksi yang kemungkinan duplikat.
+     *
+     * Kriteria: shipment, lawan transaksi, dan nominal sama dalam rentang hari
+     * yang diatur di config/cashier.php. Ini yang selama ini baru ketahuan
+     * belakangan lewat `reconcile:auto-jobcosts`; sekarang diangkat ke depan.
+     *
+     * Sengaja PERINGATAN, bukan larangan — pembayaran kembar yang sah memang
+     * ada (mis. dua lift on di shipment yang sama, tarif sama).
+     */
+    public function findPossibleDuplicates(array $data, ?int $excludeId = null)
+    {
+        $amount = (float) ($data['amount'] ?? 0);
+        if ($amount <= 0) {
+            return collect();
+        }
+
+        $window = (int) config('cashier.duplicate_window_days', 7);
+        $date = Carbon::parse($data['transaction_date'] ?? now());
+
+        return CashTransaction::query()
+            ->where('amount', $amount)
+            ->whereBetween('transaction_date', [
+                $date->copy()->subDays($window)->toDateString(),
+                $date->copy()->addDays($window)->toDateString(),
+            ])
+            ->where('approval_status', '!=', CashTransaction::STATUS_REJECTED)
+            ->when($excludeId, fn ($q) => $q->where('id', '!=', $excludeId))
+            ->when(
+                ! empty($data['shipment_id']),
+                fn ($q) => $q->where('shipment_id', $data['shipment_id']),
+                // Tanpa shipment, kemiripan hanya berarti kalau lawan
+                // transaksinya sama — kalau tidak, terlalu banyak false alarm.
+                fn ($q) => $q->whereNull('shipment_id')
+                    ->where(function ($q) use ($data) {
+                        $q->where(fn ($q) => $q->whereNotNull('vendor_id')->where('vendor_id', $data['vendor_id'] ?? 0))
+                          ->orWhere(fn ($q) => $q->whereNotNull('customer_id')->where('customer_id', $data['customer_id'] ?? 0));
+                    })
+            )
+            ->with(['vendor', 'customer', 'creator'])
+            ->orderByDesc('transaction_date')
+            ->limit(5)
+            ->get();
+    }
+
+    /**
+     * Simpan input kasir sebagai transaksi menunggu verifikasi.
+     */
+    public function submitForApproval(array $data, $attachment = null): CashTransaction
+    {
+        return DB::transaction(function () use ($data, $attachment) {
+            // Akun ditentukan sekarang juga supaya kasir tetap melihat preview
+            // jurnal yang benar, dan supaya input yang tidak bisa dipetakan ke
+            // akun gagal di depan — bukan nanti waktu diverifikasi.
+            $accounts = $this->determineAccounts($data);
+
+            $cashTransaction = CashTransaction::create([
+                'transaction_date' => $data['transaction_date'] ?? now(),
+                'type' => (stripos($data['type'] ?? $data['transaction_type'] ?? 'in', 'in') !== false) ? 'in' : 'out',
+                'amount' => $data['amount'] ?? 0,
+                'account_id' => $accounts['debit_account']->id,
+                'counter_account_id' => $accounts['credit_account']->id,
+                'invoice_id' => $data['invoice_id'] ?? null,
+                'invoice_payment_id' => $data['invoice_payment_id'] ?? null,
+                'shipment_id' => $data['shipment_id'] ?? null,
+                'vendor_id' => $data['vendor_id'] ?? null,
+                'customer_id' => $data['customer_id'] ?? null,
+                'job_cost_id' => $data['job_cost_id'] ?? null,
+                'vendor_bill_id' => $data['vendor_bill_id'] ?? null,
+                'description' => $data['description'] ?? '',
+                'counterpart_type' => $data['counterpart_type'] ?? null,
+                'cost_category' => $this->normalizeCostCategory($data),
+                'expense_category' => $data['expense_category'] ?? null,
+                'currency' => $data['currency'] ?? 'IDR',
+                'exchange_rate' => $data['exchange_rate'] ?? 1,
+
+                // Belum masuk buku
+                'journal_id' => null,
+                'is_posted' => false,
+                'posted_at' => null,
+                'approval_status' => CashTransaction::STATUS_PENDING,
+                'submitted_at' => now(),
+
+                'created_by' => $data['created_by'] ?? Auth::id() ?? 1,
+            ]);
+
+            if ($attachment) {
+                $path = $attachment->store('cash-transactions', 'public');
+                $cashTransaction->update(['proof_file' => $path]);
+            }
+
+            return $cashTransaction->refresh();
+        });
+    }
+
+    /**
+     * Verifikasi transaksi kasir: bentuk jurnal, posting, dan baru jalankan
+     * efek samping ke invoice / job cost / vendor bill.
+     */
+    public function approveTransaction(CashTransaction $cashTransaction, int $approverId, ?string $note = null): CashTransaction
+    {
+        if ($cashTransaction->isApproved()) {
+            throw new \Exception('Transaksi ini sudah diverifikasi sebelumnya.');
+        }
+
+        if ((int) $cashTransaction->created_by === $approverId) {
+            throw new \Exception('Anda tidak bisa memverifikasi transaksi yang Anda input sendiri.');
+        }
+
+        // Fase 1 — tanpa bukti tidak bisa diverifikasi. Masih boleh sebagai
+        // pengecualian, tapi alasannya wajib ditulis dan ikut tersimpan.
+        if (config('cashier.require_proof_on_approval', true)
+            && ! $cashTransaction->hasProof()
+            && blank($note)
+        ) {
+            throw new \Exception('Transaksi ini belum ada bukti. Lampirkan bukti dulu, atau setujui sebagai pengecualian dengan menuliskan alasannya.');
+        }
+
+        return DB::transaction(function () use ($cashTransaction, $approverId, $note) {
+            $data = $this->payloadFromTransaction($cashTransaction);
+            $accounts = $this->determineAccounts($data);
+
+            $journal = $this->createJournal($data, $accounts);
+
+            $cashTransaction->update([
+                'account_id' => $accounts['debit_account']->id,
+                'counter_account_id' => $accounts['credit_account']->id,
+                'journal_id' => $journal->id,
+                'is_posted' => true,
+                'posted_at' => now(),
+                'approval_status' => CashTransaction::STATUS_APPROVED,
+                'approved_by' => $approverId,
+                'approved_at' => now(),
+                'rejection_reason' => null,
+                'approval_note' => $note,
+            ]);
+
+            // Efek samping sengaja ditahan sampai titik ini: selama pending,
+            // invoice & job cost tidak boleh ikut berubah status.
+            $this->updateRelatedRecords($cashTransaction->refresh(), $data);
+
+            return $cashTransaction->refresh();
+        });
+    }
+
+    /**
+     * Tolak transaksi kasir dengan alasan. Tidak ada jurnal yang dibentuk,
+     * datanya tetap tersimpan sebagai jejak.
+     */
+    public function rejectTransaction(CashTransaction $cashTransaction, int $approverId, string $reason): CashTransaction
+    {
+        if ($cashTransaction->isApproved()) {
+            throw new \Exception('Transaksi sudah diverifikasi — koreksinya lewat jurnal balik, bukan ditolak.');
+        }
+
+        $cashTransaction->update([
+            'approval_status' => CashTransaction::STATUS_REJECTED,
+            'approved_by' => $approverId,
+            'approved_at' => now(),
+            'rejection_reason' => $reason,
+        ]);
+
+        return $cashTransaction->refresh();
+    }
+
+    /**
+     * Susun ulang payload dari baris transaksi yang tersimpan.
+     *
+     * cost_category yang disimpan sama persis dengan yang dikirim kasir
+     * (normalizeCostCategory meloloskan nilai shipment/overhead/other apa
+     * adanya), jadi determineAccounts() menghasilkan pasangan akun yang identik
+     * dengan kalau transaksinya diposting langsung waktu disimpan.
+     */
+    protected function payloadFromTransaction(CashTransaction $cashTransaction): array
+    {
+        return [
+            'transaction_date' => $cashTransaction->transaction_date,
+            'type' => $cashTransaction->type,
+            'transaction_type' => $cashTransaction->type,
+            'amount' => $cashTransaction->amount,
+            'cost_category' => $cashTransaction->cost_category,
+            'category' => $cashTransaction->cost_category,
+            'description' => $cashTransaction->description,
+            'invoice_id' => $cashTransaction->invoice_id,
+            'invoice_payment_id' => $cashTransaction->invoice_payment_id,
+            'shipment_id' => $cashTransaction->shipment_id,
+            'vendor_id' => $cashTransaction->vendor_id,
+            'customer_id' => $cashTransaction->customer_id,
+            'job_cost_id' => $cashTransaction->job_cost_id,
+            'vendor_bill_id' => $cashTransaction->vendor_bill_id,
+            'counterpart_type' => $cashTransaction->counterpart_type,
+            'expense_category' => $cashTransaction->expense_category,
+            'currency' => $cashTransaction->currency,
+            'exchange_rate' => $cashTransaction->exchange_rate,
+            'proof_file' => $cashTransaction->proof_file,
+            'created_by' => $cashTransaction->created_by,
+        ];
+    }
+
     /**
      * Determine debit and credit accounts
      */
@@ -173,6 +381,11 @@ class CashierService
             'journal_id' => $journal->id,
             'is_posted' => true,
             'posted_at' => now(),
+            // Jalur sistem (job costing, invoice, backfill) tetap langsung
+            // terbukukan — antrian verifikasi hanya untuk input kasir manual.
+            'approval_status' => CashTransaction::STATUS_APPROVED,
+            'submitted_at' => now(),
+            'approved_at' => now(),
             // Kolom NOT NULL di prod; dari console Auth::id() null → fallback
             // user sistem #1 (konsisten dgn AccountingService).
             'created_by' => $data['created_by'] ?? Auth::id() ?? 1,
@@ -456,14 +669,17 @@ class CashierService
         
         try {
             $cashTransaction = CashTransaction::with(['journal'])->findOrFail($id);
-            
-            if (!in_array(($cashTransaction->journal->status ?? 'draft'), ['draft', 'pending', 'posted'])) {
-                throw new \Exception('Hanya transaksi Draft yang dapat diupdate!');
+
+            // Fase 2: yang sudah diverifikasi sudah punya jurnal resmi —
+            // koreksinya lewat jurnal balik, tidak boleh diedit diam-diam.
+            if ($cashTransaction->isApproved()) {
+                throw new \Exception('Transaksi sudah diverifikasi accounting dan tidak bisa diedit. Buat jurnal balik bila perlu koreksi.');
             }
-            
+
             $accounts = $this->determineAccounts($data);
-            
-            // Update journal yang existing (bukan delete & recreate)
+
+            // Transaksi yang masih menunggu verifikasi belum punya jurnal, dan
+            // memang belum boleh punya. Cukup perbarui datanya saja.
             $journal = $cashTransaction->journal;
             if ($journal) {
                 $journal->update([
@@ -485,11 +701,8 @@ class CashierService
                     'debit' => 0,
                     'credit' => $data['amount'] ?? 0,
                 ]);
-            } else {
-                // Jika tidak ada journal (edge case), buat baru
-                $journal = $this->createJournal($data, $accounts);
             }
-            
+
             $cashTransaction->update([
                 'transaction_date' => $data['transaction_date'],
                 'type' => $data['type'],
@@ -499,10 +712,18 @@ class CashierService
                 'customer_id' => $data['customer_id'] ?? null,
                 'vendor_id' => $data['vendor_id'] ?? null,
                 'shipment_id' => $data['shipment_id'] ?? null,
+                'invoice_id' => $data['invoice_id'] ?? null,
+                'vendor_bill_id' => $data['vendor_bill_id'] ?? null,
+                'cost_category' => $this->normalizeCostCategory($data),
+                'expense_category' => $data['expense_category'] ?? null,
                 'description' => $data['description'] ?? null,
-                'journal_id' => $journal->id,
-                'is_posted' => true,
-                'posted_at' => $cashTransaction->posted_at ?? now(),
+                'journal_id' => $journal?->id,
+                'is_posted' => (bool) $journal,
+                'posted_at' => $journal ? ($cashTransaction->posted_at ?? now()) : null,
+                // Revisi setelah ditolak mengembalikan transaksi ke antrian.
+                'approval_status' => CashTransaction::STATUS_PENDING,
+                'submitted_at' => now(),
+                'rejection_reason' => null,
             ]);
             
             if ($attachment) {

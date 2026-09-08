@@ -34,7 +34,7 @@ class CashierInvoiceStatusTest extends TestCase
             ['code' => '1201', 'name' => 'Piutang Usaha', 'type' => 'piutang'],
             ['code' => '4101', 'name' => 'Pendapatan Jasa', 'type' => 'pendapatan'],
         ] as $account) {
-            Account::create($account + ['opening_balance' => 0, 'current_balance' => 0]);
+            $this->makeAccount($account + ['opening_balance' => 0, 'current_balance' => 0]);
         }
     }
 

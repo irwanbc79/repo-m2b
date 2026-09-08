@@ -31,7 +31,7 @@ class CashierCostCategoryTest extends TestCase
             ['code' => '5101', 'name' => 'Biaya Operasional', 'type' => 'beban_operasional'],
             ['code' => '5199', 'name' => 'Biaya Lain-lain', 'type' => 'beban_lain'],
         ] as $account) {
-            Account::create($account + ['opening_balance' => 0, 'current_balance' => 0]);
+            $this->makeAccount($account + ['opening_balance' => 0, 'current_balance' => 0]);
         }
     }
 

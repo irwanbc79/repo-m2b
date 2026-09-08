@@ -30,7 +30,7 @@ class JournalEntryEditTest extends TestCase
             'roles' => ['staff_accounting'],
         ]);
 
-        $this->cashAccount = Account::create([
+        $this->cashAccount = $this->makeAccount([
             'code' => '1101',
             'name' => 'Kas Operasional',
             'type' => 'kas_bank',
@@ -38,7 +38,7 @@ class JournalEntryEditTest extends TestCase
             'is_active' => true,
         ]);
 
-        $this->expenseAccount = Account::create([
+        $this->expenseAccount = $this->makeAccount([
             'code' => '5101',
             'name' => 'Beban Operasional',
             'type' => 'beban_operasional',

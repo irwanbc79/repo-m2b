@@ -13,6 +13,7 @@ use App\Models\VendorBill;
 use App\Models\CashTransaction;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Storage;
+use Illuminate\Validation\Rule;
 use Barryvdh\DomPDF\Facade\Pdf;
 
 class SimpleCashier extends Component
@@ -79,6 +80,20 @@ class SimpleCashier extends Component
     public $editingId = null;
     public $showDeleteConfirm = false;
     public $deleteId = null;
+
+    // ── Verifikasi accounting (Fase 2 — maker/checker) ──────────────────────
+    public $pendingCount = 0;
+    public $showRejectModal = false;
+    public $rejectId = null;
+    public $rejectReason = '';
+
+    // ── Fase 1: kategori biaya, dugaan duplikat, pengecualian bukti ─────────
+    public $expense_category = null;
+    public $duplicateWarnings = [];
+    public $showApproveNoProofModal = false;
+    public $approveNoProofId = null;
+    public $approveNote = '';
+    public $filterExpenseCategory = 'all';
     public $perPage = 25;
     public $totalRecords = 0;
     public $currentPage = 1;
@@ -160,9 +175,9 @@ class SimpleCashier extends Component
         if ($this->filterNoJournal) {
             $query->whereNull('journal_id');
         } elseif ($this->filterStatus !== 'all') {
-            $query->whereHas('journal', function ($q) {
-                $q->where('status', $this->filterStatus === 'posted' ? 'posted' : 'draft');
-            });
+            // Fase 2: status yang dipakai adalah status verifikasi accounting,
+            // bukan lagi status jurnal (jurnal baru ada setelah disetujui).
+            $query->where('approval_status', $this->filterStatus);
         }
 
         if (empty($this->searchTerm) || $this->showFilters) {
@@ -179,6 +194,9 @@ class SimpleCashier extends Component
         }
         if ($this->filterCostCategory !== 'all') {
             $query->where('cost_category', $this->filterCostCategory);
+        }
+        if ($this->filterExpenseCategory !== 'all') {
+            $query->where('expense_category', $this->filterExpenseCategory);
         }
         if ($this->filterCurrency !== 'all') {
             $query->where('currency', $this->filterCurrency);
@@ -208,8 +226,12 @@ class SimpleCashier extends Component
 
         $this->summaryNoBukti = (clone $base)->whereNull('proof_file')->count();
 
+        // Antrian verifikasi dihitung menyeluruh, tidak ikut filter — supaya
+        // accounting tidak kehilangan transaksi yang tersembunyi oleh filter.
+        $this->pendingCount = CashTransaction::pending()->count();
+
         $this->recentTransactions = (clone $base)
-            ->with(['customer', 'vendor', 'shipment', 'journal', 'creator'])
+            ->with(['customer', 'vendor', 'shipment', 'journal', 'creator', 'approver'])
             ->latest('transaction_date')
             ->skip(($this->currentPage - 1) * $this->perPage)
             ->take($this->perPage)
@@ -339,12 +361,12 @@ class SimpleCashier extends Component
     {
         \Log::info("🔵 EditTransaction", ["id" => $id, "user" => auth()->id()]);
         $transaction = CashTransaction::with(['journal'])->findOrFail($id);
-        
-        if (!in_array(($transaction->journal->status ?? 'draft'), ['draft', 'pending', 'posted'])) {
-            session()->flash('error', 'Hanya transaksi Draft yang dapat diedit!');
+
+        if (! $transaction->isEditable()) {
+            session()->flash('error', 'Transaksi sudah diverifikasi accounting dan tidak bisa diedit. Kalau ada kesalahan, minta accounting membuat jurnal balik.');
             return;
         }
-        
+
         $this->editingId = $id;
         $this->transaction_date = $transaction->transaction_date->format('Y-m-d');
         $this->transaction_type = $transaction->type === 'in' ? 'cash_in' : 'cash_out';
@@ -354,7 +376,8 @@ class SimpleCashier extends Component
         $this->amount = $transaction->amount;
         $this->currency = $transaction->currency ?? 'IDR';
         $this->description = $transaction->description;
-        
+        $this->expense_category = $transaction->expense_category;
+
         $this->updatePreview();
         $this->dispatch('scroll-to-form');
         
@@ -370,12 +393,12 @@ class SimpleCashier extends Component
     {
         \Log::info("🟠 ConfirmDelete", ["id" => $id, "user" => auth()->id()]);
         $transaction = CashTransaction::with(['journal'])->findOrFail($id);
-        
-        if (!in_array(($transaction->journal->status ?? 'draft'), ['draft', 'pending', 'posted'])) {
-            session()->flash('error', 'Hanya transaksi Draft yang dapat dihapus!');
+
+        if (! $transaction->isEditable()) {
+            session()->flash('error', 'Transaksi sudah diverifikasi accounting dan tidak bisa dihapus. Koreksinya lewat jurnal balik.');
             return;
         }
-        
+
         $this->deleteId = $id;
         $this->showDeleteConfirm = true;
     }
@@ -387,11 +410,11 @@ class SimpleCashier extends Component
             DB::beginTransaction();
             
             $transaction = CashTransaction::with(['journal'])->findOrFail($this->deleteId);
-            
-            if (!in_array(($transaction->journal->status ?? 'draft'), ['draft', 'pending', 'posted'])) {
-                throw new \Exception('Hanya transaksi Draft yang dapat dihapus!');
+
+            if (! $transaction->isEditable()) {
+                throw new \Exception('Transaksi sudah diverifikasi accounting dan tidak bisa dihapus. Koreksinya lewat jurnal balik.');
             }
-            
+
             $journalId = $transaction->journal_id;
             $transaction->delete();
             
@@ -417,6 +440,151 @@ class SimpleCashier extends Component
     {
         $this->showDeleteConfirm = false;
         $this->deleteId = null;
+    }
+
+    // ── VERIFIKASI ACCOUNTING (FASE 2) ──────────────────────────────────────
+
+    /**
+     * Hanya pemegang cashier.verify yang boleh menyetujui/menolak.
+     */
+    public function canVerify(): bool
+    {
+        return auth()->check() && auth()->user()->hasPermission('cashier.verify');
+    }
+
+    public function approveTransaction($id)
+    {
+        abort_unless($this->canVerify(), 403);
+
+        try {
+            $transaction = CashTransaction::findOrFail($id);
+
+            // Fase 1: tanpa bukti, verifikasi jadi jalur pengecualian yang
+            // wajib beralasan — bukan ditolak mentah-mentah.
+            if (config('cashier.require_proof_on_approval', true) && ! $transaction->hasProof()) {
+                $this->approveNoProofId = $id;
+                $this->approveNote = '';
+                $this->showApproveNoProofModal = true;
+                return;
+            }
+
+            $this->cashierService->approveTransaction($transaction, auth()->id());
+
+            \App\Models\ActivityLog::record(
+                'Cashier',
+                'APPROVE_TRANSACTION',
+                'CT-' . $transaction->id,
+                'Verifikasi transaksi kasir Rp ' . number_format($transaction->amount, 0, ',', '.')
+                    . ' — ' . ($transaction->description ?: 'tanpa keterangan')
+            );
+
+            $this->loadRecentTransactions();
+            session()->flash('success', 'Transaksi diverifikasi dan sudah masuk pembukuan.');
+        } catch (\Exception $e) {
+            session()->flash('error', 'Gagal memverifikasi: ' . $e->getMessage());
+        }
+    }
+
+    public function openRejectModal($id)
+    {
+        abort_unless($this->canVerify(), 403);
+
+        $this->rejectId = $id;
+        $this->rejectReason = '';
+        $this->showRejectModal = true;
+    }
+
+    public function closeRejectModal()
+    {
+        $this->showRejectModal = false;
+        $this->rejectId = null;
+        $this->rejectReason = '';
+    }
+
+    public function submitRejection()
+    {
+        abort_unless($this->canVerify(), 403);
+
+        $this->validate([
+            'rejectReason' => 'required|string|min:5|max:500',
+        ], [
+            'rejectReason.required' => 'Alasan penolakan wajib diisi supaya kasir tahu apa yang harus diperbaiki.',
+            'rejectReason.min' => 'Alasan penolakan terlalu singkat.',
+        ]);
+
+        try {
+            $transaction = CashTransaction::findOrFail($this->rejectId);
+
+            $this->cashierService->rejectTransaction($transaction, auth()->id(), $this->rejectReason);
+
+            \App\Models\ActivityLog::record(
+                'Cashier',
+                'REJECT_TRANSACTION',
+                'CT-' . $transaction->id,
+                'Tolak transaksi kasir Rp ' . number_format($transaction->amount, 0, ',', '.')
+                    . ' — alasan: ' . $this->rejectReason
+            );
+
+            $this->closeRejectModal();
+            $this->loadRecentTransactions();
+            session()->flash('success', 'Transaksi ditolak dan dikembalikan ke kasir untuk diperbaiki.');
+        } catch (\Exception $e) {
+            session()->flash('error', 'Gagal menolak transaksi: ' . $e->getMessage());
+        }
+    }
+
+    public function closeApproveNoProofModal()
+    {
+        $this->showApproveNoProofModal = false;
+        $this->approveNoProofId = null;
+        $this->approveNote = '';
+    }
+
+    /**
+     * Setujui transaksi tanpa bukti sebagai pengecualian — alasannya wajib dan
+     * ikut tersimpan di transaksi maupun jejak aktivitas.
+     */
+    public function submitApproveNoProof()
+    {
+        abort_unless($this->canVerify(), 403);
+
+        $this->validate([
+            'approveNote' => 'required|string|min:10|max:500',
+        ], [
+            'approveNote.required' => 'Tuliskan alasannya — transaksi ini disetujui tanpa bukti.',
+            'approveNote.min' => 'Alasan terlalu singkat, tuliskan yang jelas supaya bisa dipertanggungjawabkan saat diaudit.',
+        ]);
+
+        try {
+            $transaction = CashTransaction::findOrFail($this->approveNoProofId);
+
+            $this->cashierService->approveTransaction($transaction, auth()->id(), $this->approveNote);
+
+            \App\Models\ActivityLog::record(
+                'Cashier',
+                'APPROVE_WITHOUT_PROOF',
+                'CT-' . $transaction->id,
+                'Verifikasi TANPA BUKTI Rp ' . number_format($transaction->amount, 0, ',', '.')
+                    . ' — alasan: ' . $this->approveNote
+            );
+
+            $this->closeApproveNoProofModal();
+            $this->loadRecentTransactions();
+            session()->flash('success', 'Transaksi diverifikasi tanpa bukti. Alasannya tercatat di jejak aktivitas.');
+        } catch (\Exception $e) {
+            session()->flash('error', 'Gagal memverifikasi: ' . $e->getMessage());
+        }
+    }
+
+    /**
+     * Tampilkan hanya yang menunggu verifikasi.
+     */
+    public function showPendingOnly()
+    {
+        $this->filterStatus = CashTransaction::STATUS_PENDING;
+        $this->filterNoJournal = false;
+        $this->currentPage = 1;
+        $this->loadRecentTransactions();
     }
 
     public function executeDelete()
@@ -698,6 +866,29 @@ class SimpleCashier extends Component
             session()->flash('error', 'Gagal membuat preview: ' . $e->getMessage());
             $this->showPreview = false;
         }
+
+        $this->checkDuplicates($data);
+    }
+
+    /**
+     * Fase 1 — peringatkan kemungkinan transaksi kembar sebelum disimpan.
+     * Sifatnya informasi, tidak menghalangi penyimpanan.
+     */
+    private function checkDuplicates(array $data): void
+    {
+        $this->duplicateWarnings = $this->cashierService
+            ->findPossibleDuplicates($data, $this->editingId)
+            ->map(fn ($trx) => [
+                'id' => $trx->id,
+                'tanggal' => optional($trx->transaction_date)->format('d/m/Y'),
+                'jumlah' => number_format((float) $trx->amount, 0, ',', '.'),
+                'lawan' => $trx->vendor->name ?? $trx->customer->company_name ?? ($trx->counterpart_name ?: '-'),
+                'keterangan' => $trx->description ?: '-',
+                'status' => $trx->approval_label,
+                'diinput' => $trx->creator->name ?? '-',
+            ])
+            ->values()
+            ->toArray();
     }
     
     public function save()
@@ -711,8 +902,17 @@ class SimpleCashier extends Component
             'counterpart_id' => 'required',
             'amount' => 'required|numeric|min:0',
             'description' => 'nullable|string|max:500',
+            // Fase 1: pengeluaran wajib punya kategori biaya terstruktur.
+            'expense_category' => [
+                $this->transaction_type === 'cash_out' ? 'required' : 'nullable',
+                'string',
+                Rule::in(array_keys(config('cashier.expense_categories', []))),
+            ],
+        ], [
+            'expense_category.required' => 'Pilih kategori biaya dulu supaya laporannya bisa dikelompokkan.',
+            'expense_category.in' => 'Kategori biaya tidak dikenal.',
         ]);
-        
+
         try {
             DB::beginTransaction();
             
@@ -731,14 +931,17 @@ class SimpleCashier extends Component
                 'exchange_rate' => $this->exchange_rate,
                 'description' => $this->description,
                 'cost_category' => $this->cost_category,
+                'expense_category' => $this->expense_category,
             ];
             
             if ($this->editingId) {
                 $cashTransaction = $this->cashierService->updateTransaction($this->editingId, $data, $this->attachment);
-                $message = 'Transaksi berhasil diupdate!';
+                $message = 'Transaksi berhasil diperbarui dan kembali masuk antrian verifikasi accounting.';
             } else {
-                $cashTransaction = $this->cashierService->processPayment($data, $this->attachment);
-                $message = 'Transaksi berhasil disimpan dan telah di-posting ke accounting!';
+                // Fase 2: input kasir tidak langsung masuk buku — menunggu
+                // verifikasi accounting dulu.
+                $cashTransaction = $this->cashierService->submitForApproval($data, $this->attachment);
+                $message = 'Transaksi tersimpan dan menunggu verifikasi accounting. Belum masuk pembukuan.';
             }
             
             DB::commit();
@@ -773,6 +976,8 @@ class SimpleCashier extends Component
         $this->exchange_rate = 1;
         $this->description = null;
         $this->attachment = null;
+        $this->expense_category = null;
+        $this->duplicateWarnings = [];
         $this->shipments = [];
         $this->invoices = [];
         $this->vendorBills = [];
