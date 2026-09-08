@@ -18,12 +18,18 @@ class DiagnosaKasPiutang extends Command
 {
     protected $signature = 'kas:diagnosa
                             {--akun= : Tampilkan mutasi bulanan satu akun (kode akun)}
-                            {--mutasi=10 : Jumlah transaksi terbesar yang ditampilkan pada mode --akun}';
+                            {--mutasi=10 : Jumlah transaksi terbesar yang ditampilkan pada mode --akun}
+                            {--silang= : Cocokkan silang dua akun, mis. 110-01,1103}
+                            {--hari=7 : Rentang hari pencocokan silang}';
 
     protected $description = 'Diagnosa saldo kas, bank & piutang (read-only) — bahan penentuan koreksi';
 
     public function handle(): int
     {
+        if ($silang = $this->option('silang')) {
+            return $this->cocokSilang($silang);
+        }
+
         if ($kode = $this->option('akun')) {
             return $this->detailAkun($kode);
         }
@@ -221,6 +227,96 @@ class DiagnosaKasPiutang extends Command
                 $this->rp($t->credit),
                 $t->pembuat ?: '-',
             ])->toArray()
+        );
+
+        return self::SUCCESS;
+    }
+
+    /**
+     * Cocokkan silang pengeluaran dua akun.
+     *
+     * Menjawab pertanyaan penentu koreksi: pengeluaran yang nyangkut di akun
+     * kas, apakah TERCATAT JUGA di bank (berarti dobel — Skenario B) atau
+     * hanya ada di kas saja (berarti salah tempat — Skenario A)?
+     */
+    private function cocokSilang(string $pasangan): int
+    {
+        [$kodeKas, $kodeBank] = array_pad(array_map('trim', explode(',', $pasangan)), 2, null);
+
+        $kas = Account::where('code', $kodeKas)->first();
+        $bank = Account::where('code', $kodeBank)->first();
+
+        if (! $kas || ! $bank) {
+            $this->error('Akun tidak ditemukan. Format: --silang=110-01,1103');
+            return self::FAILURE;
+        }
+
+        $hari = (int) $this->option('hari');
+
+        $keluarKas = DB::table('journal_items')
+            ->join('journals', 'journals.id', '=', 'journal_items.journal_id')
+            ->where('journal_items.account_id', $kas->id)
+            ->where('journal_items.credit', '>', 0)
+            ->select([
+                'journal_items.id',
+                'journal_items.credit',
+                'journals.transaction_date',
+                'journals.description',
+                'journals.reference_no',
+            ])
+            ->orderBy('journals.transaction_date')
+            ->get();
+
+        $cocok = collect();
+        $tidakCocok = collect();
+
+        foreach ($keluarKas as $baris) {
+            $ada = DB::table('journal_items')
+                ->join('journals', 'journals.id', '=', 'journal_items.journal_id')
+                ->where('journal_items.account_id', $bank->id)
+                ->where('journal_items.credit', $baris->credit)
+                ->whereBetween('journals.transaction_date', [
+                    \Carbon\Carbon::parse($baris->transaction_date)->subDays($hari)->toDateString(),
+                    \Carbon\Carbon::parse($baris->transaction_date)->addDays($hari)->toDateString(),
+                ])
+                ->exists();
+
+            $ada ? $cocok->push($baris) : $tidakCocok->push($baris);
+        }
+
+        $this->newLine();
+        $this->info("COCOK SILANG — pengeluaran {$kas->code} {$kas->name} vs {$bank->code} {$bank->name} (±{$hari} hari)");
+
+        $this->table(['Hasil', 'Transaksi', 'Nilai'], [
+            ['Ada padanan di bank (dugaan DOBEL)', $cocok->count(), $this->rp($cocok->sum('credit'))],
+            ['Tidak ada padanan (dugaan SALAH TEMPAT)', $tidakCocok->count(), $this->rp($tidakCocok->sum('credit'))],
+            ['Total pengeluaran di akun kas', $keluarKas->count(), $this->rp($keluarKas->sum('credit'))],
+        ]);
+
+        $porsi = $keluarKas->count() > 0
+            ? round($cocok->count() / $keluarKas->count() * 100)
+            : 0;
+
+        $this->newLine();
+        if ($porsi >= 70) {
+            $this->warn("{$porsi}% punya padanan di bank → condong SKENARIO B (pencatatan ganda, beban dobel).");
+        } elseif ($porsi <= 30) {
+            $this->warn("Hanya {$porsi}% punya padanan di bank → condong SKENARIO A (salah tempat, perlu reklas).");
+        } else {
+            $this->warn("{$porsi}% punya padanan — campuran, harus ditelusuri satu per satu.");
+        }
+        $this->line('Angka ini dugaan berbasis nominal+tanggal. Pemastian tetap lewat rekening koran.');
+
+        $this->newLine();
+        $this->info('CONTOH YANG TIDAK PUNYA PADANAN DI BANK');
+        $this->table(
+            ['Tanggal', 'Referensi', 'Keterangan', 'Kredit'],
+            $tidakCocok->sortByDesc('credit')->take(8)->map(fn ($t) => [
+                $t->transaction_date,
+                $t->reference_no ?: '-',
+                Str::limit($t->description ?: '-', 40),
+                $this->rp($t->credit),
+            ])->values()->toArray()
         );
 
         return self::SUCCESS;
