@@ -379,6 +379,58 @@
                     </div>
                     @endif
 
+                    {{-- Kategori Biaya (Fase 1) — wajib untuk pengeluaran --}}
+                    @if($transaction_type === 'cash_out')
+                    <div>
+                        <label for="expense_category" class="block text-sm font-medium text-gray-700 mb-1">
+                            Kategori Biaya <span class="text-red-500">*</span>
+                        </label>
+                        <select id="expense_category" wire:model.live="expense_category"
+                                class="w-full border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 @error('expense_category') border-red-400 @enderror">
+                            <option value="">— Pilih kategori —</option>
+                            @foreach(config('cashier.expense_categories', []) as $key => $cat)
+                            <option value="{{ $key }}">{{ $cat['label'] }}</option>
+                            @endforeach
+                        </select>
+                        @error('expense_category')
+                        <p class="mt-1 text-xs text-red-600">{{ $message }}</p>
+                        @enderror
+                        @if($expense_category && ($talangan = config("cashier.expense_categories.{$expense_category}.talangan")))
+                        <p class="mt-1 text-xs text-blue-700">
+                            Biaya ini biasanya ditalangi atas nama customer, jadi nanti ditagihkan kembali.
+                        </p>
+                        @endif
+                    </div>
+                    @endif
+
+                    {{-- Dugaan duplikat (Fase 1) --}}
+                    @if(!empty($duplicateWarnings))
+                    <div class="rounded-lg border border-orange-300 bg-orange-50 p-3">
+                        <div class="flex items-start gap-2">
+                            <svg class="mt-0.5 h-4 w-4 shrink-0 text-orange-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z"/></svg>
+                            <div class="min-w-0 flex-1">
+                                <p class="text-sm font-semibold text-orange-900">
+                                    Mirip dengan {{ count($duplicateWarnings) }} transaksi yang sudah ada
+                                </p>
+                                <p class="mt-0.5 text-xs text-orange-700">
+                                    Nominal dan lawan transaksinya sama di rentang waktu berdekatan. Pastikan ini bukan pembayaran yang sudah diinput orang lain.
+                                </p>
+                                <ul class="mt-2 space-y-1">
+                                    @foreach($duplicateWarnings as $dup)
+                                    <li class="rounded border border-orange-200 bg-white px-2 py-1.5 text-xs text-gray-700">
+                                        <span class="font-semibold">{{ $dup['tanggal'] }}</span>
+                                        · IDR {{ $dup['jumlah'] }}
+                                        · {{ $dup['lawan'] }}
+                                        <span class="text-gray-400">({{ $dup['status'] }}, input {{ $dup['diinput'] }})</span>
+                                        <span class="block text-gray-500">{{ $dup['keterangan'] }}</span>
+                                    </li>
+                                    @endforeach
+                                </ul>
+                            </div>
+                        </div>
+                    </div>
+                    @endif
+
                     {{-- Description --}}
                     <div>
                         <label class="block text-sm font-medium text-gray-700 mb-1">
@@ -1065,7 +1117,13 @@
                             @php
                                 $approval = $trx['approval_status'] ?? 'approved';
                                 $journalStatus = $trx['journal']['status'] ?? null;
+                                $expenseLabel = !empty($trx['expense_category'])
+                                    ? config("cashier.expense_categories.{$trx['expense_category']}.label")
+                                    : null;
                             @endphp
+                            @if($expenseLabel)
+                            <span class="mb-1 block text-[11px] font-medium text-gray-500">{{ $expenseLabel }}</span>
+                            @endif
                             @if($approval === 'pending')
                             <span class="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-amber-100 text-amber-800 border border-amber-300"
                                   title="Belum masuk pembukuan — menunggu verifikasi accounting">
@@ -1420,4 +1478,56 @@
     </div>
 </div>
 @endif
+
+{{-- ── Modal Setujui Tanpa Bukti (Fase 1) ── --}}
+@if($showApproveNoProofModal)
+<div class="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4"
+     wire:click.self="closeApproveNoProofModal">
+    {{-- Tailwind v4: panel wajib punya stacking context eksplisit (lihat CLAUDE.md) --}}
+    <div class="w-full max-w-md rounded-xl bg-white shadow-xl" style="position: relative; z-index: 10;">
+        <div class="flex items-center gap-3 border-b px-5 py-4">
+            <span class="flex h-9 w-9 items-center justify-center rounded-lg bg-amber-100 text-amber-600">
+                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/></svg>
+            </span>
+            <div>
+                <h3 class="text-base font-semibold text-gray-800">Transaksi Ini Belum Ada Bukti</h3>
+                <p class="text-xs text-gray-500">Lampirkan bukti, atau setujui sebagai pengecualian.</p>
+            </div>
+        </div>
+
+        <div class="px-5 py-4">
+            <p class="mb-3 text-sm text-gray-600">
+                Cara paling aman: tutup jendela ini, klik <span class="font-medium">Upload</span> pada baris
+                transaksinya untuk melampirkan bukti, lalu setujui seperti biasa.
+            </p>
+
+            <label for="approveNote" class="mb-1 block text-xs font-semibold text-gray-600">
+                Alasan menyetujui tanpa bukti <span class="text-red-500">*</span>
+            </label>
+            <textarea id="approveNote" wire:model="approveNote" rows="3"
+                      placeholder="Contoh: pembayaran tunai ke porter di lapangan, tidak ada kwitansi. Sudah dikonfirmasi ke Tasya."
+                      class="w-full rounded-lg border-gray-300 text-sm shadow-sm focus:border-amber-500 focus:ring-2 focus:ring-amber-500"></textarea>
+            @error('approveNote')
+            <p class="mt-1 text-xs text-red-600">{{ $message }}</p>
+            @enderror
+            <p class="mt-2 text-xs text-gray-500">
+                Alasan ini tersimpan di transaksi dan di jejak aktivitas, dan akan terlihat saat diaudit.
+            </p>
+        </div>
+
+        <div class="flex justify-end gap-3 border-t bg-gray-50 px-5 py-4">
+            <button type="button" wire:click="closeApproveNoProofModal"
+                    class="rounded-lg bg-gray-100 px-4 py-2 text-sm font-medium text-gray-700 transition hover:bg-gray-200">
+                Batal
+            </button>
+            <button type="button" wire:click="submitApproveNoProof" wire:loading.attr="disabled" wire:target="submitApproveNoProof"
+                    class="inline-flex items-center gap-2 rounded-lg bg-amber-600 px-4 py-2 text-sm font-medium text-white transition hover:bg-amber-700 disabled:opacity-60">
+                <span wire:loading.remove wire:target="submitApproveNoProof">Setujui Tanpa Bukti</span>
+                <span wire:loading wire:target="submitApproveNoProof">Memproses...</span>
+            </button>
+        </div>
+    </div>
+</div>
+@endif
+
 </div>

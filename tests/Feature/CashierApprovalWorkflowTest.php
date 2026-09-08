@@ -44,7 +44,19 @@ class CashierApprovalWorkflowTest extends TestCase
         }
     }
 
+    /**
+     * Bukti sengaja langsung dilampirkan: test di kelas ini menguji alur
+     * verifikasi, bukan aturan bukti wajib (itu di CashierPhase1ControlsTest).
+     */
     protected function submitAsKasir(array $overrides = []): CashTransaction
+    {
+        $tx = $this->submitTanpaBukti($overrides);
+        $tx->update(['proof_file' => 'cash-transactions/bukti-test.jpg']);
+
+        return $tx->refresh();
+    }
+
+    protected function submitTanpaBukti(array $overrides = []): CashTransaction
     {
         return app(CashierService::class)->submitForApproval(array_merge([
             'type' => 'out',
@@ -59,7 +71,7 @@ class CashierApprovalWorkflowTest extends TestCase
 
     public function test_input_kasir_tersimpan_pending_tanpa_jurnal(): void
     {
-        $tx = $this->submitAsKasir();
+        $tx = $this->submitTanpaBukti();
 
         $this->assertTrue($tx->isPending());
         $this->assertNull($tx->journal_id, 'Transaksi pending tidak boleh punya jurnal.');
@@ -108,7 +120,8 @@ class CashierApprovalWorkflowTest extends TestCase
         $langsung = app(CashierService::class)->processPayment($payload);
 
         $draft = app(CashierService::class)->submitForApproval($payload);
-        app(CashierService::class)->approveTransaction($draft, $this->accounting->id);
+        $draft->update(['proof_file' => 'cash-transactions/bukti-test.jpg']);
+        app(CashierService::class)->approveTransaction($draft->refresh(), $this->accounting->id);
         $draft->refresh();
 
         $this->assertSame($langsung->account_id, $draft->account_id);

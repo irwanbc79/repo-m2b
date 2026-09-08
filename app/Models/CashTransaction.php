@@ -48,6 +48,10 @@ class CashTransaction extends Model
         'approved_by',
         'approved_at',
         'rejection_reason',
+
+        // Fase 1 — kategori biaya terstruktur & pengecualian bukti
+        'expense_category',
+        'approval_note',
     ];
 
     protected $casts = [
@@ -108,6 +112,32 @@ class CashTransaction extends Model
     public function approver()
     {
         return $this->belongsTo(User::class, 'approved_by');
+    }
+
+    /* ================= KATEGORI BIAYA (FASE 1) ================= */
+
+    public function hasProof(): bool
+    {
+        return ! empty($this->proof_file) || ! empty($this->attachment_path);
+    }
+
+    public function getExpenseCategoryLabelAttribute(): ?string
+    {
+        if (empty($this->expense_category)) {
+            return null;
+        }
+
+        return config("cashier.expense_categories.{$this->expense_category}.label")
+            ?? $this->expense_category;
+    }
+
+    /**
+     * Biaya yang ditalangi atas nama customer — bukan beban M2B sendiri.
+     * Belum memengaruhi jurnal; dipakai untuk pelaporan dan bahan Fase 4.
+     */
+    public function isTalangan(): bool
+    {
+        return (bool) config("cashier.expense_categories.{$this->expense_category}.talangan", false);
     }
 
     /* ================= RELATIONS ================= */

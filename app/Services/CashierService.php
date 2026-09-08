@@ -49,6 +49,51 @@ class CashierService
      ================================================================== */
 
     /**
+     * Fase 1 — cari transaksi yang kemungkinan duplikat.
+     *
+     * Kriteria: shipment, lawan transaksi, dan nominal sama dalam rentang hari
+     * yang diatur di config/cashier.php. Ini yang selama ini baru ketahuan
+     * belakangan lewat `reconcile:auto-jobcosts`; sekarang diangkat ke depan.
+     *
+     * Sengaja PERINGATAN, bukan larangan — pembayaran kembar yang sah memang
+     * ada (mis. dua lift on di shipment yang sama, tarif sama).
+     */
+    public function findPossibleDuplicates(array $data, ?int $excludeId = null)
+    {
+        $amount = (float) ($data['amount'] ?? 0);
+        if ($amount <= 0) {
+            return collect();
+        }
+
+        $window = (int) config('cashier.duplicate_window_days', 7);
+        $date = Carbon::parse($data['transaction_date'] ?? now());
+
+        return CashTransaction::query()
+            ->where('amount', $amount)
+            ->whereBetween('transaction_date', [
+                $date->copy()->subDays($window)->toDateString(),
+                $date->copy()->addDays($window)->toDateString(),
+            ])
+            ->where('approval_status', '!=', CashTransaction::STATUS_REJECTED)
+            ->when($excludeId, fn ($q) => $q->where('id', '!=', $excludeId))
+            ->when(
+                ! empty($data['shipment_id']),
+                fn ($q) => $q->where('shipment_id', $data['shipment_id']),
+                // Tanpa shipment, kemiripan hanya berarti kalau lawan
+                // transaksinya sama — kalau tidak, terlalu banyak false alarm.
+                fn ($q) => $q->whereNull('shipment_id')
+                    ->where(function ($q) use ($data) {
+                        $q->where(fn ($q) => $q->whereNotNull('vendor_id')->where('vendor_id', $data['vendor_id'] ?? 0))
+                          ->orWhere(fn ($q) => $q->whereNotNull('customer_id')->where('customer_id', $data['customer_id'] ?? 0));
+                    })
+            )
+            ->with(['vendor', 'customer', 'creator'])
+            ->orderByDesc('transaction_date')
+            ->limit(5)
+            ->get();
+    }
+
+    /**
      * Simpan input kasir sebagai transaksi menunggu verifikasi.
      */
     public function submitForApproval(array $data, $attachment = null): CashTransaction
@@ -75,6 +120,7 @@ class CashierService
                 'description' => $data['description'] ?? '',
                 'counterpart_type' => $data['counterpart_type'] ?? null,
                 'cost_category' => $this->normalizeCostCategory($data),
+                'expense_category' => $data['expense_category'] ?? null,
                 'currency' => $data['currency'] ?? 'IDR',
                 'exchange_rate' => $data['exchange_rate'] ?? 1,
 
@@ -101,7 +147,7 @@ class CashierService
      * Verifikasi transaksi kasir: bentuk jurnal, posting, dan baru jalankan
      * efek samping ke invoice / job cost / vendor bill.
      */
-    public function approveTransaction(CashTransaction $cashTransaction, int $approverId): CashTransaction
+    public function approveTransaction(CashTransaction $cashTransaction, int $approverId, ?string $note = null): CashTransaction
     {
         if ($cashTransaction->isApproved()) {
             throw new \Exception('Transaksi ini sudah diverifikasi sebelumnya.');
@@ -111,7 +157,16 @@ class CashierService
             throw new \Exception('Anda tidak bisa memverifikasi transaksi yang Anda input sendiri.');
         }
 
-        return DB::transaction(function () use ($cashTransaction, $approverId) {
+        // Fase 1 — tanpa bukti tidak bisa diverifikasi. Masih boleh sebagai
+        // pengecualian, tapi alasannya wajib ditulis dan ikut tersimpan.
+        if (config('cashier.require_proof_on_approval', true)
+            && ! $cashTransaction->hasProof()
+            && blank($note)
+        ) {
+            throw new \Exception('Transaksi ini belum ada bukti. Lampirkan bukti dulu, atau setujui sebagai pengecualian dengan menuliskan alasannya.');
+        }
+
+        return DB::transaction(function () use ($cashTransaction, $approverId, $note) {
             $data = $this->payloadFromTransaction($cashTransaction);
             $accounts = $this->determineAccounts($data);
 
@@ -127,6 +182,7 @@ class CashierService
                 'approved_by' => $approverId,
                 'approved_at' => now(),
                 'rejection_reason' => null,
+                'approval_note' => $note,
             ]);
 
             // Efek samping sengaja ditahan sampai titik ini: selama pending,
@@ -183,6 +239,7 @@ class CashierService
             'job_cost_id' => $cashTransaction->job_cost_id,
             'vendor_bill_id' => $cashTransaction->vendor_bill_id,
             'counterpart_type' => $cashTransaction->counterpart_type,
+            'expense_category' => $cashTransaction->expense_category,
             'currency' => $cashTransaction->currency,
             'exchange_rate' => $cashTransaction->exchange_rate,
             'proof_file' => $cashTransaction->proof_file,
@@ -658,6 +715,7 @@ class CashierService
                 'invoice_id' => $data['invoice_id'] ?? null,
                 'vendor_bill_id' => $data['vendor_bill_id'] ?? null,
                 'cost_category' => $this->normalizeCostCategory($data),
+                'expense_category' => $data['expense_category'] ?? null,
                 'description' => $data['description'] ?? null,
                 'journal_id' => $journal?->id,
                 'is_posted' => (bool) $journal,
