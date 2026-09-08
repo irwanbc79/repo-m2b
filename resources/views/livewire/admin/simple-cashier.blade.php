@@ -910,6 +910,16 @@
                     </select>
                 </div>
                 <div>
+                    <label for="filterExpenseCategory" class="block text-xs font-semibold text-gray-600 mb-1">Kategori Biaya</label>
+                    <select id="filterExpenseCategory" wire:model.live="filterExpenseCategory"
+                            class="w-full text-sm border-gray-300 rounded-lg shadow-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
+                        <option value="all">Semua Kategori</option>
+                        @foreach(config('cashier.expense_categories', []) as $key => $cat)
+                        <option value="{{ $key }}">{{ $cat['label'] }}</option>
+                        @endforeach
+                    </select>
+                </div>
+                <div>
                     <label class="block text-xs font-semibold text-gray-600 mb-1">Status Verifikasi</label>
                     <select wire:model.live="filterStatus"
                             class="w-full text-sm border-gray-300 rounded-lg shadow-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
