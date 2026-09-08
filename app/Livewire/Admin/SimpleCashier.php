@@ -902,15 +902,15 @@ class SimpleCashier extends Component
             'counterpart_id' => 'required',
             'amount' => 'required|numeric|min:0',
             'description' => 'nullable|string|max:500',
-            // Fase 1: pengeluaran wajib punya kategori biaya terstruktur.
+            // Fase 1: pengeluaran wajib punya jenis biaya terstruktur.
             'expense_category' => [
                 $this->transaction_type === 'cash_out' ? 'required' : 'nullable',
                 'string',
                 Rule::in(array_keys(config('cashier.expense_categories', []))),
             ],
         ], [
-            'expense_category.required' => 'Pilih kategori biaya dulu supaya laporannya bisa dikelompokkan.',
-            'expense_category.in' => 'Kategori biaya tidak dikenal.',
+            'expense_category.required' => 'Pilih jenis biaya dulu supaya laporannya bisa dikelompokkan.',
+            'expense_category.in' => 'Jenis biaya tidak dikenal.',
         ]);
 
         try {

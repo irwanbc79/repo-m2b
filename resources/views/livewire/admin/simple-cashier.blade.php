@@ -292,7 +292,7 @@
                     @if($transaction_type === 'cash_out')
                     <div>
                         <label class="block text-sm font-medium text-gray-700 mb-1">
-                            Kategori Biaya <span class="text-red-500">*</span>
+                            Alokasi Biaya <span class="text-red-500">*</span>
                         </label>
                         <div class="flex space-x-4 mt-2">
                             <label class="flex items-center">
@@ -379,15 +379,15 @@
                     </div>
                     @endif
 
-                    {{-- Kategori Biaya (Fase 1) — wajib untuk pengeluaran --}}
+                    {{-- Jenis Biaya (Fase 1) — wajib untuk pengeluaran --}}
                     @if($transaction_type === 'cash_out')
                     <div>
                         <label for="expense_category" class="block text-sm font-medium text-gray-700 mb-1">
-                            Kategori Biaya <span class="text-red-500">*</span>
+                            Jenis Biaya <span class="text-red-500">*</span>
                         </label>
                         <select id="expense_category" wire:model.live="expense_category"
                                 class="w-full border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 @error('expense_category') border-red-400 @enderror">
-                            <option value="">— Pilih kategori —</option>
+                            <option value="">— Pilih jenis biaya —</option>
                             @foreach(config('cashier.expense_categories', []) as $key => $cat)
                             <option value="{{ $key }}">{{ $cat['label'] }}</option>
                             @endforeach
@@ -910,10 +910,10 @@
                     </select>
                 </div>
                 <div>
-                    <label for="filterExpenseCategory" class="block text-xs font-semibold text-gray-600 mb-1">Kategori Biaya</label>
+                    <label for="filterExpenseCategory" class="block text-xs font-semibold text-gray-600 mb-1">Jenis Biaya</label>
                     <select id="filterExpenseCategory" wire:model.live="filterExpenseCategory"
                             class="w-full text-sm border-gray-300 rounded-lg shadow-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
-                        <option value="all">Semua Kategori</option>
+                        <option value="all">Semua Jenis Biaya</option>
                         @foreach(config('cashier.expense_categories', []) as $key => $cat)
                         <option value="{{ $key }}">{{ $cat['label'] }}</option>
                         @endforeach
@@ -945,7 +945,7 @@
                     <label class="block text-xs font-semibold text-gray-600 mb-1">Kategori Biaya</label>
                     <select wire:model.live="filterCostCategory"
                             class="w-full text-sm border-gray-300 rounded-lg shadow-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
-                        <option value="all">Semua Kategori</option>
+                        <option value="all">Semua Jenis Biaya</option>
                         <option value="shipment">Shipment</option>
                         <option value="overhead">Overhead</option>
                         <option value="other">Lainnya</option>
