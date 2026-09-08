@@ -112,8 +112,20 @@ class JobCostingManager extends Component
         'costDeleted' => 'handleCostDeleted',
     ];
 
+    public function canAccess(): bool
+    {
+        $user = auth()->user();
+        return $user && (
+            $user->isAdminLevel() ||
+            $user->hasRole(['super_admin', 'director', 'admin', 'manager', 'supervisor', 'staff_accounting', 'finance', 'staff_operations', 'auditor']) ||
+            $user->hasPermission('job_costing.view')
+        );
+    }
+
     public function mount()
     {
+        abort_unless($this->canAccess(), 403, 'Anda tidak memiliki akses ke Job Costing.');
+
         // Set default credit account ke Kas Kecil (1102)
         $kasKecil = Account::where('code', '1102')->first();
         $this->credit_account_id = $kasKecil ? $kasKecil->id : null;
@@ -214,6 +226,8 @@ class JobCostingManager extends Component
     
     public function render()
     {
+        abort_unless($this->canAccess(), 403, 'Anda tidak memiliki akses ke Job Costing.');
+
         try {
             // Base query dengan eager loading
             $query = Shipment::with(['customer', 'invoices', 'jobCosts.vendor', 'jobCosts.account'])

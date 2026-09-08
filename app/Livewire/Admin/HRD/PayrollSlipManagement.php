@@ -86,6 +86,7 @@ class PayrollSlipManagement extends Component
     {
         $this->periodId = $periodId;
         $this->period = PayrollPeriod::findOrFail($periodId);
+        abort_unless($this->canViewAny(), 403, 'Anda tidak memiliki akses ke data penggajian.');
     }
 
     public function updatingSearch(): void { $this->resetPage(); }
@@ -344,6 +345,8 @@ class PayrollSlipManagement extends Component
 
     public function render()
     {
+        abort_unless($this->canViewAny(), 403, 'Anda tidak memiliki akses ke data penggajian.');
+
         $slips = PayrollSlip::with(['employee.jabatan', 'deductionItems'])
             ->where('period_id', $this->periodId)
             ->when($this->search, fn($q) => $q->whereHas('employee', fn($eq) =>

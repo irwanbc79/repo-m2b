@@ -51,10 +51,38 @@ class UserManagement extends Component
         'staf_accounting' => 'Accounting (Legacy)',
     ];
 
+    public function canAccess(): bool
+    {
+        $user = auth()->user();
+        return $user && (
+            $user->isAdminLevel() ||
+            $user->hasRole(['super_admin', 'director', 'admin']) ||
+            $user->hasPermission('user.view')
+        );
+    }
+
+    public function canManage(): bool
+    {
+        $user = auth()->user();
+        return $user && (
+            $user->isAdminLevel() ||
+            $user->hasRole(['super_admin', 'director', 'admin']) ||
+            $user->hasPermission('user.edit') ||
+            $user->hasPermission('user.create')
+        );
+    }
+
+    public function mount(): void
+    {
+        abort_unless($this->canAccess(), 403, 'Anda tidak memiliki akses ke manajemen pengguna.');
+    }
+
     public function updatingSearch() { $this->resetPage(); }
 
     public function render()
     {
+        abort_unless($this->canAccess(), 403, 'Anda tidak memiliki akses ke manajemen pengguna.');
+
         // Tampilkan user yang BUKAN customer saja
         // Kita filter manual menggunakan whereJsonDoesntContain (MySQL 5.7+) atau like
         $users = User::where('email', 'not like', '%@example.com%') 
@@ -77,6 +105,7 @@ class UserManagement extends Component
 
     public function create()
     {
+        abort_unless($this->canManage(), 403, 'Anda tidak memiliki hak untuk membuat pengguna.');
         $this->resetInput();
         $this->isEditing = false;
         $this->isModalOpen = true;
@@ -84,6 +113,7 @@ class UserManagement extends Component
 
     public function edit($id)
     {
+        abort_unless($this->canManage(), 403, 'Anda tidak memiliki hak untuk mengubah pengguna.');
         $user = User::find($id);
         if ($user) {
             $this->editingId = $id;
@@ -100,6 +130,7 @@ class UserManagement extends Component
 
     public function save()
     {
+        abort_unless($this->canManage(), 403, 'Anda tidak memiliki hak untuk menyimpan data pengguna.');
         $rules = [
             'name' => 'required|string|max:255',
             'email' => 'required|email|unique:users,email,' . $this->editingId,

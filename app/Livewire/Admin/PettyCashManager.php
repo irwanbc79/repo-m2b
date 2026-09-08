@@ -120,8 +120,34 @@ class PettyCashManager extends Component
 
     // ==================== LIFECYCLE ====================
 
+    public function isFundHolderOrApprover($user): bool
+    {
+        $fund = $this->fund ?? PettyCashFund::active()->first();
+        if ($fund && in_array($user->id, array_filter([$fund->holder_user_id, $fund->approver_user_id]))) {
+            return true;
+        }
+        return false;
+    }
+
+    public function canAccess(): bool
+    {
+        $user = auth()->user();
+        if (!$user) {
+            return false;
+        }
+
+        return $user->isAdminLevel() ||
+            $user->hasRole(['super_admin', 'director', 'admin', 'manager', 'supervisor', 'staff_accounting', 'finance', 'cashier', 'auditor', 'staff']) ||
+            in_array($user->role, self::ROLES_CAN_INPUT) ||
+            $user->hasPermission('cashier.*') ||
+            $user->hasPermission('cashier.view') ||
+            $this->isFundHolderOrApprover($user);
+    }
+
     public function mount()
     {
+        abort_unless($this->canAccess(), 403, 'Anda tidak memiliki akses ke kas kecil.');
+
         $this->fund = PettyCashFund::active()->first();
         $this->transaction_date = now()->format('Y-m-d');
         $this->loadSettings();
@@ -559,6 +585,8 @@ class PettyCashManager extends Component
 
     public function render()
     {
+        abort_unless($this->canAccess(), 403, 'Anda tidak memiliki akses ke kas kecil.');
+
         // withCount logs: dipakai menampilkan penanda "pernah diubah" di daftar
         // tanpa query tambahan per baris.
         $transactions = $this->fund

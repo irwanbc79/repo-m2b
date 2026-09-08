@@ -15,12 +15,28 @@ class ExpenseManagement extends Component
     public string $filterStatus    = 'pending';
     public string $filterCategory  = '';
 
+    public function canAccess(): bool
+    {
+        $user = auth()->user();
+        return $user && (
+            $user->isAdminLevel() ||
+            $user->hasRole(['super_admin', 'director', 'admin', 'manager', 'finance', 'staff_accounting'])
+        );
+    }
+
+    public function mount(): void
+    {
+        abort_unless($this->canAccess(), 403, 'Anda tidak memiliki akses ke manajemen klaim biaya.');
+    }
+
     public function updatingSearch(): void          { $this->resetPage(); }
     public function updatingFilterStatus(): void    { $this->resetPage(); }
     public function updatingFilterCategory(): void  { $this->resetPage(); }
 
     public function approve(int $id): void
     {
+        abort_unless($this->canAccess(), 403, 'Anda tidak memiliki hak untuk memproses klaim biaya.');
+
         $expense = ExpenseClaim::findOrFail($id);
 
         if ($expense->status !== 'pending') {
@@ -39,6 +55,8 @@ class ExpenseManagement extends Component
 
     public function reject(int $id): void
     {
+        abort_unless($this->canAccess(), 403, 'Anda tidak memiliki hak untuk memproses klaim biaya.');
+
         $expense = ExpenseClaim::findOrFail($id);
 
         if ($expense->status !== 'pending') {
@@ -81,6 +99,8 @@ class ExpenseManagement extends Component
 
     public function render()
     {
+        abort_unless($this->canAccess(), 403, 'Anda tidak memiliki akses ke manajemen klaim biaya.');
+
         $query = ExpenseClaim::with(['user', 'approver'])
             ->orderByRaw("FIELD(status, 'pending', 'approved', 'rejected')")
             ->orderBy('created_at', 'desc');

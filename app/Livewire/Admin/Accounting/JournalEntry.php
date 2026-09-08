@@ -34,9 +34,32 @@ class JournalEntry extends Component
     public $totalDebit = 0;
     public $totalCredit = 0;
 
+    public function canAccess(): bool
+    {
+        $user = Auth::user();
+        return $user && (
+            $user->isAdminLevel() ||
+            $user->hasRole(['super_admin', 'director', 'admin', 'staff_accounting', 'finance', 'auditor']) ||
+            $user->hasPermission('cashier.journal') ||
+            $user->hasPermission('accounting.input') ||
+            $user->hasPermission('accounting.view')
+        );
+    }
+
+    public function canManage(): bool
+    {
+        $user = Auth::user();
+        return $user && (
+            $user->isAdminLevel() ||
+            $user->hasRole(['super_admin', 'director', 'admin', 'staff_accounting', 'finance']) ||
+            $user->hasPermission('cashier.journal') ||
+            $user->hasPermission('accounting.input')
+        );
+    }
+
     public function mount()
     {
-        abort_unless(Auth::user()->hasPermission('cashier.view'), 403);
+        abort_unless($this->canAccess(), 403, 'Anda tidak memiliki akses ke jurnal umum.');
 
         $this->transaction_date = date('Y-m-d');
         $this->resetItems();
@@ -67,6 +90,8 @@ class JournalEntry extends Component
 
     public function render()
     {
+        abort_unless($this->canAccess(), 403, 'Anda tidak memiliki akses ke jurnal umum.');
+
         $query = Journal::with(['items.account', 'creator']);
 
         if (!empty($this->search)) {
@@ -103,6 +128,7 @@ class JournalEntry extends Component
 
     public function create()
     {
+        abort_unless($this->canManage(), 403, 'Anda tidak memiliki hak untuk membuat jurnal umum.');
         $this->resetInput();
         $this->isEditing = false;
         $this->editingId = null;
@@ -111,7 +137,7 @@ class JournalEntry extends Component
 
     public function edit($id)
     {
-        abort_unless(Auth::user()->hasPermission('cashier.view'), 403);
+        abort_unless($this->canManage(), 403, 'Anda tidak memiliki hak untuk mengubah jurnal umum.');
 
         $journal = Journal::with('items')->findOrFail($id);
 
@@ -175,7 +201,7 @@ class JournalEntry extends Component
 
     public function save()
     {
-        abort_unless(Auth::user()->hasPermission('cashier.view'), 403);
+        abort_unless($this->canManage(), 403, 'Anda tidak memiliki hak untuk menyimpan jurnal umum.');
 
         $this->validate([
             'transaction_date' => 'required|date',
@@ -292,7 +318,7 @@ class JournalEntry extends Component
      */
     public function delete($id)
     {
-        abort_unless(Auth::user()->hasPermission('cashier.view'), 403);
+        abort_unless($this->canManage(), 403, 'Anda tidak memiliki hak untuk menghapus jurnal umum.');
 
         try {
             DB::transaction(function () use ($id) {

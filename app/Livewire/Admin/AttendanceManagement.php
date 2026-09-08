@@ -18,8 +18,19 @@ class AttendanceManagement extends Component
 
     protected $queryString = ['filterDate', 'filterUser'];
 
+    public function canAccess(): bool
+    {
+        $user = auth()->user();
+        return $user && (
+            $user->isAdminLevel() ||
+            $user->hasRole(['super_admin', 'director', 'admin', 'manager', 'finance']) ||
+            $user->hasPermission('hrd.*')
+        );
+    }
+
     public function mount(): void
     {
+        abort_unless($this->canAccess(), 403, 'Anda tidak memiliki akses ke manajemen absensi.');
         $this->filterDate = now()->format('Y-m-d');
     }
 
@@ -30,6 +41,7 @@ class AttendanceManagement extends Component
 
     public function verify(int $id): void
     {
+        abort_unless($this->canAccess(), 403, 'Anda tidak memiliki hak untuk memverifikasi absensi.');
         $rec = Attendance::findOrFail($id);
         $rec->update(['verified_at' => $rec->verified_at ? null : now()]);
         $this->dispatch('notify', [
@@ -40,6 +52,7 @@ class AttendanceManagement extends Component
 
     public function verifyAll(): void
     {
+        abort_unless($this->canAccess(), 403, 'Anda tidak memiliki hak untuk memverifikasi absensi.');
         $query = Attendance::whereDate('created_at', $this->filterDate)->whereNull('verified_at');
         $count = $query->count();
         $query->update(['verified_at' => now()]);
@@ -51,6 +64,8 @@ class AttendanceManagement extends Component
 
     public function render()
     {
+        abort_unless($this->canAccess(), 403, 'Anda tidak memiliki akses ke manajemen absensi.');
+
         $query = Attendance::with(['user', 'location'])
             ->orderBy('created_at', 'desc');
 

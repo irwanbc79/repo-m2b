@@ -60,8 +60,21 @@ class BankReconciliation extends Component
     // Listeners
     protected $listeners = ['refreshData' => '$refresh'];
 
+    public function canAccess(): bool
+    {
+        $user = auth()->user();
+        return $user && (
+            $user->isAdminLevel() ||
+            $user->hasRole(['super_admin', 'director', 'admin', 'manager', 'staff_accounting', 'finance', 'auditor']) ||
+            $user->hasPermission('accounting.view') ||
+            $user->hasPermission('cashier.*')
+        );
+    }
+
     public function mount()
     {
+        abort_unless($this->canAccess(), 403, 'Anda tidak memiliki akses ke rekonsiliasi bank.');
+
         // Set default filter ke 3 bulan terakhir
         $this->filterDateFrom = now()->subMonths(3)->startOfMonth()->format('Y-m-d');
         $this->filterDateTo = now()->endOfMonth()->format('Y-m-d');
@@ -436,6 +449,8 @@ class BankReconciliation extends Component
 
     public function render()
     {
+        abort_unless($this->canAccess(), 403, 'Anda tidak memiliki akses ke rekonsiliasi bank.');
+
         $query = BankTransaction::query()
             ->with(['invoicePayment.invoice.customer', 'matchedByUser', 'journal.items.account']);
 

@@ -44,6 +44,11 @@ class JabatanManagement extends Component
         $this->resetPage();
     }
 
+    public function mount(): void
+    {
+        abort_unless($this->canViewAny(), 403, 'Anda tidak memiliki akses ke manajemen jabatan.');
+    }
+
     // --- Access Control ---
     public function canViewAny(): bool
     {
@@ -136,6 +141,8 @@ class JabatanManagement extends Component
 
     public function render()
     {
+        abort_unless($this->canViewAny(), 403, 'Anda tidak memiliki akses ke manajemen jabatan.');
+
         $jabatanList = Jabatan::query()
             ->when($this->search, fn($q) => $q->where('nama_jabatan', 'like', "%{$this->search}%"))
             ->orderBy('nama_jabatan')

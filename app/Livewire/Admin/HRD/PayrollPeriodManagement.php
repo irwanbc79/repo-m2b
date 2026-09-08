@@ -30,6 +30,11 @@ class PayrollPeriodManagement extends Component
         ];
     }
 
+    public function mount(): void
+    {
+        abort_unless($this->canViewAny(), 403, 'Anda tidak memiliki akses ke periode penggajian.');
+    }
+
     // --- Access Control ---
     public function canViewAny(): bool
     {
@@ -138,6 +143,8 @@ class PayrollPeriodManagement extends Component
 
     public function render()
     {
+        abort_unless($this->canViewAny(), 403, 'Anda tidak memiliki akses ke periode penggajian.');
+
         $periods = PayrollPeriod::with('approvedBy')
             ->withCount('payrollSlips')
             ->orderByDesc('tahun')

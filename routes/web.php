@@ -414,9 +414,6 @@ Route::middleware(['auth', 'admin'])->prefix('admin')->name('admin.')->group(fun
 
 // --- ROUTE INBOX SPESIFIK (AGAR SESUAI PANGGILAN DI BLADE) ---
 
-// Test route for EmailInbox debugging - dilindungi auth+admin
-Route::get('/test-inbox', \App\Livewire\Admin\EmailInbox::class)->name('test.inbox')->middleware(['auth', 'admin']);
-
 Route::middleware(['auth', 'admin'])->group(function () {
     // Route ini bernama 'inbox.index' (tanpa prefix admin.) agar cocok dengan admin.blade.php
     Route::get('/admin/inbox', EmailInbox::class)->name('inbox.index');

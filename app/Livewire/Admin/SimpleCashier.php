@@ -121,9 +121,22 @@ class SimpleCashier extends Component
     {
         $this->cashierService = $cashierService;
     }
+
+    public function canAccess(): bool
+    {
+        $user = auth()->user();
+        return $user && (
+            $user->isAdminLevel() ||
+            $user->hasRole(['super_admin', 'director', 'admin', 'manager', 'staff_accounting', 'finance', 'cashier']) ||
+            $user->hasPermission('cashier.view') ||
+            $user->hasPermission('cashier.input')
+        );
+    }
     
     public function mount()
     {
+        abort_unless($this->canAccess(), 403, 'Anda tidak memiliki akses ke kasir.');
+
         $this->transaction_date = now()->format('Y-m-d');
         $this->filterDateFrom = now()->startOfMonth()->format('Y-m-d');
         $this->filterDateTo = now()->format('Y-m-d');
@@ -1021,6 +1034,8 @@ class SimpleCashier extends Component
 
     public function render()
     {
+        abort_unless($this->canAccess(), 403, 'Anda tidak memiliki akses ke kasir.');
+
         return view('livewire.admin.simple-cashier')
             ->layout('layouts.admin');
     }

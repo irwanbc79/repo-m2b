@@ -53,13 +53,21 @@ class CashierManager extends Component
         ];
     }
 
-    /**
-     * =========================
-     * LIFECYCLE
-     * =========================
-     */
+    public function canAccess(): bool
+    {
+        $user = auth()->user();
+        return $user && (
+            $user->isAdminLevel() ||
+            $user->hasRole(['super_admin', 'director', 'admin', 'manager', 'staff_accounting', 'finance', 'cashier']) ||
+            $user->hasPermission('cashier.view') ||
+            $user->hasPermission('cashier.input')
+        );
+    }
+
     public function mount(): void
     {
+        abort_unless($this->canAccess(), 403, 'Anda tidak memiliki akses ke kasir.');
+
         $this->transaction_date = now()->toDateString();
         $this->mode = 'in';
     }
@@ -182,6 +190,8 @@ class CashierManager extends Component
 
     public function render()
     {
+        abort_unless($this->canAccess(), 403, 'Anda tidak memiliki akses ke kasir.');
+
         return view('livewire.admin.cashier-manager', [
             'cashAccounts'     => $this->cashAccounts,
             'invoices'         => $this->invoices,

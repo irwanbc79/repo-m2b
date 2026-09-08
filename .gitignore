@@ -54,3 +54,15 @@ enote_*.sql
 
 /btki_2022_data.csv
 /E-BTKI 2022 v1 - 1 April 2022.xlsx
+
+# Playwright & E2E
+node_modules/
+/test-results/
+/playwright-report/
+/blob-report/
+/playwright/.cache/
+/playwright/.auth/
+.env.e2e
+database/e2e.sqlite
+.DS_Store
+

@@ -11,15 +11,27 @@ class BalanceSheet extends Component
 {
     public $end_date;
 
+    public function canAccess(): bool
+    {
+        $user = auth()->user();
+        return $user && (
+            $user->isAdminLevel() ||
+            $user->hasRole(['super_admin', 'director', 'admin', 'manager', 'staff_accounting', 'finance', 'auditor']) ||
+            $user->hasPermission('accounting.view')
+        );
+    }
+
     public function mount()
     {
-        abort_unless(auth()->user()->hasPermission('accounting.view') || auth()->user()->hasPermission('cashier.view'), 403);
+        abort_unless($this->canAccess(), 403, 'Anda tidak memiliki akses ke laporan neraca.');
 
         $this->end_date = date('Y-m-d'); // Default Hari Ini
     }
 
     public function render()
     {
+        abort_unless($this->canAccess(), 403, 'Anda tidak memiliki akses ke laporan neraca.');
+
         // Helper function: Hitung saldo akhir akun per tanggal
         $getBalance = function ($accountId, $type) {
             $query = JournalItem::where('account_id', $accountId)

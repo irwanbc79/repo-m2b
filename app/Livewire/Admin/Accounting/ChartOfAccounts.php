@@ -36,9 +36,30 @@ class ChartOfAccounts extends Component
         'beban_lain' => 'Beban Lain-lain',
     ];
 
+    public function canAccess(): bool
+    {
+        $user = auth()->user();
+        return $user && (
+            $user->isAdminLevel() ||
+            $user->hasRole(['super_admin', 'director', 'admin', 'manager', 'staff_accounting', 'finance', 'auditor']) ||
+            $user->hasPermission('accounting.view') ||
+            $user->hasPermission('accounting.input')
+        );
+    }
+
+    public function canManage(): bool
+    {
+        $user = auth()->user();
+        return $user && (
+            $user->isAdminLevel() ||
+            $user->hasRole(['super_admin', 'director', 'admin', 'staff_accounting', 'finance']) ||
+            $user->hasPermission('accounting.input')
+        );
+    }
+
     public function mount()
     {
-        abort_unless(auth()->user()->hasPermission('cashier.view') || auth()->user()->hasPermission('accounting.view'), 403);
+        abort_unless($this->canAccess(), 403, 'Anda tidak memiliki akses ke bagan akun.');
     }
 
     public function updatingSearch() { $this->resetPage(); }
@@ -75,7 +96,7 @@ class ChartOfAccounts extends Component
      */
     public function toggleAktif($id)
     {
-        abort_unless(auth()->user()->hasPermission('cashier.view') || auth()->user()->hasPermission('accounting.view'), 403);
+        abort_unless($this->canManage(), 403, 'Anda tidak memiliki hak untuk mengubah status akun.');
 
         $acc = Account::find($id);
         if (! $acc) {
@@ -98,7 +119,7 @@ class ChartOfAccounts extends Component
 
     public function syncBalances()
     {
-        abort_unless(auth()->user()->hasPermission('cashier.view') || auth()->user()->hasPermission('accounting.view'), 403);
+        abort_unless($this->canManage(), 403, 'Anda tidak memiliki hak untuk sinkronisasi saldo akun.');
 
         $accounts = Account::all();
         foreach ($accounts as $acc) {
@@ -112,6 +133,8 @@ class ChartOfAccounts extends Component
 
     public function render()
     {
+        abort_unless($this->canAccess(), 403, 'Anda tidak memiliki akses ke bagan akun.');
+
         $accounts = Account::query()
             ->select('accounts.*')
             ->selectRaw('(SELECT COALESCE(SUM(debit), 0) FROM journal_items WHERE journal_items.account_id = accounts.id) as total_debit')
@@ -136,6 +159,7 @@ class ChartOfAccounts extends Component
 
     public function create()
     {
+        abort_unless($this->canManage(), 403, 'Anda tidak memiliki hak untuk menambah bagan akun.');
         $this->resetInput();
         $this->isEditing = false;
         $this->isModalOpen = true;
@@ -143,6 +167,7 @@ class ChartOfAccounts extends Component
 
     public function edit($id)
     {
+        abort_unless($this->canManage(), 403, 'Anda tidak memiliki hak untuk mengubah bagan akun.');
         $acc = Account::find($id);
         if ($acc) {
             $this->editingId = $id;
@@ -158,7 +183,7 @@ class ChartOfAccounts extends Component
 
     public function save()
     {
-        abort_unless(auth()->user()->hasPermission('cashier.view') || auth()->user()->hasPermission('accounting.view'), 403);
+        abort_unless($this->canManage(), 403, 'Anda tidak memiliki hak untuk menyimpan bagan akun.');
 
         $rules = [
             'name' => 'required|string|max:255',
@@ -212,7 +237,7 @@ class ChartOfAccounts extends Component
 
     public function delete($id)
     {
-        abort_unless(auth()->user()->hasPermission('cashier.view') || auth()->user()->hasPermission('accounting.view'), 403);
+        abort_unless($this->canManage(), 403, 'Anda tidak memiliki hak untuk menghapus bagan akun.');
 
         $acc = Account::find($id);
         if (!$acc) {

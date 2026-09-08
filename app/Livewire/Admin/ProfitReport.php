@@ -20,8 +20,25 @@ class ProfitReport extends Component
     public string $marginFilter = 'all'; // all|loss|thin|healthy|unbilled
     public string $sort = 'margin_asc';  // margin_asc|margin_desc|profit_desc|revenue_desc
 
+    public function canAccess(): bool
+    {
+        $user = auth()->user();
+        return $user && (
+            $user->isAdminLevel() ||
+            $user->hasRole(['super_admin', 'director', 'admin', 'manager', 'staff_accounting', 'finance', 'auditor', 'konsultan_pajak']) ||
+            $user->hasPermission('report.view_financial')
+        );
+    }
+
+    public function mount(): void
+    {
+        abort_unless($this->canAccess(), 403, 'Anda tidak memiliki akses ke laporan profitabilitas.');
+    }
+
     public function render()
     {
+        abort_unless($this->canAccess(), 403, 'Anda tidak memiliki akses ke laporan profitabilitas.');
+
         $items = Shipment::query()
             ->with('customer')
             ->withSum('invoices as revenue', 'grand_total')

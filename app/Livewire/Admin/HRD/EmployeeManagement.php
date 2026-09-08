@@ -64,6 +64,21 @@ class EmployeeManagement extends Component
 
     protected $queryString = ['search', 'filterStatus'];
 
+    public function canAccess(): bool
+    {
+        $user = Auth::user();
+        return $user && (
+            $user->hasRole(['admin', 'super_admin', 'director', 'finance']) ||
+            $user->hasPermission('hrd.*') ||
+            $user->hasPermission('hrd.view')
+        );
+    }
+
+    public function mount(): void
+    {
+        abort_unless($this->canAccess(), 403, 'Anda tidak memiliki akses ke data karyawan.');
+    }
+
     protected function rules(): array
     {
         $nikRule = $this->isEditing
@@ -398,6 +413,8 @@ class EmployeeManagement extends Component
 
     public function render()
     {
+        abort_unless($this->canAccess(), 403, 'Anda tidak memiliki akses ke data karyawan.');
+
         $employees = Employee::with('jabatan')
             ->when($this->search, fn($q) => $q->where(function ($q) {
                 $q->where('nama', 'like', "%{$this->search}%")

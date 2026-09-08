@@ -166,8 +166,20 @@ class InvoiceManager extends Component
     public $previewFileModal = false;
     public $previewFilePath = null;
 
+    public function canAccess(): bool
+    {
+        $user = auth()->user();
+        return $user && (
+            $user->isAdminLevel() ||
+            $user->hasRole(['super_admin', 'director', 'admin', 'manager', 'supervisor', 'staff_accounting', 'finance', 'staff_sales', 'cashier', 'auditor', 'konsultan_pajak', 'staff']) ||
+            $user->hasPermission('invoice.view')
+        );
+    }
+
     public function mount()
     {
+        abort_unless($this->canAccess(), 403, 'Anda tidak memiliki akses ke manajemen invoice.');
+
         $this->invoice_date = date('Y-m-d');
         $this->payment_date = date('Y-m-d');
         $this->addItem();
@@ -176,6 +188,8 @@ class InvoiceManager extends Component
 
     public function render()
     {
+        abort_unless($this->canAccess(), 403, 'Anda tidak memiliki akses ke manajemen invoice.');
+
         $query = Invoice::with(['customer', 'shipment.customer', 'items.product']);
 
         // Apply search filter

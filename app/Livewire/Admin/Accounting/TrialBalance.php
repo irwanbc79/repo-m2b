@@ -11,9 +11,19 @@ class TrialBalance extends Component
     public $start_date;
     public $end_date;
 
+    public function canAccess(): bool
+    {
+        $user = auth()->user();
+        return $user && (
+            $user->isAdminLevel() ||
+            $user->hasRole(['super_admin', 'director', 'admin', 'manager', 'staff_accounting', 'finance', 'auditor']) ||
+            $user->hasPermission('accounting.view')
+        );
+    }
+
     public function mount()
     {
-        abort_unless(auth()->user()->hasPermission('accounting.view') || auth()->user()->hasPermission('cashier.view'), 403);
+        abort_unless($this->canAccess(), 403, 'Anda tidak memiliki akses ke neraca saldo.');
 
         $this->start_date = date('Y-m-01'); // Awal bulan ini
         $this->end_date = date('Y-m-d');   // Hari ini
@@ -21,6 +31,8 @@ class TrialBalance extends Component
 
     public function render()
     {
+        abort_unless($this->canAccess(), 403, 'Anda tidak memiliki akses ke neraca saldo.');
+
         $accounts = Account::orderBy('code')->get();
         $data = [];
         
