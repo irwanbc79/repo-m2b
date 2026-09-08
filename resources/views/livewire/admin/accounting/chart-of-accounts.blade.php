@@ -94,7 +94,15 @@
                     @forelse($accounts as $acc)
                     <tr class="hover:bg-blue-50 transition duration-150">
                         <td class="px-6 py-4 font-mono font-bold text-blue-900">{{ $acc->code }}</td>
-                        <td class="px-6 py-4 font-medium text-gray-800">{{ $acc->name }}</td>
+                        <td class="px-6 py-4 font-medium text-gray-800">
+                            {{ $acc->name }}
+                            @unless($acc->is_active)
+                            <span class="ml-1.5 inline-flex items-center rounded px-1.5 py-0.5 text-[10px] font-semibold uppercase tracking-wide bg-gray-200 text-gray-600"
+                                  title="Akun nonaktif: tidak muncul saat input jurnal, tapi tetap ada di laporan">
+                                nonaktif
+                            </span>
+                            @endunless
+                        </td>
                         <td class="px-6 py-4">
                             @php
                                 $colors = [
@@ -114,6 +122,16 @@
                         <td class="px-6 py-4 text-right font-bold text-gray-800">{{ number_format($acc->calculated_balance, 0, ',', '.') }}</td>
                         <td class="px-6 py-4 text-center flex justify-center gap-2">
                             <button wire:click="edit({{ $acc->id }})" class="text-blue-600 hover:bg-blue-100 p-1.5 rounded transition" title="Edit Akun"><svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"></path></svg></button>
+                            <button wire:click="toggleAktif({{ $acc->id }})"
+                                    wire:confirm="{{ $acc->is_active ? 'Nonaktifkan akun ini? Akun akan hilang dari pilihan saat input jurnal, tapi riwayat dan laporannya tetap utuh.' : 'Aktifkan kembali akun ini?' }}"
+                                    class="{{ $acc->is_active ? 'text-gray-500 hover:bg-gray-100' : 'text-green-600 hover:bg-green-100' }} p-1.5 rounded transition"
+                                    title="{{ $acc->is_active ? 'Nonaktifkan akun' : 'Aktifkan akun' }}">
+                                @if($acc->is_active)
+                                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M18.364 18.364A9 9 0 005.636 5.636m12.728 12.728A9 9 0 015.636 5.636m12.728 12.728L5.636 5.636"/></svg>
+                                @else
+                                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/></svg>
+                                @endif
+                            </button>
                             <button wire:click="delete({{ $acc->id }})" wire:confirm="Hapus Akun ini?" class="text-red-500 hover:bg-red-100 p-1.5 rounded transition" title="Hapus Akun"><svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path></svg></button>
                         </td>
                     </tr>

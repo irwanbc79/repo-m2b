@@ -473,7 +473,8 @@ class BankReconciliation extends Component
         $transactions = $query->orderBy('transaction_date', 'desc')
             ->paginate(20);
 
-        $accounts = Account::orderBy('code')->get();
+        // Hanya akun aktif yang bisa dipilih; laporan tetap menampilkan semua.
+        $accounts = Account::aktif()->orderBy('code')->get();
 
         return view('livewire.admin.bank-reconciliation', [
             'transactions' => $transactions,

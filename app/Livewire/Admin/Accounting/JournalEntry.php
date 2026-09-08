@@ -90,7 +90,8 @@ class JournalEntry extends Component
             ->orderBy('id', $this->sortDirection)
             ->paginate(25);
 
-        $accounts = Account::orderBy('code')->get();
+        // Hanya akun aktif yang bisa dipilih; laporan tetap menampilkan semua.
+        $accounts = Account::aktif()->orderBy('code')->get();
 
         return view('livewire.admin.accounting.journal-entry', [
             'journals' => $journals,

@@ -353,7 +353,27 @@ class CashierService
             'status' => 'posted',
             'posted_at' => now(),
         ]);
+
+        $this->segarkanSaldo($accounts);
+
         return $journal;
+    }
+
+    /**
+     * Hitung ulang accounts.current_balance untuk akun yang tersentuh.
+     *
+     * Dulu jalur kasir sama sekali tidak memperbarui kolom saldo, sementara
+     * AccountingService & JournalEntry melakukannya — jadi tiap transaksi kasir
+     * menambah selisih antara kolom saldo dan buku besar. Sengaja memakai
+     * recalculateBalance() (hitung ulang dari journal_items), bukan
+     * increment/decrement, supaya hasilnya benar berapa kali pun dijalankan.
+     */
+    protected function segarkanSaldo(array $accounts): void
+    {
+        collect($accounts)
+            ->filter()
+            ->unique(fn ($akun) => $akun->id)
+            ->each(fn ($akun) => $akun->refresh()->recalculateBalance());
     }
 
     /**
@@ -731,6 +751,8 @@ class CashierService
                 $cashTransaction->update(['proof_file' => $path]);
             }
             
+            $this->segarkanSaldo($accounts);
+
             DB::commit();
             return $cashTransaction;
             

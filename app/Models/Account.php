@@ -15,6 +15,7 @@ class Account extends Model
         'type',             // Tipe Akun (kas_bank, piutang, dll)
         'opening_balance',  // Saldo Awal Master
         'current_balance',  // Saldo Berjalan (disinkronkan dari jurnal)
+        'is_active',        // Akun nonaktif: hilang dari pilihan input, tetap di laporan
     ];
 
     protected function casts(): array
@@ -22,12 +23,33 @@ class Account extends Model
         return [
             'opening_balance' => 'decimal:2',
             'current_balance' => 'decimal:2',
+            'is_active' => 'boolean',
         ];
     }
 
     public function journalItems()
     {
         return $this->hasMany(JournalItem::class);
+    }
+
+    /**
+     * Hanya akun yang masih boleh dipilih saat input.
+     *
+     * JANGAN dipakai di query laporan — akun nonaktif tetap harus muncul di
+     * buku besar, neraca saldo, dan neraca supaya riwayatnya tidak hilang.
+     */
+    public function scopeAktif($query)
+    {
+        return $query->where('is_active', true);
+    }
+
+    /**
+     * Akun yang sudah punya riwayat jurnal tidak boleh dihapus — hanya
+     * dinonaktifkan.
+     */
+    public function bolehDihapus(): bool
+    {
+        return ! $this->journalItems()->exists();
     }
 
     /**

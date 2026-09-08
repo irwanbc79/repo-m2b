@@ -69,6 +69,33 @@ class ChartOfAccounts extends Component
         ];
     }
 
+    /**
+     * Aktifkan / nonaktifkan akun. Akun nonaktif hilang dari daftar pilihan
+     * saat input jurnal, tapi tetap muncul di semua laporan.
+     */
+    public function toggleAktif($id)
+    {
+        abort_unless(auth()->user()->hasPermission('cashier.view') || auth()->user()->hasPermission('accounting.view'), 403);
+
+        $acc = Account::find($id);
+        if (! $acc) {
+            return;
+        }
+
+        $acc->update(['is_active' => ! $acc->is_active]);
+
+        \App\Models\ActivityLog::record(
+            'Accounting',
+            $acc->is_active ? 'ACTIVATE_COA' : 'DEACTIVATE_COA',
+            $acc->code,
+            ($acc->is_active ? 'Aktifkan' : 'Nonaktifkan') . " akun {$acc->code} - {$acc->name}"
+        );
+
+        session()->flash('message', $acc->is_active
+            ? "Akun {$acc->code} diaktifkan kembali."
+            : "Akun {$acc->code} dinonaktifkan. Riwayat jurnalnya tetap utuh dan masih muncul di laporan.");
+    }
+
     public function syncBalances()
     {
         abort_unless(auth()->user()->hasPermission('cashier.view') || auth()->user()->hasPermission('accounting.view'), 403);
