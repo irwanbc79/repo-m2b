@@ -312,9 +312,15 @@ class JournalEntry extends Component
                 if (method_exists($journal, 'cashTransactions') && $journal->cashTransactions()->exists()) {
                     $linkedTransaction = $journal->cashTransactions()->first();
 
-                    // VALIDASI: Hanya status 'Draft' di kasir yang boleh dihapus
-                    if (isset($linkedTransaction->status) && strtolower($linkedTransaction->status) !== 'draft') {
-                        throw new \Exception("Gagal Hapus: Jurnal ini terhubung dengan transaksi Kasir berstatus '" . strtoupper($linkedTransaction->status) . "'. Hanya transaksi 'Draft' yang boleh dihapus!");
+                    // VALIDASI: jurnal milik transaksi kasir yang sudah
+                    // diverifikasi accounting tidak boleh dihapus — koreksinya
+                    // lewat jurnal balik.
+                    //
+                    // (Dulu di sini dicek $linkedTransaction->status, kolom yang
+                    // tidak pernah ada di tabel cash_transactions, sehingga
+                    // isset() selalu false dan penjaganya tidak pernah aktif.)
+                    if ($linkedTransaction->isApproved()) {
+                        throw new \Exception("Gagal Hapus: Jurnal ini milik transaksi Kasir yang sudah diverifikasi accounting. Buat jurnal balik bila perlu koreksi.");
                     }
 
                     // Hapus transaksi kasirnya dulu agar Foreign Key tidak bentrok

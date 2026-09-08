@@ -120,7 +120,11 @@ return [
             'level' => 50,
             'permissions' => [
                 'dashboard.view',
-                'cashier.*',
+                // Fase 2 — pemisahan tugas: kasir mencatat, accounting yang
+                // memverifikasi. Sengaja BUKAN 'cashier.*', karena wildcard itu
+                // ikut memberi cashier.verify (kasir bisa menyetujui input
+                // dirinya sendiri) dan cashier.journal (akses jurnal umum).
+                'cashier.view', 'cashier.input', 'cashier.revise',
                 'invoice.view', 'invoice.verify_payment',
             ],
         ],

@@ -41,6 +41,13 @@ class CashTransaction extends Model
         'job_cost_id',
         'is_posted',
         'posted_at',
+
+        // Fase 2 — maker/checker
+        'approval_status',
+        'submitted_at',
+        'approved_by',
+        'approved_at',
+        'rejection_reason',
     ];
 
     protected $casts = [
@@ -50,7 +57,58 @@ class CashTransaction extends Model
         'amount_idr' => 'decimal:2',
         'is_posted' => 'boolean',
         'posted_at' => 'datetime',
+        'submitted_at' => 'datetime',
+        'approved_at' => 'datetime',
     ];
+
+    /* ================= APPROVAL (FASE 2) ================= */
+
+    public const STATUS_PENDING  = 'pending';
+    public const STATUS_APPROVED = 'approved';
+    public const STATUS_REJECTED = 'rejected';
+
+    public function isPending(): bool
+    {
+        return $this->approval_status === self::STATUS_PENDING;
+    }
+
+    public function isApproved(): bool
+    {
+        return $this->approval_status === self::STATUS_APPROVED;
+    }
+
+    public function isRejected(): bool
+    {
+        return $this->approval_status === self::STATUS_REJECTED;
+    }
+
+    /**
+     * Transaksi hanya boleh diedit/dihapus selama belum disetujui. Yang sudah
+     * disetujui sudah punya jurnal — koreksinya lewat jurnal balik, bukan edit.
+     */
+    public function isEditable(): bool
+    {
+        return ! $this->isApproved();
+    }
+
+    public function getApprovalLabelAttribute(): string
+    {
+        return match ($this->approval_status) {
+            self::STATUS_APPROVED => 'Disetujui',
+            self::STATUS_REJECTED => 'Ditolak',
+            default => 'Menunggu Verifikasi',
+        };
+    }
+
+    public function scopePending($query)
+    {
+        return $query->where('approval_status', self::STATUS_PENDING);
+    }
+
+    public function approver()
+    {
+        return $this->belongsTo(User::class, 'approved_by');
+    }
 
     /* ================= RELATIONS ================= */
 

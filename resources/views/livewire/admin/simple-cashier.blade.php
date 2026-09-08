@@ -695,8 +695,35 @@
     {{-- Recent Transactions (Bottom Section) --}}
     {{-- @if(count($recentTransactions) > 0) --}}
 
+    {{-- ── Antrian Verifikasi Accounting (Fase 2 — maker/checker) ── --}}
+    @if($pendingCount > 0)
+    <div class="mt-6 rounded-xl border border-amber-300 bg-amber-50 px-4 py-3 flex flex-wrap items-center justify-between gap-3">
+        <div class="flex items-start gap-3">
+            <span class="mt-0.5 flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-amber-100 text-amber-700">
+                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+            </span>
+            <div>
+                <p class="text-sm font-semibold text-amber-900">
+                    {{ $pendingCount }} transaksi menunggu verifikasi accounting
+                </p>
+                <p class="text-xs text-amber-700 mt-0.5">
+                    @if($this->canVerify())
+                        Transaksi ini belum masuk pembukuan. Periksa dan setujui agar jurnalnya terbentuk.
+                    @else
+                        Transaksi ini belum masuk pembukuan sampai diverifikasi accounting.
+                    @endif
+                </p>
+            </div>
+        </div>
+        <button type="button" wire:click="showPendingOnly"
+                class="shrink-0 inline-flex items-center gap-1.5 rounded-lg bg-amber-600 px-3 py-2 text-xs font-semibold text-white transition hover:bg-amber-700 focus:outline-none focus-visible:ring-2 focus-visible:ring-amber-500 focus-visible:ring-offset-2">
+            Lihat antrian
+        </button>
+    </div>
+    @endif
+
     {{-- Summary Stats Bar --}}
-    <div class="grid grid-cols-2 lg:grid-cols-4 gap-3 mt-6">
+    <div class="grid grid-cols-2 lg:grid-cols-4 gap-3 mt-4">
         <div class="bg-green-50 border border-green-200 rounded-xl p-4 flex flex-col">
             <div class="text-xs font-semibold text-green-600 uppercase tracking-wide">Total Masuk</div>
             <div class="mt-1 text-lg font-bold text-green-700 truncate">IDR {{ number_format($summaryTotalIn, 0, ',', '.') }}</div>
@@ -831,12 +858,13 @@
                     </select>
                 </div>
                 <div>
-                    <label class="block text-xs font-semibold text-gray-600 mb-1">Status Posting</label>
+                    <label class="block text-xs font-semibold text-gray-600 mb-1">Status Verifikasi</label>
                     <select wire:model.live="filterStatus"
                             class="w-full text-sm border-gray-300 rounded-lg shadow-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
                         <option value="all">Semua Status</option>
-                        <option value="posted">Posted</option>
-                        <option value="draft">Draft / Pending</option>
+                        <option value="pending">Menunggu Verifikasi</option>
+                        <option value="approved">Disetujui</option>
+                        <option value="rejected">Ditolak</option>
                     </select>
                 </div>
             </div>
@@ -920,7 +948,7 @@
             @php
                 $activeTags = [];
                 if ($filterType !== 'all') $activeTags[] = ['label' => 'Tipe: ' . ($filterType === 'in' ? 'Masuk' : 'Keluar'), 'action' => "\$set('filterType', 'all')"];
-                if ($filterStatus !== 'all') $activeTags[] = ['label' => 'Status: ' . ($filterStatus === 'posted' ? 'Posted' : 'Draft'), 'action' => "\$set('filterStatus', 'all')"];
+                if ($filterStatus !== 'all') $activeTags[] = ['label' => 'Status: ' . match ($filterStatus) { 'pending' => 'Menunggu Verifikasi', 'approved' => 'Disetujui', 'rejected' => 'Ditolak', default => $filterStatus }, 'action' => "\$set('filterStatus', 'all')"];
                 if ($filterCounterpartType !== 'all') $activeTags[] = ['label' => 'Mitra: ' . ucfirst($filterCounterpartType), 'action' => "\$set('filterCounterpartType', 'all')"];
                 if ($filterCostCategory !== 'all') $activeTags[] = ['label' => 'Kategori: ' . ucfirst($filterCostCategory), 'action' => "\$set('filterCostCategory', 'all')"];
                 if ($filterCurrency !== 'all') $activeTags[] = ['label' => 'Mata Uang: ' . $filterCurrency, 'action' => "\$set('filterCurrency', 'all')"];
@@ -1034,27 +1062,67 @@
                             @endif
                         </td>
                         <td class="px-4 py-3 text-center">
-                            @php $journalStatus = $trx['journal']['status'] ?? null; @endphp
-                            @if(empty($trx['journal_id']) || $journalStatus === null)
+                            @php
+                                $approval = $trx['approval_status'] ?? 'approved';
+                                $journalStatus = $trx['journal']['status'] ?? null;
+                            @endphp
+                            @if($approval === 'pending')
+                            <span class="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-amber-100 text-amber-800 border border-amber-300"
+                                  title="Belum masuk pembukuan — menunggu verifikasi accounting">
+                                ⏳ Menunggu Verifikasi
+                            </span>
+                            @elseif($approval === 'rejected')
+                            <span class="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-red-100 text-red-700 border border-red-300"
+                                  title="{{ $trx['rejection_reason'] ?? 'Ditolak accounting' }}">
+                                ✕ Ditolak
+                            </span>
+                            @if(!empty($trx['rejection_reason']))
+                            <span class="mt-1 block text-[11px] leading-snug text-red-600 max-w-[180px] mx-auto">
+                                {{ \Illuminate\Support\Str::limit($trx['rejection_reason'], 70) }}
+                            </span>
+                            @endif
+                            @elseif(empty($trx['journal_id']) || $journalStatus === null)
                             <span class="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-red-100 text-red-700 border border-red-300" title="Tidak ada jurnal akuntansi — perlu rekonsiliasi">
                                 ⚠ No Journal
                             </span>
-                            @elseif($journalStatus === 'posted')
-                            <span class="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-green-100 text-green-800">
-                                ✓ Posted
-                            </span>
                             @else
-                            <span class="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-yellow-100 text-yellow-800">
-                                ⏳ Pending
+                            <span class="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-green-100 text-green-800"
+                                  title="Sudah diverifikasi dan masuk pembukuan">
+                                ✓ Disetujui
                             </span>
                             @endif
                         </td>
                     {{-- Kolom Aksi - Semua yang punya akses halaman kasir --}}
                         <td class="px-4 py-3 text-center">
+                            @php $isLocked = ($trx['approval_status'] ?? 'approved') === 'approved'; @endphp
                             @if(auth()->user()->hasRole(['admin', 'director', 'manager', 'supervisor', 'cashier', 'staff_accounting']))
                             <div class="flex items-center justify-center gap-1">
+                                {{-- Verifikasi: hanya untuk yang masih menunggu, dan bukan input sendiri --}}
+                                @if($this->canVerify() && ($trx['approval_status'] ?? null) === 'pending')
+                                    @if((int) ($trx['created_by'] ?? 0) === auth()->id())
+                                    <span class="text-[11px] text-gray-400 px-1" title="Anda yang menginput transaksi ini, jadi tidak bisa memverifikasinya sendiri">input sendiri</span>
+                                    @else
+                                    <button wire:click="approveTransaction({{ $trx['id'] }})"
+                                            wire:confirm="Setujui transaksi ini? Jurnalnya akan langsung terbentuk dan masuk pembukuan."
+                                            class="p-1.5 text-green-600 hover:bg-green-100 rounded-lg transition" title="Setujui &amp; bukukan">
+                                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/></svg>
+                                    </button>
+                                    <button wire:click="openRejectModal({{ $trx['id'] }})"
+                                            class="p-1.5 text-orange-600 hover:bg-orange-100 rounded-lg transition" title="Tolak &amp; kembalikan ke kasir">
+                                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 14L21 3m0 0h-6m6 0v6M21 14v5a2 2 0 01-2 2H5a2 2 0 01-2-2V5a2 2 0 012-2h5"/></svg>
+                                    </button>
+                                    @endif
+                                @endif
+
+                                @if($isLocked)
+                                <span class="inline-flex items-center gap-1 text-[11px] text-gray-400 px-1" title="Sudah diverifikasi — koreksi lewat jurnal balik">
+                                    <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"/></svg>
+                                    terkunci
+                                </span>
+                                @else
                                 <button wire:click="editTransaction({{ $trx['id'] }})" class="p-1.5 text-blue-600 hover:bg-blue-100 rounded-lg transition" title="Edit"><svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"/></svg></button>
                                 <button wire:click="removeTransaction({{ $trx['id'] }})" class="p-1.5 text-red-600 hover:bg-red-100 rounded-lg transition" title="Hapus"><svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/></svg></button>
+                                @endif
                             </div>
                             @else
                             <span class="text-gray-400">-</span>
@@ -1306,4 +1374,50 @@
         </div>
     </div>
 </div>
+
+{{-- ── Modal Tolak Transaksi (Fase 2 — verifikasi accounting) ── --}}
+@if($showRejectModal)
+<div class="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4"
+     wire:click.self="closeRejectModal">
+    {{-- Tailwind v4: panel wajib punya stacking context eksplisit (lihat CLAUDE.md) --}}
+    <div class="w-full max-w-md rounded-xl bg-white shadow-xl" style="position: relative; z-index: 10;">
+        <div class="flex items-center gap-3 border-b px-5 py-4">
+            <span class="flex h-9 w-9 items-center justify-center rounded-lg bg-orange-100 text-orange-600">
+                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z"/></svg>
+            </span>
+            <div>
+                <h3 class="text-base font-semibold text-gray-800">Tolak Transaksi</h3>
+                <p class="text-xs text-gray-500">Transaksi dikembalikan ke kasir untuk diperbaiki.</p>
+            </div>
+        </div>
+
+        <div class="px-5 py-4">
+            <label for="rejectReason" class="mb-1 block text-xs font-semibold text-gray-600">
+                Alasan penolakan <span class="text-red-500">*</span>
+            </label>
+            <textarea id="rejectReason" wire:model="rejectReason" rows="3"
+                      placeholder="Contoh: nominal tidak sesuai bukti transfer, atau biaya ini sudah diinput Nurul di job costing."
+                      class="w-full rounded-lg border-gray-300 text-sm shadow-sm focus:border-orange-500 focus:ring-2 focus:ring-orange-500"></textarea>
+            @error('rejectReason')
+            <p class="mt-1 text-xs text-red-600">{{ $message }}</p>
+            @enderror
+            <p class="mt-2 text-xs text-gray-500">
+                Alasan ini tersimpan di jejak aktivitas dan terlihat oleh kasir.
+            </p>
+        </div>
+
+        <div class="flex justify-end gap-3 border-t bg-gray-50 px-5 py-4">
+            <button type="button" wire:click="closeRejectModal"
+                    class="rounded-lg bg-gray-100 px-4 py-2 text-sm font-medium text-gray-700 transition hover:bg-gray-200">
+                Batal
+            </button>
+            <button type="button" wire:click="submitRejection" wire:loading.attr="disabled" wire:target="submitRejection"
+                    class="inline-flex items-center gap-2 rounded-lg bg-orange-600 px-4 py-2 text-sm font-medium text-white transition hover:bg-orange-700 disabled:opacity-60">
+                <span wire:loading.remove wire:target="submitRejection">Tolak Transaksi</span>
+                <span wire:loading wire:target="submitRejection">Memproses...</span>
+            </button>
+        </div>
+    </div>
+</div>
+@endif
 </div>
