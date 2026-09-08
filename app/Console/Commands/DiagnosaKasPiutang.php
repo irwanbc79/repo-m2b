@@ -42,20 +42,23 @@ class DiagnosaKasPiutang extends Command
      */
     private function ringkasanSaldo(): void
     {
+        // Subquery, bukan join+GROUP BY: MySQL produksi menjalankan
+        // ONLY_FULL_GROUP_BY sehingga `select accounts.* ... group by
+        // accounts.id` ditolak (SQLite lokal membolehkannya).
         $accounts = Account::query()
             ->whereIn('type', ['kas_bank', 'piutang'])
-            ->leftJoin('journal_items', 'journal_items.account_id', '=', 'accounts.id')
-            ->groupBy('accounts.id')
-            ->orderBy('accounts.code')
-            ->select([
-                'accounts.*',
-                DB::raw('COALESCE(SUM(journal_items.debit), 0) as total_debit'),
-                DB::raw('COALESCE(SUM(journal_items.credit), 0) as total_credit'),
-                DB::raw('COUNT(journal_items.id) as jumlah_baris'),
-            ])
+            ->withSum('journalItems as total_debit', 'debit')
+            ->withSum('journalItems as total_credit', 'credit')
+            ->withCount('journalItems as jumlah_baris')
+            ->orderBy('code')
             ->get();
 
         $baris = $accounts->map(function (Account $a) {
+            // withSum mengembalikan null bila akunnya belum punya baris jurnal;
+            // dinolkan dulu supaya accessor saldo tidak jatuh ke query per akun.
+            $a->setAttribute('total_debit', $a->total_debit ?? 0);
+            $a->setAttribute('total_credit', $a->total_credit ?? 0);
+
             $gl = (float) $a->calculated_balance;
             $kolom = (float) $a->current_balance;
             $drift = $kolom - $gl;
