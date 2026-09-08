@@ -76,6 +76,7 @@ class DiagnosaKasPiutang extends Command
                 $this->rp($kolom),
                 $this->rp($gl),
                 abs($drift) < 0.01 ? '-' : $this->rp($drift),
+                $a->is_active ? '' : 'NONAKTIF',
                 $gl < 0 ? 'MINUS' : '',
             ];
         })->toArray();
@@ -83,7 +84,7 @@ class DiagnosaKasPiutang extends Command
         $this->newLine();
         $this->info('SALDO KAS, BANK & PIUTANG');
         $this->table(
-            ['Kode', 'Nama Akun', 'Baris', 'Saldo Kolom', 'Saldo Buku Besar', 'Drift', 'Tanda'],
+            ['Kode', 'Nama Akun', 'Baris', 'Saldo Kolom', 'Saldo Buku Besar', 'Drift', 'Status', 'Tanda'],
             $baris
         );
 
