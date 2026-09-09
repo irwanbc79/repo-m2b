@@ -1,9 +1,20 @@
+<IfModule LiteSpeed>
+    RewriteEngine On
+    RewriteRule .* - [E=noabort:1]
+    RewriteRule .* - [E=noconntimeout:1]
+    # Matikan LiteSpeed Server-Level reCAPTCHA ("Saya bukan robot") untuk seluruh portal.m2b.co.id
+    RewriteRule .* - [E=verifycaptcha:off]
+</IfModule>
+
 <IfModule mod_rewrite.c>
     <IfModule mod_negotiation.c>
         Options -MultiViews -Indexes
     </IfModule>
 
     RewriteEngine On
+
+    # LiteSpeed reCAPTCHA disable fallback
+    RewriteRule .* - [E=verifycaptcha:off]
 
     # Handle Authorization Header
     RewriteCond %{HTTP:Authorization} .
@@ -16,6 +27,10 @@
     # CRITICAL FIX: Force POST to /livewire/update and /lw-update through to PHP even though directory exists
     RewriteCond %{REQUEST_METHOD} POST
     RewriteRule ^(livewire/update|lw-update)$ index.php [L]
+
+    # Jangan cache route Livewire — mencegah LiteSpeed meng-cache POST endpoint
+    RewriteCond %{REQUEST_URI} ^/(livewire|lw-update)
+    RewriteRule .* - [E=no-cache:1,E=no-gzip:1]
 
     # Redirect Trailing Slashes If Not A Folder...
     RewriteCond %{REQUEST_FILENAME} !-d
@@ -32,22 +47,6 @@
 <IfModule mod_security.c>
     SecFilterEngine Off
     SecFilterScanPOST Off
-</IfModule>
-
-<IfModule LiteSpeed>
-    RewriteRule .* - [E=noabort:1]
-    RewriteRule .* - [E=noconntimeout:1]
-
-    # Matikan LiteSpeed Server-Level reCAPTCHA untuk admin panel dan endpoint Livewire
-    # agar background polling saat tab idle tidak dicegat sebagai bot
-    RewriteCond %{REQUEST_URI} ^/(admin|lw-update|livewire)
-    RewriteRule .* - [E=verifycaptcha:off]
-</IfModule>
-
-# Jangan cache route Livewire — mencegah LiteSpeed meng-cache POST endpoint
-<IfModule mod_rewrite.c>
-    RewriteCond %{REQUEST_URI} ^/(livewire|lw-update)
-    RewriteRule .* - [E=no-cache:1,E=no-gzip:1]
 </IfModule>
 
 <LocationMatch "^/(livewire|lw-update)">
