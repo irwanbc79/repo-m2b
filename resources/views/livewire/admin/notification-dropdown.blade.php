@@ -1,4 +1,4 @@
-<div class="relative" x-data="{ open: false }" wire:poll.30s="loadNotifications">
+<div class="relative" x-data="{ open: false }" wire:poll.60s="loadNotifications">
     
     {{-- TOMBOL LONCENG --}}
     <button @click="open = !open" class="relative p-2 text-gray-400 hover:text-gray-600 transition focus:outline-none">

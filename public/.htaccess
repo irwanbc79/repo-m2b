@@ -13,9 +13,9 @@
     RewriteCond %{HTTP:x-xsrf-token} .
     RewriteRule .* - [E=HTTP_X_XSRF_TOKEN:%{HTTP:X-XSRF-Token}]
 
-    # CRITICAL FIX: Force POST to /livewire/update through to PHP even though directory exists
+    # CRITICAL FIX: Force POST to /livewire/update and /lw-update through to PHP even though directory exists
     RewriteCond %{REQUEST_METHOD} POST
-    RewriteRule ^livewire/update$ index.php [L]
+    RewriteRule ^(livewire/update|lw-update)$ index.php [L]
 
     # Redirect Trailing Slashes If Not A Folder...
     RewriteCond %{REQUEST_FILENAME} !-d
@@ -37,25 +37,30 @@
 <IfModule LiteSpeed>
     RewriteRule .* - [E=noabort:1]
     RewriteRule .* - [E=noconntimeout:1]
+
+    # Matikan LiteSpeed Server-Level reCAPTCHA untuk admin panel dan endpoint Livewire
+    # agar background polling saat tab idle tidak dicegat sebagai bot
+    RewriteCond %{REQUEST_URI} ^/(admin|lw-update|livewire)
+    RewriteRule .* - [E=verifycaptcha:off]
 </IfModule>
 
 # Jangan cache route Livewire — mencegah LiteSpeed meng-cache POST endpoint
 <IfModule mod_rewrite.c>
-    RewriteCond %{REQUEST_URI} ^/livewire/
+    RewriteCond %{REQUEST_URI} ^/(livewire|lw-update)
     RewriteRule .* - [E=no-cache:1,E=no-gzip:1]
 </IfModule>
 
-<Location /livewire/>
+<LocationMatch "^/(livewire|lw-update)">
     <IfModule mod_headers.c>
-        Header always set Cache-Control no-store, no-cache, must-revalidate, max-age=0
-        Header always set Pragma no-cache
-        Header always set X-LiteSpeed-Cache-Control no-cache
+        Header always set Cache-Control "no-store, no-cache, must-revalidate, max-age=0"
+        Header always set Pragma "no-cache"
+        Header always set X-LiteSpeed-Cache-Control "no-cache"
         Header always unset X-LiteSpeed-Cache
     </IfModule>
     <IfModule LiteSpeed>
         CacheDisable on
     </IfModule>
-</Location>
+</LocationMatch>
 
 # ── Optimasi Kecepatan: Browser Caching & Kompresi Aset Statis ──
 <IfModule mod_deflate.c>
