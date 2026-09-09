@@ -22,12 +22,15 @@
          x-transition:leave="transition ease-in duration-75"
          x-transition:leave-start="opacity-100 scale-100"
          x-transition:leave-end="opacity-0 scale-95"
-         class="absolute right-0 mt-2 w-80 bg-white rounded-xl shadow-2xl border border-gray-100 overflow-hidden z-50 origin-top-right"
+         class="absolute right-0 mt-2.5 w-84 sm:w-96 bg-white/95 backdrop-blur-xl rounded-2xl shadow-[0_20px_50px_-12px_rgba(10,22,41,0.25)] border border-slate-200/90 overflow-hidden z-50 origin-top-right ring-1 ring-black/5"
          style="display: none;">
         
-        <div class="px-4 py-3 border-b border-gray-100 bg-gray-50 flex justify-between items-center">
-            <h3 class="text-sm font-bold text-gray-700">Notifikasi</h3>
-            <span class="text-xs text-gray-500">{{ $totalNotif }} Baru</span>
+        <div class="px-4 py-3 border-b border-slate-100 bg-slate-50/70 backdrop-blur-sm flex justify-between items-center">
+            <h3 class="text-xs font-semibold text-slate-800 tracking-wider uppercase flex items-center gap-2">
+                <span class="inline-block w-2 h-2 rounded-full bg-blue-500"></span>
+                Notifikasi
+            </h3>
+            <span class="text-[11px] font-semibold px-2.5 py-0.5 rounded-full bg-blue-50 text-blue-700 border border-blue-100 font-mono">{{ $totalNotif }} Baru</span>
         </div>
 
         <div class="max-h-80 overflow-y-auto">
@@ -140,8 +143,8 @@
             @endif
         </div>
         
-        <div class="bg-gray-50 p-2 text-center border-t border-gray-100">
-            <p class="text-[9px] text-gray-400">Update otomatis setiap 30 detik</p>
+        <div class="bg-slate-50/70 p-2.5 text-center border-t border-slate-100">
+            <p class="text-[10px] text-slate-400 font-medium">Update otomatis setiap 30 detik</p>
         </div>
     </div>
 </div>

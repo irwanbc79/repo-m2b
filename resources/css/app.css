@@ -6,11 +6,219 @@
 @source '../**/*.js';
 
 @theme {
-    --font-sans: 'Instrument Sans', ui-sans-serif, system-ui, sans-serif, 'Apple Color Emoji', 'Segoe UI Emoji',
+    --font-sans: 'Instrument Sans', 'Figtree', ui-sans-serif, system-ui, sans-serif, 'Apple Color Emoji', 'Segoe UI Emoji',
         'Segoe UI Symbol', 'Noto Color Emoji';
     --color-m2b-primary: #0F2C59;
     --color-m2b-secondary: #1e3a8a;
     --color-m2b-accent: #B91C1C;
+    --color-m2b-navy-950: #060D1A;
+    --color-m2b-navy-900: #0A1629;
+    --color-m2b-navy-800: #0F2547;
+    --color-m2b-blue-accent: #2563EB;
+    --color-m2b-blue-glow: #38BDF8;
+}
+
+/* ══ World-Class Enterprise Modal & Pop-up Framework ═════════════════════ */
+.erp-modal-backdrop {
+    position: fixed;
+    inset: 0;
+    z-index: 50;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 1rem;
+    background-color: rgba(6, 13, 26, 0.65);
+    backdrop-filter: blur(8px);
+    -webkit-backdrop-filter: blur(8px);
+    transition: opacity 0.2s ease-out;
+}
+
+.erp-modal-panel {
+    position: relative;
+    background: #ffffff;
+    border-radius: 1.25rem;
+    box-shadow: 0 25px 50px -12px rgba(6, 13, 26, 0.25), 0 0 0 1px rgba(15, 23, 42, 0.08);
+    width: 100%;
+    overflow: hidden;
+    animation: erp-modal-in 0.2s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+
+.erp-modal-header {
+    padding: 1.25rem 1.5rem;
+    border-bottom: 1px solid #f1f5f9;
+    background: linear-gradient(to bottom, #ffffff, #f8fafc);
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+}
+
+.erp-modal-title {
+    font-size: 1.125rem;
+    font-weight: 700;
+    color: #0f172a;
+    letter-spacing: -0.02em;
+}
+
+.erp-modal-close {
+    width: 2rem;
+    height: 2rem;
+    border-radius: 9999px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: #94a3b8;
+    background: transparent;
+    transition: all 0.15s ease;
+    cursor: pointer;
+}
+
+.erp-modal-close:hover {
+    color: #0f172a;
+    background-color: #f1f5f9;
+}
+
+.erp-modal-body {
+    padding: 1.5rem;
+    overflow-y: auto;
+    max-height: calc(85vh - 8rem);
+    color: #334155;
+}
+
+.erp-modal-footer {
+    padding: 1.125rem 1.5rem;
+    border-top: 1px solid #f1f5f9;
+    background: #f8fafc;
+    display: flex;
+    align-items: center;
+    justify-content: flex-end;
+    gap: 0.75rem;
+}
+
+/* ══ Form Controls ═══════════════════════════════════════════════════════ */
+.erp-input-modern {
+    width: 100%;
+    border-radius: 0.75rem;
+    border: 1px solid #e2e8f0;
+    background-color: #ffffff;
+    padding: 0.625rem 0.875rem;
+    font-size: 0.875rem;
+    color: #0f172a;
+    box-shadow: 0 1px 2px 0 rgba(0, 0, 0, 0.03);
+    transition: border-color 0.15s ease, box-shadow 0.15s ease;
+    outline: none;
+}
+
+.erp-input-modern:focus {
+    border-color: #2563eb;
+    box-shadow: 0 0 0 4px rgba(37, 99, 235, 0.12);
+}
+
+.erp-input-modern::placeholder {
+    color: #94a3b8;
+}
+
+/* ══ Modern Button Hierarchy ═════════════════════════════════════════════ */
+.erp-btn-primary {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.5rem;
+    border-radius: 0.75rem;
+    background-color: #0f172a;
+    padding: 0.625rem 1.25rem;
+    font-size: 0.875rem;
+    font-weight: 600;
+    color: #ffffff;
+    box-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.1), 0 1px 2px -1px rgba(0, 0, 0, 0.1);
+    transition: all 0.15s ease;
+    cursor: pointer;
+}
+
+.erp-btn-primary:hover {
+    background-color: #1e293b;
+    box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -2px rgba(0, 0, 0, 0.1);
+}
+
+.erp-btn-primary:active {
+    transform: scale(0.98);
+}
+
+.erp-btn-secondary {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.5rem;
+    border-radius: 0.75rem;
+    border: 1px solid #e2e8f0;
+    background-color: #ffffff;
+    padding: 0.625rem 1rem;
+    font-size: 0.875rem;
+    font-weight: 500;
+    color: #475569;
+    box-shadow: 0 1px 2px 0 rgba(0, 0, 0, 0.03);
+    transition: all 0.15s ease;
+    cursor: pointer;
+}
+
+.erp-btn-secondary:hover {
+    background-color: #f8fafc;
+    color: #0f172a;
+    border-color: #cbd5e1;
+}
+
+.erp-btn-secondary:active {
+    transform: scale(0.98);
+}
+
+.erp-btn-danger {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.5rem;
+    border-radius: 0.75rem;
+    background-color: #e11d48;
+    padding: 0.625rem 1.125rem;
+    font-size: 0.875rem;
+    font-weight: 600;
+    color: #ffffff;
+    box-shadow: 0 1px 3px 0 rgba(225, 29, 72, 0.2);
+    transition: all 0.15s ease;
+    cursor: pointer;
+}
+
+.erp-btn-danger:hover {
+    background-color: #be123c;
+}
+
+.erp-btn-danger:active {
+    transform: scale(0.98);
+}
+
+/* ══ Custom Scrollbar ════════════════════════════════════════════════════ */
+.custom-scrollbar::-webkit-scrollbar {
+    width: 6px;
+    height: 6px;
+}
+.custom-scrollbar::-webkit-scrollbar-track {
+    background: transparent;
+}
+.custom-scrollbar::-webkit-scrollbar-thumb {
+    background: rgba(148, 163, 184, 0.35);
+    border-radius: 9999px;
+}
+.custom-scrollbar::-webkit-scrollbar-thumb:hover {
+    background: rgba(148, 163, 184, 0.6);
+}
+
+@keyframes erp-modal-in {
+    from {
+        opacity: 0;
+        transform: scale(0.96) translateY(6px);
+    }
+    to {
+        opacity: 1;
+        transform: scale(1) translateY(0);
+    }
 }
 
 /* Chat Transcript Markdown Styles */

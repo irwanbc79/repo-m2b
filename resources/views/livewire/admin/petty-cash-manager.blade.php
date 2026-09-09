@@ -302,74 +302,88 @@
 
     {{-- MODAL: Input Transaksi --}}
     @if($showModal)
-    <div class="fixed inset-0 flex items-center justify-center z-50 p-4" style="background-color: rgba(0,0,0,0.5)">
-        <div class="bg-white rounded-xl w-full max-w-lg shadow-2xl">
-            <div class="px-6 py-4 border-b flex justify-between items-center">
-                <h3 class="text-lg font-bold text-gray-800">Input Pengeluaran Kas Kecil</h3>
-                <button wire:click="$set('showModal', false)" class="text-gray-400 hover:text-gray-600">&times;</button>
+    <div class="erp-modal-backdrop">
+        <div class="erp-modal-panel max-w-lg">
+            <div class="erp-modal-header">
+                <div class="flex items-center gap-3">
+                    <div class="w-9 h-9 rounded-xl bg-blue-50 text-blue-600 flex items-center justify-center text-base font-semibold border border-blue-100 shadow-sm">
+                        💸
+                    </div>
+                    <div>
+                        <h3 class="erp-modal-title">Input Pengeluaran Kas Kecil</h3>
+                        <p class="text-xs text-slate-500 mt-0.5">Catat voucher pengeluaran kas operasional</p>
+                    </div>
+                </div>
+                <button wire:click="$set('showModal', false)" class="erp-modal-close" aria-label="Tutup">&times;</button>
             </div>
-            <form wire:submit.prevent="saveTransaction" class="p-6">
+            <form wire:submit.prevent="saveTransaction" class="erp-modal-body">
                 <div class="space-y-4">
                     <div class="grid grid-cols-2 gap-4">
                         <div>
-                            <label class="block text-sm font-medium text-gray-700 mb-1">Tanggal</label>
-                            <input type="date" wire:model="transaction_date" class="w-full rounded-lg border-gray-300 shadow-sm focus:ring-blue-500 focus:border-blue-500">
-                            @error('transaction_date') <span class="text-red-500 text-xs">{{ $message }}</span> @enderror
+                            <label class="block text-xs font-semibold text-slate-700 uppercase tracking-wider mb-1.5">Tanggal</label>
+                            <input type="date" wire:model="transaction_date" class="erp-input-modern">
+                            @error('transaction_date') <span class="text-red-500 text-xs mt-1 block font-medium">{{ $message }}</span> @enderror
                         </div>
                         <div>
-                            <label class="block text-sm font-medium text-gray-700 mb-1">Jumlah (Rp)</label>
-                            <input type="number" wire:model="amount" placeholder="50000" class="w-full rounded-lg border-gray-300 shadow-sm focus:ring-blue-500 focus:border-blue-500">
-                            @error('amount') <span class="text-red-500 text-xs">{{ $message }}</span> @enderror
-                            <p class="text-xs text-gray-400 mt-1">Max: Rp {{ number_format($fund->max_transaction ?? 0, 0, ',', '.') }}</p>
+                            <label class="block text-xs font-semibold text-slate-700 uppercase tracking-wider mb-1.5">Jumlah (Rp)</label>
+                            <input type="number" wire:model="amount" placeholder="50000" class="erp-input-modern font-mono">
+                            @error('amount') <span class="text-red-500 text-xs mt-1 block font-medium">{{ $message }}</span> @enderror
+                            <p class="text-[11px] text-slate-400 mt-1 font-mono">Max: Rp {{ number_format($fund->max_transaction ?? 0, 0, ',', '.') }}</p>
                         </div>
                     </div>
                     <div>
-                        <label class="block text-sm font-medium text-gray-700 mb-1">Kategori</label>
-                        <select wire:model="category" class="w-full rounded-lg border-gray-300 shadow-sm focus:ring-blue-500 focus:border-blue-500">
+                        <label class="block text-xs font-semibold text-slate-700 uppercase tracking-wider mb-1.5">Kategori</label>
+                        <select wire:model="category" class="erp-input-modern">
                             <option value="">-- Pilih Kategori --</option>
                             @foreach(\App\Models\PettyCashTransaction::CATEGORIES as $key => $cat)
                                 <option value="{{ $key }}">{{ $cat['label'] }}</option>
                             @endforeach
                         </select>
-                        @error('category') <span class="text-red-500 text-xs">{{ $message }}</span> @enderror
+                        @error('category') <span class="text-red-500 text-xs mt-1 block font-medium">{{ $message }}</span> @enderror
                     </div>
                     <div>
-                        <label class="block text-sm font-medium text-gray-700 mb-1">Keterangan</label>
-                        <input type="text" wire:model="description" placeholder="Contoh: Parkir kirim ke Tanjung Priok" class="w-full rounded-lg border-gray-300 shadow-sm focus:ring-blue-500 focus:border-blue-500">
-                        @error('description') <span class="text-red-500 text-xs">{{ $message }}</span> @enderror
+                        <label class="block text-xs font-semibold text-slate-700 uppercase tracking-wider mb-1.5">Keterangan</label>
+                        <input type="text" wire:model="description" placeholder="Contoh: Parkir kirim ke Tanjung Priok" class="erp-input-modern">
+                        @error('description') <span class="text-red-500 text-xs mt-1 block font-medium">{{ $message }}</span> @enderror
                     </div>
                     <div>
-                    <label class="block text-sm font-medium text-gray-700 mb-1">Job Number (Opsional)</label>
+                    <label class="block text-xs font-semibold text-slate-700 uppercase tracking-wider mb-1.5">Job Number (Opsional)</label>
                     <div x-data="{ open: false, search: ''  }" class="relative">
                         <input type="text" 
                             x-model="search" 
                             @focus="open = true" 
                             @click.away="open = false"
                             placeholder="Ketik No. Shipment atau nama customer..." 
-                            class="w-full rounded-lg border-gray-300 shadow-sm focus:ring-blue-500 focus:border-blue-500">
-                        <div x-show="open" x-cloak class="absolute z-50 w-full mt-1 bg-white border rounded-lg shadow-lg max-h-60 overflow-y-auto">
-                            <div @click="$wire.set('shipment_id', '')" class="px-4 py-2 hover:bg-gray-100 cursor-pointer text-gray-500">-- Tidak terkait job --</div>
+                            class="erp-input-modern">
+                        <div x-show="open" x-cloak class="absolute z-50 w-full mt-1 bg-white/95 backdrop-blur-md border border-slate-200 rounded-xl shadow-xl max-h-60 overflow-y-auto">
+                            <div @click="$wire.set('shipment_id', ''); search = ''; open = false" class="px-4 py-2 hover:bg-slate-100 cursor-pointer text-slate-500 text-xs">-- Tidak terkait job --</div>
                             @foreach($shipments as $s)
                             <div x-show="!search || '{{ strtolower($s->awb_number . ($s->customer->company_name ?? "")) }}'.includes(search.toLowerCase())" 
                                 @click="$wire.set('shipment_id', '{{ $s->id }}'); search = '{{ $s->awb_number }}'; open = false" 
-                                class="px-4 py-2 hover:bg-blue-50 cursor-pointer">
-                                <span class="font-mono text-sm">{{ $s->awb_number }}</span>
-                                @if($s->customer)<span class="text-gray-500 text-sm ml-2">- {{ $s->customer->company_name }}</span>@endif
+                                class="px-4 py-2 hover:bg-blue-50/70 cursor-pointer transition text-xs">
+                                <span class="font-mono font-semibold text-blue-700">{{ $s->awb_number }}</span>
+                                @if($s->customer)<span class="text-slate-500 ml-2">- {{ $s->customer->company_name }}</span>@endif
                             </div>
                             @endforeach
                         </div>
                     </div>
                     </div>
                     <div>
-                        <label class="block text-sm font-medium text-gray-700 mb-1">Upload Bukti <span class="text-red-500">*</span></label>
-                        <input type="file" wire:model="proof_file" accept="image/*,.pdf" class="w-full text-sm border rounded-lg p-2">
-                        @error('proof_file') <span class="text-red-500 text-xs">{{ $message }}</span> @enderror
-                        <div wire:loading wire:target="proof_file" class="text-sm text-blue-500 mt-1">⏳ Uploading...</div>
+                        <label class="block text-xs font-semibold text-slate-700 uppercase tracking-wider mb-1.5">Upload Bukti <span class="text-red-500">*</span></label>
+                        <input type="file" wire:model="proof_file" accept="image/*,.pdf" class="erp-input-modern file:mr-3 file:py-1.5 file:px-3 file:rounded-lg file:border-0 file:text-xs file:font-semibold file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100 cursor-pointer">
+                        @error('proof_file') <span class="text-red-500 text-xs mt-1 block font-medium">{{ $message }}</span> @enderror
+                        <div wire:loading wire:target="proof_file" class="text-xs text-blue-600 font-medium mt-1.5 flex items-center gap-1.5">
+                            <svg class="animate-spin h-3.5 w-3.5 text-blue-600" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8H4z"></path></svg>
+                            Uploading bukti...
+                        </div>
                     </div>
                 </div>
-                <div class="mt-6 flex justify-end gap-3">
-                    <button type="button" wire:click="$set('showModal', false)" class="px-4 py-2 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50">Batal</button>
-                    <button type="submit" class="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700">Simpan</button>
+                <div class="mt-6 pt-4 border-t border-slate-100 flex justify-end gap-2.5">
+                    <button type="button" wire:click="$set('showModal', false)" class="erp-btn-secondary">Batal</button>
+                    <button type="submit" class="erp-btn-primary">
+                        <svg class="w-4 h-4 mr-1.5 inline" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/></svg>
+                        Simpan Transaksi
+                    </button>
                 </div>
             </form>
         </div>
@@ -378,37 +392,48 @@
 
     {{-- MODAL: Request Top Up --}}
     @if($showTopupModal)
-    <div class="fixed inset-0 flex items-center justify-center z-50 p-4" style="background-color: rgba(0,0,0,0.5)">
-        <div class="bg-white rounded-xl w-full max-w-md shadow-2xl">
-            <div class="px-6 py-4 border-b flex justify-between items-center">
-                <h3 class="text-lg font-bold text-gray-800">Request Top Up Kas Kecil</h3>
-                <button wire:click="$set('showTopupModal', false)" class="text-gray-400 hover:text-gray-600">&times;</button>
-            </div>
-            <form wire:submit.prevent="requestTopup" class="p-6">
-                <div class="bg-blue-50 p-4 rounded-lg mb-4">
-                    <div class="flex justify-between text-sm">
-                        <span class="text-gray-600">Saldo saat ini:</span>
-                        <span class="font-semibold">Rp {{ number_format($fund->current_balance ?? 0, 0, ',', '.') }}</span>
+    <div class="erp-modal-backdrop">
+        <div class="erp-modal-panel max-w-md">
+            <div class="erp-modal-header">
+                <div class="flex items-center gap-3">
+                    <div class="w-9 h-9 rounded-xl bg-emerald-50 text-emerald-600 flex items-center justify-center text-base font-semibold border border-emerald-100 shadow-sm">
+                        💰
                     </div>
-                    <div class="flex justify-between text-sm mt-1">
-                        <span class="text-gray-600">Max top up:</span>
-                        <span class="font-semibold text-green-600">Rp {{ number_format($fund->max_topup_amount ?? 0, 0, ',', '.') }}</span>
+                    <div>
+                        <h3 class="erp-modal-title">Request Top Up Kas Kecil</h3>
+                        <p class="text-xs text-slate-500 mt-0.5">Pengajuan pengisian kembali dana kas operasional</p>
+                    </div>
+                </div>
+                <button wire:click="$set('showTopupModal', false)" class="erp-modal-close" aria-label="Tutup">&times;</button>
+            </div>
+            <form wire:submit.prevent="requestTopup" class="erp-modal-body">
+                <div class="bg-gradient-to-br from-emerald-50/60 to-blue-50/40 p-4 rounded-xl border border-emerald-100 mb-4 shadow-sm">
+                    <div class="flex justify-between text-xs items-center">
+                        <span class="text-slate-600 font-medium">Saldo saat ini:</span>
+                        <span class="font-bold text-slate-800 font-mono text-sm">Rp {{ number_format($fund->current_balance ?? 0, 0, ',', '.') }}</span>
+                    </div>
+                    <div class="flex justify-between text-xs items-center mt-2 pt-2 border-t border-emerald-200/50">
+                        <span class="text-slate-600 font-medium">Max top up diizinkan:</span>
+                        <span class="font-bold text-emerald-700 font-mono text-sm">Rp {{ number_format($fund->max_topup_amount ?? 0, 0, ',', '.') }}</span>
                     </div>
                 </div>
                 <div class="space-y-4">
                     <div>
-                        <label class="block text-sm font-medium text-gray-700 mb-1">Jumlah Top Up</label>
-                        <input type="number" wire:model="topup_amount" placeholder="500000" class="w-full rounded-lg border-gray-300 shadow-sm focus:ring-blue-500 focus:border-blue-500">
-                        @error('topup_amount') <span class="text-red-500 text-xs">{{ $message }}</span> @enderror
+                        <label class="block text-xs font-semibold text-slate-700 uppercase tracking-wider mb-1.5">Jumlah Top Up (Rp)</label>
+                        <input type="number" wire:model="topup_amount" placeholder="500000" class="erp-input-modern font-mono">
+                        @error('topup_amount') <span class="text-red-500 text-xs mt-1 block font-medium">{{ $message }}</span> @enderror
                     </div>
                     <div>
-                        <label class="block text-sm font-medium text-gray-700 mb-1">Catatan (Opsional)</label>
-                        <textarea wire:model="topup_notes" rows="2" placeholder="Alasan request top up..." class="w-full rounded-lg border-gray-300 shadow-sm focus:ring-blue-500 focus:border-blue-500"></textarea>
+                        <label class="block text-xs font-semibold text-slate-700 uppercase tracking-wider mb-1.5">Catatan Pengajuan (Opsional)</label>
+                        <textarea wire:model="topup_notes" rows="2" placeholder="Alasan request top up..." class="erp-input-modern"></textarea>
                     </div>
                 </div>
-                <div class="mt-6 flex justify-end gap-3">
-                    <button type="button" wire:click="$set('showTopupModal', false)" class="px-4 py-2 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50">Batal</button>
-                    <button type="submit" class="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700">Kirim Request</button>
+                <div class="mt-6 pt-4 border-t border-slate-100 flex justify-end gap-2.5">
+                    <button type="button" wire:click="$set('showTopupModal', false)" class="erp-btn-secondary">Batal</button>
+                    <button type="submit" class="erp-btn-primary bg-gradient-to-r from-emerald-600 to-teal-600 shadow-emerald-500/25">
+                        <svg class="w-4 h-4 mr-1.5 inline" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8"/></svg>
+                        Kirim Request
+                    </button>
                 </div>
             </form>
         </div>
@@ -417,44 +442,52 @@
 
     {{-- MODAL: Pengaturan --}}
     @if($showSettingModal)
-    <div class="fixed inset-0 flex items-center justify-center z-50 p-4" style="background-color: rgba(0,0,0,0.5)">
-        <div class="bg-white rounded-xl w-full max-w-lg shadow-2xl">
-            <div class="px-6 py-4 border-b flex justify-between items-center">
-                <h3 class="text-lg font-bold text-gray-800">⚙️ Pengaturan Kas Kecil</h3>
-                <button wire:click="$set('showSettingModal', false)" class="text-gray-400 hover:text-gray-600">&times;</button>
+    <div class="erp-modal-backdrop">
+        <div class="erp-modal-panel max-w-lg">
+            <div class="erp-modal-header">
+                <div class="flex items-center gap-3">
+                    <div class="w-9 h-9 rounded-xl bg-slate-100 text-slate-700 flex items-center justify-center text-base font-semibold border border-slate-200 shadow-sm">
+                        ⚙️
+                    </div>
+                    <div>
+                        <h3 class="erp-modal-title">Pengaturan Kas Kecil</h3>
+                        <p class="text-xs text-slate-500 mt-0.5">Konfigurasi limit plafon, ambang alert, dan otoritas</p>
+                    </div>
+                </div>
+                <button wire:click="$set('showSettingModal', false)" class="erp-modal-close" aria-label="Tutup">&times;</button>
             </div>
-            <form wire:submit.prevent="saveSettings" class="p-6">
+            <form wire:submit.prevent="saveSettings" class="erp-modal-body">
                 <div class="space-y-4">
                     <div class="grid grid-cols-2 gap-4">
                         <div>
-                            <label class="block text-sm font-medium text-gray-700 mb-1">Plafon (Rp)</label>
-                            <input type="number" wire:model="setting_plafon" class="w-full rounded-lg border-gray-300 shadow-sm focus:ring-blue-500 focus:border-blue-500">
-                            @error('setting_plafon') <span class="text-red-500 text-xs">{{ $message }}</span> @enderror
+                            <label class="block text-xs font-semibold text-slate-700 uppercase tracking-wider mb-1.5">Plafon (Rp)</label>
+                            <input type="number" wire:model="setting_plafon" class="erp-input-modern font-mono">
+                            @error('setting_plafon') <span class="text-red-500 text-xs mt-1 block font-medium">{{ $message }}</span> @enderror
                         </div>
                         <div>
-                            <label class="block text-sm font-medium text-gray-700 mb-1">Max per Transaksi (Rp)</label>
-                            <input type="number" wire:model="setting_max_transaction" class="w-full rounded-lg border-gray-300 shadow-sm focus:ring-blue-500 focus:border-blue-500">
-                            @error('setting_max_transaction') <span class="text-red-500 text-xs">{{ $message }}</span> @enderror
+                            <label class="block text-xs font-semibold text-slate-700 uppercase tracking-wider mb-1.5">Max per Transaksi (Rp)</label>
+                            <input type="number" wire:model="setting_max_transaction" class="erp-input-modern font-mono">
+                            @error('setting_max_transaction') <span class="text-red-500 text-xs mt-1 block font-medium">{{ $message }}</span> @enderror
                         </div>
                     </div>
                     <div>
-                        <label class="block text-sm font-medium text-gray-700 mb-1">Alert Saldo Minimum (Rp)</label>
-                        <input type="number" wire:model="setting_min_balance" class="w-full rounded-lg border-gray-300 shadow-sm focus:ring-blue-500 focus:border-blue-500">
-                        @error('setting_min_balance') <span class="text-red-500 text-xs">{{ $message }}</span> @enderror
-                        <p class="text-xs text-gray-400 mt-1">Notifikasi muncul jika saldo di bawah nilai ini</p>
+                        <label class="block text-xs font-semibold text-slate-700 uppercase tracking-wider mb-1.5">Alert Saldo Minimum (Rp)</label>
+                        <input type="number" wire:model="setting_min_balance" class="erp-input-modern font-mono">
+                        @error('setting_min_balance') <span class="text-red-500 text-xs mt-1 block font-medium">{{ $message }}</span> @enderror
+                        <p class="text-[11px] text-slate-400 mt-1">Notifikasi sistem muncul otomatis jika saldo tersisa di bawah nilai ini</p>
                     </div>
                     <div>
-                        <label class="block text-sm font-medium text-gray-700 mb-1">Pemegang Kas</label>
-                        <select wire:model="setting_holder_id" class="w-full rounded-lg border-gray-300 shadow-sm focus:ring-blue-500 focus:border-blue-500">
+                        <label class="block text-xs font-semibold text-slate-700 uppercase tracking-wider mb-1.5">Pemegang Kas (Holder)</label>
+                        <select wire:model="setting_holder_id" class="erp-input-modern">
                             @foreach($users as $user)
                                 <option value="{{ $user->id }}">{{ $user->name }}</option>
                             @endforeach
                         </select>
-                        @error('setting_holder_id') <span class="text-red-500 text-xs">{{ $message }}</span> @enderror
+                        @error('setting_holder_id') <span class="text-red-500 text-xs mt-1 block font-medium">{{ $message }}</span> @enderror
                     </div>
                     <div>
-                        <label class="block text-sm font-medium text-gray-700 mb-1">Approver Top Up</label>
-                        <select wire:model="setting_approver_id" class="w-full rounded-lg border-gray-300 shadow-sm focus:ring-blue-500 focus:border-blue-500">
+                        <label class="block text-xs font-semibold text-slate-700 uppercase tracking-wider mb-1.5">Approver Top Up</label>
+                        <select wire:model="setting_approver_id" class="erp-input-modern">
                             <option value="">-- Pilih Approver --</option>
                             @foreach($users as $user)
                                 <option value="{{ $user->id }}">{{ $user->name }}</option>
@@ -462,13 +495,13 @@
                         </select>
                     </div>
                     <div>
-                        <label class="block text-sm font-medium text-gray-700 mb-1">Alasan Perubahan</label>
-                        <textarea wire:model="setting_reason" rows="2" placeholder="Contoh: Kenaikan plafon untuk kebutuhan operasional..." class="w-full rounded-lg border-gray-300 shadow-sm focus:ring-blue-500 focus:border-blue-500"></textarea>
+                        <label class="block text-xs font-semibold text-slate-700 uppercase tracking-wider mb-1.5">Alasan Perubahan Kebijakan</label>
+                        <textarea wire:model="setting_reason" rows="2" placeholder="Contoh: Kenaikan plafon untuk kebutuhan operasional..." class="erp-input-modern"></textarea>
                     </div>
                 </div>
-                <div class="mt-6 flex justify-end gap-3">
-                    <button type="button" wire:click="$set('showSettingModal', false)" class="px-4 py-2 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50">Batal</button>
-                    <button type="submit" class="px-4 py-2 bg-gray-800 text-white rounded-lg hover:bg-gray-900">Simpan Pengaturan</button>
+                <div class="mt-6 pt-4 border-t border-slate-100 flex justify-end gap-2.5">
+                    <button type="button" wire:click="$set('showSettingModal', false)" class="erp-btn-secondary">Batal</button>
+                    <button type="submit" class="erp-btn-primary">Simpan Pengaturan</button>
                 </div>
             </form>
         </div>
@@ -477,91 +510,99 @@
 
     {{-- ══════════ UBAH TRANSAKSI ══════════ --}}
     @if($showEditModal)
-    <div class="fixed inset-0 flex items-center justify-center z-50 p-4" style="background-color: rgba(0,0,0,0.5)">
-        <div class="bg-white rounded-xl shadow-2xl w-full max-w-lg max-h-[90vh] overflow-y-auto">
-            <div class="flex items-center justify-between px-6 py-4 border-b">
-                <h3 class="text-lg font-bold text-gray-800">Ubah Transaksi</h3>
-                <button wire:click="$set('showEditModal', false)" class="text-gray-400 hover:text-gray-600 text-2xl leading-none">&times;</button>
+    <div class="erp-modal-backdrop">
+        <div class="erp-modal-panel max-w-lg">
+            <div class="erp-modal-header">
+                <div class="flex items-center gap-3">
+                    <div class="w-9 h-9 rounded-xl bg-amber-50 text-amber-600 flex items-center justify-center text-base font-semibold border border-amber-100 shadow-sm">
+                        ✏️
+                    </div>
+                    <div>
+                        <h3 class="erp-modal-title">Ubah Transaksi</h3>
+                        <p class="text-xs text-slate-500 mt-0.5">Koreksi data voucher pengeluaran kas kecil</p>
+                    </div>
+                </div>
+                <button wire:click="$set('showEditModal', false)" class="erp-modal-close" aria-label="Tutup">&times;</button>
             </div>
 
-            <form wire:submit.prevent="saveEdit" class="p-6 space-y-4">
-                <p class="text-xs text-amber-700 bg-amber-50 border border-amber-200 rounded-lg p-3">
-                    Mengubah <strong>jumlah</strong>, <strong>kategori</strong>, atau <strong>tanggal</strong> ikut
-                    memperbaiki pembukuan: jurnal lama dibalik, lalu dibuat jurnal baru. Saldo kas menyesuaikan otomatis.
-                </p>
-
-                <div>
-                    <label class="block text-sm font-medium text-gray-700 mb-1">Tanggal</label>
-                    <input type="date" wire:model="editTanggal" class="w-full border-gray-300 rounded-lg text-sm">
-                    @error('editTanggal') <span class="text-xs text-red-600">{{ $message }}</span> @enderror
+            <form wire:submit.prevent="saveEdit" class="erp-modal-body space-y-4">
+                <div class="text-xs text-amber-800 bg-amber-50/80 border border-amber-200/80 rounded-xl p-3 flex items-start gap-2.5">
+                    <span class="text-amber-600 text-sm shrink-0">⚠️</span>
+                    <p class="leading-relaxed">
+                        Mengubah <strong>jumlah</strong>, <strong>kategori</strong>, atau <strong>tanggal</strong> ikut
+                        memperbaiki pembukuan: jurnal lama dibalik, lalu dibuat jurnal baru. Saldo kas menyesuaikan otomatis.
+                    </p>
                 </div>
 
                 <div>
-                    <label class="block text-sm font-medium text-gray-700 mb-1">Jumlah (Rp)</label>
-                    <input type="number" wire:model="editJumlah" min="1" step="1" class="w-full border-gray-300 rounded-lg text-sm">
-                    @error('editJumlah') <span class="text-xs text-red-600">{{ $message }}</span> @enderror
+                    <label class="block text-xs font-semibold text-slate-700 uppercase tracking-wider mb-1.5">Tanggal</label>
+                    <input type="date" wire:model="editTanggal" class="erp-input-modern">
+                    @error('editTanggal') <span class="text-xs text-red-600 mt-1 block font-medium">{{ $message }}</span> @enderror
                 </div>
 
                 <div>
-                    <label class="block text-sm font-medium text-gray-700 mb-1">Kategori</label>
-                    <select wire:model="editKategori" class="w-full border-gray-300 rounded-lg text-sm">
+                    <label class="block text-xs font-semibold text-slate-700 uppercase tracking-wider mb-1.5">Jumlah (Rp)</label>
+                    <input type="number" wire:model="editJumlah" min="1" step="1" class="erp-input-modern font-mono">
+                    @error('editJumlah') <span class="text-xs text-red-600 mt-1 block font-medium">{{ $message }}</span> @enderror
+                </div>
+
+                <div>
+                    <label class="block text-xs font-semibold text-slate-700 uppercase tracking-wider mb-1.5">Kategori</label>
+                    <select wire:model="editKategori" class="erp-input-modern">
                         @foreach(\App\Models\PettyCashTransaction::CATEGORIES as $key => $cat)
                             <option value="{{ $key }}">{{ $cat['label'] }}</option>
                         @endforeach
                     </select>
-                    @error('editKategori') <span class="text-xs text-red-600">{{ $message }}</span> @enderror
+                    @error('editKategori') <span class="text-xs text-red-600 mt-1 block font-medium">{{ $message }}</span> @enderror
                 </div>
 
                 <div>
-                    <label class="block text-sm font-medium text-gray-700 mb-1">Keterangan</label>
-                    <input type="text" wire:model="editKeterangan" class="w-full border-gray-300 rounded-lg text-sm">
-                    @error('editKeterangan') <span class="text-xs text-red-600">{{ $message }}</span> @enderror
+                    <label class="block text-xs font-semibold text-slate-700 uppercase tracking-wider mb-1.5">Keterangan</label>
+                    <input type="text" wire:model="editKeterangan" class="erp-input-modern">
+                    @error('editKeterangan') <span class="text-xs text-red-600 mt-1 block font-medium">{{ $message }}</span> @enderror
                 </div>
 
                 <div>
-                    <label class="block text-sm font-medium text-gray-700 mb-1">Job (opsional)</label>
+                    <label class="block text-xs font-semibold text-slate-700 uppercase tracking-wider mb-1.5">Job (opsional)</label>
 
-                    {{-- Pola pencarian sengaja disamakan dengan modal Input Pengeluaran:
-                         staf sudah terbiasa mengetik nomor shipment/nama customer di sana,
-                         jadi tidak perlu belajar cara kedua. --}}
                     <div x-data="{ open: false, search: @js($editJobLabel) }" class="relative">
                         <input type="text"
                             x-model="search"
                             @focus="open = true"
                             @click.away="open = false"
                             placeholder="Ketik No. Shipment atau nama customer..."
-                            class="w-full rounded-lg border-gray-300 text-sm shadow-sm focus:ring-blue-500 focus:border-blue-500">
+                            class="erp-input-modern">
 
-                        <div x-show="open" x-cloak class="absolute z-50 w-full mt-1 bg-white border rounded-lg shadow-lg max-h-60 overflow-y-auto">
+                        <div x-show="open" x-cloak class="absolute z-50 w-full mt-1 bg-white/95 backdrop-blur-md border border-slate-200 rounded-xl shadow-xl max-h-60 overflow-y-auto">
                             <div @click="$wire.set('editJob', ''); search = ''; open = false"
-                                class="px-4 py-2 hover:bg-gray-100 cursor-pointer text-gray-500 text-sm">— tidak terkait job —</div>
+                                class="px-4 py-2 hover:bg-slate-100 cursor-pointer text-slate-500 text-xs">— tidak terkait job —</div>
 
                             @foreach($shipments as $s)
                             <div x-show="!search || '{{ strtolower($s->awb_number . ' ' . ($s->customer->company_name ?? '')) }}'.includes(search.toLowerCase())"
                                 @click="$wire.set('editJob', '{{ $s->id }}'); search = '{{ $s->awb_number }}'; open = false"
-                                class="px-4 py-2 hover:bg-blue-50 cursor-pointer">
-                                <span class="font-mono text-sm">{{ $s->awb_number }}</span>
-                                @if($s->customer)<span class="text-gray-500 text-sm ml-2">- {{ $s->customer->company_name }}</span>@endif
+                                class="px-4 py-2 hover:bg-blue-50/70 cursor-pointer transition text-xs">
+                                <span class="font-mono font-semibold text-blue-700">{{ $s->awb_number }}</span>
+                                @if($s->customer)<span class="text-slate-500 ml-2">- {{ $s->customer->company_name }}</span>@endif
                             </div>
                             @endforeach
                         </div>
                     </div>
-                    <p class="text-[11px] text-gray-500 mt-1">Kosongkan kotak lalu pilih "tidak terkait job" untuk melepas kaitan.</p>
+                    <p class="text-[11px] text-slate-500 mt-1">Kosongkan kotak lalu pilih "tidak terkait job" untuk melepas kaitan.</p>
                 </div>
 
                 <div>
-                    <label class="block text-sm font-medium text-gray-700 mb-1">
+                    <label class="block text-xs font-semibold text-slate-700 uppercase tracking-wider mb-1.5">
                         Alasan perubahan <span class="text-red-500">*</span>
                     </label>
                     <input type="text" wire:model="editAlasan" placeholder="mis. salah ketik nominal"
-                        class="w-full border-gray-300 rounded-lg text-sm">
-                    <p class="text-[11px] text-gray-500 mt-1">Dicatat di riwayat perubahan supaya jejaknya bisa ditelusuri.</p>
-                    @error('editAlasan') <span class="text-xs text-red-600">{{ $message }}</span> @enderror
+                        class="erp-input-modern">
+                    <p class="text-[11px] text-slate-500 mt-1">Dicatat di riwayat perubahan supaya jejak audit bisa ditelusuri.</p>
+                    @error('editAlasan') <span class="text-xs text-red-600 mt-1 block font-medium">{{ $message }}</span> @enderror
                 </div>
 
-                <div class="flex justify-end gap-3 pt-2">
-                    <button type="button" wire:click="$set('showEditModal', false)" class="px-4 py-2 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50">Batal</button>
-                    <button type="submit" class="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700">Simpan Perubahan</button>
+                <div class="flex justify-end gap-2.5 pt-4 border-t border-slate-100">
+                    <button type="button" wire:click="$set('showEditModal', false)" class="erp-btn-secondary">Batal</button>
+                    <button type="submit" class="erp-btn-primary">Simpan Perubahan</button>
                 </div>
             </form>
         </div>
@@ -570,32 +611,43 @@
 
     {{-- ══════════ BATALKAN TRANSAKSI ══════════ --}}
     @if($showBatalModal)
-    <div class="fixed inset-0 flex items-center justify-center z-50 p-4" style="background-color: rgba(0,0,0,0.5)">
-        <div class="bg-white rounded-xl shadow-2xl w-full max-w-md">
-            <div class="flex items-center justify-between px-6 py-4 border-b">
-                <h3 class="text-lg font-bold text-red-700">Batalkan Transaksi</h3>
-                <button wire:click="$set('showBatalModal', false)" class="text-gray-400 hover:text-gray-600 text-2xl leading-none">&times;</button>
+    <div class="erp-modal-backdrop">
+        <div class="erp-modal-panel max-w-md">
+            <div class="erp-modal-header border-b border-red-100 bg-red-50/40">
+                <div class="flex items-center gap-3">
+                    <div class="w-9 h-9 rounded-xl bg-red-100 text-red-600 flex items-center justify-center text-base font-semibold border border-red-200 shadow-sm">
+                        ⚠️
+                    </div>
+                    <div>
+                        <h3 class="erp-modal-title text-red-700">Batalkan Transaksi</h3>
+                        <p class="text-xs text-slate-500 mt-0.5">Void voucher & pembukuan otomatis</p>
+                    </div>
+                </div>
+                <button wire:click="$set('showBatalModal', false)" class="erp-modal-close" aria-label="Tutup">&times;</button>
             </div>
 
-            <form wire:submit.prevent="confirmBatal" class="p-6 space-y-4">
-                <p class="text-xs text-gray-600 bg-gray-50 border border-gray-200 rounded-lg p-3">
+            <form wire:submit.prevent="confirmBatal" class="erp-modal-body space-y-4">
+                <div class="text-xs text-slate-600 bg-slate-50 border border-slate-200/80 rounded-xl p-3 leading-relaxed">
                     Saldo kas kecil dikembalikan dan efeknya di buku besar ditiadakan lewat jurnal balik.
                     Barisnya <strong>tetap terlihat</strong> dengan tanda dibatalkan — bukan dihapus, supaya
-                    nomor transaksi tidak lompat tanpa penjelasan.
-                </p>
+                    nomor transaksi tidak lompat tanpa penjelasan audit.
+                </div>
 
                 <div>
-                    <label class="block text-sm font-medium text-gray-700 mb-1">
+                    <label class="block text-xs font-semibold text-slate-700 uppercase tracking-wider mb-1.5">
                         Alasan pembatalan <span class="text-red-500">*</span>
                     </label>
                     <input type="text" wire:model="batalAlasan" placeholder="mis. dobel input"
-                        class="w-full border-gray-300 rounded-lg text-sm">
-                    @error('batalAlasan') <span class="text-xs text-red-600">{{ $message }}</span> @enderror
+                        class="erp-input-modern">
+                    @error('batalAlasan') <span class="text-xs text-red-600 mt-1 block font-medium">{{ $message }}</span> @enderror
                 </div>
 
-                <div class="flex justify-end gap-3 pt-2">
-                    <button type="button" wire:click="$set('showBatalModal', false)" class="px-4 py-2 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50">Tidak jadi</button>
-                    <button type="submit" class="px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700">Ya, batalkan</button>
+                <div class="flex justify-end gap-2.5 pt-4 border-t border-slate-100">
+                    <button type="button" wire:click="$set('showBatalModal', false)" class="erp-btn-secondary">Tidak jadi</button>
+                    <button type="submit" class="erp-btn-danger">
+                        <svg class="w-4 h-4 mr-1.5 inline" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/></svg>
+                        Ya, batalkan
+                    </button>
                 </div>
             </form>
         </div>
@@ -604,60 +656,77 @@
 
     {{-- ══════════ RIWAYAT PERUBAHAN ══════════ --}}
     @if($showRiwayatModal)
-    <div class="fixed inset-0 flex items-center justify-center z-50 p-4" style="background-color: rgba(0,0,0,0.5)">
-        <div class="bg-white rounded-xl shadow-2xl w-full max-w-lg max-h-[85vh] overflow-y-auto">
-            <div class="flex items-center justify-between px-6 py-4 border-b">
-                <h3 class="text-lg font-bold text-gray-800">Riwayat Perubahan</h3>
-                <button wire:click="$set('showRiwayatModal', false)" class="text-gray-400 hover:text-gray-600 text-2xl leading-none">&times;</button>
+    <div class="erp-modal-backdrop">
+        <div class="erp-modal-panel max-w-lg">
+            <div class="erp-modal-header">
+                <div class="flex items-center gap-3">
+                    <div class="w-9 h-9 rounded-xl bg-slate-100 text-slate-700 flex items-center justify-center text-base font-semibold border border-slate-200 shadow-sm">
+                        📜
+                    </div>
+                    <div>
+                        <h3 class="erp-modal-title">Riwayat Perubahan (Audit Trail)</h3>
+                        <p class="text-xs text-slate-500 mt-0.5">Jejak log aktivitas & perubahan data</p>
+                    </div>
+                </div>
+                <button wire:click="$set('showRiwayatModal', false)" class="erp-modal-close" aria-label="Tutup">&times;</button>
             </div>
 
-            <div class="p-6 space-y-4">
+            <div class="erp-modal-body space-y-4">
                 @forelse($riwayat as $log)
-                <div class="border-l-2 {{ $log->action === 'dibatalkan' ? 'border-red-300' : 'border-amber-300' }} pl-4 pb-1">
+                <div class="border-l-2 {{ $log->action === 'dibatalkan' ? 'border-red-400' : 'border-amber-400' }} pl-4 pb-2">
                     <div class="flex flex-wrap items-center gap-2">
-                        <span class="px-1.5 py-0.5 text-[10px] font-bold rounded {{ $log->action === 'dibatalkan' ? 'bg-red-100 text-red-700' : 'bg-amber-100 text-amber-700' }}">
+                        <span class="px-2 py-0.5 text-[10px] font-bold rounded-md font-mono {{ $log->action === 'dibatalkan' ? 'bg-red-50 text-red-700 border border-red-200' : 'bg-amber-50 text-amber-700 border border-amber-200' }}">
                             {{ strtoupper($log->action) }}
                         </span>
-                        <span class="text-sm font-medium text-gray-700">{{ $log->changed_by_name ?? '—' }}</span>
-                        <span class="ml-auto text-[11px] text-gray-400 tabular-nums">{{ $log->created_at->format('d/m/Y H:i') }}</span>
+                        <span class="text-xs font-semibold text-slate-800">{{ $log->changed_by_name ?? '—' }}</span>
+                        <span class="ml-auto text-[11px] text-slate-400 tabular-nums font-mono">{{ $log->created_at->format('d/m/Y H:i') }}</span>
                     </div>
 
                     @if($log->reason)
-                        <p class="text-xs text-gray-600 mt-1">Alasan: {{ $log->reason }}</p>
+                        <p class="text-xs text-slate-600 mt-1.5 bg-slate-50/70 p-2 rounded-lg border border-slate-100">Alasan: {{ $log->reason }}</p>
                     @endif
 
                     @if($log->changes)
-                    <ul class="mt-2 space-y-0.5">
+                    <ul class="mt-2 space-y-1">
                         @foreach($log->changes as $field => $ubah)
-                        <li class="text-xs text-gray-600">
-                            <span class="font-medium">{{ \App\Models\PettyCashTransactionLog::labelField($field) }}:</span>
+                        <li class="text-xs text-slate-600 font-mono">
+                            <span class="font-medium text-slate-700 font-sans">{{ \App\Models\PettyCashTransactionLog::labelField($field) }}:</span>
                             <span class="text-red-500 line-through">{{ $ubah['dari'] ?? '—' }}</span>
-                            <span class="text-gray-400">→</span>
-                            <span class="text-emerald-600 font-medium">{{ $ubah['ke'] ?? '—' }}</span>
+                            <span class="text-slate-400 mx-1">→</span>
+                            <span class="text-emerald-600 font-semibold">{{ $ubah['ke'] ?? '—' }}</span>
                         </li>
                         @endforeach
                     </ul>
                     @endif
                 </div>
                 @empty
-                <p class="text-sm text-gray-500 text-center py-6">Belum ada perubahan tercatat.</p>
+                <div class="text-center py-8">
+                    <div class="w-12 h-12 mx-auto rounded-full bg-slate-100 flex items-center justify-center text-slate-400 text-xl mb-2">📜</div>
+                    <p class="text-xs text-slate-500 font-medium">Belum ada riwayat perubahan tercatat.</p>
+                </div>
                 @endforelse
+            </div>
+            <div class="erp-modal-footer">
+                <button type="button" wire:click="$set('showRiwayatModal', false)" class="erp-btn-secondary w-full sm:w-auto">Tutup</button>
             </div>
         </div>
     </div>
     @endif
 
-    <div id="proofOverlay" onclick="if(event.target===this)closeProof()" style="display:none;position:fixed;inset:0;z-index:9999;background:rgba(0,0,0,.75);justify-content:center;align-items:center;padding:1rem">
-        <div style="background:#fff;border-radius:12px;max-width:900px;width:100%;max-height:90vh;overflow:hidden;box-shadow:0 25px 50px rgba(0,0,0,.25)">
-            <div style="background:#334155;padding:12px 16px;display:flex;justify-content:space-between;align-items:center;border-radius:12px 12px 0 0">
-                <span style="color:#fff;font-weight:600">Preview Bukti Transfer</span>
+    <div id="proofOverlay" onclick="if(event.target===this)closeProof()" style="display:none;position:fixed;inset:0;z-index:9999;background:rgba(6,13,26,0.75);backdrop-filter:blur(8px);-webkit-backdrop-filter:blur(8px);justify-content:center;align-items:center;padding:1rem">
+        <div style="background:#fff;border-radius:1rem;max-width:900px;width:100%;max-height:90vh;overflow:hidden;box-shadow:0 25px 50px -12px rgba(0,0,0,0.35);border:1px solid rgba(226,232,240,0.8)">
+            <div style="background:#0a1629;padding:14px 20px;display:flex;justify-content:space-between;align-items:center;border-top-left-radius:1rem;border-top-right-radius:1rem">
+                <div style="display:flex;align-items:center;gap:10px">
+                    <span style="display:inline-block;width:8px;height:8px;border-radius:50%;background:#38bdf8"></span>
+                    <span style="color:#fff;font-weight:600;font-size:14px;letter-spacing:0.025em">Preview Bukti Transaksi</span>
+                </div>
                 <div style="display:flex;gap:8px;align-items:center">
-                    <a id="proofDownload" href="#" download style="padding:4px 12px;background:#0d9488;color:#fff;border-radius:6px;font-size:12px;font-weight:700;text-decoration:none">Download</a>
-                    <a id="proofNewTab" href="#" target="_blank" style="padding:4px 12px;background:#2563eb;color:#fff;border-radius:6px;font-size:12px;font-weight:700;text-decoration:none">Tab Baru</a>
-                    <button onclick="closeProof()" style="color:#fff;font-size:24px;background:none;border:none;cursor:pointer;margin-left:8px">&times;</button>
+                    <a id="proofDownload" href="#" download style="padding:6px 14px;background:#0d9488;color:#fff;border-radius:8px;font-size:12px;font-weight:600;text-decoration:none;box-shadow:0 1px 2px rgba(0,0,0,0.1)">Download</a>
+                    <a id="proofNewTab" href="#" target="_blank" style="padding:6px 14px;background:#2563eb;color:#fff;border-radius:8px;font-size:12px;font-weight:600;text-decoration:none;box-shadow:0 1px 2px rgba(0,0,0,0.1)">Tab Baru</a>
+                    <button onclick="closeProof()" style="color:#94a3b8;font-size:24px;background:none;border:none;cursor:pointer;margin-left:8px;line-height:1" onmouseover="this.style.color='#fff'" onmouseout="this.style.color='#94a3b8'">&times;</button>
                 </div>
             </div>
-            <div id="proofBody" style="padding:16px;background:#f3f4f6;display:flex;justify-content:center;align-items:center;max-height:calc(90vh - 60px);overflow:auto"></div>
+            <div id="proofBody" style="padding:20px;background:#f8fafc;display:flex;justify-content:center;align-items:center;max-height:calc(90vh - 65px);overflow:auto"></div>
         </div>
     </div>
     <script>

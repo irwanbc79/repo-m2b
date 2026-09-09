@@ -61,43 +61,60 @@
     </div>
 
     @if($isModalOpen)
-    <div class="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4 overflow-y-auto">
-        <div class="bg-white w-full max-w-xl rounded-lg shadow-2xl flex flex-col max-h-[90vh]">
-            <div class="p-5 border-b flex justify-between items-center bg-gray-50 rounded-t-lg">
-                <h3 class="font-bold text-lg text-gray-800">{{ $isEditing ? 'Edit Staf' : 'Tambah Staf Baru' }}</h3>
-                <button wire:click="closeModal" class="text-2xl text-gray-400 hover:text-red-500">&times;</button>
+    <div class="erp-modal-backdrop">
+        <div class="erp-modal-panel max-w-xl">
+            <div class="erp-modal-header">
+                <div class="flex items-center gap-3">
+                    <div class="w-9 h-9 rounded-xl bg-blue-50 text-blue-600 flex items-center justify-center text-base font-semibold border border-blue-100 shadow-sm">
+                        {{ $isEditing ? '✏️' : '👤' }}
+                    </div>
+                    <div>
+                        <h3 class="erp-modal-title">{{ $isEditing ? 'Edit Staf' : 'Tambah Staf Baru' }}</h3>
+                        <p class="text-xs text-slate-500 mt-0.5">Kelola akun staf dan hak akses peran (multi-role)</p>
+                    </div>
+                </div>
+                <button wire:click="closeModal" class="erp-modal-close" aria-label="Tutup">&times;</button>
             </div>
-            <div class="p-6 overflow-y-auto flex-1 space-y-4">
+            <div class="erp-modal-body space-y-4">
                 <div>
-                    <label class="block text-sm font-bold text-gray-700 mb-1">Nama Lengkap</label>
-                    <input type="text" wire:model="name" class="w-full border rounded p-2">
-                    @error('name') <span class="text-red-500 text-xs">{{ $message }}</span> @enderror
+                    <label class="block text-xs font-semibold text-slate-700 uppercase tracking-wider mb-1.5">Nama Lengkap</label>
+                    <input type="text" wire:model="name" class="erp-input-modern" placeholder="Masukkan nama staf...">
+                    @error('name') <span class="text-red-500 text-xs mt-1 block font-medium">{{ $message }}</span> @enderror
                 </div>
                 <div>
-                    <label class="block text-sm font-bold text-gray-700 mb-1">Email</label>
-                    <input type="email" wire:model="email" class="w-full border rounded p-2">
-                    @error('email') <span class="text-red-500 text-xs">{{ $message }}</span> @enderror
+                    <label class="block text-xs font-semibold text-slate-700 uppercase tracking-wider mb-1.5">Email</label>
+                    <input type="email" wire:model="email" class="erp-input-modern" placeholder="nama@m2b.co.id">
+                    @error('email') <span class="text-red-500 text-xs mt-1 block font-medium">{{ $message }}</span> @enderror
                 </div>
                 <div>
-                    <label class="block text-sm font-bold text-gray-700 mb-1">Password</label>
-                    <input type="password" wire:model="password" class="w-full border rounded p-2" placeholder="******">
+                    <label class="block text-xs font-semibold text-slate-700 uppercase tracking-wider mb-1.5">Password {{ $isEditing ? '(Opsional)' : '' }}</label>
+                    <input type="password" wire:model="password" class="erp-input-modern" placeholder="••••••••">
+                    @if($isEditing)
+                        <p class="text-[11px] text-slate-400 mt-1">Biarkan kosong jika tidak ingin mengubah password.</p>
+                    @endif
                 </div>
-                <div class="bg-blue-50 p-4 rounded border border-blue-200">
-                    <label class="block text-sm font-bold text-blue-900 mb-3">Pilih Jabatan (Multi-Role)</label>
-                    <div class="grid grid-cols-2 gap-3">
+                <div class="bg-slate-50/80 p-4 rounded-xl border border-slate-200/80">
+                    <label class="block text-xs font-semibold text-slate-800 uppercase tracking-wider mb-3 flex items-center justify-between">
+                        <span>Pilih Jabatan (Multi-Role)</span>
+                        <span class="text-[11px] font-normal text-slate-500 lowercase">bisa lebih dari satu</span>
+                    </label>
+                    <div class="grid grid-cols-2 gap-2.5">
                         @foreach($rolesList as $key => $label)
-                            <label class="inline-flex items-center cursor-pointer p-2 bg-white border rounded hover:bg-gray-50">
-                                <input type="checkbox" wire:model="selectedRoles" value="{{ $key }}" class="w-4 h-4 text-blue-600 border-gray-300 rounded focus:ring-blue-500">
-                                <span class="ml-2 text-sm text-gray-700 font-medium">{{ $label }}</span>
+                            <label class="inline-flex items-center cursor-pointer p-2.5 bg-white border border-slate-200 rounded-lg hover:border-blue-400 hover:bg-blue-50/30 transition-all text-xs">
+                                <input type="checkbox" wire:model="selectedRoles" value="{{ $key }}" class="w-4 h-4 text-blue-600 border-slate-300 rounded focus:ring-blue-500">
+                                <span class="ml-2 text-slate-700 font-medium">{{ $label }}</span>
                             </label>
                         @endforeach
                     </div>
-                    @error('selectedRoles') <span class="text-red-500 text-xs font-bold mt-2 block">{{ $message }}</span> @enderror
+                    @error('selectedRoles') <span class="text-red-500 text-xs font-medium mt-2 block">{{ $message }}</span> @enderror
                 </div>
             </div>
-            <div class="p-5 border-t bg-gray-50 flex justify-end gap-2 rounded-b-lg">
-                <button wire:click="closeModal" class="px-4 py-2 border rounded bg-white">Batal</button>
-                <button wire:click="save" class="px-6 py-2 bg-m2b-primary text-white rounded font-bold">Simpan</button>
+            <div class="erp-modal-footer">
+                <button wire:click="closeModal" class="erp-btn-secondary">Batal</button>
+                <button wire:click="save" class="erp-btn-primary">
+                    <svg class="w-4 h-4 mr-1.5 inline" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/></svg>
+                    Simpan
+                </button>
             </div>
         </div>
     </div>
