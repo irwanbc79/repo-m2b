@@ -41,6 +41,12 @@ class EmailInbox extends Component
     public $selectedEmail = null;
     public $showConvertModal = false;
 
+    // --- Filter & Live Search ---
+    public $search = '';
+    public $filter = 'all'; // 'all', 'unread', 'attachments'
+    public $lastSyncedAt = null;
+    public $autoDetectedContext = null;
+
     public $customer_id;
     public $service_type = 'import';
     public $shipment_type = 'sea';
@@ -70,11 +76,53 @@ class EmailInbox extends Component
         }
     }
 
+    public function updatedSearch()
+    {
+        $this->loadEmails();
+    }
+
+    public function updatedFilter()
+    {
+        $this->loadEmails();
+    }
+
+    public function clearSearch()
+    {
+        $this->search = '';
+        $this->loadEmails();
+    }
+
+    public function setFilter($filter)
+    {
+        $this->filter = in_array($filter, ['all', 'unread', 'attachments']) ? $filter : 'all';
+        $this->loadEmails();
+    }
+
     public function loadEmails()
     {
-        $emails = DB::table('emails')
-            ->where('mailbox', $this->activeAccount)
-            ->orderByDesc('email_date')
+        $query = DB::table('emails')
+            ->where('mailbox', $this->activeAccount);
+
+        if (!empty(trim($this->search))) {
+            $q = trim($this->search);
+            $query->where(function ($sub) use ($q) {
+                $sub->where('subject', 'like', "%{$q}%")
+                    ->orWhere('from_email', 'like', "%{$q}%")
+                    ->orWhere('from_name', 'like', "%{$q}%");
+            });
+        }
+
+        if ($this->filter === 'unread') {
+            $query->where('is_read', false);
+        } elseif ($this->filter === 'attachments') {
+            $query->whereExists(function ($sub) {
+                $sub->select(DB::raw(1))
+                    ->from('email_attachments')
+                    ->whereColumn('email_attachments.email_id', 'emails.id');
+            });
+        }
+
+        $emails = $query->orderByDesc('email_date')
             ->limit(100)
             ->get();
 
@@ -96,6 +144,7 @@ class EmailInbox extends Component
             'date' => $email->email_date ? Carbon::parse($email->email_date)->format('d M H:i') : '',
             'is_read' => (bool) $email->is_read,
             'attachments' => (int) ($attachmentCounts[$email->id] ?? 0),
+            'sender_badge' => $this->getSenderBadgeType($email->from_email),
         ])->toArray();
 
         $this->loadUnreadCounts();
@@ -139,6 +188,7 @@ class EmailInbox extends Component
             'date' => Carbon::parse($email->email_date)->format('d M Y H:i'),
             // 'body' => $email->body ?: '(Konten kosong)', // REMOVED FOR IFRAME OPTIMIZATION
             'attachments' => $attachments,
+            'sender_badge' => $this->getSenderBadgeType($email->from_email),
         ];
         
         $this->loadEmails();
@@ -384,8 +434,9 @@ class EmailInbox extends Component
                 '--force' => true,
                 '--days' => 2
             ]);
+            $this->lastSyncedAt = Carbon::now()->format('H:i');
             $this->loadEmails();
-            session()->flash('message', 'Sinkronisasi selesai.');
+            session()->flash('message', 'Sinkronisasi mailbox ' . strtoupper($this->activeAccount) . ' selesai.');
         } catch (\Throwable $e) {
             \Log::error('Sync error via button: ' . $e->getMessage(), [
                 'exception' => $e
@@ -406,8 +457,6 @@ class EmailInbox extends Component
         // Baca dari cache yang sudah dihitung di loadUnreadCounts() (tanpa query baru).
         return (int) ($this->unreadCounts[$account] ?? 0);
     }
-
-
 
     public function selectAllAttachments()
     {
@@ -434,6 +483,157 @@ class EmailInbox extends Component
             ->orderByDesc('created_at')
             ->limit(10)
             ->get();
+    }
+
+    public function getSenderBadgeType(?string $fromEmail): array
+    {
+        if (empty($fromEmail)) {
+            return ['type' => 'unknown', 'label' => '', 'bg' => '', 'dot' => ''];
+        }
+
+        $email = strtolower(trim($fromEmail));
+
+        // 1. Internal M2B Team
+        if (str_ends_with($email, '@m2b.co.id')) {
+            return [
+                'type' => 'internal',
+                'label' => 'M2B Team',
+                'bg' => 'bg-blue-50 text-blue-700 border-blue-200',
+                'dot' => 'bg-blue-500'
+            ];
+        }
+
+        // 2. Verified Customer in DB
+        $isCustomer = Customer::whereHas('user', function ($q) use ($email) {
+            $q->where('email', $email);
+        })->orWhereHas('users', function ($q) use ($email) {
+            $q->where('email', $email);
+        })->exists();
+
+        if ($isCustomer) {
+            return [
+                'type' => 'customer',
+                'label' => 'Verified Customer',
+                'bg' => 'bg-emerald-50 text-emerald-700 border-emerald-200',
+                'dot' => 'bg-emerald-500'
+            ];
+        }
+
+        // 3. Public Webmail
+        $genericDomains = ['gmail.com', 'yahoo.com', 'hotmail.com', 'outlook.com', 'ymail.com', 'icloud.com'];
+        $domain = str_contains($email, '@') ? explode('@', $email)[1] : '';
+        if (in_array($domain, $genericDomains)) {
+            return [
+                'type' => 'public',
+                'label' => 'Public Mail',
+                'bg' => 'bg-slate-100 text-slate-600 border-slate-200',
+                'dot' => 'bg-slate-400'
+            ];
+        }
+
+        // 4. External Corporate Domain
+        return [
+            'type' => 'external',
+            'label' => 'Corporate Partner',
+            'bg' => 'bg-indigo-50 text-indigo-700 border-indigo-200',
+            'dot' => 'bg-indigo-500'
+        ];
+    }
+
+    public function getActiveMailboxStatsProperty(): array
+    {
+        $total = DB::table('emails')->where('mailbox', $this->activeAccount)->count();
+        $unread = (int) ($this->unreadCounts[$this->activeAccount] ?? 0);
+        $withAttachments = DB::table('emails')
+            ->where('mailbox', $this->activeAccount)
+            ->whereExists(function ($sub) {
+                $sub->select(DB::raw(1))
+                    ->from('email_attachments')
+                    ->whereColumn('email_attachments.email_id', 'emails.id');
+            })->count();
+
+        return [
+            'total' => $total,
+            'unread' => $unread,
+            'attachments' => $withAttachments,
+            'email_address' => $this->mailboxEmails[$this->activeAccount] ?? '-',
+        ];
+    }
+
+    public function openConvertModal()
+    {
+        if (!$this->selectedEmail) return;
+
+        $this->convertMode = 'new';
+        $this->existingShipmentId = null;
+        $this->existingShipmentSearch = '';
+        $this->autoDetectedContext = null;
+
+        $senderEmail = strtolower(trim($this->selectedEmail['from'] ?? ''));
+        $senderName = trim($this->selectedEmail['name'] ?? '');
+        $matchedCustomer = null;
+
+        // 1. Match Customer by user, users pivot, or corporate domain
+        if (!empty($senderEmail)) {
+            $matchedCustomer = Customer::whereHas('user', function ($q) use ($senderEmail) {
+                $q->where('email', $senderEmail);
+            })->orWhereHas('users', function ($q) use ($senderEmail) {
+                $q->where('email', $senderEmail);
+            })->first();
+
+            // Match by corporate domain if not generic
+            if (!$matchedCustomer && str_contains($senderEmail, '@')) {
+                $domain = explode('@', $senderEmail)[1] ?? '';
+                $genericDomains = ['gmail.com', 'yahoo.com', 'hotmail.com', 'outlook.com', 'ymail.com', 'icloud.com'];
+                if ($domain && !in_array($domain, $genericDomains)) {
+                    $matchedCustomer = Customer::whereHas('user', function ($q) use ($domain) {
+                        $q->where('email', 'like', "%@{$domain}");
+                    })->orWhereHas('users', function ($q) use ($domain) {
+                        $q->where('email', 'like', "%@{$domain}");
+                    })->first();
+                }
+            }
+        }
+
+        // Fallback: match by company name in sender name
+        if (!$matchedCustomer && !empty($senderName) && mb_strlen($senderName) >= 3) {
+            $cleanedSenderName = preg_replace('/^(PT|CV|UD|INC|LTD|CORP)[\.\s]+/i', '', $senderName);
+            $matchedCustomer = Customer::where('company_name', 'like', "%{$cleanedSenderName}%")
+                ->first();
+        }
+
+        $this->customer_id = $matchedCustomer?->id ?? null;
+
+        // 2. Intelligent Service & Transport Type Heuristic
+        $subjectText = strtoupper($this->selectedEmail['subject'] ?? '');
+
+        // Detect Service: Export vs Import vs Domestic
+        if (str_contains($subjectText, 'EXPORT') || str_contains($subjectText, 'EKSPOR')) {
+            $this->service_type = 'export';
+        } elseif (str_contains($subjectText, 'IMPORT') || str_contains($subjectText, 'IMPOR')) {
+            $this->service_type = 'import';
+        } elseif (str_contains($subjectText, 'DOMESTIC') || str_contains($subjectText, 'DOMESTIK')) {
+            $this->service_type = 'domestic';
+        } else {
+            $this->service_type = in_array($this->activeAccount, ['import', 'export']) ? $this->activeAccount : 'import';
+        }
+
+        // Detect Transport: Air Freight vs Sea Freight
+        if (str_contains($subjectText, 'AIR') || str_contains($subjectText, 'AIRFREIGHT') || str_contains($subjectText, 'UDARA')) {
+            $this->shipment_type = 'air';
+        } else {
+            $this->shipment_type = 'sea';
+        }
+
+        if ($matchedCustomer) {
+            $this->autoDetectedContext = [
+                'customer_name' => $matchedCustomer->company_name,
+                'service' => strtoupper($this->service_type),
+                'transport' => $this->shipment_type === 'air' ? 'AIR FREIGHT' : 'SEA FREIGHT',
+            ];
+        }
+
+        $this->showConvertModal = true;
     }
 
     public function convertToShipment()

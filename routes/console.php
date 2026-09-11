@@ -83,3 +83,14 @@ Schedule::command('email:sync-delivery-logs')
 Schedule::command('chat:cleanup')
     ->dailyAt('02:45')
     ->timezone('Asia/Jakarta');
+
+// 9. Sinkronisasi IMAP Email Masuk otomatis tiap 5 menit di background.
+// Memastikan pesan masuk dari customer, pelayaran, dan pabean langsung
+// tersinkron tanpa staf harus bergantung pada klik tombol "Sync Now".
+// withoutOverlapping dan runInBackground mencegah request freeze di shared hosting.
+Schedule::command('email:sync')
+    ->everyFiveMinutes()
+    ->withoutOverlapping()
+    ->runInBackground()
+    ->timezone('Asia/Jakarta');
+

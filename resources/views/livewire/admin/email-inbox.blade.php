@@ -5,25 +5,57 @@
 <div class="flex flex-col" style="height: calc(100vh - 150px);">
     @section('header', 'Communication Center')
 
-    {{-- Flash Messages --}}
-    @if (session()->has('message'))
-        <div class="bg-green-100 border border-green-400 text-green-700 px-4 py-3 rounded-xl mb-4 flex items-center justify-between">
-            <span class="font-bold">{{ session('message') }}</span>
-            <button onclick="this.parentElement.remove()" class="text-green-700 hover:text-green-900">&times;</button>
-        </div>
-    @endif
-    @if (session()->has('error'))
-        <div class="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded-xl mb-4 flex items-center justify-between">
-            <span class="font-bold">{{ session('error') }}</span>
-            <button onclick="this.parentElement.remove()" class="text-red-700 hover:text-red-900">&times;</button>
-        </div>
-    @endif
-    @if (session()->has('warning'))
-        <div class="bg-amber-100 border border-amber-400 text-amber-700 px-4 py-3 rounded-xl mb-4 flex items-center justify-between">
-            <span class="font-bold">{{ session('warning') }}</span>
-            <button onclick="this.parentElement.remove()" class="text-amber-700 hover:text-amber-900">&times;</button>
-        </div>
-    @endif
+    {{-- Floating Executive Toast Notifications (Anti-Layout Shift) --}}
+    <div class="fixed top-6 right-6 z-[9999] pointer-events-none space-y-2 max-w-md w-full">
+        @if (session()->has('message'))
+            <div x-data="{ show: true }"
+                 x-show="show"
+                 x-init="setTimeout(() => show = false, 4000)"
+                 x-transition:enter="transition ease-out duration-300 transform"
+                 x-transition:enter-start="opacity-0 translate-y-2 scale-95"
+                 x-transition:enter-end="opacity-100 translate-y-0 scale-100"
+                 x-transition:leave="transition ease-in duration-200"
+                 x-transition:leave-start="opacity-100"
+                 x-transition:leave-end="opacity-0"
+                 class="pointer-events-auto bg-slate-900/95 text-white p-3.5 rounded-2xl shadow-2xl border border-slate-700/80 backdrop-blur-md flex items-center justify-between gap-3">
+                <div class="flex items-center gap-2.5 min-w-0">
+                    <span class="w-6 h-6 rounded-full bg-emerald-500/20 text-emerald-400 flex items-center justify-center shrink-0">
+                        <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/></svg>
+                    </span>
+                    <span class="text-xs font-semibold text-slate-100 leading-snug">{{ session('message') }}</span>
+                </div>
+                <button @click="show = false" class="text-slate-400 hover:text-white text-base leading-none">&times;</button>
+            </div>
+        @endif
+        @if (session()->has('error'))
+            <div x-data="{ show: true }"
+                 x-show="show"
+                 x-init="setTimeout(() => show = false, 6000)"
+                 class="pointer-events-auto bg-red-950/95 text-white p-3.5 rounded-2xl shadow-2xl border border-red-800 backdrop-blur-md flex items-center justify-between gap-3">
+                <div class="flex items-center gap-2.5 min-w-0">
+                    <span class="w-6 h-6 rounded-full bg-red-500/20 text-red-400 flex items-center justify-center shrink-0">
+                        <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
+                    </span>
+                    <span class="text-xs font-semibold text-red-100 leading-snug">{{ session('error') }}</span>
+                </div>
+                <button @click="show = false" class="text-red-300 hover:text-white text-base leading-none">&times;</button>
+            </div>
+        @endif
+        @if (session()->has('warning'))
+            <div x-data="{ show: true }"
+                 x-show="show"
+                 x-init="setTimeout(() => show = false, 5000)"
+                 class="pointer-events-auto bg-amber-950/95 text-white p-3.5 rounded-2xl shadow-2xl border border-amber-800 backdrop-blur-md flex items-center justify-between gap-3">
+                <div class="flex items-center gap-2.5 min-w-0">
+                    <span class="w-6 h-6 rounded-full bg-amber-500/20 text-amber-400 flex items-center justify-center shrink-0">
+                        <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"/></svg>
+                    </span>
+                    <span class="text-xs font-semibold text-amber-100 leading-snug">{{ session('warning') }}</span>
+                </div>
+                <button @click="show = false" class="text-amber-300 hover:text-white text-base leading-none">&times;</button>
+            </div>
+        @endif
+    </div>
 
     <div class="flex-1 flex bg-white border border-gray-200 rounded-xl overflow-hidden shadow-sm">
         
@@ -48,6 +80,11 @@
                     <span wire:loading.remove wire:target="syncNow">🔄 Sync Now</span>
                     <span wire:loading wire:target="syncNow">⏳ Syncing...</span>
                 </button>
+                @if($lastSyncedAt)
+                    <p class="text-[9px] text-slate-400 text-center font-mono mt-1">
+                        ● Sinkron: {{ $lastSyncedAt }} WIB
+                    </p>
+                @endif
             </div>
 
             @foreach($mailboxes as $acc)
@@ -71,12 +108,45 @@
 
         {{-- 2. EMAIL LIST --}}
         <div class="w-80 border-r border-gray-200 flex flex-col bg-gray-50/50 shrink-0">
-            <div class="p-3 border-b border-gray-100 bg-white flex items-center gap-2">
-                <input type="text" placeholder="Search mail..." class="flex-1 min-w-0 pl-3 pr-4 py-2 border border-gray-200 rounded-lg text-sm bg-gray-50 focus:ring-2 focus:ring-blue-500/20">
-                <button type="button" wire:click="toggleSelectMode" title="{{ $selectMode ? 'Batal pilih' : 'Pilih beberapa email' }}"
-                        class="shrink-0 w-9 h-9 rounded-lg flex items-center justify-center text-sm transition-colors {{ $selectMode ? 'bg-red-50 text-red-600' : 'bg-gray-50 text-gray-400 hover:text-blue-600 hover:bg-blue-50' }}">
-                    {{ $selectMode ? '✕' : '☑️' }}
-                </button>
+            <div class="p-3 border-b border-gray-200 bg-white flex flex-col gap-2.5">
+                <div class="flex items-center gap-2">
+                    <div class="relative flex-1 min-w-0">
+                        <div class="absolute inset-y-0 left-0 pl-2.5 flex items-center pointer-events-none text-gray-400">
+                            <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/></svg>
+                        </div>
+                        <input type="text" 
+                               wire:model.live.debounce.300ms="search" 
+                               placeholder="Cari subjek, pengirim..." 
+                               class="w-full pl-8 pr-7 py-1.5 border border-gray-200 rounded-xl text-xs bg-gray-50/80 focus:bg-white focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition">
+                        @if(!empty($search))
+                            <button type="button" wire:click="clearSearch" class="absolute inset-y-0 right-0 pr-2 flex items-center text-gray-400 hover:text-gray-600 text-xs font-bold">
+                                ✕
+                            </button>
+                        @endif
+                    </div>
+                    <button type="button" wire:click="toggleSelectMode" title="{{ $selectMode ? 'Batal pilih' : 'Pilih beberapa email' }}"
+                            class="shrink-0 w-8 h-8 rounded-xl flex items-center justify-center text-xs transition-colors {{ $selectMode ? 'bg-red-50 text-red-600 border border-red-200 font-bold' : 'bg-gray-100 text-gray-500 hover:text-blue-600 hover:bg-blue-50' }}">
+                        {{ $selectMode ? '✕' : '☑' }}
+                    </button>
+                </div>
+
+                {{-- Quick Filter Pills --}}
+                <div class="flex items-center gap-1.5 overflow-x-auto text-[11px] font-medium no-scrollbar">
+                    <button type="button" wire:click="setFilter('all')"
+                            class="px-2.5 py-1 rounded-lg transition whitespace-nowrap {{ $filter === 'all' ? 'bg-blue-600 text-white font-bold shadow-sm shadow-blue-500/20' : 'bg-gray-100 text-gray-600 hover:bg-gray-200' }}">
+                        Semua
+                    </button>
+                    <button type="button" wire:click="setFilter('unread')"
+                            class="px-2.5 py-1 rounded-lg transition whitespace-nowrap flex items-center gap-1 {{ $filter === 'unread' ? 'bg-blue-600 text-white font-bold shadow-sm shadow-blue-500/20' : 'bg-gray-100 text-gray-600 hover:bg-gray-200' }}">
+                        <span class="w-1.5 h-1.5 rounded-full {{ $filter === 'unread' ? 'bg-white' : 'bg-blue-500' }}"></span>
+                        <span>Belum Dibaca</span>
+                    </button>
+                    <button type="button" wire:click="setFilter('attachments')"
+                            class="px-2.5 py-1 rounded-lg transition whitespace-nowrap flex items-center gap-1 {{ $filter === 'attachments' ? 'bg-blue-600 text-white font-bold shadow-sm shadow-blue-500/20' : 'bg-gray-100 text-gray-600 hover:bg-gray-200' }}">
+                        <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15.172 7l-6.586 6.586a2 2 0 102.828 2.828l6.414-6.586a4 4 0 00-5.656-5.656l-6.415 6.585a6 6 0 108.486 8.486L20.5 13"></path></svg>
+                        <span>Ada Lampiran</span>
+                    </button>
+                </div>
             </div>
 
             @if($selectMode)
@@ -131,15 +201,25 @@
                         </div>
                         @endif
                         <div class="flex-1 min-w-0">
-                            <div class="flex justify-between items-center mb-0.5">
-                                <h4 class="text-sm truncate {{ !$email['is_read'] ? 'font-bold text-gray-900' : 'text-gray-600' }}">
-                                    {{ $email['name'] }}
-                                </h4>
-                                <div class="flex items-center gap-1.5 shrink-0 ml-2">
-                                    @if(isset($email['attachments']) && $email['attachments'] > 0)
-                                        <svg class="w-3.5 h-3.5 text-gray-400 group-hover:text-blue-500 transition-colors" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15.172 7l-6.586 6.586a2 2 0 102.828 2.828l6.414-6.586a4 4 0 00-5.656-5.656l-6.415 6.585a6 6 0 108.486 8.486L20.5 13"></path></svg>
+                            <div class="flex justify-between items-start mb-1 gap-2">
+                                <div class="min-w-0 flex-1">
+                                    <h4 class="text-sm truncate leading-snug {{ !$email['is_read'] ? 'font-bold text-gray-900' : 'text-gray-600' }}">
+                                        {{ $email['name'] }}
+                                    </h4>
+                                    @if(isset($email['sender_badge']) && !empty($email['sender_badge']['label']))
+                                        <div class="mt-0.5">
+                                            <span class="inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[9px] font-semibold border {{ $email['sender_badge']['bg'] }}">
+                                                <span class="w-1.5 h-1.5 rounded-full {{ $email['sender_badge']['dot'] }}"></span>
+                                                {{ $email['sender_badge']['label'] }}
+                                            </span>
+                                        </div>
                                     @endif
-                                    <span class="text-[9px] text-gray-400 font-bold uppercase group-hover:opacity-0 transition-opacity">{{ $email['date'] }}</span>
+                                </div>
+                                <div class="flex items-center gap-1.5 shrink-0 ml-1">
+                                    @if(isset($email['attachments']) && $email['attachments'] > 0)
+                                        <svg class="w-3.5 h-3.5 text-blue-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15.172 7l-6.586 6.586a2 2 0 102.828 2.828l6.414-6.586a4 4 0 00-5.656-5.656l-6.415 6.585a6 6 0 108.486 8.486L20.5 13"></path></svg>
+                                    @endif
+                                    <span class="text-[9px] text-gray-400 font-bold uppercase {{ !$selectMode ? 'group-hover:opacity-0' : '' }} transition-opacity">{{ $email['date'] }}</span>
                                     @if(!$selectMode)
                                     <button type="button" wire:click.stop="deleteEmail({{ $email['db_id'] }})" wire:confirm="Hapus email ini secara permanen dari portal & server?"
                                             title="Hapus email"
@@ -173,11 +253,19 @@
                     {{-- Baris: pengirim (kiri) + toolbar aksi (kanan, boleh turun baris) --}}
                     <div class="flex items-center justify-between gap-4 flex-wrap">
                         <div class="flex items-center gap-3 min-w-0">
-                            <div class="w-11 h-11 rounded-2xl bg-blue-600 flex items-center justify-center text-white font-black text-lg shadow-lg shrink-0">
+                            <div class="w-11 h-11 rounded-2xl bg-blue-600 flex items-center justify-center text-white font-black text-lg shadow-md shrink-0">
                                 {{ strtoupper(substr($selectedEmail['name'] ?? 'U', 0, 1)) }}
                             </div>
                             <div class="min-w-0">
-                                <p class="text-sm font-bold text-gray-900 truncate">{{ $selectedEmail['name'] }}</p>
+                                <div class="flex items-center gap-2 flex-wrap">
+                                    <p class="text-sm font-bold text-gray-900 truncate">{{ $selectedEmail['name'] }}</p>
+                                    @if(isset($selectedEmail['sender_badge']) && !empty($selectedEmail['sender_badge']['label']))
+                                        <span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-semibold border {{ $selectedEmail['sender_badge']['bg'] }}">
+                                            <span class="w-1.5 h-1.5 rounded-full {{ $selectedEmail['sender_badge']['dot'] }}"></span>
+                                            {{ $selectedEmail['sender_badge']['label'] }}
+                                        </span>
+                                    @endif
+                                </div>
                                 <p class="text-xs text-gray-400 italic font-medium tracking-tight truncate">&lt;{{ $selectedEmail['from'] }}&gt; • {{ $selectedEmail['date'] }}</p>
                             </div>
                         </div>
@@ -189,23 +277,28 @@
                                 data-preview-from="{{ $selectedEmail['from'] }}"
                                 data-preview-date="{{ $selectedEmail['date'] }}"
                                 onclick="openEmailPreviewFromEl(this)"
-                                class="bg-slate-800 text-white px-4 py-2.5 rounded-xl font-black text-[11px] uppercase tracking-widest hover:bg-slate-900 transition shadow-lg shadow-slate-200 flex items-center gap-1.5 whitespace-nowrap shrink-0"
+                                class="bg-slate-100 hover:bg-slate-200 text-slate-700 px-3.5 py-2 rounded-xl font-bold text-xs transition flex items-center gap-1.5 whitespace-nowrap shrink-0"
                                 title="Perbesar isi email (layar penuh) — bisa langsung Print">
-                                ⛶ Perbesar
+                                <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 8V4m0 0h4M4 4l5 5m11-1V4m0 0h-4m4 0l-5 5M4 16v4m0 0h4m-4 0l5-5m11 5l-5-5m5 5v-4m0 4h-4"/></svg>
+                                <span>Perbesar</span>
                             </button>
-                            <button wire:click="openReplyModal" class="bg-green-600 text-white px-4 py-2.5 rounded-xl font-black text-[11px] uppercase tracking-widest hover:bg-green-700 transition shadow-lg shadow-green-100 flex items-center gap-1.5 whitespace-nowrap shrink-0">
-                                ✉️ Reply
+                            <button wire:click="openReplyModal" class="bg-slate-800 hover:bg-slate-900 text-white px-4 py-2 rounded-xl font-bold text-xs transition shadow-sm flex items-center gap-1.5 whitespace-nowrap shrink-0">
+                                <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 10h10a8 8 0 018 8v2M3 10l6 6m-6-6l6-6"/></svg>
+                                <span>Reply</span>
                             </button>
-                            <button wire:click="openForwardModal" class="bg-indigo-600 text-white px-4 py-2.5 rounded-xl font-black text-[11px] uppercase tracking-widest hover:bg-indigo-700 transition shadow-lg shadow-indigo-100 flex items-center gap-1.5 whitespace-nowrap shrink-0">
-                                ➡️ Forward
+                            <button wire:click="openForwardModal" class="bg-white border border-slate-300 hover:bg-slate-50 text-slate-700 px-3.5 py-2 rounded-xl font-bold text-xs transition shadow-sm flex items-center gap-1.5 whitespace-nowrap shrink-0">
+                                <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 10h-10a8 8 0 00-8 8v2M21 10l-6-6m6 6l-6 6"/></svg>
+                                <span>Forward</span>
                             </button>
-                            <button wire:click="$set('showConvertModal', true)" title="Convert to Shipment" class="bg-blue-600 text-white px-4 py-2.5 rounded-xl font-black text-[11px] uppercase tracking-widest hover:bg-blue-700 transition shadow-lg shadow-blue-100 flex items-center gap-1.5 whitespace-nowrap shrink-0">
-                                📦 Convert
+                            <button wire:click="openConvertModal" title="Convert to Shipment Order" class="bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-500 hover:to-indigo-500 text-white px-4 py-2 rounded-xl font-bold text-xs transition shadow-md shadow-blue-500/25 flex items-center gap-1.5 whitespace-nowrap shrink-0">
+                                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4"/></svg>
+                                <span>Convert to Shipment</span>
                             </button>
                             <button wire:click="deleteEmail({{ $selectedEmail['db_id'] }})" wire:confirm="Hapus email ini secara permanen dari portal & server?"
-                                    title="Hapus email (spam/tidak relevan)"
-                                    class="bg-white text-red-600 border border-red-200 px-4 py-2.5 rounded-xl font-black text-[11px] uppercase tracking-widest hover:bg-red-50 transition shadow-sm flex items-center gap-1.5 whitespace-nowrap shrink-0">
-                                🗑️ Delete
+                                    title="Hapus email"
+                                    class="bg-white text-red-600 border border-red-200 px-3 py-2 rounded-xl font-bold text-xs hover:bg-red-50 transition shadow-sm flex items-center gap-1.5 whitespace-nowrap shrink-0">
+                                <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/></svg>
+                                <span>Hapus</span>
                             </button>
                         </div>
                     </div>
@@ -324,16 +417,60 @@
                     @endif
                 </div>
             @else
-                <div class="flex-1 flex flex-col items-center justify-center text-gray-300 bg-gray-50/50 p-6 text-center">
-                    <div class="w-16 h-16 rounded-3xl bg-blue-50 text-blue-600 flex items-center justify-center mb-4 shadow-sm border border-blue-100">
-                        <svg class="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"/></svg>
+                <div class="flex-1 overflow-y-auto p-8 bg-slate-50/60 flex flex-col items-center justify-center">
+                    <div class="max-w-md w-full space-y-6 text-center">
+                        {{-- Icon Hub --}}
+                        <div class="mx-auto w-16 h-16 rounded-2xl bg-gradient-to-br from-blue-600 to-indigo-700 text-white flex items-center justify-center shadow-lg shadow-blue-500/25">
+                            <svg class="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.8" d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 00-2-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"/></svg>
+                        </div>
+
+                        <div>
+                            <div class="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-blue-50 border border-blue-200/60 text-blue-700 text-xs font-semibold uppercase tracking-wider mb-2">
+                                <span class="w-2 h-2 rounded-full bg-blue-500 animate-pulse"></span>
+                                <span>Mailbox {{ strtoupper($activeAccount) }}</span>
+                            </div>
+                            <h3 class="text-xl font-black text-slate-800 tracking-tight">Communication Control Center</h3>
+                            <p class="text-xs text-slate-500 mt-1 font-mono">{{ $this->activeMailboxStats['email_address'] }}</p>
+                        </div>
+
+                        {{-- Metric Cards Grid --}}
+                        <div class="grid grid-cols-3 gap-3 text-left">
+                            <div class="bg-white p-3.5 rounded-xl border border-slate-200/80 shadow-sm">
+                                <p class="text-[10px] font-bold uppercase tracking-wider text-slate-400">Total Email</p>
+                                <p class="text-lg font-black text-slate-800 mt-0.5">{{ number_format($this->activeMailboxStats['total']) }}</p>
+                            </div>
+                            <div class="bg-white p-3.5 rounded-xl border border-slate-200/80 shadow-sm">
+                                <p class="text-[10px] font-bold uppercase tracking-wider text-blue-500">Belum Dibaca</p>
+                                <p class="text-lg font-black text-blue-600 mt-0.5">{{ number_format($this->activeMailboxStats['unread']) }}</p>
+                            </div>
+                            <div class="bg-white p-3.5 rounded-xl border border-slate-200/80 shadow-sm">
+                                <p class="text-[10px] font-bold uppercase tracking-wider text-emerald-500">Ada Lampiran</p>
+                                <p class="text-lg font-black text-emerald-600 mt-0.5">{{ number_format($this->activeMailboxStats['attachments']) }}</p>
+                            </div>
+                        </div>
+
+                        {{-- Quick Action Buttons --}}
+                        <div class="flex items-center justify-center gap-3 pt-2">
+                            <button type="button" wire:click="openComposeModal" 
+                                    class="inline-flex items-center gap-2 px-5 py-2.5 bg-blue-600 hover:bg-blue-500 text-white rounded-xl text-xs font-bold shadow-md shadow-blue-500/20 transition active:scale-95">
+                                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/></svg>
+                                <span>Tulis Email Baru</span>
+                            </button>
+                            <button type="button" wire:click="setFilter('unread')" 
+                                    class="inline-flex items-center gap-2 px-4 py-2.5 bg-white border border-slate-200 hover:bg-slate-50 text-slate-700 rounded-xl text-xs font-semibold shadow-sm transition">
+                                <span class="w-2 h-2 rounded-full bg-blue-500"></span>
+                                <span>Lihat Unread</span>
+                            </button>
+                        </div>
+
+                        {{-- Operational Tip Card --}}
+                        <div class="p-3 bg-blue-50/50 rounded-xl border border-blue-100 text-left text-xs flex items-start gap-2.5">
+                            <span class="text-blue-500 text-base leading-none">💡</span>
+                            <p class="text-slate-600 leading-relaxed text-[11px]">
+                                <strong class="text-slate-800 font-semibold">1-Click Convert to Shipment:</strong> Klik tombol <strong>Convert to Shipment</strong> pada email pesanan/inquiry untuk otomatis membuat order operasional baru beserta lampiran dokumen B/L &amp; Invoice.
+                            </p>
+                        </div>
                     </div>
-                    <h4 class="text-sm font-bold text-gray-700 mb-1">Communication Center</h4>
-                    <p class="text-xs text-gray-400 max-w-sm mb-5">Pilih email dari daftar di samping untuk membaca, atau buat pesan baru ke rekan tim & customer.</p>
-                    <button type="button" wire:click="openComposeModal" class="inline-flex items-center gap-2 px-5 py-2.5 bg-blue-900 hover:bg-blue-800 text-white rounded-xl text-xs font-bold shadow-md hover:shadow-lg transition active:scale-95">
-                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/></svg>
-                        <span>Tulis Email Baru</span>
-                    </button>
                 </div>
             @endif
         </div>
@@ -366,6 +503,22 @@
                                     📦 Shipment Berjalan
                                 </button>
                             </div>
+
+                            {{-- SMART AUTO-DETECTION BADGE --}}
+                            @if($autoDetectedContext)
+                            <div class="p-3 bg-emerald-50 border border-emerald-200 rounded-2xl flex items-start gap-3 text-left">
+                                <div class="w-7 h-7 rounded-xl bg-emerald-600 text-white flex items-center justify-center shrink-0 shadow-sm mt-0.5">
+                                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/></svg>
+                                </div>
+                                <div class="min-w-0 flex-1">
+                                    <p class="text-xs font-bold text-emerald-900">Sistem Mendeteksi Otomatis:</p>
+                                    <p class="text-xs text-emerald-700 mt-0.5">
+                                        Customer: <strong class="font-bold text-emerald-950">{{ $autoDetectedContext['customer_name'] }}</strong><br>
+                                        Layanan: <strong>{{ $autoDetectedContext['service'] }}</strong> &bull; Moda: <strong>{{ $autoDetectedContext['transport'] }}</strong>
+                                    </p>
+                                </div>
+                            </div>
+                            @endif
 
                             {{-- MODE: BUAT BARU --}}
                             @if($convertMode === 'new')
