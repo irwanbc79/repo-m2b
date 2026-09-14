@@ -381,10 +381,6 @@ a:hover .sb-ico { background: rgba(255, 255, 255, 0.12); transform: scale(1.05);
                 <a href="{{ route('audit-logs') }}" class="flex items-center px-3.5 py-2.5 text-sm font-medium rounded-xl transition-all duration-150 {{ request()->routeIs('audit-logs') ? 'bg-gradient-to-r from-blue-600 to-indigo-600 text-white shadow-md shadow-blue-500/25 ring-1 ring-white/20 font-semibold' : 'hover:bg-slate-800/70 text-slate-300 hover:text-white' }}"><span class="sb-ico">📝</span><span class="sb-txt">Audit Logs</span></a>
                 @endif
 
-                @if(!in_array('auditor', auth()->user()->roles ?? []))
-                <a href="https://medsos.m2b.co.id" target="_blank" class="flex items-center px-3.5 py-2.5 text-sm font-medium rounded-xl transition-all duration-150 hover:bg-blue-900/60 text-blue-400 hover:text-blue-200 border border-blue-800/70 mt-2"><span class="sb-ico">📱</span><span class="sb-txt">Media Sosial</span><svg xmlns="http://www.w3.org/2000/svg" class="ml-auto h-3 w-3 opacity-60" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14"/></svg>
-                </a>
-                @endif
                 @endunless
 
                 <a href="{{ route('admin.profile') }}" class="flex items-center px-3.5 py-2.5 text-sm font-medium rounded-xl transition-all duration-150 {{ request()->routeIs('admin.profile') ? 'bg-gradient-to-r from-blue-600 to-indigo-600 text-white shadow-md shadow-blue-500/25 ring-1 ring-white/20 font-semibold' : 'hover:bg-slate-800/70 text-slate-300 hover:text-white' }}"><span class="sb-ico">⚙️</span><span class="sb-txt">Admin Profile</span></a>
