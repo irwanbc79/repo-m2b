@@ -767,10 +767,24 @@
                 </p>
             </div>
         </div>
+        @if($filterStatus === 'pending')
+        <div class="flex items-center gap-2">
+            <span class="inline-flex items-center gap-1.5 px-3 py-2 rounded-lg bg-amber-200 text-amber-900 text-xs font-bold border border-amber-300">
+                <svg class="w-4 h-4 text-amber-800" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/></svg>
+                Sedang Ditampilkan di Tabel
+            </span>
+            <button type="button" wire:click="clearFilters"
+                    class="shrink-0 inline-flex items-center gap-1.5 rounded-lg bg-white border border-amber-300 px-3 py-2 text-xs font-semibold text-amber-900 hover:bg-amber-100 transition shadow-sm">
+                ✕ Tampilkan Semua
+            </button>
+        </div>
+        @else
         <button type="button" wire:click="showPendingOnly"
-                class="shrink-0 inline-flex items-center gap-1.5 rounded-lg bg-amber-600 px-3 py-2 text-xs font-semibold text-white transition hover:bg-amber-700 focus:outline-none focus-visible:ring-2 focus-visible:ring-amber-500 focus-visible:ring-offset-2">
-            Lihat antrian
+                class="shrink-0 inline-flex items-center gap-1.5 rounded-lg bg-amber-600 px-3 py-2 text-xs font-semibold text-white transition hover:bg-amber-700 focus:outline-none focus-visible:ring-2 focus-visible:ring-amber-500 focus-visible:ring-offset-2 shadow-sm active:scale-95">
+            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"/></svg>
+            Lihat antrian ({{ $pendingCount }})
         </button>
+        @endif
     </div>
     @endif
 
@@ -830,7 +844,12 @@
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"/>
                 </svg>
                 <h3 class="text-lg font-bold text-gray-900 whitespace-nowrap">Transaksi Kas</h3>
-                @if($filterNoBukti)
+                @if($filterStatus === 'pending')
+                <span class="px-2.5 py-1 bg-amber-100 text-amber-800 border border-amber-300 text-xs font-bold rounded-full flex items-center gap-1.5 animate-pulse">
+                    <svg class="w-3.5 h-3.5 text-amber-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+                    Antrian Verifikasi ({{ $totalRecords }})
+                </span>
+                @elseif($filterNoBukti)
                 <span class="px-2 py-0.5 bg-amber-100 text-amber-700 text-xs font-bold rounded-full animate-pulse">Mode Cek Bukti</span>
                 @elseif($filterNoJournal)
                 <span class="px-2 py-0.5 bg-orange-100 text-orange-700 text-xs font-bold rounded-full animate-pulse">Mode Rekonsiliasi</span>
@@ -1163,7 +1182,7 @@
                     {{-- Kolom Aksi - Semua yang punya akses halaman kasir --}}
                         <td class="px-4 py-3 text-center">
                             @php $isLocked = ($trx['approval_status'] ?? 'approved') === 'approved'; @endphp
-                            @if(auth()->user()->hasRole(['admin', 'director', 'manager', 'supervisor', 'cashier', 'staff_accounting']))
+                            @if(auth()->user()->hasRole(['admin', 'super_admin', 'director', 'manager', 'supervisor', 'cashier', 'staff_accounting', 'finance']) || auth()->user()->hasPermission('cashier.view'))
                             <div class="flex items-center justify-center gap-1">
                                 {{-- Verifikasi: hanya untuk yang masih menunggu, dan bukan input sendiri --}}
                                 @if($this->canVerify() && ($trx['approval_status'] ?? null) === 'pending')

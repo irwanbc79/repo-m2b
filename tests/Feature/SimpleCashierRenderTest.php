@@ -37,9 +37,9 @@ class SimpleCashierRenderTest extends TestCase
         }
     }
 
-    protected function buatTransaksiPending(): CashTransaction
+    protected function buatTransaksiPending(array $overrides = []): CashTransaction
     {
-        return app(CashierService::class)->submitForApproval([
+        return app(CashierService::class)->submitForApproval(array_merge([
             'type' => 'out',
             'cost_category' => 'shipment',
             'expense_category' => 'lift_on_off',
@@ -48,7 +48,7 @@ class SimpleCashierRenderTest extends TestCase
             'transaction_date' => now()->toDateString(),
             'description' => 'Pembayaran Lift On',
             'created_by' => $this->kasir->id,
-        ]);
+        ], $overrides));
     }
 
     public function test_halaman_kasir_ter_render_untuk_kasir(): void
@@ -66,6 +66,30 @@ class SimpleCashierRenderTest extends TestCase
             ->test(\App\Livewire\Admin\SimpleCashier::class)
             ->assertSet('pendingCount', 1)
             ->assertSee('menunggu verifikasi accounting');
+    }
+
+    public function test_show_pending_only_menampilkan_transaksi_pending_walau_tanggal_mundur(): void
+    {
+        $this->buatTransaksiPending([
+            'transaction_date' => '2025-10-07',
+            'description' => 'Pembayaran Lift On Backdated',
+        ]);
+
+        $test = Livewire::actingAs($this->accounting)
+            ->test(\App\Livewire\Admin\SimpleCashier::class);
+
+        // Sebelum klik antrian: tabel kosong karena default filter tanggal bulan berjalan
+        $this->assertCount(0, $test->get('recentTransactions'));
+        $test->assertSet('pendingCount', 1);
+
+        // Setelah klik "Lihat antrian": batasan tanggal di-reset dan transaksi langsung muncul
+        $test->call('showPendingOnly')
+            ->assertSet('filterStatus', CashTransaction::STATUS_PENDING)
+            ->assertSet('filterDateFrom', null)
+            ->assertSet('filterDateTo', null)
+            ->assertSee('Pembayaran Lift On Backdated');
+
+        $this->assertCount(1, $test->get('recentTransactions'));
     }
 
     public function test_kasir_tidak_bisa_memanggil_aksi_verifikasi(): void

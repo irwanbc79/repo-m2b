@@ -590,12 +590,25 @@ class SimpleCashier extends Component
     }
 
     /**
-     * Tampilkan hanya yang menunggu verifikasi.
+     * Tampilkan hanya yang menunggu verifikasi (Antrian Accounting).
+     * Reset pembatasan tanggal dan filter lain agar seluruh antrian (termasuk transaksi backdated)
+     * langsung muncul di tabel tanpa tersembunyi.
      */
     public function showPendingOnly()
     {
         $this->filterStatus = CashTransaction::STATUS_PENDING;
         $this->filterNoJournal = false;
+        $this->filterNoBukti = false;
+        $this->filterDateFrom = null;
+        $this->filterDateTo = null;
+        $this->filterType = 'all';
+        $this->filterCounterpartType = 'all';
+        $this->filterCostCategory = 'all';
+        $this->filterExpenseCategory = 'all';
+        $this->filterCurrency = 'all';
+        $this->filterAmountMin = '';
+        $this->filterAmountMax = '';
+        $this->searchTerm = '';
         $this->currentPage = 1;
         $this->loadRecentTransactions();
     }
