@@ -170,6 +170,24 @@ class EmailStatsTest extends TestCase
         $this->assertSame(1, $perAkun['import']);
     }
 
+    public function test_email_bot_dan_internal_tidak_dianggap_menggantung(): void
+    {
+        // Email bot dan internal tidak boleh dihitung SLA operasional
+        $this->masuk(['from_email' => 'no-reply@accounts.google.com', 'email_date' => now()->subHours(30)]);
+        $this->masuk(['from_email' => 'no_reply@m2b.co.id', 'email_date' => now()->subHours(30)]);
+        $this->masuk(['from_email' => 'finance@m2b.co.id', 'email_date' => now()->subHours(30)]);
+        $this->masuk(['from_email' => 'ekamayangsari01@gmail.com', 'email_date' => now()->subHours(30)]);
+        $this->masuk(['mailbox' => 'gmail', 'from_email' => 'customer@client.com', 'email_date' => now()->subHours(30)]);
+
+        // 1 email riil dari customer
+        $this->masuk(['mailbox' => 'sales', 'from_email' => 'customer@client.com', 'email_date' => now()->subHours(30)]);
+
+        $operasional = $this->stats->operasional();
+
+        $this->assertSame(1, $operasional['belum_dibalas']);
+        $this->assertSame(1, $operasional['menggantung']);
+    }
+
     // ── Corong bisnis ──────────────────────────────────────────────────
 
     public function test_quotation_panas_hanya_yang_dibuka_tiga_kali_atau_lebih(): void

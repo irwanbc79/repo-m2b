@@ -93,11 +93,34 @@ class Email extends Model
 
     /**
      * Email masuk yang belum dibalas staf, sejak pelacakan balasan aktif.
+     *
+     * Dikecualikan:
+     * - Mailbox personal / monitoring / cadangan (gmail)
+     * - Email otomatis / bot (no-reply, noreply, no_reply, mailer-daemon)
+     * - Pengirim internal (@m2b.co.id, direktur, staf)
      */
     public function scopeBelumDibalas($query)
     {
+        $internalStaff = [
+            'ekamayangsari01@gmail.com',
+            'dirabarakamulia@gmail.com',
+            'nurulasyikin081099@gmail.com',
+        ];
+
         return $query->whereNull('replied_at')
-            ->where('email_date', '>=', static::lantaiPelacakanBalasan());
+            ->where('email_date', '>=', static::lantaiPelacakanBalasan())
+            ->whereNotIn('mailbox', ['gmail'])
+            ->where(function ($q) use ($internalStaff) {
+                $q->whereNull('from_email')
+                  ->orWhere(function ($sub) use ($internalStaff) {
+                      $sub->where('from_email', 'not like', '%no-reply%')
+                          ->where('from_email', 'not like', '%noreply%')
+                          ->where('from_email', 'not like', '%no_reply%')
+                          ->where('from_email', 'not like', '%mailer-daemon%')
+                          ->where('from_email', 'not like', '%@m2b.co.id')
+                          ->whereNotIn('from_email', $internalStaff);
+                  });
+            });
     }
 
     /**
