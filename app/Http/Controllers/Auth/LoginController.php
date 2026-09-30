@@ -46,7 +46,7 @@ class LoginController extends Controller
         if ($user->isAdminLevel() || $user->hasRole([
             'super_admin', 'director', 'manager', 'supervisor',
             'staff_accounting', 'staff_operations', 'staff_sales',
-            'staff_ppjk', 'staff_documentation', 'cashier', 'auditor',
+            'staff_ppjk', 'staff_documentation', 'cashier', 'auditor', 'konsultan_pajak',
             'admin', 'staff', 'finance', 'accounting',
         ])) {
             return redirect()->intended('/admin/dashboard');

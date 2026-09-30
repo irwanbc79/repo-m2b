@@ -124,4 +124,23 @@ class TaxCenterAndKonsultanPajakTest extends TestCase
             ->call('create')
             ->assertStatus(403);
     }
+
+    public function test_konsultan_pajak_can_login_successfully()
+    {
+        $user = User::factory()->create([
+            'email'     => 'konsultan@test.com',
+            'password'  => bcrypt('Pajak2026!'),
+            'role'      => 'konsultan_pajak',
+            'roles'     => ['konsultan_pajak'],
+            'is_active' => true,
+        ]);
+
+        $response = $this->post('/login', [
+            'email'    => 'konsultan@test.com',
+            'password' => 'Pajak2026!',
+        ]);
+
+        $response->assertRedirect('/admin/dashboard');
+        $this->assertAuthenticatedAs($user);
+    }
 }
