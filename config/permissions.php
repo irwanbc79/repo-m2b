@@ -148,7 +148,6 @@ return [
                 'job_costing.view',
                 'accounting.view',  // read-only: ledger, trial balance, P&L, balance sheet
                 'report.*',
-                'audit_log.view',
             ],
         ],
         'admin' => [

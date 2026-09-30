@@ -241,11 +241,11 @@ class AuditLogManager extends Component
     public function render()
     {
         $user = Auth::user();
-        $canView = $user && (
+        $canView = $user && !$user->hasRole('auditor') && (
             $user->isAdminLevel() ||
-            $user->hasRole(['super_admin', 'director', 'admin', 'manager', 'auditor']) ||
+            $user->hasRole(['super_admin', 'director', 'admin', 'manager']) ||
             $user->hasPermission('audit_log.view') ||
-            in_array($user->role, ['super_admin', 'director', 'admin', 'manager', 'auditor'])
+            in_array($user->role, ['super_admin', 'director', 'admin', 'manager'])
         );
 
         if (!$canView) abort(403);
