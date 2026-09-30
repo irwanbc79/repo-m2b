@@ -263,10 +263,16 @@
                         {{-- Invoice --}}
                         <td class="px-4 py-4">
                             @if($note->invoice)
-                                <a href="{{ route('admin.invoices.index', ['search' => $note->invoice->invoice_number]) }}" target="_blank"
-                                    class="inline-flex items-center gap-1.5 px-2.5 py-1 bg-blue-100 border border-blue-300 rounded-lg text-xs text-blue-900 font-mono font-black hover:bg-blue-200 transition shadow-xs">
-                                    🧾 {{ $note->invoice->invoice_number }} ↗
-                                </a>
+                                <button type="button"
+                                    @click="$dispatch('open-doc-preview', { 
+                                        url: '{{ route('admin.invoices.print', $note->invoice->id) }}?signature=full&signer=1', 
+                                        title: 'Preview Invoice: {{ $note->invoice->invoice_number }}{{ $note->invoice->customer ? ' - ' . addslashes($note->invoice->customer->company_name) : '' }}' 
+                                    })"
+                                    class="inline-flex items-center gap-1.5 px-2.5 py-1 bg-blue-100 border border-blue-300 rounded-lg text-xs text-blue-900 font-mono font-black hover:bg-blue-200 transition shadow-xs cursor-pointer"
+                                    title="Klik untuk Preview Invoice">
+                                    <span>🧾 {{ $note->invoice->invoice_number }}</span>
+                                    <span class="text-[10px]">👁️</span>
+                                </button>
                                 @if($note->invoice->customer)
                                     <div class="text-xs text-slate-800 font-black mt-1">{{ $note->invoice->customer->company_name }}</div>
                                 @endif
@@ -295,10 +301,16 @@
                             @if($attachCount > 0)
                                 <div class="flex flex-wrap gap-1.5 mt-2">
                                     @foreach($note->attachments as $path)
-                                    <a href="{{ Storage::disk('public')->url($path) }}" target="_blank"
-                                        class="inline-flex items-center gap-1 px-2.5 py-1 bg-slate-100 border border-slate-300 text-slate-800 rounded-lg text-xs font-bold hover:bg-slate-200 transition shadow-xs">
-                                        📎 {{ basename($path) }}
-                                    </a>
+                                    <button type="button"
+                                        @click="$dispatch('open-doc-preview', { 
+                                            url: '{{ Storage::disk('public')->url($path) }}', 
+                                            title: 'Preview Lampiran: {{ basename($path) }}' 
+                                        })"
+                                        class="inline-flex items-center gap-1 px-2.5 py-1 bg-slate-100 border border-slate-300 text-slate-800 rounded-lg text-xs font-bold hover:bg-slate-200 transition shadow-xs cursor-pointer"
+                                        title="Klik untuk Preview Dokumen">
+                                        <span>📎 {{ basename($path) }}</span>
+                                        <span class="text-[10px]">👁️</span>
+                                    </button>
                                     @endforeach
                                 </div>
                             @endif
@@ -429,10 +441,16 @@
                                 </div>
                                 @if($inv->faktur_pajak_path)
                                     <div class="mt-1">
-                                        <a href="{{ Storage::disk('public')->url($inv->faktur_pajak_path) }}" target="_blank"
-                                            class="inline-flex items-center gap-1.5 px-2.5 py-1 bg-emerald-100 border border-emerald-400 text-emerald-950 rounded-lg text-xs hover:bg-emerald-200 font-mono font-black transition shadow-xs">
-                                            ✓ FP: {{ $inv->faktur_pajak_number ?: 'Lihat PDF' }} ↗
-                                        </a>
+                                        <button type="button"
+                                            @click="$dispatch('open-doc-preview', { 
+                                                url: '{{ Storage::disk('public')->url($inv->faktur_pajak_path) }}', 
+                                                title: 'Preview Faktur Pajak: {{ $inv->faktur_pajak_number ?: $inv->invoice_number }}' 
+                                            })"
+                                            class="inline-flex items-center gap-1.5 px-2.5 py-1 bg-emerald-100 border border-emerald-400 text-emerald-950 rounded-lg text-xs hover:bg-emerald-200 font-mono font-black transition shadow-xs cursor-pointer"
+                                            title="Klik untuk Preview Faktur Pajak">
+                                            <span>✓ FP: {{ $inv->faktur_pajak_number ?: 'Lihat Dokumen' }}</span>
+                                            <span class="text-[11px]">👁️</span>
+                                        </button>
                                     </div>
                                 @else
                                     <span class="inline-block mt-1 px-2.5 py-1 bg-amber-100 border border-amber-400 text-amber-950 rounded-lg text-[11px] font-black animate-pulse shadow-xs">
@@ -452,10 +470,16 @@
                                 </div>
                                 @if($inv->bukti_potong_path)
                                     <div class="mt-1">
-                                        <a href="{{ Storage::disk('public')->url($inv->bukti_potong_path) }}" target="_blank"
-                                            class="inline-flex items-center gap-1.5 px-2.5 py-1 bg-blue-100 border border-blue-400 text-blue-950 rounded-lg text-xs hover:bg-blue-200 font-mono font-black transition shadow-xs">
-                                            ✓ Bupot: {{ $inv->bukti_potong_number ?: 'Lihat PDF' }} ↗
-                                        </a>
+                                        <button type="button"
+                                            @click="$dispatch('open-doc-preview', { 
+                                                url: '{{ Storage::disk('public')->url($inv->bukti_potong_path) }}', 
+                                                title: 'Preview Bukti Potong PPh 23: {{ $inv->bukti_potong_number ?: $inv->invoice_number }}' 
+                                            })"
+                                            class="inline-flex items-center gap-1.5 px-2.5 py-1 bg-blue-100 border border-blue-400 text-blue-950 rounded-lg text-xs hover:bg-blue-200 font-mono font-black transition shadow-xs cursor-pointer"
+                                            title="Klik untuk Preview Bukti Potong">
+                                            <span>✓ Bupot: {{ $inv->bukti_potong_number ?: 'Lihat Dokumen' }}</span>
+                                            <span class="text-[11px]">👁️</span>
+                                        </button>
                                     </div>
                                 @else
                                     <span class="inline-block mt-1 px-2.5 py-1 bg-rose-100 border border-rose-400 text-rose-950 rounded-lg text-[11px] font-black shadow-xs">
@@ -469,10 +493,16 @@
 
                         {{-- Aksi --}}
                         <td class="px-4 py-4 text-center">
-                            <a href="{{ route('admin.invoices.index', ['search' => $inv->invoice_number]) }}" target="_blank"
-                                class="inline-flex items-center gap-1 px-3 py-1.5 bg-blue-600 hover:bg-blue-700 text-white rounded-xl text-xs font-black transition shadow-xs">
-                                Lihat Invoice ↗
-                            </a>
+                            <button type="button"
+                                @click="$dispatch('open-doc-preview', { 
+                                    url: '{{ route('admin.invoices.print', $inv->id) }}?signature=full&signer=1', 
+                                    title: 'Preview Invoice: {{ $inv->invoice_number }}{{ $inv->customer ? ' - ' . addslashes($inv->customer->company_name) : '' }}' 
+                                })"
+                                class="inline-flex items-center gap-1.5 px-3 py-1.5 bg-blue-600 hover:bg-blue-700 text-white rounded-xl text-xs font-black transition shadow-xs cursor-pointer"
+                                title="Buka Preview Invoice">
+                                <span>👁️</span>
+                                <span>Lihat Invoice</span>
+                            </button>
                         </td>
                     </tr>
                     @empty
@@ -813,4 +843,70 @@
         </div>
     </div>
     @endif
+
+    {{-- PRINT / DOCUMENT PREVIEW MODAL (Sama persis dengan Preview Invoicing & Quotation) --}}
+    <div x-data="{ 
+            show: false, 
+            url: '', 
+            title: 'Preview Dokumen',
+            isImage() {
+                if (!this.url) return false;
+                return /\.(jpe?g|png|gif|webp|bmp|svg)(\?.*)?$/i.test(this.url);
+            },
+            printDoc() {
+                if (this.isImage()) {
+                    const win = window.open(this.url, '_blank');
+                    if (win) {
+                        win.onload = () => { win.print(); };
+                    }
+                } else if (this.$refs.printFrame && this.$refs.printFrame.contentWindow) {
+                    try {
+                        this.$refs.printFrame.contentWindow.print();
+                    } catch (e) {
+                        window.open(this.url, '_blank');
+                    }
+                }
+            }
+         }" 
+         x-on:open-doc-preview.window="show = true; url = $event.detail.url; title = $event.detail.title ?? 'Preview Dokumen'"
+         x-on:open-print-preview.window="show = true; url = $event.detail.url; title = $event.detail.title ?? 'Preview Invoice'"
+         x-show="show" 
+         x-cloak
+         @keydown.escape.window="show = false; url = ''"
+         class="fixed inset-0 z-[60] flex items-center justify-center p-4 bg-black/60 backdrop-blur-xs">
+        <div class="bg-white w-full max-w-5xl rounded-xl shadow-2xl flex flex-col" style="height: 90vh;" @click.away="show = false; url = ''">
+            {{-- Header --}}
+            <div class="p-4 border-b flex justify-between items-center bg-gray-50 rounded-t-xl shrink-0">
+                <h3 class="font-bold text-lg text-blue-900 flex items-center gap-2 truncate pr-2">
+                    <svg class="w-5 h-5 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"></path><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"></path></svg>
+                    <span x-text="title">Preview Dokumen</span>
+                </h3>
+                <div class="flex items-center gap-2 shrink-0">
+                    <button type="button" @click="printDoc()" class="bg-blue-900 hover:bg-blue-800 text-white px-4 py-2 rounded-lg font-bold text-sm flex items-center gap-2 shadow-sm transition cursor-pointer">
+                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z"></path></svg>
+                        Cetak
+                    </button>
+                    <a :href="url" download class="border border-gray-300 hover:bg-gray-100 text-gray-700 px-3 py-2 rounded-lg text-sm font-semibold flex items-center gap-1.5 transition shadow-xs" title="Download File">
+                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"/></svg>
+                        Unduh
+                    </a>
+                    <a :href="url" target="_blank" class="border border-gray-300 hover:bg-gray-100 text-gray-600 px-3 py-2 rounded-lg text-sm font-medium flex items-center gap-1 transition" title="Buka di Tab Baru">
+                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14"></path></svg>
+                    </a>
+                    <button type="button" @click="show = false; url = ''" class="text-gray-400 hover:text-red-500 text-2xl leading-none px-1 cursor-pointer">&times;</button>
+                </div>
+            </div>
+            {{-- Content --}}
+            <div class="flex-1 overflow-hidden bg-slate-50 relative">
+                <template x-if="show && isImage()">
+                    <div class="w-full h-full overflow-auto flex items-center justify-center p-4">
+                        <img :src="url" class="max-w-full max-h-full object-contain rounded-lg shadow" :alt="title">
+                    </div>
+                </template>
+                <template x-if="show && !isImage()">
+                    <iframe x-ref="printFrame" :src="url" class="w-full h-full border-0 rounded-b-xl bg-white"></iframe>
+                </template>
+            </div>
+        </div>
+    </div>
 </div>
