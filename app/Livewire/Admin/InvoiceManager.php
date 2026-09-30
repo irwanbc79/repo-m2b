@@ -176,6 +176,14 @@ class InvoiceManager extends Component
         );
     }
 
+    public function canManage(): bool
+    {
+        $user = auth()->user();
+        if (!$user) return false;
+        if ($user->hasRole(['auditor', 'konsultan_pajak'])) return false;
+        return $user->isAdminLevel() || $user->hasRole(['super_admin', 'director', 'admin', 'manager', 'supervisor', 'staff_accounting', 'finance', 'cashier']);
+    }
+
     public function mount()
     {
         abort_unless($this->canAccess(), 403, 'Anda tidak memiliki akses ke manajemen invoice.');
@@ -427,6 +435,7 @@ class InvoiceManager extends Component
 
     public function save()
     {
+        abort_unless($this->canManage(), 403, 'Akses dibatasi. Anda berada dalam mode audit baca saja.');
         $this->validate(['customer_id' => 'required', 'shipment_id' => 'nullable', 'type' => 'required', 'invoice_number' => 'required', 'invoice_date' => 'required|date', 'items' => 'required|array|min:1', 'items.*.description' => 'required', 'items.*.price' => 'required|numeric']);
 
         // Invoice baru: pastikan prefix nomor sesuai tipe (Proforma = PRO, Commercial = INV)
@@ -489,6 +498,7 @@ class InvoiceManager extends Component
 
     public function edit($id)
     {
+        abort_unless($this->canManage(), 403, 'Akses dibatasi. Anda berada dalam mode audit baca saja.');
         $invoice = Invoice::with('items')->findOrFail($id);
         $this->editingId = $id;
         $this->customer_id = $invoice->customer_id ?? ($invoice->shipment ? $invoice->shipment->customer_id : null);
@@ -531,6 +541,7 @@ class InvoiceManager extends Component
 
     public function openSendModal($id)
     {
+        abort_unless($this->canManage(), 403, 'Akses dibatasi. Anda berada dalam mode audit baca saja.');
         $invoice = Invoice::with(['customer.user', 'shipment.customer'])->find($id);
         if (!$invoice)
             return;
@@ -592,6 +603,7 @@ class InvoiceManager extends Component
 
     public function sendEmail()
     {
+        abort_unless($this->canManage(), 403, 'Akses dibatasi. Anda berada dalam mode audit baca saja.');
         $this->validate([
             'email_recipient' => 'required|email',
             'email_subject'   => 'required',
@@ -718,6 +730,7 @@ class InvoiceManager extends Component
     }
     public function create()
     {
+        abort_unless($this->canManage(), 403, 'Akses dibatasi. Anda berada dalam mode audit baca saja.');
         $this->resetInputFields();
         $this->isModalOpen = true;
         $this->isEditing = false;
@@ -726,6 +739,7 @@ class InvoiceManager extends Component
     }
     public function delete($id)
     {
+        abort_unless($this->canManage(), 403, 'Akses dibatasi. Anda berada dalam mode audit baca saja.');
         $inv = Invoice::find($id);
         if ($inv) {
             \App\Models\ActivityLog::record('Invoice', 'DELETE', $inv->invoice_number, "Hapus invoice {$inv->invoice_number} (Rp " . number_format($inv->grand_total, 0, ',', '.') . ")");
@@ -737,6 +751,7 @@ class InvoiceManager extends Component
     }
     public function openPaymentModal($id)
     {
+        abort_unless($this->canManage(), 403, 'Akses dibatasi. Anda berada dalam mode audit baca saja.');
         $this->resetErrorBag();
         $this->paymentHistoryModal = false;
         $this->editingId = $id;

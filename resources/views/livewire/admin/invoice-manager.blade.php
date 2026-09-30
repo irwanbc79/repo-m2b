@@ -173,12 +173,16 @@
                 @endif
             </div>
             
-            @unless(auth()->user()->hasRole('auditor'))
+            @if($this->canManage())
             <button wire:click="create" class="bg-blue-900 hover:bg-blue-800 text-white px-4 py-2 rounded-lg transition flex items-center shadow-md font-bold justify-center hover:shadow-lg">
                 <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"></path></svg>
                 Buat Invoice Baru
             </button>
-            @endunless
+            @else
+            <div class="inline-flex items-center gap-1.5 px-3 py-2 bg-amber-50 border border-amber-200 text-amber-800 rounded-lg text-xs font-semibold shadow-xs">
+                <span>🔒</span> Mode Audit (Hanya Baca)
+            </div>
+            @endif
         </div>
 
         <div class="overflow-x-auto">
@@ -354,6 +358,7 @@
                                         </div>
 
                                         <div class="py-1">
+                                            @if($this->canManage())
                                             <button wire:click="openSendModal({{ $inv->id }})" @click="menuOpen = false" class="w-full text-left flex items-center gap-2 px-3 py-1.5 text-xs text-blue-600 hover:bg-blue-50 font-semibold">
                                                 <span>✉️</span> Kirim Email
                                             </button>
@@ -361,14 +366,15 @@
                                                 <button wire:click="openPaymentModal({{ $inv->id }})" @click="menuOpen = false" class="w-full text-left flex items-center gap-2 px-3 py-1.5 text-xs text-green-600 hover:bg-green-50 font-semibold">
                                                     <span>💵</span> Catat Pembayaran
                                                 </button>
-                                            @else
-                                                <button wire:click="openPaymentHistory({{ $inv->id }})" @click="menuOpen = false" class="w-full text-left flex items-center gap-2 px-3 py-1.5 text-xs text-purple-600 hover:bg-purple-50 font-semibold">
-                                                    <span>📜</span> Riwayat Pembayaran
-                                                </button>
                                             @endif
+                                            @endif
+                                            
+                                            <button wire:click="openPaymentHistory({{ $inv->id }})" @click="menuOpen = false" class="w-full text-left flex items-center gap-2 px-3 py-1.5 text-xs text-purple-600 hover:bg-purple-50 font-semibold">
+                                                <span>📜</span> Riwayat Pembayaran
+                                            </button>
                                         </div>
 
-                                        @unless(auth()->user()->hasRole('auditor'))
+                                        @if($this->canManage())
                                         <div class="py-1">
                                             <button wire:click="edit({{ $inv->id }})" @click="menuOpen = false" class="w-full text-left flex items-center gap-2 px-3 py-1.5 text-xs text-gray-700 hover:bg-gray-50">
                                                 <span>✏️</span> Edit Invoice
@@ -377,7 +383,7 @@
                                                 <span>🗑️</span> Hapus Invoice
                                             </button>
                                         </div>
-                                        @endunless
+                                        @endif
                                     </div>
                                 </div>
                             </div>

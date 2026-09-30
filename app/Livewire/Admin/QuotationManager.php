@@ -175,8 +175,17 @@ class QuotationManager extends Component
     }
 
 
+    public function canAccess(): bool
+    {
+        $user = auth()->user();
+        if (!$user) return false;
+        if ($user->hasRole(['auditor', 'konsultan_pajak'])) return false;
+        return $user->isAdminLevel() || $user->hasRole(['super_admin', 'director', 'admin', 'manager', 'supervisor', 'staff_sales', 'staff']) || $user->hasPermission('quotation.view');
+    }
+
     public function mount()
     {
+        abort_unless($this->canAccess(), 403, 'Anda tidak memiliki akses ke manajemen penawaran.');
         $this->quotation_date = date('Y-m-d');
         $this->valid_until = date('Y-m-d', strtotime('+14 days'));
         $this->items = [['item_type' => 'service', 'description' => 'Jasa Freight', 'qty' => 1, 'price' => 0]];
@@ -864,6 +873,8 @@ class QuotationManager extends Component
         }
     }
     public function render() {
+        abort_unless($this->canAccess(), 403, 'Anda tidak memiliki akses ke manajemen penawaran.');
+
         // commodities ikut dimuat di muka: tanpa ini tiap baris di daftar
         // memicu query sendiri (N+1) pada halaman yang sudah berpaginasi.
         $query = Quotation::with(["customer", "commodities"]);

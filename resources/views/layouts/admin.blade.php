@@ -292,9 +292,12 @@ a:hover .sb-ico { background: rgba(255, 255, 255, 0.12); transform: scale(1.05);
                 @endif
 
                 @if(auth()->user()->hasPermission('invoice.view'))
+                @unless(auth()->user()->hasRole('konsultan_pajak'))
                 <div class="sb-section px-3 py-1.5 mt-4 text-[10px] font-bold text-slate-400 uppercase tracking-widest">Sales & Finance</div>
                 
+                @unless(auth()->user()->hasRole('auditor'))
                 <a href="{{ route('admin.quotations.index') }}" class="flex items-center px-3.5 py-2.5 text-sm font-medium rounded-xl transition-all duration-150 {{ request()->routeIs('admin.quotations*') ? 'bg-gradient-to-r from-blue-600 to-indigo-600 text-white shadow-md shadow-blue-500/25 ring-1 ring-white/20 font-semibold' : 'hover:bg-slate-800/70 text-slate-300 hover:text-white' }}"><span class="sb-ico">📄</span><span class="sb-txt">Quotation / Penawaran</span></a>
+                @endunless
 
                 <a href="{{ route('admin.invoices.index') }}" class="flex items-center px-3.5 py-2.5 text-sm font-medium rounded-xl transition-all duration-150 {{ request()->routeIs('admin.invoices*') ? 'bg-gradient-to-r from-blue-600 to-indigo-600 text-white shadow-md shadow-blue-500/25 ring-1 ring-white/20 font-semibold' : 'hover:bg-slate-800/70 text-slate-300 hover:text-white' }}"><span class="sb-ico">🧾</span><span class="sb-txt">Invoicing / Tagihan</span></a>
 
@@ -314,6 +317,7 @@ a:hover .sb-ico { background: rgba(255, 255, 255, 0.12); transform: scale(1.05);
                 <a href="{{ route('admin.lartas-references') }}" class="flex items-center px-3.5 py-2.5 text-sm font-medium rounded-xl transition-all duration-150 {{ request()->routeIs('admin.lartas-references') ? 'bg-gradient-to-r from-blue-600 to-indigo-600 text-white shadow-md shadow-blue-500/25 ring-1 ring-white/20 font-semibold' : 'hover:bg-slate-800/70 text-slate-300 hover:text-white' }}"><span class="sb-ico">🧭</span><span class="sb-txt">Referensi Lartas</span></a>
                 @endunless
                 @endif
+                @endunless
                 @endif
 
                 @if(auth()->user()->hasPermission('cashier.view') || auth()->user()->hasPermission('accounting.view'))
@@ -348,6 +352,11 @@ a:hover .sb-ico { background: rgba(255, 255, 255, 0.12); transform: scale(1.05);
                         </span>
                     @endif
                 </a>
+
+                @if(auth()->user()->hasRole('konsultan_pajak'))
+                <a href="{{ route('admin.invoices.index') }}" class="flex items-center px-3.5 py-2.5 text-sm font-medium rounded-xl transition-all duration-150 {{ request()->routeIs('admin.invoices*') ? 'bg-gradient-to-r from-blue-600 to-indigo-600 text-white shadow-md shadow-blue-500/25 ring-1 ring-white/20 font-semibold' : 'hover:bg-slate-800/70 text-slate-300 hover:text-white' }}"><span class="sb-ico">🧾</span><span class="sb-txt">Invoicing (Data Pajak)</span></a>
+                @endif
+
                 <a href="{{ route('admin.calculator') }}" class="flex items-center px-3.5 py-2.5 text-sm font-medium rounded-xl transition-all duration-150 {{ request()->routeIs('admin.calculator') ? 'bg-gradient-to-r from-blue-600 to-indigo-600 text-white shadow-md shadow-blue-500/25 ring-1 ring-white/20 font-semibold' : 'hover:bg-slate-800/70 text-slate-300 hover:text-white' }}"><span class="sb-ico">🧮</span><span class="sb-txt">Kalkulator Pabean (BM/PPN)</span></a>
                 @endif
 

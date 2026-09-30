@@ -143,4 +143,26 @@ class TaxCenterAndKonsultanPajakTest extends TestCase
         $response->assertRedirect('/admin/dashboard');
         $this->assertAuthenticatedAs($user);
     }
+
+    public function test_konsultan_pajak_cannot_access_quotations()
+    {
+        $konsultan = $this->createKonsultanPajakUser();
+        $this->actingAs($konsultan);
+
+        $this->get(route('admin.quotations.index'))->assertStatus(403);
+    }
+
+    public function test_konsultan_pajak_has_read_only_access_to_invoices()
+    {
+        $konsultan = $this->createKonsultanPajakUser();
+        $this->actingAs($konsultan);
+
+        // Can view invoice list
+        $this->get(route('admin.invoices.index'))->assertStatus(200);
+
+        // Cannot create invoice via Livewire
+        Livewire::test(\App\Livewire\Admin\InvoiceManager::class)
+            ->call('create')
+            ->assertStatus(403);
+    }
 }
