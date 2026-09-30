@@ -34,10 +34,12 @@
                 @endif
             </div>
 
+            @if($this->canManage())
             <button wire:click="create" class="bg-m2b-primary text-white px-4 py-2 rounded-lg font-bold shadow-sm hover:bg-blue-900 transition flex items-center gap-2 text-sm whitespace-nowrap">
                 <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"></path></svg>
                 Buat Jurnal
             </button>
+            @endif
         </div>
 
         <div class="overflow-x-auto">
@@ -78,6 +80,7 @@
                             {{ $j->creator->name ?? 'System' }}
                         </td>
                         <td class="px-6 py-4 text-center whitespace-nowrap">
+                            @if($this->canManage())
                             <div class="inline-flex items-center gap-1.5">
                                 <button wire:click="edit({{ $j->id }})" class="text-blue-600 hover:text-blue-800 border border-blue-200 hover:bg-blue-50 px-2.5 py-1 rounded text-xs font-bold transition flex items-center gap-1" title="Edit Jurnal">
                                     ✏️ Edit
@@ -86,6 +89,9 @@
                                     🗑️ Hapus
                                 </button>
                             </div>
+                            @else
+                            <span class="text-xs text-slate-400 font-medium bg-slate-100 px-2 py-0.5 rounded">Read Only</span>
+                            @endif
                         </td>
                     </tr>
                     @empty

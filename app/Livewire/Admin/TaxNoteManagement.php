@@ -4,6 +4,8 @@ namespace App\Livewire\Admin;
 
 use App\Models\Invoice;
 use App\Models\TaxNote;
+use App\Models\TaxExchangeRate;
+use Carbon\Carbon;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Storage;
 use Livewire\Component;
@@ -15,6 +17,13 @@ class TaxNoteManagement extends Component
     use WithPagination, WithFileUploads;
 
     public $perPage = 25;
+
+    // Tabs & Filters
+    public $activeTab = 'notes'; // 'notes', 'compliance', 'equalization', 'rates'
+    public $selectedYear;
+    public $complianceFilter = 'all'; // 'all', 'missing_fp', 'missing_bupot', 'complete'
+    public $complianceSearch = '';
+    public $rateSearch = '';
 
     // Form fields
     public $isModalOpen  = false;
@@ -79,6 +88,33 @@ class TaxNoteManagement extends Component
     {
         abort_unless($this->canViewAny(), 403, 'Anda tidak memiliki akses ke halaman ini.');
         $this->periode = now()->format('Y-m');
+        $this->selectedYear = (int) date('Y');
+    }
+
+    public function setTab($tab): void
+    {
+        $this->activeTab = $tab;
+        $this->resetPage();
+    }
+
+    public function updatedComplianceFilter(): void
+    {
+        $this->resetPage();
+    }
+
+    public function updatedComplianceSearch(): void
+    {
+        $this->resetPage();
+    }
+
+    public function updatedRateSearch(): void
+    {
+        $this->resetPage();
+    }
+
+    public function updatedSelectedYear(): void
+    {
+        $this->resetPage();
     }
 
     // --- Helpers ---
@@ -90,6 +126,128 @@ class TaxNoteManagement extends Component
             $options[] = now()->subMonths($i)->format('Y-m');
         }
         return $options;
+    }
+
+    public function getTaxMetrics(): array
+    {
+        $year = $this->selectedYear ?? (int) date('Y');
+
+        $baseQuery = Invoice::whereNotIn('status', ['cancel', 'cancelled'])
+            ->whereYear('invoice_date', $year);
+
+        $totalPpn = (float) (clone $baseQuery)->sum('tax_amount');
+        $totalPph = (float) (clone $baseQuery)->sum('pph_amount');
+        $totalService = (float) (clone $baseQuery)->sum('service_total');
+        $totalReimbursement = (float) (clone $baseQuery)->sum('reimbursement_total');
+
+        $fpIssued = (clone $baseQuery)->where('tax_amount', '>', 0)->whereNotNull('faktur_pajak_path')->count();
+        $fpPending = (clone $baseQuery)->where('tax_amount', '>', 0)->whereNull('faktur_pajak_path')->count();
+
+        $bupotReceived = (clone $baseQuery)->where('pph_amount', '>', 0)->whereNotNull('bukti_potong_path')->count();
+        $bupotPending = (clone $baseQuery)->where('pph_amount', '>', 0)->whereNull('bukti_potong_path')->count();
+
+        $unresolvedNotes = TaxNote::where('is_resolved', false)->count();
+
+        $latestUsd = TaxExchangeRate::where('currency_code', 'USD')->latest('valid_from')->first();
+        $latestSgd = TaxExchangeRate::where('currency_code', 'SGD')->latest('valid_from')->first();
+
+        return [
+            'total_ppn'           => $totalPpn,
+            'total_pph'           => $totalPph,
+            'total_service'       => $totalService,
+            'total_reimbursement' => $totalReimbursement,
+            'fp_issued'           => $fpIssued,
+            'fp_pending'          => $fpPending,
+            'bupot_received'      => $bupotReceived,
+            'bupot_pending'       => $bupotPending,
+            'unresolved_notes'    => $unresolvedNotes,
+            'usd_rate'            => $latestUsd?->rate ?? null,
+            'usd_date'            => $latestUsd?->valid_until ? $latestUsd->valid_until->format('d M Y') : null,
+            'sgd_rate'            => $latestSgd?->rate ?? null,
+            'sgd_date'            => $latestSgd?->valid_until ? $latestSgd->valid_until->format('d M Y') : null,
+        ];
+    }
+
+    public function getEqualizationData(): array
+    {
+        $year = $this->selectedYear ?? (int) date('Y');
+        $monthly = [];
+
+        for ($m = 1; $m <= 12; $m++) {
+            $invoices = Invoice::whereNotIn('status', ['cancel', 'cancelled'])
+                ->whereYear('invoice_date', $year)
+                ->whereMonth('invoice_date', $m)
+                ->get();
+
+            $invCount = $invoices->count();
+            $dppJasa = $invoices->sum('service_total');
+            $reimbursement = $invoices->sum('reimbursement_total');
+            $subtotal = $invoices->sum('subtotal');
+            $ppn = $invoices->sum('tax_amount');
+            $pph23 = $invoices->sum('pph_amount');
+            $grandTotal = $invoices->sum('grand_total');
+
+            $monthName = Carbon::create($year, $m, 1)->translatedFormat('F');
+
+            $monthly[] = [
+                'month_num'     => $m,
+                'month_name'    => $monthName,
+                'count'         => $invCount,
+                'dpp_jasa'      => (float) $dppJasa,
+                'reimbursement' => (float) $reimbursement,
+                'subtotal'      => (float) $subtotal,
+                'ppn'           => (float) $ppn,
+                'pph23'         => (float) $pph23,
+                'grand_total'   => (float) $grandTotal,
+            ];
+        }
+
+        return $monthly;
+    }
+
+    public function getComplianceInvoices()
+    {
+        $year = $this->selectedYear ?? (int) date('Y');
+        $search = trim($this->complianceSearch);
+
+        $query = Invoice::with('customer')
+            ->whereNotIn('status', ['cancel', 'cancelled'])
+            ->whereYear('invoice_date', $year);
+
+        if ($search) {
+            $query->where(function($q) use ($search) {
+                $q->where('invoice_number', 'like', "%{$search}%")
+                  ->orWhere('faktur_pajak_number', 'like', "%{$search}%")
+                  ->orWhere('bukti_potong_number', 'like', "%{$search}%")
+                  ->orWhereHas('customer', fn($c) => $c->where('company_name', 'like', "%{$search}%"));
+            });
+        }
+
+        if ($this->complianceFilter === 'missing_fp') {
+            $query->where('tax_amount', '>', 0)->whereNull('faktur_pajak_path');
+        } elseif ($this->complianceFilter === 'missing_bupot') {
+            $query->where('pph_amount', '>', 0)->whereNull('bukti_potong_path');
+        } elseif ($this->complianceFilter === 'complete') {
+            $query->where(function($q) {
+                $q->where(fn($sub) => $sub->where('tax_amount', '>', 0)->whereNotNull('faktur_pajak_path'))
+                  ->orWhere(fn($sub) => $sub->where('pph_amount', '>', 0)->whereNotNull('bukti_potong_path'));
+            });
+        } else {
+            $query->where(function($q) {
+                $q->where('tax_amount', '>', 0)->orWhere('pph_amount', '>', 0);
+            });
+        }
+
+        return $query->latest('invoice_date')->paginate(15);
+    }
+
+    public function getExchangeRates()
+    {
+        $search = trim($this->rateSearch);
+        return TaxExchangeRate::query()
+            ->when($search, fn($q) => $q->where('currency_code', 'like', "%{$search}%")->orWhere('currency_name', 'like', "%{$search}%"))
+            ->latest('valid_from')
+            ->paginate(20);
     }
 
     // --- Actions ---
@@ -252,10 +410,15 @@ class TaxNoteManagement extends Component
             ]);
 
         return view('livewire.admin.tax-note-management', [
-            'notes'          => $notes,
-            'periodeOptions' => $this->periodeOptions(),
-            'invoiceOptions' => $invoiceOptions,
-            'jenisPajakList' => TaxNote::JENIS_PAJAK,
+            'notes'               => $notes,
+            'periodeOptions'      => $this->periodeOptions(),
+            'invoiceOptions'      => $invoiceOptions,
+            'jenisPajakList'      => TaxNote::JENIS_PAJAK,
+            'metrics'             => $this->getTaxMetrics(),
+            'complianceInvoices'  => $this->activeTab === 'compliance' ? $this->getComplianceInvoices() : null,
+            'equalizationData'    => $this->activeTab === 'equalization' ? $this->getEqualizationData() : null,
+            'exchangeRates'       => $this->activeTab === 'rates' ? $this->getExchangeRates() : null,
+            'availableYears'      => [(int) date('Y'), (int) date('Y') - 1, (int) date('Y') - 2],
         ])->layout('layouts.admin');
     }
 }

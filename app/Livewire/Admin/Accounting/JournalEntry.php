@@ -39,7 +39,7 @@ class JournalEntry extends Component
         $user = Auth::user();
         return $user && (
             $user->isAdminLevel() ||
-            $user->hasRole(['super_admin', 'director', 'admin', 'staff_accounting', 'finance', 'auditor']) ||
+            $user->hasRole(['super_admin', 'director', 'admin', 'staff_accounting', 'finance', 'auditor', 'konsultan_pajak']) ||
             $user->hasPermission('cashier.journal') ||
             $user->hasPermission('accounting.input') ||
             $user->hasPermission('accounting.view')

@@ -333,49 +333,56 @@ a:hover .sb-ico { background: rgba(255, 255, 255, 0.12); transform: scale(1.05);
                 <a href="{{ route('accounting.balance_sheet') }}" class="flex items-center px-3.5 py-2.5 text-sm font-medium rounded-xl transition-all duration-150 {{ request()->routeIs('accounting.balance_sheet') ? 'bg-gradient-to-r from-blue-600 to-indigo-600 text-white shadow-md shadow-blue-500/25 ring-1 ring-white/20 font-semibold' : 'hover:bg-slate-800/70 text-slate-300 hover:text-white' }}"><span class="sb-ico">📋</span><span class="sb-txt">Balance Sheet</span></a>
                 @endif
 
+                {{-- PERPAJAKAN / TAX --}}
+                @if(auth()->user()->hasRole(['admin', 'super_admin', 'director', 'finance', 'konsultan_pajak']) || auth()->user()->hasPermission('tax_note.view'))
+                <div class="sb-section px-3 py-1.5 mt-4 text-[10px] font-bold text-slate-400 uppercase tracking-widest">Perpajakan / Tax</div>
+
+                @php
+                    $unresolvedTaxNotes = \App\Models\TaxNote::where('is_resolved', false)->count();
+                @endphp
+                <a href="{{ route('admin.tax-notes.index') }}" class="flex items-center px-3.5 py-2.5 text-sm font-medium rounded-xl transition-all duration-150 group {{ request()->routeIs('admin.tax-notes*') ? 'bg-gradient-to-r from-amber-600 to-orange-600 text-white shadow-md shadow-amber-500/25 ring-1 ring-white/20 font-semibold' : 'hover:bg-slate-800/70 text-slate-300 hover:text-white' }}">
+                    <span class="flex-1 flex items-center gap-2"><span class="sb-ico">⚖️</span><span class="sb-txt">Pusat Pajak &amp; Catatan</span></span>
+                    @if($unresolvedTaxNotes > 0)
+                        <span class="sb-badge ml-2 min-w-5 h-5 px-1.5 bg-amber-500 text-white text-[10px] font-black rounded-full flex items-center justify-center shadow-xs">
+                            {{ $unresolvedTaxNotes > 99 ? '99+' : $unresolvedTaxNotes }}
+                        </span>
+                    @endif
+                </a>
+                <a href="{{ route('admin.calculator') }}" class="flex items-center px-3.5 py-2.5 text-sm font-medium rounded-xl transition-all duration-150 {{ request()->routeIs('admin.calculator') ? 'bg-gradient-to-r from-blue-600 to-indigo-600 text-white shadow-md shadow-blue-500/25 ring-1 ring-white/20 font-semibold' : 'hover:bg-slate-800/70 text-slate-300 hover:text-white' }}"><span class="sb-ico">🧮</span><span class="sb-txt">Kalkulator Pabean (BM/PPN)</span></a>
+                @endif
+
                 {{-- HRD & PAYROLL --}}
-                @unless(auth()->user()->hasRole('auditor'))
+                @unless(auth()->user()->hasRole(['auditor', 'konsultan_pajak']))
                 <div class="sb-section px-3 py-1.5 mt-4 text-[10px] font-bold text-slate-400 uppercase tracking-widest">HRD &amp; Payroll</div>
 
                 <a href="{{ route('staff.attendance') }}" class="flex items-center px-3.5 py-2.5 text-sm font-medium rounded-xl transition-all duration-150 {{ request()->routeIs('staff.attendance') ? 'bg-gradient-to-r from-emerald-600 to-teal-600 text-white shadow-md shadow-emerald-500/25 ring-1 ring-white/20 font-semibold' : 'hover:bg-slate-800/70 text-slate-300 hover:text-white' }}"><span class="sb-ico">📍</span><span class="sb-txt">Presensi / Absensi Saya</span></a>
 
-                @if(auth()->user()->hasRole(['admin', 'super_admin', 'director', 'finance', 'konsultan_pajak']))
-                @unless(auth()->user()->hasRole('konsultan_pajak'))
+                @if(auth()->user()->hasRole(['admin', 'super_admin', 'director', 'finance']))
                 <a href="{{ route('admin.hrd.employees') }}" class="flex items-center px-3.5 py-2.5 text-sm font-medium rounded-xl transition-all duration-150 {{ request()->routeIs('admin.hrd.employees') ? 'bg-gradient-to-r from-blue-600 to-indigo-600 text-white shadow-md shadow-blue-500/25 ring-1 ring-white/20 font-semibold' : 'hover:bg-slate-800/70 text-slate-300 hover:text-white' }}"><span class="sb-ico">👥</span><span class="sb-txt">Karyawan</span></a>
-
                 <a href="{{ route('admin.hrd.jabatan') }}" class="flex items-center px-3.5 py-2.5 text-sm font-medium rounded-xl transition-all duration-150 {{ request()->routeIs('admin.hrd.jabatan') ? 'bg-gradient-to-r from-blue-600 to-indigo-600 text-white shadow-md shadow-blue-500/25 ring-1 ring-white/20 font-semibold' : 'hover:bg-slate-800/70 text-slate-300 hover:text-white' }}"><span class="sb-ico">🏷️</span><span class="sb-txt">Jabatan</span></a>
-
                 <a href="{{ route('admin.hrd.payroll-periods') }}" class="flex items-center px-3.5 py-2.5 text-sm font-medium rounded-xl transition-all duration-150 {{ request()->routeIs('admin.hrd.payroll*') ? 'bg-gradient-to-r from-blue-600 to-indigo-600 text-white shadow-md shadow-blue-500/25 ring-1 ring-white/20 font-semibold' : 'hover:bg-slate-800/70 text-slate-300 hover:text-white' }}"><span class="sb-ico">💰</span><span class="sb-txt">Penggajian</span></a>
-
                 <a href="{{ route('admin.attendance.index') }}" class="flex items-center px-3.5 py-2.5 text-sm font-medium rounded-xl transition-all duration-150 {{ request()->routeIs('admin.attendance*') ? 'bg-gradient-to-r from-blue-600 to-indigo-600 text-white shadow-md shadow-blue-500/25 ring-1 ring-white/20 font-semibold' : 'hover:bg-slate-800/70 text-slate-300 hover:text-white' }}"><span class="sb-ico">📊</span><span class="sb-txt">Rekap Absensi Mobile</span></a>
-
                 <a href="{{ route('admin.visits') }}" class="flex items-center px-3.5 py-2.5 text-sm font-medium rounded-xl transition-all duration-150 {{ request()->routeIs('admin.visits') ? 'bg-gradient-to-r from-blue-600 to-indigo-600 text-white shadow-md shadow-blue-500/25 ring-1 ring-white/20 font-semibold' : 'hover:bg-slate-800/70 text-slate-300 hover:text-white' }}"><span class="sb-ico">🚗</span><span class="sb-txt">Kunjungan Karyawan</span></a>
-                @endunless
-
-                <a href="{{ route('admin.tax-notes.index') }}" class="flex items-center px-3.5 py-2.5 text-sm font-medium rounded-xl transition-all duration-150 {{ request()->routeIs('admin.tax-notes*') ? 'bg-gradient-to-r from-blue-600 to-indigo-600 text-white shadow-md shadow-blue-500/25 ring-1 ring-white/20 font-semibold' : 'hover:bg-slate-800/70 text-slate-300 hover:text-white' }}"><span class="sb-ico">🗒️</span><span class="sb-txt">Catatan Pajak</span></a>
                 @endif
                 @endunless
 
-                @unless(auth()->user()->hasRole('konsultan_pajak'))
-                <div class="sb-section px-3 py-1.5 mt-4 text-[10px] font-bold text-slate-400 uppercase tracking-widest">Settings</div>
+                {{-- LAPORAN & PENGATURAN --}}
+                @if(auth()->user()->hasPermission('report.view_basic') || auth()->user()->hasPermission('report.view_financial') || !auth()->user()->hasRole(['konsultan_pajak', 'auditor']))
+                <div class="sb-section px-3 py-1.5 mt-4 text-[10px] font-bold text-slate-400 uppercase tracking-widest">Reports &amp; Settings</div>
 
-                @if(auth()->user()->hasPermission('report.view_basic'))
+                @if(auth()->user()->hasPermission('report.view_basic') || auth()->user()->hasPermission('report.view_financial'))
                 <a href="{{ route('admin.reports') }}" class="flex items-center px-3.5 py-2.5 text-sm font-medium rounded-xl transition-all duration-150 {{ request()->routeIs('admin.reports') ? 'bg-gradient-to-r from-blue-600 to-indigo-600 text-white shadow-md shadow-blue-500/25 ring-1 ring-white/20 font-semibold' : 'hover:bg-slate-800/70 text-slate-300 hover:text-white' }}"><span class="sb-ico">📑</span><span class="sb-txt">Laporan / Reports</span></a>
                 @endif
 
-                @unless(auth()->user()->hasRole('auditor'))
+                @unless(auth()->user()->hasRole(['auditor', 'konsultan_pajak']))
                 <a href="{{ route('admin.survey.dashboard') }}" class="flex items-center px-3.5 py-2.5 text-sm font-medium rounded-xl transition-all duration-150 {{ request()->routeIs('admin.survey*') ? 'bg-gradient-to-r from-blue-600 to-indigo-600 text-white shadow-md shadow-blue-500/25 ring-1 ring-white/20 font-semibold' : 'hover:bg-slate-800/70 text-slate-300 hover:text-white' }}"><span class="sb-ico">📋</span><span class="sb-txt">Customer Survey</span></a>
-                @endunless
 
-                @unless(auth()->user()->hasRole('auditor'))
                 <a href="{{ route('admin.testimonial.index') }}" class="flex items-center px-3.5 py-2.5 text-sm font-medium rounded-xl transition-all duration-150 {{ request()->routeIs('admin.testimonial*') ? 'bg-gradient-to-r from-blue-600 to-indigo-600 text-white shadow-md shadow-blue-500/25 ring-1 ring-white/20 font-semibold' : 'hover:bg-slate-800/70 text-slate-300 hover:text-white' }}"><span class="sb-ico">⭐</span><span class="sb-txt">Moderasi Testimoni</span></a>
-                @endunless
 
                 @if(auth()->user()->hasPermission('user.view'))
                 <a href="{{ route('admin.users.index') }}" class="flex items-center px-3.5 py-2.5 text-sm font-medium rounded-xl transition-all duration-150 {{ request()->routeIs('admin.users*') ? 'bg-gradient-to-r from-blue-600 to-indigo-600 text-white shadow-md shadow-blue-500/25 ring-1 ring-white/20 font-semibold' : 'hover:bg-slate-800/70 text-slate-300 hover:text-white' }}"><span class="sb-ico">👤</span><span class="sb-txt">User Management</span></a>
                 @endif
 
-                @unless(auth()->user()->hasRole('auditor'))
                 <a href="{{ route('admin.user-requests.index') }}" class="flex items-center px-3.5 py-2.5 text-sm font-medium rounded-xl transition-all duration-150 {{ request()->routeIs('admin.user-requests*') ? 'bg-gradient-to-r from-blue-600 to-indigo-600 text-white shadow-md shadow-blue-500/25 ring-1 ring-white/20 font-semibold' : 'hover:bg-slate-800/70 text-slate-300 hover:text-white' }}"><span class="sb-ico">📋</span><span class="sb-txt">User Requests</span></a>
                 @endunless
 
@@ -384,8 +391,7 @@ a:hover .sb-ico { background: rgba(255, 255, 255, 0.12); transform: scale(1.05);
                 <a href="{{ route('audit-logs') }}" class="flex items-center px-3.5 py-2.5 text-sm font-medium rounded-xl transition-all duration-150 {{ request()->routeIs('audit-logs') ? 'bg-gradient-to-r from-blue-600 to-indigo-600 text-white shadow-md shadow-blue-500/25 ring-1 ring-white/20 font-semibold' : 'hover:bg-slate-800/70 text-slate-300 hover:text-white' }}"><span class="sb-ico">📝</span><span class="sb-txt">Audit Logs</span></a>
                 @endif
                 @endunless
-
-                @endunless
+                @endif
 
                 <a href="{{ route('admin.profile') }}" class="flex items-center px-3.5 py-2.5 text-sm font-medium rounded-xl transition-all duration-150 {{ request()->routeIs('admin.profile') ? 'bg-gradient-to-r from-blue-600 to-indigo-600 text-white shadow-md shadow-blue-500/25 ring-1 ring-white/20 font-semibold' : 'hover:bg-slate-800/70 text-slate-300 hover:text-white' }}"><span class="sb-ico">⚙️</span><span class="sb-txt">Admin Profile</span></a>
 

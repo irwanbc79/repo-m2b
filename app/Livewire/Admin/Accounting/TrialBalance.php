@@ -16,7 +16,7 @@ class TrialBalance extends Component
         $user = auth()->user();
         return $user && (
             $user->isAdminLevel() ||
-            $user->hasRole(['super_admin', 'director', 'admin', 'manager', 'staff_accounting', 'finance', 'auditor']) ||
+            $user->hasRole(['super_admin', 'director', 'admin', 'manager', 'staff_accounting', 'finance', 'auditor', 'konsultan_pajak']) ||
             $user->hasPermission('accounting.view')
         );
     }
