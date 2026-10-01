@@ -511,17 +511,26 @@
 
     {{-- Create/Edit Modal --}}
     @if($isModalOpen)
-    <div class="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4" wire:click.self="closeModal">
+    <div wire:key="customer-modal-dialog" class="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4" wire:click.self="closeModal">
         <div class="bg-white rounded-2xl shadow-2xl max-w-2xl w-full max-h-[90vh] overflow-hidden">
-            <div class="p-6 border-b border-gray-100">
+            <div class="p-6 border-b border-gray-100 flex items-center justify-between">
                 <h3 class="text-xl font-bold text-gray-800">{{ $isEditing ? 'Edit Customer' : 'Tambah Customer Baru' }}</h3>
+                <button type="button" wire:click="closeModal" class="text-gray-400 hover:text-gray-600 text-2xl font-bold leading-none">&times;</button>
             </div>
-            <form wire:submit.prevent="save">
+
+            @if (session()->has('error'))
+            <div class="mx-6 mt-4 p-3 bg-red-50 border border-red-200 text-red-700 rounded-xl text-sm flex items-center gap-2">
+                <svg class="w-5 h-5 shrink-0 text-red-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
+                <span>{{ session('error') }}</span>
+            </div>
+            @endif
+
+            <form wire:submit="save" novalidate>
                 <div class="p-6 overflow-y-auto max-h-[60vh] space-y-4">
                     <div class="grid grid-cols-2 gap-4">
                         <div>
                             <label class="block text-sm font-medium text-gray-700 mb-1">Kode Customer</label>
-                            <input type="text" wire:model="customer_code" class="w-full border-gray-300 rounded-lg bg-gray-100" readonly>
+                            <input type="text" wire:model="customer_code" class="w-full border-gray-300 rounded-lg bg-gray-100 font-mono font-semibold text-gray-700" readonly>
                         </div>
                         <div>
                             <label class="block text-sm font-medium text-gray-700 mb-1">Tag</label>
@@ -566,7 +575,7 @@
                         </div>
                         <div>
                             <label class="block text-sm font-medium text-gray-700 mb-1">Password {{ $isEditing ? '(kosongkan jika tidak diubah)' : '*' }}</label>
-                            <input type="password" wire:model="password" class="w-full border-gray-300 rounded-lg" {{ $isEditing ? '' : 'required' }}>
+                            <input type="password" wire:model="password" autocomplete="new-password" class="w-full border-gray-300 rounded-lg" {{ $isEditing ? '' : 'required' }}>
                             @error('password') <span class="text-red-500 text-xs">{{ $message }}</span> @enderror
                         </div>
                     </div>
@@ -603,8 +612,15 @@
                 </div>
                 <div class="p-4 border-t border-gray-100 bg-gray-50 flex justify-end gap-3">
                     <button type="button" wire:click="closeModal" class="px-6 py-2 border border-gray-300 rounded-lg hover:bg-gray-50 transition font-semibold">Batal</button>
-                    <button type="submit" class="px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition font-semibold">
-                        {{ $isEditing ? 'Update' : 'Simpan' }}
+                    <button type="submit" wire:loading.attr="disabled" class="px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition font-semibold flex items-center gap-2 disabled:opacity-50">
+                        <span wire:loading.remove wire:target="save">{{ $isEditing ? 'Update' : 'Simpan' }}</span>
+                        <span wire:loading wire:target="save" class="flex items-center gap-2">
+                            <svg class="animate-spin h-4 w-4 text-white" fill="none" viewBox="0 0 24 24">
+                                <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                                <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                            </svg>
+                            Menyimpan...
+                        </span>
                     </button>
                 </div>
             </form>

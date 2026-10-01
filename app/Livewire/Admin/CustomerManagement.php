@@ -140,8 +140,9 @@ class CustomerManagement extends Component
         $this->resetValidation();
         $this->resetForm();
         $this->isEditing = false;
+        $this->customerId = null;
         $this->isModalOpen = true;
-        $this->customer_code = $this->generateSmartCode($this->role);
+        $this->customer_code = Customer::generateCustomerCode();
     }
 
     public function updatedRole($value)
@@ -162,6 +163,7 @@ class CustomerManagement extends Component
 
     public function resetForm()
     {
+        $this->customerId = null;
         $this->email = '';
         $this->password = '';
         $this->name = '';
@@ -178,24 +180,24 @@ class CustomerManagement extends Component
         $this->preferred_language = 'id';
         $this->customer_tag = '';
         $this->is_active = true;
-        $this->customer_code = $this->generateSmartCode('customer');
+        $this->customer_code = Customer::generateCustomerCode();
     }
 
     public function generateSmartCode($roleType)
     {
-        $count = Customer::count() + 1;
-        $number = str_pad($count, 6, '0', STR_PAD_LEFT);
         if (in_array($roleType, ['admin', 'manager', 'staff', 'finance', 'shipment'])) {
+            $count = Customer::count() + 1;
+            $number = str_pad($count, 6, '0', STR_PAD_LEFT);
             return 'M2B-' . $number;
         }
-        return 'CUST-' . $number;
+        return Customer::generateCustomerCode();
     }
 
     public function save()
     {
         $rules = [
             'name' => 'required',
-            'email' => 'required|email|unique:users,email,' . ($this->customerId ? Customer::find($this->customerId)->user_id : ''),
+            'email' => 'required|email|unique:users,email,' . ($this->customerId ? (Customer::find($this->customerId)?->user_id ?? '') : ''),
             'role' => 'required|in:admin,manager,staff,finance,shipment,customer',
             'company_name' => 'required',
         ];
@@ -206,65 +208,86 @@ class CustomerManagement extends Component
 
         $this->validate($rules);
 
-        DB::transaction(function () {
-            if ($this->isEditing) {
-                $customer = Customer::find($this->customerId);
-                $userData = ['name' => $this->name, 'role' => $this->role, 'email' => $this->email, 'is_active' => (bool) $this->is_active];
-                if (!empty($this->password)) {
-                    $userData['password'] = Hash::make($this->password);
+        try {
+            DB::transaction(function () {
+                if ($this->isEditing) {
+                    $customer = Customer::find($this->customerId);
+                    if (!$customer) {
+                        session()->flash('error', 'Data customer tidak ditemukan.');
+                        return;
+                    }
+
+                    if ($customer->user) {
+                        $userData = ['name' => $this->name, 'role' => $this->role, 'email' => $this->email, 'is_active' => (bool) $this->is_active];
+                        if (!empty($this->password)) {
+                            $userData['password'] = Hash::make($this->password);
+                        }
+                        $customer->user->update($userData);
+                    }
+
+                    $customer->update([
+                        'company_name' => $this->company_name,
+                        'phone' => $this->phone,
+                        'npwp' => $this->npwp,
+                        'address' => $this->address,
+                        'warehouse_address' => $this->warehouse_address,
+                        'city' => $this->city,
+                        'business_type' => $this->customer_tag ?: $this->business_type,
+                        'credit_limit' => $this->credit_limit ?? 0,
+                        'payment_terms' => $this->payment_terms ?? 30,
+                        'preferred_language' => $this->preferred_language ?? 'id',
+                    ]);
+
+                    \App\Models\ActivityLog::record('Customer', 'UPDATE', $customer->customer_code, "Perbarui data customer {$customer->company_name} ({$customer->customer_code})");
+
+                    session()->flash('message', 'Data customer berhasil diperbarui!');
+                } else {
+                    $user = User::create([
+                        'name' => $this->name,
+                        'email' => $this->email,
+                        'password' => Hash::make($this->password),
+                        'role' => $this->role,
+                        'is_active' => (bool) $this->is_active,
+                    ]);
+
+                    $customerCode = $this->customer_code ?: Customer::generateCustomerCode();
+                    // Cegah duplikasi jika kode sempat terpakai
+                    if (Customer::where('customer_code', $customerCode)->exists()) {
+                        $customerCode = Customer::generateCustomerCode();
+                    }
+
+                    $customer = Customer::create([
+                        'user_id' => $user->id,
+                        'customer_code' => $customerCode,
+                        'company_name' => $this->company_name,
+                        'phone' => $this->phone,
+                        'npwp' => $this->npwp,
+                        'address' => $this->address,
+                        'warehouse_address' => $this->warehouse_address,
+                        'city' => $this->city,
+                        'business_type' => $this->customer_tag ?: 'Regular',
+                        'credit_limit' => $this->credit_limit ?? 0,
+                        'payment_terms' => $this->payment_terms ?? 30,
+                        'preferred_language' => $this->preferred_language ?? 'id',
+                    ]);
+
+                    // Sync pivot table customer_user untuk PIC Utama
+                    if ($user->id) {
+                        $customer->users()->syncWithoutDetaching([$user->id => ['is_primary' => true]]);
+                    }
+
+                    \App\Models\ActivityLog::record('Customer', 'CREATE', $customerCode, "Tambah customer baru: {$this->company_name} ({$customerCode})");
+
+                    session()->flash('message', 'Customer berhasil ditambahkan! Code: ' . $customerCode);
                 }
+            });
 
-                $customer->user->update($userData);
-
-                $customer->update([
-                    'company_name' => $this->company_name,
-                    'phone' => $this->phone,
-                    'npwp' => $this->npwp,
-                    'address' => $this->address,
-                    'warehouse_address' => $this->warehouse_address,
-                    'city' => $this->city,
-                    'business_type' => $this->customer_tag ?: $this->business_type,
-                    'credit_limit' => $this->credit_limit ?? 0,
-                    'payment_terms' => $this->payment_terms ?? 30,
-                    'preferred_language' => $this->preferred_language ?? 'id',
-                ]);
-
-                \App\Models\ActivityLog::record('Customer', 'UPDATE', $customer->customer_code, "Perbarui data customer {$customer->company_name} ({$customer->customer_code})");
-
-                session()->flash('message', 'Data customer berhasil diperbarui!');
-            } else {
-                $user = User::create([
-                    'name' => $this->name,
-                    'email' => $this->email,
-                    'password' => Hash::make($this->password),
-                    'role' => $this->role,
-                    'is_active' => (bool) $this->is_active,
-                ]);
-
-                $customerCode = Customer::generateCustomerCode();
-
-                Customer::create([
-                    'user_id' => $user->id,
-                    'customer_code' => $customerCode,
-                    'company_name' => $this->company_name,
-                    'phone' => $this->phone,
-                    'npwp' => $this->npwp,
-                    'address' => $this->address,
-                    'warehouse_address' => $this->warehouse_address,
-                    'city' => $this->city,
-                    'business_type' => $this->customer_tag ?: 'Regular',
-                    'credit_limit' => $this->credit_limit ?? 0,
-                    'payment_terms' => $this->payment_terms ?? 30,
-                    'preferred_language' => $this->preferred_language ?? 'id',
-                ]);
-
-                \App\Models\ActivityLog::record('Customer', 'CREATE', $customerCode, "Tambah customer baru: {$this->company_name} ({$customerCode})");
-
-                session()->flash('message', 'Customer berhasil ditambahkan! Code: ' . $customerCode);
-            }
-        });
-
-        $this->closeModal();
+            $this->closeModal();
+        } catch (\Illuminate\Validation\ValidationException $e) {
+            throw $e;
+        } catch (\Throwable $e) {
+            session()->flash('error', 'Gagal menyimpan customer: ' . $e->getMessage());
+        }
     }
 
     public function store()
