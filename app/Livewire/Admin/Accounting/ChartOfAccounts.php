@@ -5,6 +5,7 @@ namespace App\Livewire\Admin\Accounting;
 use Livewire\Component;
 use Livewire\WithPagination;
 use App\Models\Account;
+use App\Models\JournalItem;
 
 class ChartOfAccounts extends Component
 {
@@ -16,6 +17,14 @@ class ChartOfAccounts extends Component
     public $isModalOpen = false;
     public $isEditing = false;
     public $editingId = null;
+
+    // State Modal Lihat Jurnal (Account Ledger Inspection)
+    public $isLedgerModalOpen = false;
+    public $ledgerAccountId = null;
+    public $ledgerStartDate = '';
+    public $ledgerEndDate = '';
+    public $ledgerPeriodPreset = 'all'; // 'all', 'this_month', 'this_year', 'custom'
+    public $ledgerSearch = '';
 
     // Form Data
     public $code, $name, $type, $opening_balance = 0;
@@ -131,6 +140,154 @@ class ChartOfAccounts extends Component
         session()->flash('message', 'Semua saldo akun di Bagan Akun (COA) berhasil disinkronkan dengan Buku Besar (General Ledger).');
     }
 
+    public function openLedgerModal($accountId, $preset = 'all')
+    {
+        $this->ledgerAccountId = $accountId;
+        $this->setLedgerPreset($preset);
+        $this->ledgerSearch = '';
+        $this->isLedgerModalOpen = true;
+    }
+
+    public function closeLedgerModal()
+    {
+        $this->isLedgerModalOpen = false;
+        $this->ledgerAccountId = null;
+        $this->ledgerSearch = '';
+    }
+
+    public function setLedgerPreset($preset)
+    {
+        $this->ledgerPeriodPreset = $preset;
+
+        if ($preset === 'this_month') {
+            $this->ledgerStartDate = date('Y-m-01');
+            $this->ledgerEndDate = date('Y-m-d');
+        } elseif ($preset === 'this_year') {
+            $this->ledgerStartDate = date('Y-01-01');
+            $this->ledgerEndDate = date('Y-m-d');
+        } elseif ($preset === 'all') {
+            $this->ledgerStartDate = '';
+            $this->ledgerEndDate = '';
+        }
+    }
+
+    public function getLedgerData()
+    {
+        if (! $this->ledgerAccountId) {
+            return null;
+        }
+
+        $account = Account::find($this->ledgerAccountId);
+        if (! $account) {
+            return null;
+        }
+
+        $isDebitNormal = $account->isDebitNormal();
+        $openingBalance = 0;
+
+        // 1. Hitung Saldo Awal jika start_date ditentukan
+        if (! empty($this->ledgerStartDate)) {
+            $prevDebit = (float) JournalItem::where('account_id', $account->id)
+                ->whereHas('journal', function ($q) {
+                    $q->where('transaction_date', '<', $this->ledgerStartDate);
+                })->sum('debit');
+
+            $prevCredit = (float) JournalItem::where('account_id', $account->id)
+                ->whereHas('journal', function ($q) {
+                    $q->where('transaction_date', '<', $this->ledgerStartDate);
+                })->sum('credit');
+
+            $openingBalance = (float) $account->opening_balance + ($isDebitNormal ? ($prevDebit - $prevCredit) : ($prevCredit - $prevDebit));
+        } else {
+            $openingBalance = (float) ($account->opening_balance ?? 0);
+        }
+
+        // 2. Ambil mutasi transaksi periode ini
+        $query = JournalItem::with(['journal.creator'])
+            ->where('account_id', $account->id)
+            ->whereHas('journal', function ($q) {
+                if (! empty($this->ledgerStartDate) && ! empty($this->ledgerEndDate)) {
+                    $q->whereBetween('transaction_date', [$this->ledgerStartDate, $this->ledgerEndDate]);
+                } elseif (! empty($this->ledgerStartDate)) {
+                    $q->where('transaction_date', '>=', $this->ledgerStartDate);
+                } elseif (! empty($this->ledgerEndDate)) {
+                    $q->where('transaction_date', '<=', $this->ledgerEndDate);
+                }
+            });
+
+        if (! empty($this->ledgerSearch)) {
+            $searchTerm = '%' . trim($this->ledgerSearch) . '%';
+            $query->where(function ($sub) use ($searchTerm) {
+                $sub->where('description', 'like', $searchTerm)
+                    ->orWhere('note', 'like', $searchTerm)
+                    ->orWhereHas('journal', function ($j) use ($searchTerm) {
+                        $j->where('journal_number', 'like', $searchTerm)
+                          ->orWhere('reference_no', 'like', $searchTerm)
+                          ->orWhere('description', 'like', $searchTerm);
+                    });
+            });
+        }
+
+        $rawItems = $query->get()->sortBy(function ($item) {
+            $date = $item->journal?->transaction_date ? $item->journal->transaction_date->format('Y-m-d') : '0000-00-00';
+            return $date . '_' . str_pad((string) $item->journal_id, 8, '0', STR_PAD_LEFT) . '_' . str_pad((string) $item->id, 8, '0', STR_PAD_LEFT);
+        });
+
+        $runningBalance = $openingBalance;
+        $rows = [];
+        $totalDebit = 0;
+        $totalCredit = 0;
+        $hasNegativeBalance = ($runningBalance < 0);
+
+        foreach ($rawItems as $item) {
+            $debit = (float) ($item->debit ?? 0);
+            $credit = (float) ($item->credit ?? 0);
+            $totalDebit += $debit;
+            $totalCredit += $credit;
+
+            if ($isDebitNormal) {
+                $runningBalance += ($debit - $credit);
+            } else {
+                $runningBalance += ($credit - $debit);
+            }
+
+            $isNegative = ($runningBalance < 0);
+            if ($isNegative) {
+                $hasNegativeBalance = true;
+            }
+
+            $description = $item->description ?: ($item->journal?->description ?? '-');
+
+            $rows[] = [
+                'id' => $item->id,
+                'date' => $item->journal?->transaction_date ? $item->journal->transaction_date->format('d/m/Y') : '-',
+                'raw_date' => $item->journal?->transaction_date ? $item->journal->transaction_date->format('Y-m-d') : null,
+                'journal_id' => $item->journal_id,
+                'journal_number' => $item->journal?->journal_number ?? ('#' . $item->journal_id),
+                'reference_no' => $item->journal?->reference_no ?? '-',
+                'description' => $description,
+                'note' => $item->note ?? null,
+                'creator_name' => $item->journal?->creator?->name ?? 'Sistem',
+                'debit' => $debit,
+                'credit' => $credit,
+                'running_balance' => $runningBalance,
+                'is_negative' => $isNegative,
+            ];
+        }
+
+        return [
+            'account' => $account,
+            'isDebitNormal' => $isDebitNormal,
+            'openingBalance' => $openingBalance,
+            'rows' => $rows,
+            'totalDebit' => $totalDebit,
+            'totalCredit' => $totalCredit,
+            'closingBalance' => $runningBalance,
+            'hasNegativeBalance' => $hasNegativeBalance,
+            'count' => count($rows),
+        ];
+    }
+
     public function render()
     {
         abort_unless($this->canAccess(), 403, 'Anda tidak memiliki akses ke bagan akun.');
@@ -150,10 +307,12 @@ class ChartOfAccounts extends Component
             ->paginate(15);
 
         $stats = $this->getStats();
+        $ledgerData = $this->isLedgerModalOpen ? $this->getLedgerData() : null;
 
         return view('livewire.admin.accounting.chart-of-accounts', [
             'accounts' => $accounts,
-            'stats' => $stats
+            'stats' => $stats,
+            'ledgerData' => $ledgerData,
         ])->layout('layouts.admin');
     }
 

@@ -27,13 +27,13 @@ class GeneralLedger extends Component
     {
         abort_unless($this->canAccess(), 403, 'Anda tidak memiliki akses ke buku besar.');
 
-        // Default tanggal: Awal bulan ini s/d Hari ini
-        $this->start_date = date('Y-m-01');
-        $this->end_date = date('Y-m-d');
+        // Default tanggal: Awal bulan ini s/d Hari ini (atau dari query param jika ada)
+        $this->start_date = request()->query('start_date', date('Y-m-01'));
+        $this->end_date = request()->query('end_date', date('Y-m-d'));
         
-        // Default akun: Kas Besar (jika ada)
+        // Akun terpilih: dari query string atau akun pertama
         $firstAccount = Account::orderBy('code')->first();
-        $this->account_id = $firstAccount ? $firstAccount->id : null;
+        $this->account_id = request()->query('account_id') ?: ($firstAccount ? $firstAccount->id : null);
     }
 
     public function render()

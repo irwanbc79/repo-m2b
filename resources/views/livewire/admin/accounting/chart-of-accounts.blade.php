@@ -84,26 +84,45 @@
             <table class="w-full text-sm text-left">
                 <thead class="bg-gray-100 text-gray-600 font-bold uppercase text-xs border-b">
                     <tr>
-                        <th class="px-6 py-3 w-24">Kode</th>
+                        <th class="px-6 py-3 w-28">Kode</th>
                         <th class="px-6 py-3">Nama Akun</th>
                         <th class="px-6 py-3">Tipe</th>
                         <th class="px-6 py-3 text-right">Saldo Awal</th>
                         <th class="px-6 py-3 text-right">Saldo Saat Ini (GL)</th>
-                        <th class="px-6 py-3 text-center w-24">Aksi</th>
+                        <th class="px-6 py-3 text-center w-36">Aksi</th>
                     </tr>
                 </thead>
                 <tbody class="divide-y divide-gray-100">
                     @forelse($accounts as $acc)
-                    <tr class="hover:bg-blue-50 transition duration-150">
-                        <td class="px-6 py-4 font-mono font-bold text-blue-900">{{ $acc->code }}</td>
+                    @php
+                        $isNegative = $acc->calculated_balance < 0;
+                    @endphp
+                    <tr class="hover:bg-blue-50/60 transition duration-150 {{ $isNegative ? 'bg-red-50/30' : '' }}">
+                        <td class="px-6 py-4 font-mono font-bold">
+                            <button type="button" wire:click="openLedgerModal({{ $acc->id }})" class="hover:underline flex items-center gap-1.5 text-blue-900 hover:text-blue-700 group text-left" title="Klik untuk lihat riwayat jurnal akun {{ $acc->code }}">
+                                <span>{{ $acc->code }}</span>
+                                <svg class="w-3.5 h-3.5 text-blue-400 group-hover:text-blue-700 opacity-60 group-hover:opacity-100 transition" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14"/></svg>
+                            </button>
+                        </td>
                         <td class="px-6 py-4 font-medium text-gray-800">
-                            {{ $acc->name }}
-                            @unless($acc->is_active)
-                            <span class="ml-1.5 inline-flex items-center rounded px-1.5 py-0.5 text-[10px] font-semibold uppercase tracking-wide bg-gray-200 text-gray-600"
-                                  title="Akun nonaktif: tidak muncul saat input jurnal, tapi tetap ada di laporan">
-                                nonaktif
-                            </span>
-                            @endunless
+                            <div class="flex items-center gap-2 flex-wrap">
+                                <button type="button" wire:click="openLedgerModal({{ $acc->id }})" class="hover:underline text-left font-semibold text-gray-900 hover:text-blue-700" title="Klik untuk lihat riwayat jurnal akun {{ $acc->name }}">
+                                    {{ $acc->name }}
+                                </button>
+                                @unless($acc->is_active)
+                                <span class="inline-flex items-center rounded px-1.5 py-0.5 text-[10px] font-semibold uppercase tracking-wide bg-gray-200 text-gray-600"
+                                      title="Akun nonaktif: tidak muncul saat input jurnal, tapi tetap ada di laporan">
+                                    nonaktif
+                                </span>
+                                @endunless
+                                @if($isNegative)
+                                <span class="inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide bg-red-100 text-red-700 border border-red-200 shadow-2xs"
+                                      title="Peringatan: Saldo berjalan akun ini minus. Klik Lihat Jurnal untuk menelusuri sumber minus.">
+                                    <svg class="w-3 h-3 text-red-600" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z" clip-rule="evenodd"/></svg>
+                                    Minus
+                                </span>
+                                @endif
+                            </div>
                         </td>
                         <td class="px-6 py-4">
                             @php
@@ -120,11 +139,21 @@
                                 {{ $accountTypes[$acc->type] ?? $acc->type }}
                             </span>
                         </td>
-                        <td class="px-6 py-4 text-right text-gray-500">{{ number_format($acc->opening_balance, 0, ',', '.') }}</td>
-                        <td class="px-6 py-4 text-right font-bold text-gray-800">{{ number_format($acc->calculated_balance, 0, ',', '.') }}</td>
+                        <td class="px-6 py-4 text-right text-gray-500 font-mono">{{ number_format($acc->opening_balance, 0, ',', '.') }}</td>
+                        <td class="px-6 py-4 text-right font-mono font-bold {{ $isNegative ? 'text-red-600 font-black' : 'text-gray-800' }}">
+                            {{ number_format($acc->calculated_balance, 0, ',', '.') }}
+                        </td>
                         <td class="px-6 py-4 text-center">
-                            @if($this->canManage())
-                            <div class="flex justify-center gap-2">
+                            <div class="flex justify-center items-center gap-1.5">
+                                {{-- Tombol Lihat Jurnal Akun (Bisa diakses seluruh user yang berhak melihat COA) --}}
+                                <button type="button" wire:click="openLedgerModal({{ $acc->id }})"
+                                        class="text-indigo-700 hover:text-indigo-900 bg-indigo-50 hover:bg-indigo-100 border border-indigo-200 p-1.5 rounded-lg transition shadow-2xs flex items-center gap-1"
+                                        title="Lihat seluruh jurnal akun {{ $acc->code }} - {{ $acc->name }}">
+                                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253"/></svg>
+                                    <span class="text-xs font-semibold hidden xl:inline">Jurnal</span>
+                                </button>
+
+                                @if($this->canManage())
                                 <button wire:click="edit({{ $acc->id }})" class="text-blue-600 hover:bg-blue-100 p-1.5 rounded transition" title="Edit Akun"><svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"></path></svg></button>
                                 <button wire:click="toggleAktif({{ $acc->id }})"
                                         wire:confirm="{{ $acc->is_active ? 'Nonaktifkan akun ini? Akun akan hilang dari pilihan saat input jurnal, tapi riwayat dan laporannya tetap utuh.' : 'Aktifkan kembali akun ini?' }}"
@@ -137,10 +166,8 @@
                                     @endif
                                 </button>
                                 <button wire:click="delete({{ $acc->id }})" wire:confirm="Hapus Akun ini?" class="text-red-500 hover:bg-red-100 p-1.5 rounded transition" title="Hapus Akun"><svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path></svg></button>
+                                @endif
                             </div>
-                            @else
-                            <span class="text-xs text-slate-400 font-medium bg-slate-100 px-2 py-0.5 rounded">Read Only</span>
-                            @endif
                         </td>
                     </tr>
                     @empty
@@ -196,6 +223,201 @@
             <div class="p-4 border-t bg-gray-50 flex justify-end gap-2 rounded-b-lg">
                 <button wire:click="closeModal" class="px-4 py-2 border rounded-lg bg-white text-gray-700 hover:bg-gray-100 transition">Batal</button>
                 <button wire:click="save" class="px-6 py-2 bg-blue-900 text-white rounded-lg font-bold hover:bg-blue-800 transition shadow-md">Simpan</button>
+            </div>
+        </div>
+    </div>
+    @endif
+
+    {{-- MODAL LIHAT JURNAL AKUN (LEDGER INSPECTION MODAL) --}}
+    @if($isLedgerModalOpen && $ledgerData)
+    <div class="fixed inset-0 bg-black/60 z-50 flex items-center justify-center p-3 md:p-6 overflow-y-auto"
+         style="position: fixed; z-index: 50;"
+         wire:keydown.escape="closeLedgerModal">
+        <div class="bg-white w-full max-w-6xl rounded-2xl shadow-2xl flex flex-col max-h-[92vh] overflow-hidden border border-gray-200">
+            {{-- Header Modal --}}
+            <div class="p-5 border-b border-gray-200 bg-gradient-to-r from-slate-900 via-blue-950 to-slate-900 text-white flex justify-between items-start gap-4">
+                <div class="space-y-1">
+                    <div class="flex items-center gap-2 flex-wrap">
+                        <span class="px-2.5 py-0.5 bg-blue-500/20 text-blue-200 border border-blue-400/30 rounded-md font-mono text-sm font-bold">
+                            {{ $ledgerData['account']->code }}
+                        </span>
+                        <h3 class="font-bold text-xl text-white tracking-tight">
+                            {{ $ledgerData['account']->name }}
+                        </h3>
+                        <span class="px-2 py-0.5 rounded-full text-xs font-semibold bg-white/10 text-slate-200">
+                            {{ $accountTypes[$ledgerData['account']->type] ?? $ledgerData['account']->type }}
+                            ({{ $ledgerData['isDebitNormal'] ? 'Debit Normal' : 'Kredit Normal' }})
+                        </span>
+                        @if($ledgerData['hasNegativeBalance'])
+                        <span class="inline-flex items-center gap-1 rounded-full px-2.5 py-0.5 text-xs font-bold bg-red-500/30 text-red-200 border border-red-400/50">
+                            ⚠️ Terdeteksi Saldo Minus
+                        </span>
+                        @endif
+                    </div>
+                    <p class="text-xs text-slate-300">
+                        Rincian mutasi seluruh jurnal yang menggunakan akun ini untuk verifikasi transaksi dan penelusuran penyebab saldo minus.
+                    </p>
+                </div>
+                <div class="flex items-center gap-3">
+                    <a href="{{ route('accounting.ledger', ['account_id' => $ledgerData['account']->id, 'start_date' => $ledgerStartDate, 'end_date' => $ledgerEndDate]) }}"
+                       target="_blank"
+                       class="text-xs bg-white/10 hover:bg-white/20 text-white px-3 py-1.5 rounded-lg font-medium transition flex items-center gap-1 border border-white/20"
+                       title="Buka laporan Buku Besar lengkap di tab baru">
+                        <span>Buku Besar Penuh</span>
+                        <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14"/></svg>
+                    </a>
+                    <button wire:click="closeLedgerModal" class="text-slate-400 hover:text-white text-2xl leading-none p-1 rounded-lg hover:bg-white/10 transition">&times;</button>
+                </div>
+            </div>
+
+            {{-- Summary Cards Bar --}}
+            <div class="grid grid-cols-2 md:grid-cols-4 gap-3 p-4 bg-slate-50 border-b border-gray-200">
+                <div class="bg-white p-3 rounded-xl border border-gray-200 shadow-2xs">
+                    <p class="text-xs text-gray-500 font-medium">Saldo Awal</p>
+                    <p class="text-base font-bold text-gray-800 font-mono">Rp {{ number_format($ledgerData['openingBalance'], 0, ',', '.') }}</p>
+                </div>
+                <div class="bg-white p-3 rounded-xl border border-gray-200 shadow-2xs">
+                    <p class="text-xs text-gray-500 font-medium">Total Mutasi Debit</p>
+                    <p class="text-base font-bold text-emerald-600 font-mono">Rp {{ number_format($ledgerData['totalDebit'], 0, ',', '.') }}</p>
+                </div>
+                <div class="bg-white p-3 rounded-xl border border-gray-200 shadow-2xs">
+                    <p class="text-xs text-gray-500 font-medium">Total Mutasi Kredit</p>
+                    <p class="text-base font-bold text-amber-600 font-mono">Rp {{ number_format($ledgerData['totalCredit'], 0, ',', '.') }}</p>
+                </div>
+                <div class="p-3 rounded-xl border shadow-2xs {{ $ledgerData['closingBalance'] < 0 ? 'bg-red-50 border-red-300 text-red-900' : 'bg-blue-50 border-blue-200 text-blue-900' }}">
+                    <p class="text-xs font-semibold {{ $ledgerData['closingBalance'] < 0 ? 'text-red-700' : 'text-blue-700' }}">
+                        Saldo Berjalan Akhir {{ $ledgerData['closingBalance'] < 0 ? '(MINUS)' : '' }}
+                    </p>
+                    <p class="text-base font-black font-mono {{ $ledgerData['closingBalance'] < 0 ? 'text-red-700' : 'text-blue-900' }}">
+                        Rp {{ number_format($ledgerData['closingBalance'], 0, ',', '.') }}
+                    </p>
+                </div>
+            </div>
+
+            {{-- Filter & Search Bar --}}
+            <div class="p-4 bg-gray-50 border-b border-gray-200 flex flex-wrap items-center justify-between gap-3 text-sm">
+                {{-- Preset Periode --}}
+                <div class="flex items-center gap-1.5 flex-wrap">
+                    <span class="text-xs font-semibold text-gray-500 mr-1">Periode:</span>
+                    <button type="button" wire:click="setLedgerPreset('all')"
+                            class="px-2.5 py-1 text-xs font-medium rounded-lg transition {{ $ledgerPeriodPreset === 'all' ? 'bg-blue-900 text-white font-bold' : 'bg-white border border-gray-300 text-gray-700 hover:bg-gray-100' }}">
+                        Semua Waktu
+                    </button>
+                    <button type="button" wire:click="setLedgerPreset('this_year')"
+                            class="px-2.5 py-1 text-xs font-medium rounded-lg transition {{ $ledgerPeriodPreset === 'this_year' ? 'bg-blue-900 text-white font-bold' : 'bg-white border border-gray-300 text-gray-700 hover:bg-gray-100' }}">
+                        Tahun Ini
+                    </button>
+                    <button type="button" wire:click="setLedgerPreset('this_month')"
+                            class="px-2.5 py-1 text-xs font-medium rounded-lg transition {{ $ledgerPeriodPreset === 'this_month' ? 'bg-blue-900 text-white font-bold' : 'bg-white border border-gray-300 text-gray-700 hover:bg-gray-100' }}">
+                        Bulan Ini
+                    </button>
+                </div>
+
+                <div class="flex items-center gap-2 flex-wrap ml-auto">
+                    {{-- Date inputs --}}
+                    <div class="flex items-center gap-1.5 text-xs">
+                        <input type="date" wire:model.live="ledgerStartDate" class="px-2.5 py-1 border border-gray-300 rounded-lg text-xs bg-white focus:ring-1 focus:ring-blue-500" title="Dari Tanggal">
+                        <span class="text-gray-400">s/d</span>
+                        <input type="date" wire:model.live="ledgerEndDate" class="px-2.5 py-1 border border-gray-300 rounded-lg text-xs bg-white focus:ring-1 focus:ring-blue-500" title="Sampai Tanggal">
+                    </div>
+
+                    {{-- Search Ref / Memo --}}
+                    <div class="relative">
+                        <input type="text" wire:model.live.debounce.300ms="ledgerSearch" placeholder="Cari ref, no jurnal, memo..."
+                               class="pl-8 pr-3 py-1 border border-gray-300 rounded-lg text-xs w-48 sm:w-56 bg-white focus:ring-1 focus:ring-blue-500">
+                        <svg class="w-3.5 h-3.5 text-gray-400 absolute left-2.5 top-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/></svg>
+                    </div>
+                </div>
+            </div>
+
+            {{-- Table Body (Scrollable) --}}
+            <div class="overflow-x-auto overflow-y-auto flex-1 p-0">
+                <table class="w-full text-xs text-left">
+                    <thead class="bg-gray-100 text-gray-600 font-bold uppercase sticky top-0 z-10 border-b border-gray-200">
+                        <tr>
+                            <th class="px-4 py-2.5 w-24">Tanggal</th>
+                            <th class="px-4 py-2.5 w-36">No. Jurnal / Ref</th>
+                            <th class="px-4 py-2.5">Keterangan / Memo</th>
+                            <th class="px-4 py-2.5 text-right w-28">Debit (Rp)</th>
+                            <th class="px-4 py-2.5 text-right w-28">Kredit (Rp)</th>
+                            <th class="px-4 py-2.5 text-right w-36">Saldo Berjalan (Rp)</th>
+                        </tr>
+                    </thead>
+                    <tbody class="divide-y divide-gray-100">
+                        {{-- Row Saldo Awal --}}
+                        <tr class="bg-slate-50/80 font-semibold text-slate-700">
+                            <td class="px-4 py-2.5 text-gray-400 font-mono">{{ $ledgerStartDate ?: '-' }}</td>
+                            <td class="px-4 py-2.5 text-gray-500 italic">SALDO-AWAL</td>
+                            <td class="px-4 py-2.5 text-gray-600 italic">Saldo awal sebelum periode pencatatan terpilih</td>
+                            <td class="px-4 py-2.5 text-right text-gray-400">-</td>
+                            <td class="px-4 py-2.5 text-right text-gray-400">-</td>
+                            <td class="px-4 py-2.5 text-right font-mono font-bold {{ $ledgerData['openingBalance'] < 0 ? 'text-red-600 bg-red-100/60' : 'text-slate-800' }}">
+                                {{ number_format($ledgerData['openingBalance'], 0, ',', '.') }}
+                            </td>
+                        </tr>
+
+                        {{-- Rows Mutasi Jurnal --}}
+                        @forelse($ledgerData['rows'] as $row)
+                        <tr class="transition duration-100 hover:bg-blue-50/50 {{ $row['is_negative'] ? 'bg-red-50/80' : '' }}">
+                            <td class="px-4 py-2.5 font-mono text-gray-700 whitespace-nowrap">{{ $row['date'] }}</td>
+                            <td class="px-4 py-2.5 whitespace-nowrap">
+                                <div class="font-mono font-semibold text-blue-900">{{ $row['journal_number'] }}</div>
+                                @if(!empty($row['reference_no']) && $row['reference_no'] !== '-')
+                                <div class="text-[10px] text-gray-500 font-mono">Ref: {{ $row['reference_no'] }}</div>
+                                @endif
+                            </td>
+                            <td class="px-4 py-2.5">
+                                <div class="text-gray-900 font-medium">{{ $row['description'] }}</div>
+                                @if(!empty($row['note']))
+                                <div class="text-[11px] text-gray-500 mt-0.5">{{ $row['note'] }}</div>
+                                @endif
+                                <div class="text-[10px] text-slate-400 mt-0.5">Oleh: {{ $row['creator_name'] }}</div>
+                            </td>
+                            <td class="px-4 py-2.5 text-right font-mono text-emerald-700">
+                                {{ $row['debit'] > 0 ? number_format($row['debit'], 0, ',', '.') : '-' }}
+                            </td>
+                            <td class="px-4 py-2.5 text-right font-mono text-amber-700">
+                                {{ $row['credit'] > 0 ? number_format($row['credit'], 0, ',', '.') : '-' }}
+                            </td>
+                            <td class="px-4 py-2.5 text-right font-mono font-bold whitespace-nowrap {{ $row['is_negative'] ? 'text-red-700 bg-red-100 font-black' : 'text-gray-900' }}">
+                                @if($row['is_negative'])
+                                <span class="inline-flex items-center gap-1 text-red-600 mr-1" title="Transaksi ini menyebabkan atau berada pada saldo minus">
+                                    <svg class="w-3.5 h-3.5 inline" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7 4a1 1 0 11-2 0 1 1 0 012 0zm-1-9a1 1 0 00-1 1v4a1 1 0 102 0V6a1 1 0 00-1-1z" clip-rule="evenodd"/></svg>
+                                </span>
+                                @endif
+                                {{ number_format($row['running_balance'], 0, ',', '.') }}
+                            </td>
+                        </tr>
+                        @empty
+                        <tr>
+                            <td colspan="6" class="px-4 py-8 text-center text-gray-500">
+                                Tidak ada mutasi jurnal untuk akun ini pada periode yang dipilih.
+                            </td>
+                        </tr>
+                        @endforelse
+                    </tbody>
+                    <tfoot class="bg-gray-100 font-bold border-t-2 border-gray-300 sticky bottom-0">
+                        <tr>
+                            <td colspan="3" class="px-4 py-2.5 text-right uppercase text-gray-600">Total Periode:</td>
+                            <td class="px-4 py-2.5 text-right font-mono text-emerald-700">Rp {{ number_format($ledgerData['totalDebit'], 0, ',', '.') }}</td>
+                            <td class="px-4 py-2.5 text-right font-mono text-amber-700">Rp {{ number_format($ledgerData['totalCredit'], 0, ',', '.') }}</td>
+                            <td class="px-4 py-2.5 text-right font-mono font-black {{ $ledgerData['closingBalance'] < 0 ? 'text-red-700 bg-red-200' : 'text-blue-900' }}">
+                                Rp {{ number_format($ledgerData['closingBalance'], 0, ',', '.') }}
+                            </td>
+                        </tr>
+                    </tfoot>
+                </table>
+            </div>
+
+            {{-- Footer Modal --}}
+            <div class="p-4 border-t border-gray-200 bg-gray-50 flex items-center justify-between">
+                <span class="text-xs text-gray-500">
+                    Menampilkan {{ $ledgerData['count'] }} baris transaksi jurnal.
+                </span>
+                <button wire:click="closeLedgerModal"
+                        class="px-5 py-2 bg-gray-700 hover:bg-gray-800 text-white rounded-lg text-sm font-semibold transition shadow-sm">
+                    Tutup
+                </button>
             </div>
         </div>
     </div>
