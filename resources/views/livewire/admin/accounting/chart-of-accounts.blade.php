@@ -341,6 +341,7 @@
                             <th class="px-4 py-2.5 text-right w-28">Debit (Rp)</th>
                             <th class="px-4 py-2.5 text-right w-28">Kredit (Rp)</th>
                             <th class="px-4 py-2.5 text-right w-36">Saldo Berjalan (Rp)</th>
+                            <th class="px-3 py-2.5 text-center w-16">Aksi</th>
                         </tr>
                     </thead>
                     <tbody class="divide-y divide-gray-100">
@@ -354,6 +355,7 @@
                             <td class="px-4 py-2.5 text-right font-mono font-bold {{ $ledgerData['openingBalance'] < 0 ? 'text-red-600 bg-red-100/60' : 'text-slate-800' }}">
                                 {{ number_format($ledgerData['openingBalance'], 0, ',', '.') }}
                             </td>
+                            <td class="px-3 py-2.5 text-center text-gray-300">-</td>
                         </tr>
 
                         {{-- Rows Mutasi Jurnal --}}
@@ -387,10 +389,22 @@
                                 @endif
                                 {{ number_format($row['running_balance'], 0, ',', '.') }}
                             </td>
+                            <td class="px-3 py-2.5 text-center whitespace-nowrap">
+                                @if($this->canManage())
+                                <button type="button" wire:click="openEditJournalModal({{ $row['journal_id'] }})"
+                                        class="px-2 py-1 bg-amber-50 hover:bg-amber-100 text-amber-800 border border-amber-300 rounded text-[11px] font-semibold transition inline-flex items-center gap-1 shadow-2xs"
+                                        title="Edit Jurnal {{ $row['journal_number'] }} Langsung di Sini">
+                                    <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"/></svg>
+                                    <span>Edit</span>
+                                </button>
+                                @else
+                                <span class="text-[10px] text-gray-400">-</span>
+                                @endif
+                            </td>
                         </tr>
                         @empty
                         <tr>
-                            <td colspan="6" class="px-4 py-8 text-center text-gray-500">
+                            <td colspan="7" class="px-4 py-8 text-center text-gray-500">
                                 Tidak ada mutasi jurnal untuk akun ini pada periode yang dipilih.
                             </td>
                         </tr>
@@ -404,6 +418,7 @@
                             <td class="px-4 py-2.5 text-right font-mono font-black {{ $ledgerData['closingBalance'] < 0 ? 'text-red-700 bg-red-200' : 'text-blue-900' }}">
                                 Rp {{ number_format($ledgerData['closingBalance'], 0, ',', '.') }}
                             </td>
+                            <td class="px-3 py-2.5"></td>
                         </tr>
                     </tfoot>
                 </table>
@@ -417,6 +432,155 @@
                 <button wire:click="closeLedgerModal"
                         class="px-5 py-2 bg-gray-700 hover:bg-gray-800 text-white rounded-lg text-sm font-semibold transition shadow-sm">
                     Tutup
+                </button>
+            </div>
+        </div>
+    </div>
+    @endif
+
+    {{-- SUB-MODAL EDIT JURNAL LANGSUNG (DIRECT IN-PLACE JOURNAL EDIT) --}}
+    @if($isJournalEditModalOpen)
+    <div class="fixed inset-0 bg-black/70 z-[60] flex items-center justify-center p-3 md:p-6 overflow-y-auto"
+         style="position: fixed; z-index: 60;"
+         wire:keydown.escape="closeEditJournalModal">
+        <div class="bg-white w-full max-w-4xl rounded-2xl shadow-2xl flex flex-col max-h-[94vh] overflow-hidden border border-gray-300">
+            {{-- Header Edit Jurnal --}}
+            <div class="p-5 border-b border-gray-200 bg-slate-900 text-white flex justify-between items-center">
+                <div class="flex items-center gap-3">
+                    <span class="p-2 rounded-lg bg-amber-500/20 text-amber-300 border border-amber-400/30">
+                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"/></svg>
+                    </span>
+                    <div>
+                        <h3 class="font-bold text-lg text-white">Edit Jurnal Transaksi</h3>
+                        <p class="text-xs text-slate-300 font-mono">No. Jurnal: <span class="text-amber-300 font-semibold">{{ $editJournalNumber }}</span></p>
+                    </div>
+                </div>
+                <button wire:click="closeEditJournalModal" class="text-slate-400 hover:text-white text-2xl leading-none p-1 rounded-lg hover:bg-white/10 transition">&times;</button>
+            </div>
+
+            {{-- Form Fields --}}
+            <div class="p-6 space-y-4 overflow-y-auto flex-1">
+                @if($errors->has('editBalance'))
+                <div class="bg-red-50 border-l-4 border-red-500 p-3 rounded text-red-700 text-xs flex items-center gap-2">
+                    <svg class="w-5 h-5 text-red-500 shrink-0" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7 4a1 1 0 11-2 0 1 1 0 012 0zm-1-9a1 1 0 00-1 1v4a1 1 0 102 0V6a1 1 0 00-1-1z" clip-rule="evenodd"/></svg>
+                    <span>{{ $errors->first('editBalance') }}</span>
+                </div>
+                @endif
+
+                <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+                    <div>
+                        <label class="block text-xs font-bold text-gray-700 mb-1">Tanggal Transaksi <span class="text-red-500">*</span></label>
+                        <input type="date" wire:model="editTransactionDate" class="w-full border rounded-lg px-3 py-2 text-sm focus:ring-1 focus:ring-blue-500">
+                        @error('editTransactionDate') <span class="text-red-500 text-xs">{{ $message }}</span> @enderror
+                    </div>
+                    <div>
+                        <label class="block text-xs font-bold text-gray-700 mb-1">No. Referensi (Invoice/Kuitansi)</label>
+                        <input type="text" wire:model="editReferenceNo" placeholder="Contoh: INV-2026/09/001" class="w-full border rounded-lg px-3 py-2 text-sm font-mono focus:ring-1 focus:ring-blue-500">
+                        @error('editReferenceNo') <span class="text-red-500 text-xs">{{ $message }}</span> @enderror
+                    </div>
+                    <div>
+                        <label class="block text-xs font-bold text-gray-700 mb-1">Keterangan / Deskripsi Jurnal <span class="text-red-500">*</span></label>
+                        <input type="text" wire:model="editDescription" placeholder="Uraian transaksi..." class="w-full border rounded-lg px-3 py-2 text-sm focus:ring-1 focus:ring-blue-500">
+                        @error('editDescription') <span class="text-red-500 text-xs">{{ $message }}</span> @enderror
+                    </div>
+                </div>
+
+                {{-- Dynamic Debit & Credit Items --}}
+                <div class="space-y-2 pt-2">
+                    <div class="flex justify-between items-center">
+                        <label class="block text-xs font-bold uppercase tracking-wide text-gray-600">Rincian Pos Debit & Kredit</label>
+                        <button type="button" wire:click="addEditJournalItem" class="text-xs bg-blue-50 hover:bg-blue-100 text-blue-700 font-semibold px-2.5 py-1 rounded-lg border border-blue-200 transition flex items-center gap-1">
+                            <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/></svg>
+                            <span>Tambah Baris</span>
+                        </button>
+                    </div>
+
+                    <div class="border rounded-xl overflow-hidden bg-slate-50/50">
+                        <table class="w-full text-xs">
+                            <thead class="bg-gray-100 text-gray-600 font-bold uppercase border-b">
+                                <tr>
+                                    <th class="px-3 py-2 text-left">Pilih Akun (COA)</th>
+                                    <th class="px-3 py-2 text-left w-48">Catatan / Note</th>
+                                    <th class="px-3 py-2 text-right w-36">Debit (Rp)</th>
+                                    <th class="px-3 py-2 text-right w-36">Kredit (Rp)</th>
+                                    <th class="px-2 py-2 text-center w-10"></th>
+                                </tr>
+                            </thead>
+                            <tbody class="divide-y divide-gray-200 bg-white">
+                                @foreach($editItems as $idx => $item)
+                                <tr>
+                                    <td class="p-2">
+                                        <select wire:model="editItems.{{ $idx }}.account_id" class="w-full border border-gray-300 rounded-lg px-2 py-1.5 text-xs bg-white focus:ring-1 focus:ring-blue-500">
+                                            <option value="">-- Pilih Akun --</option>
+                                            @foreach($allActiveAccounts as $accOpt)
+                                                <option value="{{ $accOpt->id }}">{{ $accOpt->code }} - {{ $accOpt->name }}</option>
+                                            @endforeach
+                                        </select>
+                                        @error('editItems.'.$idx.'.account_id') <span class="text-red-500 text-[10px] block mt-0.5">{{ $message }}</span> @enderror
+                                    </td>
+                                    <td class="p-2">
+                                        <input type="text" wire:model="editItems.{{ $idx }}.note" placeholder="Memo baris..." class="w-full border border-gray-300 rounded-lg px-2 py-1.5 text-xs focus:ring-1 focus:ring-blue-500">
+                                    </td>
+                                    <td class="p-2 text-right">
+                                        <input type="number" step="any" wire:model.live.debounce.300ms="editItems.{{ $idx }}.debit" wire:change="calculateEditJournalTotal"
+                                               class="w-full border border-gray-300 rounded-lg px-2 py-1.5 text-xs text-right font-mono text-emerald-700 font-semibold focus:ring-1 focus:ring-blue-500">
+                                    </td>
+                                    <td class="p-2 text-right">
+                                        <input type="number" step="any" wire:model.live.debounce.300ms="editItems.{{ $idx }}.credit" wire:change="calculateEditJournalTotal"
+                                               class="w-full border border-gray-300 rounded-lg px-2 py-1.5 text-xs text-right font-mono text-amber-700 font-semibold focus:ring-1 focus:ring-blue-500">
+                                    </td>
+                                    <td class="p-2 text-center">
+                                        @if(count($editItems) > 2)
+                                        <button type="button" wire:click="removeEditJournalItem({{ $idx }})" class="text-gray-400 hover:text-red-600 p-1 rounded transition" title="Hapus baris ini">
+                                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/></svg>
+                                        </button>
+                                        @endif
+                                    </td>
+                                </tr>
+                                @endforeach
+                            </tbody>
+                            <tfoot class="bg-gray-100 font-bold border-t">
+                                <tr>
+                                    <td colspan="2" class="px-3 py-2 text-right uppercase text-gray-600">Total Input:</td>
+                                    <td class="px-3 py-2 text-right font-mono text-emerald-700">Rp {{ number_format($editTotalDebit, 0, ',', '.') }}</td>
+                                    <td class="px-3 py-2 text-right font-mono text-amber-700">Rp {{ number_format($editTotalCredit, 0, ',', '.') }}</td>
+                                    <td></td>
+                                </tr>
+                            </tfoot>
+                        </table>
+                    </div>
+                </div>
+
+                {{-- Balance Status Bar --}}
+                @php
+                    $isBalanced = abs($editTotalDebit - $editTotalCredit) <= 1 && $editTotalDebit > 0;
+                @endphp
+                <div class="p-3 rounded-xl border flex items-center justify-between text-xs {{ $isBalanced ? 'bg-green-50 border-green-300 text-green-800' : 'bg-amber-50 border-amber-300 text-amber-800' }}">
+                    <div class="flex items-center gap-2">
+                        @if($isBalanced)
+                            <svg class="w-4 h-4 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/></svg>
+                            <span class="font-bold">STATUS BALANCE:</span>
+                            <span>Debit & Kredit sudah seimbang (Rp {{ number_format($editTotalDebit, 0, ',', '.') }}).</span>
+                        @else
+                            <svg class="w-4 h-4 text-amber-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"/></svg>
+                            <span class="font-bold">BELUM BALANCE:</span>
+                            <span>Selisih Rp {{ number_format(abs($editTotalDebit - $editTotalCredit), 0, ',', '.') }}. Total debit harus sama dengan total kredit.</span>
+                        @endif
+                    </div>
+                </div>
+            </div>
+
+            {{-- Footer Modal Edit --}}
+            <div class="p-4 border-t border-gray-200 bg-gray-50 flex items-center justify-end gap-2">
+                <button type="button" wire:click="closeEditJournalModal" class="px-4 py-2 border rounded-lg bg-white text-gray-700 hover:bg-gray-100 text-sm font-semibold transition">
+                    Batal
+                </button>
+                <button type="button" wire:click="saveEditedJournal" wire:loading.attr="disabled"
+                        class="px-6 py-2 bg-blue-900 hover:bg-blue-800 text-white rounded-lg text-sm font-bold shadow-md transition flex items-center gap-1.5">
+                    <svg wire:loading.remove wire:target="saveEditedJournal" class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/></svg>
+                    <svg wire:loading wire:target="saveEditedJournal" class="animate-spin w-4 h-4 text-white" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg>
+                    <span wire:loading.remove wire:target="saveEditedJournal">Simpan Perubahan Jurnal</span>
+                    <span wire:loading wire:target="saveEditedJournal">Menyimpan...</span>
                 </button>
             </div>
         </div>

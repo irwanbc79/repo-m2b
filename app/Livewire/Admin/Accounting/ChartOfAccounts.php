@@ -6,6 +6,8 @@ use Livewire\Component;
 use Livewire\WithPagination;
 use App\Models\Account;
 use App\Models\JournalItem;
+use App\Models\Journal;
+use Illuminate\Support\Facades\DB;
 
 class ChartOfAccounts extends Component
 {
@@ -25,6 +27,17 @@ class ChartOfAccounts extends Component
     public $ledgerEndDate = '';
     public $ledgerPeriodPreset = 'all'; // 'all', 'this_month', 'this_year', 'custom'
     public $ledgerSearch = '';
+
+    // State Modal Edit Jurnal Langsung (Direct In-Place Journal Edit)
+    public $isJournalEditModalOpen = false;
+    public $editingJournalId = null;
+    public $editJournalNumber = '';
+    public $editTransactionDate = '';
+    public $editReferenceNo = '';
+    public $editDescription = '';
+    public $editItems = [];
+    public $editTotalDebit = 0;
+    public $editTotalCredit = 0;
 
     // Form Data
     public $code, $name, $type, $opening_balance = 0;
@@ -288,6 +301,169 @@ class ChartOfAccounts extends Component
         ];
     }
 
+    // ==========================================
+    // LOGIKA EDIT JURNAL LANGSUNG DARI MODAL COA
+    // ==========================================
+
+    public function openEditJournalModal($journalId)
+    {
+        abort_unless($this->canManage(), 403, 'Anda tidak memiliki hak untuk mengubah jurnal.');
+
+        $journal = Journal::with('items')->findOrFail($journalId);
+
+        // Cek apakah terhubung dengan transaksi kasir yang sudah diapprove
+        if (method_exists($journal, 'cashTransactions') && $journal->cashTransactions()->exists()) {
+            $linked = $journal->cashTransactions()->first();
+            if ($linked && method_exists($linked, 'isApproved') && $linked->isApproved()) {
+                session()->flash('error', "Jurnal {$journal->journal_number} terhubung dengan transaksi Kasir yang sudah diverifikasi accounting. Buat jurnal balik atau batalkan verifikasi kasir terlebih dahulu.");
+                return;
+            }
+        }
+
+        $this->editingJournalId = $journal->id;
+        $this->editJournalNumber = $journal->journal_number;
+        $this->editTransactionDate = $journal->transaction_date ? $journal->transaction_date->format('Y-m-d') : date('Y-m-d');
+        $this->editReferenceNo = $journal->reference_no ?? '';
+        $this->editDescription = $journal->description ?? '';
+
+        $this->editItems = [];
+        foreach ($journal->items as $item) {
+            $this->editItems[] = [
+                'account_id' => (string) $item->account_id,
+                'debit' => (float) $item->debit,
+                'credit' => (float) $item->credit,
+                'note' => $item->note ?? '',
+            ];
+        }
+
+        if (count($this->editItems) < 2) {
+            $this->editItems[] = ['account_id' => '', 'debit' => 0, 'credit' => 0, 'note' => ''];
+        }
+
+        $this->calculateEditJournalTotal();
+        $this->isJournalEditModalOpen = true;
+    }
+
+    public function closeEditJournalModal()
+    {
+        $this->isJournalEditModalOpen = false;
+        $this->editingJournalId = null;
+        $this->editItems = [];
+        $this->resetValidation(['editTransactionDate', 'editDescription', 'editItems', 'editBalance']);
+    }
+
+    public function addEditJournalItem()
+    {
+        $this->editItems[] = ['account_id' => '', 'debit' => 0, 'credit' => 0, 'note' => ''];
+        $this->calculateEditJournalTotal();
+    }
+
+    public function removeEditJournalItem($index)
+    {
+        if (count($this->editItems) <= 2) {
+            session()->flash('error', 'Jurnal minimal harus memiliki 2 baris (Debit & Kredit).');
+            return;
+        }
+        unset($this->editItems[$index]);
+        $this->editItems = array_values($this->editItems);
+        $this->calculateEditJournalTotal();
+    }
+
+    public function updatedEditItems()
+    {
+        $this->calculateEditJournalTotal();
+    }
+
+    public function calculateEditJournalTotal()
+    {
+        $this->editTotalDebit = 0;
+        $this->editTotalCredit = 0;
+
+        foreach ($this->editItems as $item) {
+            $this->editTotalDebit += (float) ($item['debit'] ?? 0);
+            $this->editTotalCredit += (float) ($item['credit'] ?? 0);
+        }
+    }
+
+    public function saveEditedJournal()
+    {
+        abort_unless($this->canManage(), 403, 'Anda tidak memiliki hak untuk mengubah jurnal.');
+
+        $this->validate([
+            'editTransactionDate' => 'required|date',
+            'editDescription' => 'required|string|max:500',
+            'editItems' => 'required|array|min:2',
+            'editItems.*.account_id' => 'required',
+        ], [
+            'editTransactionDate.required' => 'Tanggal transaksi wajib diisi.',
+            'editDescription.required' => 'Keterangan jurnal wajib diisi.',
+            'editItems.*.account_id.required' => 'Setiap baris wajib memilih Akun.',
+        ]);
+
+        $this->calculateEditJournalTotal();
+
+        if (abs($this->editTotalDebit - $this->editTotalCredit) > 1) {
+            $diff = abs($this->editTotalDebit - $this->editTotalCredit);
+            $this->addError('editBalance', 'Jurnal tidak balance! Selisih: Rp ' . number_format($diff, 0, ',', '.'));
+            return;
+        }
+
+        if ($this->editTotalDebit <= 0) {
+            $this->addError('editBalance', 'Nominal debit & kredit transaksi tidak boleh nol.');
+            return;
+        }
+
+        $journal = Journal::with('items')->findOrFail($this->editingJournalId);
+
+        // Catat akun-akun lama yang terlibat untuk sinkronisasi saldo
+        $affectedAccountIds = $journal->items->pluck('account_id')->toArray();
+
+        DB::transaction(function () use ($journal, &$affectedAccountIds) {
+            $journal->update([
+                'transaction_date' => $this->editTransactionDate,
+                'description' => $this->editDescription,
+                'reference_no' => $this->editReferenceNo,
+            ]);
+
+            // Hapus item lama
+            $journal->items()->delete();
+
+            // Buat item baru
+            foreach ($this->editItems as $item) {
+                $accountId = (int) $item['account_id'];
+                $affectedAccountIds[] = $accountId;
+
+                JournalItem::create([
+                    'journal_id' => $journal->id,
+                    'account_id' => $accountId,
+                    'debit' => (float) ($item['debit'] ?? 0),
+                    'credit' => (float) ($item['credit'] ?? 0),
+                    'note' => !empty($item['note']) ? $item['note'] : null,
+                    'description' => $this->editDescription,
+                ]);
+            }
+
+            // Rekalkulasi saldo seluruh akun yang terpengaruh
+            $uniqueAccountIds = array_unique(array_filter($affectedAccountIds));
+            foreach ($uniqueAccountIds as $accId) {
+                $acc = Account::find($accId);
+                if ($acc) {
+                    $acc->recalculateBalance();
+                }
+            }
+        });
+
+        \App\Models\ActivityLog::record(
+            'Accounting',
+            'UPDATE_JOURNAL_FROM_COA',
+            $journal->journal_number,
+            "Edit jurnal {$journal->journal_number} dari menu COA: {$this->editDescription} (Total: Rp " . number_format($this->editTotalDebit, 0, ',', '.') . ")"
+        );
+
+        session()->flash('message', "Jurnal {$journal->journal_number} berhasil diperbarui dan saldo akun telah disinkronkan.");
+        $this->closeEditJournalModal();
+    }
+
     public function render()
     {
         abort_unless($this->canAccess(), 403, 'Anda tidak memiliki akses ke bagan akun.');
@@ -308,11 +484,13 @@ class ChartOfAccounts extends Component
 
         $stats = $this->getStats();
         $ledgerData = $this->isLedgerModalOpen ? $this->getLedgerData() : null;
+        $allActiveAccounts = $this->isJournalEditModalOpen ? Account::aktif()->orderBy('code')->get() : [];
 
         return view('livewire.admin.accounting.chart-of-accounts', [
             'accounts' => $accounts,
             'stats' => $stats,
             'ledgerData' => $ledgerData,
+            'allActiveAccounts' => $allActiveAccounts,
         ])->layout('layouts.admin');
     }
 

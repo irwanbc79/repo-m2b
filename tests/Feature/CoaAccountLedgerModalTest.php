@@ -158,4 +158,87 @@ class CoaAccountLedgerModalTest extends TestCase
         $ledgerDataEmpty = $test->instance()->getLedgerData();
         $this->assertCount(0, $ledgerDataEmpty['rows']);
     }
+
+    public function test_can_open_edit_journal_modal_and_save_changes_directly_from_coa()
+    {
+        $accountPiutang = Account::create([
+            'code' => 'TEST-1105',
+            'name' => 'Piutang Koreksi Langsung',
+            'type' => 'piutang',
+            'opening_balance' => 500000,
+            'current_balance' => 500000,
+            'is_active' => true,
+        ]);
+
+        $accountKas = Account::create([
+            'code' => 'TEST-1106',
+            'name' => 'Kas Koreksi Langsung',
+            'type' => 'kas_bank',
+            'opening_balance' => 1000000,
+            'current_balance' => 1000000,
+            'is_active' => true,
+        ]);
+
+        // Jurnal yang salah: Kredit Piutang 800.000 (menyebabkan Piutang jadi minus Rp -300.000)
+        $journal = Journal::create([
+            'journal_number' => 'JRN-WRONG-01',
+            'reference_no' => 'INV-SALAH',
+            'transaction_date' => now()->format('Y-m-d'),
+            'description' => 'Salah catat nominal pembayaran',
+            'created_by' => $this->admin->id,
+        ]);
+
+        JournalItem::create([
+            'journal_id' => $journal->id,
+            'account_id' => $accountKas->id,
+            'debit' => 800000,
+            'credit' => 0,
+            'note' => 'Penerimaan',
+        ]);
+
+        JournalItem::create([
+            'journal_id' => $journal->id,
+            'account_id' => $accountPiutang->id,
+            'debit' => 0,
+            'credit' => 800000,
+            'note' => 'Piutang kelebihan catat',
+        ]);
+
+        $accountPiutang->recalculateBalance();
+        $this->assertEquals(-300000, $accountPiutang->fresh()->current_balance);
+
+        // Buka COA -> Buka Modal Jurnal Akun -> Buka Modal Edit Jurnal Langsung
+        $component = Livewire::actingAs($this->admin)
+            ->test(ChartOfAccounts::class)
+            ->call('openLedgerModal', $accountPiutang->id)
+            ->assertSet('isLedgerModalOpen', true)
+            ->call('openEditJournalModal', $journal->id)
+            ->assertSet('isJournalEditModalOpen', true)
+            ->assertSet('editJournalNumber', 'JRN-WRONG-01')
+            ->assertSet('editDescription', 'Salah catat nominal pembayaran');
+
+        // Kinan mengoreksi nominal kredit dari 800.000 menjadi 300.000 (dan debit kas jadi 300.000)
+        $component->set('editDescription', 'Koreksi pembayaran piutang yang benar')
+            ->set('editItems.0.debit', 300000)
+            ->set('editItems.1.credit', 300000)
+            ->call('saveEditedJournal')
+            ->assertSet('isJournalEditModalOpen', false)
+            ->assertHasNoErrors();
+
+        // Verifikasi database jurnal terupdate
+        $this->assertDatabaseHas('journals', [
+            'id' => $journal->id,
+            'description' => 'Koreksi pembayaran piutang yang benar',
+        ]);
+
+        // Verifikasi saldo piutang kini sudah tidak minus: 500.000 - 300.000 = +200.000
+        $this->assertEquals(200000, (float) $accountPiutang->fresh()->current_balance);
+        $this->assertEquals(1300000, (float) $accountKas->fresh()->current_balance);
+
+        // Verifikasi data ledger di modal COA otomatis terefleksi dan saldo minus sudah hilang!
+        $updatedLedgerData = $component->instance()->getLedgerData();
+        $this->assertEquals(200000, $updatedLedgerData['closingBalance']);
+        $this->assertFalse($updatedLedgerData['hasNegativeBalance']);
+    }
 }
+
