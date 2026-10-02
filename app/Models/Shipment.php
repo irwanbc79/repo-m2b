@@ -427,6 +427,16 @@ class Shipment extends Model
         return $this->hasMany(ShipmentEtaRevision::class)->latest();
     }
 
+    public function complianceAudits(): HasMany
+    {
+        return $this->hasMany(ShipmentComplianceAudit::class)->latest();
+    }
+
+    public function latestComplianceAudit(): HasOne
+    {
+        return $this->hasOne(ShipmentComplianceAudit::class)->latestOfMany();
+    }
+
     /**
      * Item checklist kelengkapan dokumen (F1/F2).
      */
