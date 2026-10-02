@@ -502,6 +502,9 @@
                     <div class="text-center py-10 text-gray-400 text-sm italic border-2 border-dashed border-gray-100 rounded-lg">Belum ada dokumen publik.</div>
                 @endif
             </div>
+
+            {{-- ===== PRA-AUDIT KEPATUHAN BERKAS (AI INTELIJEN PABEAN) ===== --}}
+            <livewire:admin.shipment-compliance-panel :shipment-id="$shipment->id" :key="'compliance-panel-'.$shipment->id" />
         </div>
 
         {{-- KOLOM KANAN: TOOLS ADMIN --}}
