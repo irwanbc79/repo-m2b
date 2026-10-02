@@ -341,7 +341,7 @@
                         if (str_starts_with($cleanPhone, '0')) {
                             $cleanPhone = '62' . substr($cleanPhone, 1);
                         }
-                        $waUrl = 'https://wa.me/' . $cleanPhone . '?text=' . urlencode($waText);
+                        $waUrl = 'https://wa.me/' . $cleanPhone . '?text=' . rawurlencode($waText);
                     @endphp
 
                     <a

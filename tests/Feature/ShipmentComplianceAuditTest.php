@@ -107,9 +107,11 @@ class ShipmentComplianceAuditTest extends TestCase
         $this->assertStringContainsString('UPDATE PRA-VERIFIKASI DOKUMEN PABEAN — M2B LOGISTICS', $waText);
         $this->assertStringContainsString('PT Sumber Makmur Impor', $waText);
         $this->assertStringContainsString('BL-SML-202610-001', $waText);
+        $this->assertStringContainsString('[PERLU KONFIRMASI DOKUMEN]', $waText);
         $this->assertStringContainsString('Third Party Invoicing', $waText);
         $this->assertStringContainsString('Tim M2B', $waText);
-        $this->assertStringNotContainsString('Ahli Kepabeanan M2B', $waText);
+        $this->assertStringContainsString('PT. Mora Multi Berkah', $waText);
+        $this->assertStringNotContainsString('Multi Modern Berdikari', $waText);
     }
 
     public function test_livewire_compliance_panel_renders_and_handles_resolution(): void

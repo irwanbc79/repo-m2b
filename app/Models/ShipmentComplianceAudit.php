@@ -118,7 +118,8 @@ class ShipmentComplianceAudit extends Model
         $text .= "Berikut ringkasan hasil uji kesiapan dokumen impor pra-aju untuk pengapalan Anda:\n";
         $text .= "• *No. B/L / AWB:* {$bl}\n";
         $text .= "• *Vessel / Sarana Pengangkut:* {$vessel}\n";
-        $text .= "• *Status Kesiapan:* " . ($this->effective_status === 'COMPLIANT' ? '✅ SIAP AJU (COMPLIANT)' : '⚠️ PERLU KONFIRMASI DOKUMEN') . "\n\n";
+        $statusLabel = $this->effective_status === 'COMPLIANT' ? '[SIAP AJU / COMPLIANT]' : '[PERLU KONFIRMASI DOKUMEN]';
+        $text .= "• *Status Kesiapan:* {$statusLabel}\n\n";
 
         $findings = $this->findings ?: [];
         $openFindings = array_filter($findings, fn ($f) => empty($f['resolved_at']) && ($f['status'] ?? '') !== 'RESOLVED');
@@ -138,7 +139,7 @@ class ShipmentComplianceAudit extends Model
             $text .= "Seluruh dokumen utama (B/L, Invoice, Packing List, serta SKA) telah sinkron dan siap diproses ke sistem kepabeanan.\n\n";
         }
 
-        $text .= "*Salam hormat,*\n*Tim M2B*\n_PT Multi Modern Berdikari_";
+        $text .= "*Salam hormat,*\n*Tim M2B*\n_PT. Mora Multi Berkah_";
 
         return $text;
     }

@@ -72,11 +72,16 @@ class ComplianceAuditService
 
         [$systemPrompt, $userPrompt] = $this->buildPrompts($shipmentInfo, $docSummaries);
 
+        // Kumpulkan file inline data (PDF/Gambar) untuk dokumen pabean utama
+        $inlineParts = $this->collectDocumentParts($documents);
+
         // Prioritas pemanggilan: Gemini lebih dulu (karena multimodal & context besar), fallback ke DeepSeek
         $provider = ! empty(config('services.gemini.key')) ? 'gemini' : 'deepseek';
-        $model = config("services.{$provider}.model");
+        $model = $provider === 'gemini'
+            ? config('services.gemini.compliance_model', env('GEMINI_COMPLIANCE_MODEL', 'gemini-1.5-pro'))
+            : config('services.deepseek.model', 'deepseek-chat');
 
-        $rawResponse = $this->callProvider($provider, $systemPrompt, $userPrompt);
+        $rawResponse = $this->callProvider($provider, $systemPrompt, $userPrompt, $inlineParts, $model);
         $parsed = $this->parseResponse($rawResponse);
 
         $findings = array_map(function ($f, $idx) {
@@ -107,6 +112,8 @@ class ComplianceAuditService
             'document_snapshots' => $snapshots,
             'token_usage' => [
                 'provider' => $provider,
+                'model' => $model,
+                'multimodal_docs_count' => count($inlineParts),
                 'audited_at' => now()->toDateTimeString(),
             ],
             'disclaimer' => self::DISCLAIMER,
@@ -116,88 +123,111 @@ class ComplianceAuditService
             'Shipment',
             'PRA-AUDIT DOKUMEN (AI)',
             $shipment->awb_number ?: "ID-{$shipment->id}",
-            "Status: {$audit->overall_status} (Skor: {$audit->compliance_score}%)"
+            "Status: {$audit->overall_status} (Skor: {$audit->compliance_score}%) [{$model}]"
         );
 
         return $audit;
     }
 
-    protected function buildPrompts(array $shipmentInfo, array $docSummaries): array
+    /**
+     * Ambil konten biner PDF / Gambar dari storage untuk dibaca langsung oleh Gemini Vision.
+     */
+    protected function collectDocumentParts($documents): array
     {
-        $systemPrompt = <<<SYS
-Anda adalah sistem pendukung intelijen kepabeanan dan logistik berstandar enterprise untuk forwarder & PPJK M2B (PT Multi Modern Berdikari).
-Tugas Anda adalah melakukan audit kepatuhan berkas pengapalan pra-aju (Pre-Clearance Compliance Audit) sebelum dokumen diajukan ke sistem pabean Bea Cukai.
+        $parts = [];
+        $allowedMimes = ['application/pdf', 'image/jpeg', 'image/png', 'image/webp'];
+        $maxBytes = 4 * 1024 * 1024; // Maksimal 4 MB per file agar efisien
 
-Fokus Analisis Anda:
-1. Kelengkapan dan keselarasan berkas pengapalan:
-   - Bill of Lading (B/L)
-   - Commercial Invoice
-   - Packing List
-   - Surat Keterangan Asal / Certificate of Origin (Form E, Form D, SKA) jika ada
-2. Rekonsiliasi & Deteksi Ketidaksesuaian Formil:
-   - Kesesuaian partai barang: Shipper, Consignee, Notify Party
-   - Kesesuaian jumlah kemasan/koli dan bobot (Gross Weight, Net Weight, CBM)
-   - Cacat formil Surat Keterangan Asal (SKA / Form E): perhatian khusus pada Box 13 (Third Party Invoicing bila diterbitkan di luar negara produsen), kesesuaian rute kapal, dan kriteria asal barang
-   - Kualitas uraian barang: apakah terlalu komersial/umum atau sudah memadai untuk kaidah penetapan pabean.
+        // Prioritaskan dokumen inti
+        $priorityTypes = ['bill of lading', 'invoice', 'packing list', 'form e', 'coo', 'ska'];
 
-Berikan output HANYA dalam format JSON valid dengan struktur berikut:
-{
-  "overall_status": "COMPLIANT|ATTENTION|CRITICAL",
-  "compliance_score": 0-100,
-  "summary": "Ringkasan eksekutif 2-3 kalimat mengenai kesiapan berkas pengapalan.",
-  "findings": [
-    {
-      "document": "B/L|Invoice|Packing List|Form E / SKA|Umum",
-      "severity": "LOW|MEDIUM|HIGH|CRITICAL",
-      "title": "Judul temuan ringkas",
-      "description": "Rincian ketidaksesuaian atau potensi risiko bila diajukan ke pabean",
-      "recommendation": "Langkah konfirmasi atau tindakan yang disarankan kepada staf/klien"
-    }
-  ]
-}
+        $sorted = $documents->sortByDesc(function ($doc) use ($priorityTypes) {
+            $type = strtolower($doc->document_type ?: ($doc->description ?: ''));
+            foreach ($priorityTypes as $p) {
+                if (str_contains($type, $p)) {
+                    return 2;
+                }
+            }
+            return 1;
+        })->take(4); // Maksimal 4 berkas inti terpenting
 
-Aturan Penilaian:
-- Bila semua berkas selaras dan tidak ditemukan risiko signifikan: overall_status = "COMPLIANT", compliance_score = 90-100, findings = [].
-- Bila ada catatan minor atau saran penyempurnaan uraian: overall_status = "ATTENTION", compliance_score = 75-89.
-- Bila ada cacat formil Form E, selisih kemasan/bobot signifikan, atau dokumen wajib belum tersedia: overall_status = "CRITICAL", compliance_score = 40-74.
-SYS;
+        foreach ($sorted as $doc) {
+            $mime = strtolower((string) ($doc->mime_type ?: ''));
+            if (! in_array($mime, $allowedMimes, true)) {
+                // Deteksi dari ekstensi jika mime_type kosong
+                $ext = strtolower(pathinfo($doc->filename, PATHINFO_EXTENSION));
+                if ($ext === 'pdf') {
+                    $mime = 'application/pdf';
+                } elseif (in_array($ext, ['jpg', 'jpeg'])) {
+                    $mime = 'image/jpeg';
+                } elseif ($ext === 'png') {
+                    $mime = 'image/png';
+                } else {
+                    continue;
+                }
+            }
 
-        $userPrompt = "Berikut data pengapalan dan daftar berkas yang diunggah:\n\n";
-        $userPrompt .= "DATA SHIPMENT M2B:\n";
-        foreach ($shipmentInfo as $k => $v) {
-            $userPrompt .= "- " . strtoupper(str_replace('_', ' ', $k)) . ": {$v}\n";
+            try {
+                $rawContent = null;
+
+                // Cek backblaze / s3 / local
+                if ($doc->file_path) {
+                    if (Storage::disk('backblaze')->exists($doc->file_path)) {
+                        $rawContent = Storage::disk('backblaze')->get($doc->file_path);
+                    } elseif (Storage::disk('public')->exists($doc->file_path)) {
+                        $rawContent = Storage::disk('public')->get($doc->file_path);
+                    } elseif (Storage::disk('local')->exists($doc->file_path)) {
+                        $rawContent = Storage::disk('local')->get($doc->file_path);
+                    }
+                }
+
+                if ($rawContent && strlen($rawContent) <= $maxBytes) {
+                    $parts[] = [
+                        'inline_data' => [
+                            'mime_type' => $mime,
+                            'data' => base64_encode($rawContent),
+                        ],
+                    ];
+                }
+            } catch (\Throwable $e) {
+                Log::warning("Gagal load file untuk compliance audit ($doc->filename): " . $e->getMessage());
+            }
         }
 
-        $userPrompt .= "\nBERKAS PENGAPALAN TERUNGGAH:\n";
-        $userPrompt .= implode("\n", $docSummaries);
-        $userPrompt .= "\n\nLakukan pra-audit dokumen secara menyeluruh dan kembalikan JSON yang diminta.";
-
-        return [$systemPrompt, $userPrompt];
+        return $parts;
     }
 
-    protected function callProvider(string $provider, string $system, string $user): string
+    protected function callProvider(string $provider, string $system, string $user, array $inlineParts = [], ?string $model = null): string
     {
         if ($provider === 'gemini') {
-            return $this->callGemini($system, $user);
+            return $this->callGemini($system, $user, $inlineParts, $model);
         }
 
-        return $this->callDeepSeek($system, $user);
+        return $this->callDeepSeek($system, $user, $model);
     }
 
-    protected function callGemini(string $system, string $user): string
+    protected function callGemini(string $system, string $user, array $inlineParts = [], ?string $model = null): string
     {
         $key = config('services.gemini.key');
-        $model = config('services.gemini.model', 'gemini-2.5-flash');
-        $endpoint = "https://generativelanguage.googleapis.com/v1beta/models/{$model}:generateContent?key=" . urlencode($key);
+        $modelName = $model ?: config('services.gemini.compliance_model', env('GEMINI_COMPLIANCE_MODEL', 'gemini-1.5-pro'));
+        $endpoint = "https://generativelanguage.googleapis.com/v1beta/models/{$modelName}:generateContent?key=" . urlencode($key);
+
+        $parts = [];
+        // Masukkan berkas dokumen fisik jika ada
+        foreach ($inlineParts as $p) {
+            $parts[] = $p;
+        }
+        // Masukkan teks instruksi user
+        $parts[] = ['text' => $user];
 
         $response = Http::withHeaders(['Content-Type' => 'application/json'])
-            ->timeout(35)
+            ->timeout(45)
             ->post($endpoint, [
                 'system_instruction' => [
                     'parts' => [['text' => $system]],
                 ],
                 'contents' => [
-                    ['parts' => [['text' => $user]]],
+                    ['parts' => $parts],
                 ],
                 'generationConfig' => [
                     'responseMimeType' => 'application/json',
@@ -206,6 +236,12 @@ SYS;
             ]);
 
         if (! $response->successful()) {
+            // Bila model Pro rate-limited atau model belum terdaftar, fallback otomatis ke flash
+            if ($modelName !== 'gemini-2.5-flash' && $modelName !== 'gemini-1.5-flash') {
+                Log::warning("Gemini Pro gagal ($modelName), mencoba fallback ke Flash...");
+                return $this->callGemini($system, $user, $inlineParts, 'gemini-2.5-flash');
+            }
+
             Log::error('Gemini Compliance Audit Failed: ' . $response->body());
             throw new RuntimeException('Panggilan Gemini API gagal: ' . ($response->json('error.message') ?: $response->status()));
         }
