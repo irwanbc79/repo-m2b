@@ -77,8 +77,9 @@ return [
         'model' => env('OPENAI_MODEL', 'gpt-4o-mini'),
     ],
     'gemini' => [
-        'key'   => env('GEMINI_API_KEY'),
-        'model' => env('GEMINI_MODEL', 'gemini-2.5-flash'),
+        'key'              => env('GEMINI_API_KEY'),
+        'model'            => env('GEMINI_MODEL', 'gemini-2.5-flash'),
+        'compliance_model' => env('GEMINI_COMPLIANCE_MODEL', 'gemini-2.5-pro'),
     ],
     'deepseek' => [
         'key'   => env('DEEPSEEK_API_KEY'),
