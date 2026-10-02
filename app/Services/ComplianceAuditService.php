@@ -78,7 +78,7 @@ class ComplianceAuditService
         // Prioritas pemanggilan: Gemini lebih dulu (karena multimodal & context besar), fallback ke DeepSeek
         $provider = ! empty(config('services.gemini.key')) ? 'gemini' : 'deepseek';
         $model = $provider === 'gemini'
-            ? config('services.gemini.compliance_model', 'gemini-2.5-pro')
+            ? config('services.gemini.compliance_model', 'gemini-3.5-flash')
             : config('services.deepseek.model', 'deepseek-chat');
 
         $rawResponse = $this->callProvider($provider, $systemPrompt, $userPrompt, $inlineParts, $model);
@@ -262,7 +262,7 @@ SYS;
     protected function callGemini(string $system, string $user, array $inlineParts = [], ?string $model = null): string
     {
         $key = config('services.gemini.key');
-        $modelName = $model ?: config('services.gemini.compliance_model', 'gemini-2.5-pro');
+        $modelName = $model ?: config('services.gemini.compliance_model', 'gemini-3.5-flash');
         $endpoint = "https://generativelanguage.googleapis.com/v1beta/models/{$modelName}:generateContent?key=" . urlencode($key);
 
         $parts = [];
@@ -274,7 +274,7 @@ SYS;
         $parts[] = ['text' => $user];
 
         $response = Http::withHeaders(['Content-Type' => 'application/json'])
-            ->timeout(90) // Pro + multimodal bisa butuh lebih lama
+            ->timeout(120) // Gemini 3.5 thinking mode + multimodal bisa butuh waktu lebih
             ->post($endpoint, [
                 'system_instruction' => [
                     'parts' => [['text' => $system]],
@@ -285,14 +285,14 @@ SYS;
                 'generationConfig' => [
                     'responseMimeType' => 'application/json',
                     'temperature' => 0.15,
-                    'maxOutputTokens' => 8192,
+                    'maxOutputTokens' => 16384,
                 ],
             ]);
 
         if (! $response->successful()) {
-            // Bila model Pro rate-limited atau model belum terdaftar, fallback otomatis ke flash
-            if ($modelName !== 'gemini-2.5-flash' && $modelName !== 'gemini-1.5-flash') {
-                Log::warning("Gemini Pro gagal ($modelName), mencoba fallback ke Flash...");
+            // Fallback chain: gemini-3.5-flash → gemini-2.5-flash
+            if ($modelName !== 'gemini-2.5-flash') {
+                Log::warning("Gemini {$modelName} gagal (HTTP {$response->status()}), mencoba fallback ke gemini-2.5-flash...");
                 return $this->callGemini($system, $user, $inlineParts, 'gemini-2.5-flash');
             }
 

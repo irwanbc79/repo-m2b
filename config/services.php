@@ -79,7 +79,7 @@ return [
     'gemini' => [
         'key'              => env('GEMINI_API_KEY'),
         'model'            => env('GEMINI_MODEL', 'gemini-2.5-flash'),
-        'compliance_model' => env('GEMINI_COMPLIANCE_MODEL', 'gemini-2.5-pro'),
+        'compliance_model' => env('GEMINI_COMPLIANCE_MODEL', 'gemini-3.5-flash'),
     ],
     'deepseek' => [
         'key'   => env('DEEPSEEK_API_KEY'),
