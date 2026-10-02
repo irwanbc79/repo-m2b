@@ -252,7 +252,7 @@
     {{-- MODAL RESOLUSI TEMUAN MANUAL --}}
     @if($showResolveModal)
         <div class="fixed inset-0 z-50 overflow-y-auto bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-4">
-            <div class="bg-white rounded-2xl shadow-xl max-w-lg w-full p-6 border border-gray-100" @click.outside="$wire.set('showResolveModal', false)">
+            <div class="bg-white rounded-2xl shadow-xl max-w-lg w-full p-6 border border-gray-100" style="position: relative; z-index: 10;" @click.outside="$wire.set('showResolveModal', false)">
                 <div class="flex items-center justify-between pb-3 border-b border-gray-100">
                     <h4 class="font-bold text-gray-900 text-sm flex items-center gap-2">
                         <span>✏️</span> Konfirmasi &amp; Selesaikan Temuan
@@ -298,7 +298,7 @@
     {{-- MODAL PRATINJAU WHATSAPP --}}
     @if($showWaModal)
         <div class="fixed inset-0 z-50 overflow-y-auto bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-4">
-            <div class="bg-white rounded-2xl shadow-xl max-w-lg w-full p-6 border border-gray-100" @click.outside="$wire.set('showWaModal', false)">
+            <div class="bg-white rounded-2xl shadow-xl max-w-lg w-full p-6 border border-gray-100" style="position: relative; z-index: 10;" @click.outside="$wire.set('showWaModal', false)">
                 <div class="flex items-center justify-between pb-3 border-b border-gray-100">
                     <h4 class="font-bold text-gray-900 text-sm flex items-center gap-2">
                         <span>💬</span> Draf Pesan WhatsApp Resmi
@@ -359,7 +359,7 @@
     {{-- MODAL PRATINJAU EMAIL --}}
     @if($showEmailModal)
         <div class="fixed inset-0 z-50 overflow-y-auto bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-4">
-            <div class="bg-white rounded-2xl shadow-xl max-w-lg w-full p-6 border border-gray-100" @click.outside="$wire.set('showEmailModal', false)">
+            <div class="bg-white rounded-2xl shadow-xl max-w-lg w-full p-6 border border-gray-100" style="position: relative; z-index: 10;" @click.outside="$wire.set('showEmailModal', false)">
                 <div class="flex items-center justify-between pb-3 border-b border-gray-100">
                     <h4 class="font-bold text-gray-900 text-sm flex items-center gap-2">
                         <span>✉️</span> Draf Email Resmi
