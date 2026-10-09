@@ -20,6 +20,7 @@ use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 use Exception;
 use Illuminate\Support\Facades\Cache;
+use App\Support\CacheHelper;
 
 class JobCostingManager extends Component
 {
@@ -600,6 +601,9 @@ class JobCostingManager extends Component
                 'invoices'
             ])->find($this->shipmentIdForCost);
             
+            Cache::forget('jobcost_stats');
+            CacheHelper::invalidateAdminStats();
+
             $this->resetInput();
             
         } catch (Exception $e) {
@@ -764,6 +768,9 @@ class JobCostingManager extends Component
                 'invoices'
             ])->find($this->shipmentIdForCost);
             
+            Cache::forget('jobcost_stats');
+            CacheHelper::invalidateAdminStats();
+
             $this->cancelDelete();
             
         } catch (Exception $e) {
@@ -779,6 +786,66 @@ class JobCostingManager extends Component
             'jobCosts.account', 
             'invoices'
         ])->find($this->shipmentIdForCost);
+    }
+
+    // =========================================
+    // MARK AS ZERO COST (JASA MURNI)
+    // =========================================
+    
+    /**
+     * Tandai shipment sebagai Jasa Murni / Zero Cost (tanpa biaya vendor).
+     * Cocok untuk layanan online (PIB/PEB online, konsultasi, dokumen dll)
+     * yang memang tidak ada direct cost vendor.
+     */
+    public function markAsZeroCost($shipmentId)
+    {
+        abort_unless($this->canAccess(), 403, 'Anda tidak memiliki akses ke Job Costing.');
+
+        try {
+            $shipment = Shipment::findOrFail($shipmentId);
+
+            // Cek apakah sudah ada biaya riil > 0
+            if ($shipment->jobCosts()->where('amount', '>', 0)->exists()) {
+                session()->flash('error', 'Shipment ini sudah memiliki biaya vendor riil. Tidak dapat ditandai sebagai Zero Cost.');
+                return;
+            }
+
+            // Jika sudah ada record zero cost, tidak perlu duplikasi
+            $existingZeroCost = $shipment->jobCosts()->where('amount', 0)->first();
+            if ($existingZeroCost) {
+                session()->flash('message', 'Shipment ini sudah berstatus Jasa Murni (Zero Cost).');
+                return;
+            }
+
+            JobCost::create([
+                'shipment_id' => $shipment->id,
+                'vendor_id'   => null,
+                'description' => 'Jasa Murni / Zero Cost (Tanpa Biaya Vendor)',
+                'amount'      => 0,
+                'status'      => 'paid',
+                'date_paid'   => now(),
+                'created_by'  => auth()->id(),
+            ]);
+
+            // Invalidate cache statistik & dashboard
+            Cache::forget('jobcost_stats');
+            CacheHelper::invalidateAdminStats();
+
+            // Refresh selected shipment jika modal sedang terbuka
+            if ($this->shipmentIdForCost == $shipmentId) {
+                $this->selectedShipment = Shipment::with([
+                    'jobCosts.vendor',
+                    'jobCosts.account',
+                    'invoices',
+                    'customer'
+                ])->find($shipmentId);
+            }
+
+            session()->flash('message', "Shipment {$shipment->awb_number} berhasil ditandai sebagai Jasa Murni (Zero Cost).");
+        } catch (\Throwable $e) {
+            Log::error('Error marking as zero cost: ' . $e->getMessage());
+            session()->flash('error', 'Gagal menandai Zero Cost: ' . $e->getMessage());
+        }
     }
 
     // =========================================
@@ -857,6 +924,9 @@ class JobCostingManager extends Component
                 'jobCosts.account', 
                 'invoices'
             ])->find($this->shipmentIdForCost);
+            
+            Cache::forget('jobcost_stats');
+            CacheHelper::invalidateAdminStats();
             
         } catch (Exception $e) {
             Log::error('Error toggling status: ' . $e->getMessage());

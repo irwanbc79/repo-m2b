@@ -169,10 +169,16 @@
                         <td class="px-6 py-4 text-right align-top">
                             <span class="font-mono text-red-500 font-black text-sm block tracking-tight">{{ number_format($cost) }}</span>
                             @if($cost == 0)
-                                <span class="text-[10px] text-orange-400 italic flex justify-end gap-1 items-center font-bold">
-                                    <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"></path></svg>
-                                    Data Kosong
-                                </span>
+                                @if($shipment->jobCosts->isNotEmpty() && (float) $shipment->jobCosts->sum('amount') === 0.0)
+                                    <span class="text-[10px] text-teal-700 bg-teal-50 border border-teal-200 px-1.5 py-0.5 rounded font-bold inline-flex items-center gap-1 mt-1 justify-end">
+                                        ✨ Jasa Murni
+                                    </span>
+                                @else
+                                    <span class="text-[10px] text-orange-400 italic flex justify-end gap-1 items-center font-bold">
+                                        <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"></path></svg>
+                                        Data Kosong
+                                    </span>
+                                @endif
                             @endif
                         </td>
                         <td class="px-6 py-4 text-right align-top">
@@ -192,10 +198,22 @@
                             </div>
                         </td>
                         <td class="px-6 py-4 text-center align-top">
-                            <button wire:click="manageCosts({{ $shipment->id }})" class="bg-slate-800 hover:bg-slate-700 text-white px-3 py-1.5 rounded-lg font-bold shadow-sm transition text-xs flex items-center justify-center mx-auto gap-2 group hover:shadow-md transform hover:-translate-y-0.5">
-                                <svg class="w-3.5 h-3.5 text-slate-300 group-hover:text-white transition" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 7h6m0 10v-3m-3 3h.01M9 17h.01M9 14h.01M12 14h.01M15 11h.01M12 11h.01M9 11h.01M7 21h10a2 2 0 002-2V5a2 2 0 00-2-2H7a2 2 0 00-2 2v14a2 2 0 002 2z"></path></svg>
-                                <span>Manage Cost</span>
-                            </button>
+                            <div class="flex items-center justify-center gap-1.5 flex-wrap">
+                                <button wire:click="manageCosts({{ $shipment->id }})" class="bg-slate-800 hover:bg-slate-700 text-white px-3 py-1.5 rounded-lg font-bold shadow-sm transition text-xs flex items-center justify-center gap-1.5 group hover:shadow-md transform hover:-translate-y-0.5">
+                                    <svg class="w-3.5 h-3.5 text-slate-300 group-hover:text-white transition" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 7h6m0 10v-3m-3 3h.01M9 17h.01M9 14h.01M12 14h.01M15 11h.01M12 11h.01M9 11h.01M7 21h10a2 2 0 002-2V5a2 2 0 00-2-2H7a2 2 0 00-2 2v14a2 2 0 002 2z"></path></svg>
+                                    <span>Manage Cost</span>
+                                </button>
+                                @unless(auth()->user()->hasRole('auditor'))
+                                    @if($shipment->jobCosts->isEmpty())
+                                    <button wire:click="markAsZeroCost({{ $shipment->id }})" 
+                                        wire:confirm="Tandai shipment {{ $shipment->awb_number }} sebagai Jasa Murni / Zero Cost (Margin 100%)?"
+                                        class="bg-teal-50 hover:bg-teal-100 text-teal-700 border border-teal-200 px-2.5 py-1.5 rounded-lg font-bold text-xs transition flex items-center gap-1"
+                                        title="Tandai Jasa Murni tanpa biaya vendor">
+                                        <span>⚡ Zero Cost</span>
+                                    </button>
+                                    @endif
+                                @endunless
+                            </div>
                         </td>
                     </tr>
                     @empty
@@ -229,6 +247,50 @@
                     </div>
                     <button wire:click="closeModal" class="text-gray-400 hover:text-gray-600 text-2xl">&times;</button>
                 </div>
+                
+                @php
+                    $isZeroCost = $selectedShipment->jobCosts->isNotEmpty() && (float) $selectedShipment->jobCosts->sum('amount') === 0.0;
+                @endphp
+
+                @if($isZeroCost)
+                    <div class="px-6 pt-4">
+                        <div class="p-3.5 bg-teal-50 border border-teal-200 rounded-xl flex items-center justify-between gap-3">
+                            <div class="flex items-center gap-2.5">
+                                <span class="text-xl">✨</span>
+                                <div>
+                                    <p class="text-xs font-bold text-teal-900">Shipment ini berstatus Jasa Murni (Zero Cost)</p>
+                                    <p class="text-[11px] text-teal-700">Tidak ada pengeluaran biaya vendor. Margin shipment tercatat 100%.</p>
+                                </div>
+                            </div>
+                            @unless(auth()->user()->hasRole('auditor'))
+                            <button wire:click="deleteCost({{ $selectedShipment->jobCosts->first()->id }})" 
+                                wire:confirm="Batalkan status Jasa Murni untuk shipment ini?"
+                                class="text-xs text-rose-600 hover:text-rose-800 font-bold px-2.5 py-1 bg-white border border-rose-200 rounded-lg shadow-sm hover:bg-rose-50 transition shrink-0">
+                                Batalkan Zero Cost
+                            </button>
+                            @endunless
+                        </div>
+                    </div>
+                @elseif($selectedShipment->jobCosts->isEmpty())
+                    @unless(auth()->user()->hasRole('auditor'))
+                    <div class="px-6 pt-4">
+                        <div class="p-3.5 bg-sky-50 border border-sky-200 rounded-xl flex items-center justify-between gap-3">
+                            <div class="flex items-center gap-2.5">
+                                <span class="text-xl">💡</span>
+                                <div>
+                                    <p class="text-xs font-bold text-sky-900">Layanan jasa online tanpa biaya vendor?</p>
+                                    <p class="text-[11px] text-sky-700">Tandai langsung sebagai Jasa Murni agar margin 100% dan tidak muncul lagi di card dashboard.</p>
+                                </div>
+                            </div>
+                            <button wire:click="markAsZeroCost({{ $selectedShipment->id }})" 
+                                wire:confirm="Tandai shipment {{ $selectedShipment->awb_number }} sebagai Jasa Murni / Zero Cost (Margin 100%)?"
+                                class="px-3 py-1.5 bg-teal-600 hover:bg-teal-700 text-white rounded-lg text-xs font-bold shadow-sm transition shrink-0 flex items-center gap-1.5">
+                                <span>⚡ Tandai Jasa Murni</span>
+                            </button>
+                        </div>
+                    </div>
+                    @endunless
+                @endif
                 
                 <div class="p-6 grid grid-cols-1 {{ auth()->user()->hasRole('auditor') ? '' : 'lg:grid-cols-3' }} gap-6 max-h-[80vh] overflow-y-auto">
                     
@@ -350,9 +412,15 @@
                                             {{ number_format($cost->amount) }}
                                         </td>
                                         <td class="px-4 py-3 text-center align-top">
-                                            <span class="px-2 py-0.5 rounded text-[10px] uppercase font-bold {{ $cost->status == 'paid' ? 'bg-green-100 text-green-800' : 'bg-yellow-100 text-yellow-800' }}">
-                                                {{ $cost->status }}
-                                            </span>
+                                            @if($cost->amount == 0)
+                                                <span class="px-2 py-0.5 rounded text-[10px] uppercase font-bold bg-teal-100 text-teal-800 border border-teal-200">
+                                                    Zero Cost
+                                                </span>
+                                            @else
+                                                <span class="px-2 py-0.5 rounded text-[10px] uppercase font-bold {{ $cost->status == 'paid' ? 'bg-green-100 text-green-800' : 'bg-yellow-100 text-yellow-800' }}">
+                                                    {{ $cost->status }}
+                                                </span>
+                                            @endif
                                         </td>
                                         <td class="px-4 py-3 text-center align-top">
                                             <div class="flex items-center justify-center gap-1">
@@ -372,7 +440,11 @@
                                                 @endif
                                                 
                                                 {{-- Status Info (Read Only) --}}
-                                                @if($cost->status === 'unpaid')
+                                                @if($cost->amount == 0)
+                                                    <span class="text-teal-600 font-bold text-xs p-1" title="Jasa Murni tanpa pengeluaran kas">
+                                                        ✨
+                                                    </span>
+                                                @elseif($cost->status === 'unpaid')
                                                     <a href="{{ route('simple-cashier') }}" 
                                                         class="text-blue-500 hover:text-blue-700 hover:bg-blue-50 transition p-1 rounded flex items-center gap-1" 
                                                         title="Bayar via Kasir">
