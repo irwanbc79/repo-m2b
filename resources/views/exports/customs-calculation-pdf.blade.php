@@ -53,9 +53,9 @@
     <table class="header-table">
         <tr>
             <td style="width: 55%; vertical-align: middle;">
-                <div class="company-name">PT Menara Mandiri Bersaudara</div>
+                <div class="company-name">PT. MORA MULTI BERKAH</div>
                 <div class="company-sub">Customs Brokerage, Freight Forwarding & Logistics Solutions</div>
-                <div class="company-sub">Portal M2B Control Center &bull; https://portal.m2b.co.id</div>
+                <div class="company-sub">Portal M2B Control Center &bull; https://portal.m2b.co.id &bull; Telp: 061-44020012</div>
             </td>
             <td class="doc-title" style="width: 45%; vertical-align: middle;">
                 <h2>Proforma Estimasi Pabean</h2>
@@ -264,7 +264,7 @@
         1. Dokumen ini merupakan estimasi simulasi perhitungan pabean berdasarkan parameter tarif dan kurs pajak Kemenkeu yang berlaku saat simulasi dibuat.<br>
         2. Besaran pungutan pabean resmi yang mengikat secara hukum akan ditetapkan oleh Pejabat Bea dan Cukai pada saat penerbitan dokumen PIB/SPPB.<br>
         3. Tarif referensi dapat berubah sewaktu-waktu sesuai ketentuan Peraturan Menteri Keuangan (PMK) dan Sistem Indonesia National Single Window (INSW).<br>
-        <em>Generated automatically by M2B Portal Engine &bull; Dokumen sah internal PT Menara Mandiri Bersaudara</em>
+        <em>Generated automatically by M2B Portal Engine &bull; Dokumen sah internal PT. MORA MULTI BERKAH</em>
     </div>
 
 </body>

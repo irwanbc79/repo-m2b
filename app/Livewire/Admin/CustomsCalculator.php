@@ -443,7 +443,7 @@ class CustomsCalculator extends Component
     {
         $text  = "==========================================\n";
         $text .= "🇲🇨 ESTIMASI SIMULASI PABEAN IMPOR (M2B)\n";
-        $text .= "PT Menara Mandiri Bersaudara | portal.m2b.co.id\n";
+        $text .= "PT. MORA MULTI BERKAH | portal.m2b.co.id\n";
         $text .= "==========================================\n";
         $text .= "Tanggal     : " . now()->format('d/m/Y H:i') . " WIB\n";
         $text .= "Mata Uang   : {$this->mata_uang}\n";

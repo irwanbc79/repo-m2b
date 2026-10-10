@@ -2,7 +2,7 @@
 <html>
 <head>
     <meta charset="utf-8">
-    <title>Proforma Estimasi Pabean & Pajak Impor - PT Menara Mandiri Bersaudara</title>
+    <title>Proforma Estimasi Pabean & Pajak Impor - PT. MORA MULTI BERKAH</title>
     <style>
         * { margin: 0; padding: 0; box-sizing: border-box; }
         body { font-family: 'Helvetica', 'Arial', sans-serif; font-size: 10px; color: #1e293b; background: #ffffff; padding: 25px 30px; line-height: 1.4; }
@@ -62,9 +62,9 @@
     <table class="header-table">
         <tr>
             <td style="width: 58%; vertical-align: middle;">
-                <div class="company-name">PT Menara Mandiri Bersaudara</div>
-                <div class="company-sub">International Freight Forwarding, PPJK & Customs Brokerage</div>
-                <div class="company-sub">Website: https://portal.m2b.co.id &bull; Email: ops@m2b.co.id &bull; CS: +62 811-1234-5678</div>
+                <div class="company-name">PT. MORA MULTI BERKAH</div>
+                <div class="company-sub">International Freight Forwarding, PPJK & Customs Clearance</div>
+                <div class="company-sub">Website: https://portal.m2b.co.id &bull; Email: sales@m2b.co.id &bull; Telp: 061-44020012</div>
             </td>
             <td class="doc-title" style="width: 42%; vertical-align: middle;">
                 <h2>Estimasi Pungutan Impor</h2>

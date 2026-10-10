@@ -374,7 +374,7 @@ class CustomsCalculator extends Component
     public function copyToClipboard()
     {
         $text = "*SIMULASI PUNGUTAN IMPOR - PORTAL M2B*\n";
-        $text .= "PT Menara Mandiri Bersaudara\n";
+        $text .= "PT. MORA MULTI BERKAH\n";
         $text .= "Tanggal: " . now()->format('d/m/Y H:i') . "\n";
         $text .= "----------------------------------------\n";
         $text .= "Komoditas: " . ($this->presets[$this->selectedPreset]['name'] ?? 'Umum') . "\n";
