@@ -105,4 +105,63 @@ class JobCostingZeroCostTest extends TestCase
             'amount' => 0,
         ]);
     }
+
+    public function test_zero_cost_is_not_flagged_by_finance_check_integrity()
+    {
+        $shipment = Shipment::create([
+            'customer_id' => $this->customer->id,
+            'awb_number' => 'IMP-260101-003',
+            'service_type' => 'import',
+            'shipment_type' => 'sea',
+            'origin' => 'CN',
+            'destination' => 'ID',
+            'status' => 'completed',
+        ]);
+
+        JobCost::create([
+            'shipment_id' => $shipment->id,
+            'description' => 'Jasa Murni / Zero Cost (Tanpa Biaya Vendor)',
+            'amount'      => 0,
+            'status'      => 'paid',
+            'date_paid'   => now(),
+            'created_by'  => $this->admin->id,
+        ]);
+
+        // Jalankan perintah audit integritas keuangan
+        $this->artisan('finance:check-integrity')
+            ->expectsOutputToContain('OK — semua pembayaran invoice & job cost')
+            ->assertSuccessful();
+    }
+
+    public function test_zero_cost_cannot_be_booked_via_bukukan()
+    {
+        $shipment = Shipment::create([
+            'customer_id' => $this->customer->id,
+            'awb_number' => 'IMP-260101-004',
+            'service_type' => 'import',
+            'shipment_type' => 'sea',
+            'origin' => 'CN',
+            'destination' => 'ID',
+            'status' => 'completed',
+        ]);
+
+        $zeroCost = JobCost::create([
+            'shipment_id' => $shipment->id,
+            'description' => 'Jasa Murni / Zero Cost (Tanpa Biaya Vendor)',
+            'amount'      => 0,
+            'status'      => 'paid',
+            'date_paid'   => now(),
+            'created_by'  => $this->admin->id,
+        ]);
+
+        Livewire::actingAs($this->admin)
+            ->test(JobCostingManager::class)
+            ->call('bukukan', $zeroCost->id)
+            ->assertSee('Biaya Jasa Murni (Zero Cost) tidak memerlukan pembukuan kas/jurnal.');
+
+        // Pastikan tidak ada CashTransaction yang dibuat
+        $this->assertDatabaseMissing('cash_transactions', [
+            'job_cost_id' => $zeroCost->id,
+        ]);
+    }
 }

@@ -40,6 +40,7 @@ class BackfillJobCostCashTransactions extends Command
 
         $targets = JobCost::with('vendor')
             ->where('status', 'paid')
+            ->where('amount', '>', 0)
             ->whereNotNull('date_paid')
             ->where('date_paid', '>=', $since)
             ->whereNotIn('id', $bookedIds)

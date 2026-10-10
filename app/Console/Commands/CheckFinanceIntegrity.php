@@ -76,6 +76,7 @@ class CheckFinanceIntegrity extends Command
 
         $orphanJobCosts = JobCost::where('status', 'paid')
             ->where('date_paid', '>=', $jobCostFloor)
+            ->where('amount', '>', 0)
             ->whereNotIn('id', $cashTxJobCostIds)
             ->get();
 

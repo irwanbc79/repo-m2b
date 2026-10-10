@@ -368,6 +368,10 @@ class JobCostingManager extends Component
             session()->flash('message', 'Biaya ini sudah terbukukan.');
             return;
         }
+        if ($cost->amount <= 0) {
+            session()->flash('message', 'Biaya Jasa Murni (Zero Cost) tidak memerlukan pembukuan kas/jurnal.');
+            return;
+        }
         $datePaid = $cost->date_paid ? \Carbon\Carbon::parse($cost->date_paid)->format('Y-m-d') : null;
         if (!$datePaid || $datePaid < '2026-01-01') {
             session()->flash('error', 'Biaya periode Desember 2025 ditunda (opening balance) — tidak dibukukan lewat sini.');
