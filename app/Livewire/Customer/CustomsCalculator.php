@@ -51,10 +51,8 @@ class CustomsCalculator extends Component
     public $total_pungutan = 0;
 
     // =========================
-    // ANALISIS FINANSIAL & PAJAK KLIEN (CUSTOMER SCOPE)
+    // PROPORSI VISUAL PUNGUTAN
     // =========================
-    public $beban_pokok = 0; // HPP Modal: CIF + BM + PPnBM
-    public $total_kredit_pajak = 0; // Pajak Masukan Klien: PPN Impor + PPh 22
     public $proporsi_bm = 0;
     public $proporsi_ppn = 0;
     public $proporsi_ppnbm = 0;
@@ -281,13 +279,7 @@ class CustomsCalculator extends Component
         // 5. Total Estimasi Setoran Billing DJBC
         $this->total_pungutan = $this->bayar_bm + $this->bayar_ppn + $this->bayar_ppnbm + $this->bayar_pph;
 
-        // 6. Analisis Finansial Klien:
-        // - Beban Pokok (HPP): Biaya yang menjadi harga barang (CIF + BM + PPnBM)
-        // - Pajak Masukan (Dapat dikreditkan di SPT Klien): PPN Impor + PPh 22
-        $this->beban_pokok = $this->nilai_pabean + $this->bayar_bm + $this->bayar_ppnbm;
-        $this->total_kredit_pajak = $this->bayar_ppn + $this->bayar_pph;
-
-        // 7. Proporsi Visual Bar
+        // 6. Proporsi Visual Bar
         if ($this->total_pungutan > 0) {
             $this->proporsi_bm    = round(($this->bayar_bm / $this->total_pungutan) * 100, 1);
             $this->proporsi_ppn   = round(($this->bayar_ppn / $this->total_pungutan) * 100, 1);
@@ -354,8 +346,6 @@ class CustomsCalculator extends Component
             'tarif_pph' => $this->tarif_pph,
             'bayar_pph' => $this->bayar_pph,
             'total_pungutan' => $this->total_pungutan,
-            'beban_pokok' => $this->beban_pokok,
-            'total_kredit_pajak' => $this->total_kredit_pajak,
             'selectedPreset' => $this->presets[$this->selectedPreset]['name'] ?? 'Manual',
             'customer' => Auth::user()->customer ?? null,
             'user' => Auth::user(),
@@ -392,9 +382,6 @@ class CustomsCalculator extends Component
         $text .= "• PPh Pasal 22 ({$this->tarif_pph}%): Rp " . number_format($this->bayar_pph, 0, ',', '.') . "\n";
         $text .= "----------------------------------------\n";
         $text .= "*TOTAL BILLING: Rp " . number_format($this->total_pungutan, 0, ',', '.') . "*\n\n";
-        $text .= "💡 *Dampak Pajak Perusahaan:*\n";
-        $text .= "• Pajak Masukan (Dapat Diklaim di SPT): Rp " . number_format($this->total_kredit_pajak, 0, ',', '.') . "\n";
-        $text .= "• HPP Modal Barang: Rp " . number_format($this->beban_pokok, 0, ',', '.') . "\n\n";
         $text .= "Hubungi M2B untuk penanganan customs clearance & booking kargo Anda.";
 
         $this->dispatch('copy-text', text: $text);

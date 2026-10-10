@@ -27,7 +27,7 @@
                     <h2 class="text-2xl font-black text-slate-900 tracking-tight">Kalkulator Pabean & Simulasi Pajak Impor</h2>
                     <span class="px-3 py-1 rounded-full text-xs font-black uppercase tracking-wider bg-emerald-100 text-emerald-800">Layanan Klien M2B</span>
                 </div>
-                <p class="text-sm text-slate-500 font-medium mt-1">Estimasi Pungutan Resmi Bea Cukai, Fasilitas FTA & Analisis Pajak Masukan Perusahaan</p>
+                <p class="text-sm text-slate-500 font-medium mt-1">Estimasi Pungutan Resmi Bea Cukai & Skema Fasilitas Perdagangan (FTA)</p>
             </div>
         </div>
 
@@ -291,7 +291,7 @@
                 @if($showBreakdown)
                 <div class="p-4.5 bg-blue-50/70 rounded-2xl border border-blue-200 text-xs text-slate-700 space-y-2 leading-relaxed">
                     <p><strong>Bea Masuk (BM):</strong> Tarif BTKI (0% s/d 30%+). Dapatkan Bea Masuk 0% dengan memanfaatkan fasilitas FTA Form E (China) atau Form D (ASEAN) via M2B.</p>
-                    <p><strong>PPN Impor:</strong> Standar 11% (UU HPP). Menjadi Pajak Masukan yang dapat dikreditkan oleh perusahaan Anda.</p>
+                    <p><strong>PPN Impor:</strong> Standar 11% (UU HPP). Dikenakan atas Nilai Impor (CIF + BM).</p>
                     <p><strong>PPh Pasal 22:</strong> 2.5% bagi perusahaan ber-API (Angka Pengenal Importir), 7.5% untuk Non-API, dan 15% jika tanpa NPWP.</p>
                 </div>
                 @endif
@@ -465,31 +465,9 @@
                     </div>
                 </div>
 
-                {{-- Panel Bawah Resi: Tax Insight & Action Buttons --}}
+                {{-- Panel Bawah Resi: Action Buttons --}}
                 <div class="p-6 md:p-8 bg-slate-950/90 border-t border-slate-800 space-y-5">
                     
-                    {{-- Card Manfaat Pajak Perusahaan Anda --}}
-                    <div class="bg-slate-900/90 rounded-2xl p-5 border border-slate-800 space-y-3.5">
-                        <div class="flex items-center justify-between">
-                            <span class="text-xs font-black uppercase tracking-wider text-slate-300">💡 Manfaat Pajak Perusahaan Anda</span>
-                            <span class="text-xs px-2.5 py-1 rounded-full bg-emerald-500/10 text-emerald-400 font-bold border border-emerald-500/20">Tax Deductible</span>
-                        </div>
-
-                        <div class="grid grid-cols-2 gap-3.5 pt-1">
-                            <div class="bg-slate-950 p-3.5 rounded-xl border border-slate-800">
-                                <span class="block text-xs font-bold text-slate-400 uppercase">Pajak Masukan (Dapat Diklaim)</span>
-                                <span class="font-mono font-black text-emerald-400 text-base mt-1 block">Rp {{ number_format($total_kredit_pajak, 0, ',', '.') }}</span>
-                                <span class="block text-xs text-slate-500 mt-1">PPN Masukan + PPh 22 di SPT</span>
-                            </div>
-
-                            <div class="bg-slate-950 p-3.5 rounded-xl border border-slate-800">
-                                <span class="block text-xs font-bold text-slate-400 uppercase">Beban Modal Barang (HPP)</span>
-                                <span class="font-mono font-black text-blue-400 text-base mt-1 block">Rp {{ number_format($beban_pokok, 0, ',', '.') }}</span>
-                                <span class="block text-xs text-slate-500 mt-1">CIF + BM (Nilai Kapitalisasi)</span>
-                            </div>
-                        </div>
-                    </div>
-
                     {{-- TOMBOL UTAMA: BUAT BOOKING PENGIRIMAN --}}
                     <button wire:click="convertToBooking" 
                             class="w-full py-4 px-5 bg-gradient-to-r from-emerald-600 via-teal-600 to-emerald-700 hover:from-emerald-500 hover:to-teal-600 text-white font-extrabold rounded-2xl transition text-sm flex items-center justify-center gap-2.5 shadow-xl shadow-emerald-600/25 active:scale-95">

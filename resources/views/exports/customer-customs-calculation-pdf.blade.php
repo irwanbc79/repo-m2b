@@ -44,9 +44,6 @@
         .total-right { display: table-cell; text-align: right; vertical-align: middle; }
         .total-amount { font-size: 18px; font-weight: bold; color: #1d4ed8; }
 
-        .tax-analysis-box { background: #f0fdf4; border: 1px solid #bbf7d0; border-radius: 6px; padding: 10px 14px; margin-bottom: 14px; }
-        .tax-analysis-title { font-size: 10px; font-weight: bold; color: #166534; text-transform: uppercase; margin-bottom: 6px; }
-        
         .cta-box { background: #fefce8; border: 1px solid #fef08a; border-radius: 6px; padding: 10px 14px; margin-bottom: 14px; }
         .cta-title { font-size: 10px; font-weight: bold; color: #854d0e; text-transform: uppercase; margin-bottom: 4px; }
 
@@ -68,7 +65,7 @@
             </td>
             <td class="doc-title" style="width: 42%; vertical-align: middle;">
                 <h2>Estimasi Pungutan Impor</h2>
-                <p>Simulasi Tarif Pabean & Pajak Masukan Klien</p>
+                <p>Simulasi Estimasi Tagihan Pabean Klien</p>
                 <p>Tanggal Cetak: {{ $tanggal }}</p>
             </td>
         </tr>
@@ -198,29 +195,6 @@
                 <div class="total-amount font-mono">Rp {{ number_format($total_pungutan, 0, ',', '.') }}</div>
             </div>
         </div>
-    </div>
-
-    {{-- Analisis Efisiensi Pajak Klien --}}
-    <div class="tax-analysis-box">
-        <div class="tax-analysis-title">💡 Analisis Akuntansi & Pajak untuk Perusahaan Anda</div>
-        <table style="width: 100%;">
-            <tr>
-                <td style="width: 50%; vertical-align: top; padding-right: 10px;">
-                    <strong style="color: #15803d; font-size: 9.5px;">1. Pajak Masukan (Dapat Dikreditkan):</strong><br>
-                    <span class="font-mono font-bold" style="font-size: 12px; color: #15803d;">Rp {{ number_format($total_kredit_pajak, 0, ',', '.') }}</span><br>
-                    <span style="font-size: 8.5px; color: #475569;">
-                        Terdiri dari <strong>PPN Masukan (Rp {{ number_format($bayar_ppn, 0, ',', '.') }})</strong> dan <strong>PPh 22 (Rp {{ number_format($bayar_pph, 0, ',', '.') }})</strong>. Pajak ini dapat dikreditkan pada SPT Masa PPN dan SPT Tahunan PPh Badan perusahaan Anda, sehingga bukan merupakan beban biaya hilang.
-                    </span>
-                </td>
-                <td style="width: 50%; vertical-align: top; padding-left: 10px; border-left: 1px solid #bbf7d0;">
-                    <strong style="color: #1e40af; font-size: 9.5px;">2. Harga Pokok Penjualan / Beban Modal (HPP):</strong><br>
-                    <span class="font-mono font-bold" style="font-size: 12px; color: #1e40af;">Rp {{ number_format($beban_pokok, 0, ',', '.') }}</span><br>
-                    <span style="font-size: 8.5px; color: #475569;">
-                        Dihitung dari <strong>Nilai Barang (CIF) + Bea Masuk</strong>. Ini adalah nilai kapitalisasi aset/persediaan Anda di neraca akuntansi sebelum biaya trucking & jasa forwarder.
-                    </span>
-                </td>
-            </tr>
-        </table>
     </div>
 
     {{-- CTA & Layanan M2B --}}

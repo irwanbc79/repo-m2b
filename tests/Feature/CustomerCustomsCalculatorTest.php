@@ -77,7 +77,7 @@ class CustomerCustomsCalculatorTest extends TestCase
             ->assertSet('tarif_bm', 0);
     }
 
-    public function test_customer_tax_insight_separates_capital_and_tax_credit()
+    public function test_customer_calculator_focuses_strictly_on_customs_without_tax_accounting()
     {
         Livewire::actingAs($this->user)
             ->test(CustomsCalculator::class)
@@ -93,8 +93,9 @@ class CustomerCustomsCalculatorTest extends TestCase
             ->assertSet('bayar_ppn', 19360000)
             ->assertSet('bayar_pph', 4400000)
             ->assertSet('total_pungutan', 39760000)
-            ->assertSet('beban_pokok', 176000000)
-            ->assertSet('total_kredit_pajak', 23760000);
+            ->assertDontSee('Pajak Masukan')
+            ->assertDontSee('Harga Pokok Penjualan')
+            ->assertDontSee('HPP');
     }
 
     public function test_customer_convert_to_booking_redirects()
