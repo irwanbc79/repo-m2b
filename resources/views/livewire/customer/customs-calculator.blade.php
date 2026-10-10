@@ -1,39 +1,55 @@
-<div class="max-w-7xl mx-auto space-y-6 pb-12">
-    @section('header', 'Kalkulator Pabean')
+<div class="max-w-7xl mx-auto space-y-6 pb-16">
+    @section('header', 'Kalkulator Pabean & Simulasi Pajak Impor')
 
     {{-- Toast Notification --}}
     <div x-data="{ show: false, message: '', type: 'success' }" 
-         x-on:notify.window="show = true; message = $event.detail.message; type = $event.detail.type; setTimeout(() => show = false, 3000)"
-         x-show="show" x-transition
-         x-bind:class="type === 'success' ? 'bg-green-600' : 'bg-red-600'"
-         class="fixed top-4 right-4 text-white px-6 py-4 rounded-2xl shadow-2xl z-[9999] flex items-center gap-3 border border-white/20 backdrop-blur-md"
+         x-on:notify.window="show = true; message = $event.detail.message; type = $event.detail.type || 'success'; setTimeout(() => show = false, 3500)"
+         x-show="show" x-transition:enter="transition ease-out duration-300"
+         x-transition:enter-start="opacity-0 translate-y-2"
+         x-transition:enter-end="opacity-100 translate-y-0"
+         x-transition:leave="transition ease-in duration-200"
+         x-transition:leave-start="opacity-100 translate-y-0"
+         x-transition:leave-end="opacity-0 translate-y-2"
+         x-bind:class="type === 'success' ? 'bg-emerald-600 text-white' : 'bg-rose-600 text-white'"
+         class="fixed top-5 right-5 px-5 py-3.5 rounded-2xl shadow-2xl z-50 flex items-center gap-3 border border-white/20 text-sm font-bold"
          style="display: none;">
-        <span x-text="message" class="font-bold text-sm"></span>
+        <span x-text="message"></span>
     </div>
 
-    {{-- Top Info Bar --}}
-    <div class="bg-white rounded-[2rem] p-5 shadow-xl shadow-blue-900/5 border border-gray-100 flex flex-col md:flex-row justify-between items-center gap-4">
-        <div class="flex items-center gap-4">
-            <div class="bg-blue-600 p-3 rounded-2xl text-white shadow-lg">
-                <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 7h6m0 10v-3m-3 3h.01M9 17h.01M9 14h.01M12 14h.01M15 11h.01M12 11h.01M9 11h.01M7 21h10a2 2 0 002-2V5a2 2 0 00-2-2H7a2 2 0 00-2 2v14a2 2 0 002 2z"></path></svg>
+    {{-- Top Header & Kurs Sync Bar --}}
+    <div class="bg-white rounded-3xl p-6 shadow-sm border border-slate-200 flex flex-col lg:flex-row justify-between items-center gap-5">
+        <div class="flex items-center gap-4 w-full lg:w-auto">
+            <div class="w-14 h-14 rounded-2xl bg-gradient-to-tr from-blue-600 to-indigo-600 flex items-center justify-center text-white text-3xl shadow-lg shadow-blue-500/25 shrink-0">
+                🧮
             </div>
             <div>
-                <h2 class="text-xl font-black text-slate-800 tracking-tight leading-none">Simulasi Pabean M2B</h2>
-                <p class="text-gray-400 text-[10px] uppercase font-bold tracking-[0.2em] mt-1">Live Tax Exchange Synchronization</p>
+                <div class="flex items-center gap-2.5 flex-wrap">
+                    <h2 class="text-2xl font-black text-slate-900 tracking-tight">Kalkulator Pabean & Simulasi Pajak Impor</h2>
+                    <span class="px-3 py-1 rounded-full text-xs font-black uppercase tracking-wider bg-emerald-100 text-emerald-800">Layanan Klien M2B</span>
+                </div>
+                <p class="text-sm text-slate-500 font-medium mt-1">Estimasi Pungutan Resmi Bea Cukai, Fasilitas FTA & Analisis Pajak Masukan Perusahaan</p>
             </div>
         </div>
-        <div class="flex items-center gap-4">
-            <button wire:click="toggleHistory" class="flex items-center gap-2 px-5 py-2.5 bg-slate-100 hover:bg-slate-200 rounded-xl transition text-xs font-black text-slate-600 uppercase tracking-widest">
-                History ({{ count($calculationHistory) }})
+
+        <div class="flex flex-wrap items-center gap-3 w-full lg:w-auto justify-end">
+            {{-- History Button --}}
+            <button wire:click="toggleHistory" class="flex items-center gap-2 px-4 py-3 bg-slate-100 hover:bg-slate-200 rounded-xl transition text-sm font-bold text-slate-700 shadow-xs">
+                <svg class="w-4 h-4 text-slate-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+                <span>Riwayat</span>
+                @if(count($calculationHistory) > 0)
+                <span class="bg-blue-600 text-white text-xs px-2 py-0.5 rounded-full font-black">{{ count($calculationHistory) }}</span>
+                @endif
             </button>
-            <div class="flex items-center gap-6 md:border-l md:pl-6 border-gray-100">
+
+            {{-- Live Kurs Badge --}}
+            <div class="flex items-center gap-3.5 bg-slate-50 border border-slate-200 px-4 py-2.5 rounded-2xl shadow-xs">
                 <div class="text-right">
-                    <span class="block text-[9px] font-black text-gray-400 uppercase tracking-widest mb-0.5">Kurs {{ $mata_uang }}</span>
-                    <span class="text-2xl font-mono font-black text-blue-900 tracking-tighter leading-none">Rp {{ number_format($kurs, 2, ',', '.') }}</span>
+                    <span class="block text-[10px] font-black text-slate-400 uppercase tracking-widest leading-none mb-1">Kurs Pajak {{ $mata_uang }}</span>
+                    <span class="text-xl font-mono font-black text-blue-900 tracking-tight leading-none">Rp {{ number_format($kurs, 2, ',', '.') }}</span>
                 </div>
-                <div class="bg-green-100 px-4 py-2 rounded-xl border border-green-200 flex items-center gap-2 shadow-sm">
-                    <span class="w-2 h-2 rounded-full bg-green-500 animate-pulse"></span>
-                    <span class="text-[9px] font-black text-green-700 uppercase tracking-widest uppercase">Connected</span>
+                <div class="bg-emerald-100/90 px-3 py-1.5 rounded-xl border border-emerald-300 flex items-center gap-1.5 shrink-0">
+                    <span class="w-2.5 h-2.5 rounded-full bg-emerald-500 animate-pulse"></span>
+                    <span class="text-xs font-black text-emerald-800 uppercase tracking-wider">{{ $is_auto_kurs ? 'Live Sync' : 'Manual' }}</span>
                 </div>
             </div>
         </div>
@@ -41,199 +57,487 @@
 
     {{-- History Modal --}}
     @if($showHistory)
-    <div class="fixed inset-0 bg-slate-900/60 z-[100] flex items-center justify-center p-4 backdrop-blur-sm" wire:click.self="toggleHistory">
-        <div class="bg-white rounded-[2.5rem] shadow-2xl max-w-2xl w-full max-h-[70vh] overflow-hidden flex flex-col border border-white/20">
-            <div class="p-8 border-b border-gray-100 flex justify-between items-center bg-gray-50/50">
-                <h3 class="text-xl font-black text-slate-800 uppercase tracking-tight">📜 Riwayat Kalkulasi</h3>
-                <button wire:click="toggleHistory" class="text-gray-400 hover:text-red-500 transition-colors text-2xl leading-none">&times;</button>
+    <div class="fixed inset-0 bg-slate-900/60 backdrop-blur-xs z-50 flex items-center justify-center p-4" wire:click.self="toggleHistory">
+        <div class="bg-white rounded-3xl shadow-2xl max-w-2xl w-full max-h-[85vh] overflow-hidden border border-slate-100 animate-in fade-in zoom-in duration-150">
+            <div class="p-6 border-b border-slate-100 flex justify-between items-center bg-slate-50/50">
+                <div>
+                    <h3 class="text-lg font-black text-slate-800">📜 Riwayat Simulasi Terakhir</h3>
+                    <p class="text-xs text-slate-400">Tersimpan otomatis di akun Anda</p>
+                </div>
+                <div class="flex items-center gap-2">
+                    @if(count($calculationHistory) > 0)
+                    <button wire:click="clearHistory" wire:confirm="Hapus semua riwayat kalkulasi?" class="text-xs text-rose-500 hover:text-rose-700 font-bold px-2 py-1 hover:bg-rose-50 rounded-lg transition">Hapus Semua</button>
+                    @endif
+                    <button wire:click="toggleHistory" class="text-slate-400 hover:text-slate-600 p-1 rounded-lg">
+                        <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
+                    </button>
+                </div>
             </div>
-            <div class="p-8 overflow-y-auto flex-1 space-y-4">
+            <div class="p-6 overflow-y-auto max-h-[60vh] space-y-3">
                 @forelse($calculationHistory as $item)
-                <div class="bg-white rounded-3xl p-6 border border-gray-100 hover:border-blue-500 hover:shadow-2xl transition-all flex justify-between items-center group">
-                    <div>
-                        <span class="text-[10px] font-black text-gray-300 uppercase tracking-widest">{{ \Carbon\Carbon::parse($item['timestamp'])->format('d M, H:i') }}</span>
-                        <p class="font-black text-slate-800 text-lg font-mono">{{ $item['mata_uang'] }} {{ number_format($item['nilai_barang'], 2) }}</p>
+                <div class="bg-slate-50 rounded-2xl p-4.5 border border-slate-200/80 hover:border-blue-300 hover:bg-blue-50/30 transition group flex justify-between items-center gap-4">
+                    <div class="space-y-1">
+                        <div class="flex items-center gap-2">
+                            <span class="text-xs font-bold text-slate-400">{{ \Carbon\Carbon::parse($item['timestamp'])->format('d M Y, H:i') }}</span>
+                            <span class="px-2 py-0.5 bg-blue-100 text-blue-700 text-[10px] font-black rounded-md">{{ $item['preset'] ?? 'Manual' }}</span>
+                            @if(($item['cif_method'] ?? 'direct') === 'breakdown')
+                            <span class="px-2 py-0.5 bg-purple-100 text-purple-700 text-[10px] font-bold rounded-md">Breakdown FOB</span>
+                            @endif
+                        </div>
+                        <div class="flex items-baseline gap-2">
+                            <span class="font-bold text-slate-800 text-base">{{ $item['mata_uang'] }} {{ number_format($item['nilai_barang'], 2) }}</span>
+                            <span class="text-xs text-slate-400 font-mono">@ Rp {{ number_format($item['kurs'], 0) }}</span>
+                        </div>
+                        <div class="text-xs text-slate-500">
+                            BM: {{ $item['tarif']['bm'] }}% &bull; PPN: {{ $item['tarif']['ppn'] }}% &bull; PPh: {{ $item['tarif']['pph'] }}%
+                        </div>
                     </div>
-                    <div class="text-right">
-                        <span class="font-black text-green-600 text-xl font-mono">Rp {{ number_format($item['hasil']['total'], 0, ',', '.') }}</span>
-                        <div class="flex gap-2 mt-2 opacity-0 group-hover:opacity-100 transition-opacity">
-                            <button wire:click="loadFromHistory('{{ $item['id'] }}')" class="text-[10px] font-bold text-blue-600 hover:underline">Load</button>
-                            <button wire:click="deleteFromHistory('{{ $item['id'] }}')" class="text-[10px] font-bold text-red-500 hover:underline">Hapus</button>
+                    <div class="text-right shrink-0">
+                        <span class="block text-xs font-black text-slate-400 uppercase tracking-widest">Total Billing</span>
+                        <span class="font-mono font-black text-emerald-600 text-lg">Rp {{ number_format($item['hasil']['total'], 0, ',', '.') }}</span>
+                        <div class="flex gap-2 justify-end mt-2 opacity-90 group-hover:opacity-100 transition">
+                            <button wire:click="loadFromHistory('{{ $item['id'] }}')" class="px-3 py-1 bg-blue-600 text-white rounded-lg hover:bg-blue-700 text-xs font-bold transition">
+                                Muat
+                            </button>
+                            <button wire:click="deleteFromHistory('{{ $item['id'] }}')" class="p-1 text-slate-400 hover:text-rose-600 rounded-lg transition" title="Hapus">
+                                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/></svg>
+                            </button>
                         </div>
                     </div>
                 </div>
                 @empty
-                <div class="text-center py-10 text-gray-300 font-bold uppercase tracking-widest text-xs italic">Belum ada riwayat</div>
+                <div class="text-center py-12 text-slate-400">
+                    <p class="font-medium text-sm">Belum ada riwayat simulasi tersimpan.</p>
+                </div>
                 @endforelse
             </div>
         </div>
     </div>
     @endif
 
-    <div class="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
-        {{-- KOLOM KIRI --}}
+    <div class="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
+        
+        {{-- =========================================
+             KOLOM KIRI: INPUT & PARAMETER (COL-7)
+             ========================================= --}}
         <div class="lg:col-span-7 space-y-6">
-            
-            {{-- PRESET KATEGORI --}}
-            <div class="bg-gradient-to-br from-slate-50 to-blue-50 rounded-[2.5rem] shadow-sm border border-blue-100 p-8">
-                <div class="flex items-center gap-3 mb-6">
-                    <div class="w-8 h-8 rounded-xl bg-blue-600 text-white flex items-center justify-center font-black text-sm shadow-lg">⚡</div>
-                    <div>
-                        <h4 class="font-black text-slate-800 uppercase text-xs tracking-widest leading-none">Preset Kategori Barang</h4>
-                        <p class="text-[10px] text-blue-400 font-bold mt-1 uppercase tracking-tighter">Auto-fill tarif standar pabean</p>
+
+            {{-- 1. PRESET KATEGORI KOMODITAS --}}
+            <div class="bg-white rounded-3xl shadow-xs border border-slate-200 p-6 space-y-4">
+                <div class="flex items-center justify-between">
+                    <div class="flex items-center gap-2.5">
+                        <span class="w-7 h-7 rounded-xl bg-indigo-600 text-white flex items-center justify-center text-sm font-black shadow-xs">⚡</span>
+                        <h4 class="font-extrabold text-slate-800 uppercase text-sm tracking-wider">Preset Cepat Komoditas Umum</h4>
                     </div>
+                    <span class="text-xs text-slate-500 font-medium">Klik untuk auto-fill tarif standar</span>
                 </div>
-                <div class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-5 gap-3">
+
+                <div class="grid grid-cols-2 sm:grid-cols-3 gap-3">
                     @foreach($presets as $key => $preset)
                     <button wire:click="applyPreset('{{ $key }}')" 
-                            class="px-3 py-3 rounded-2xl text-[10px] font-black uppercase tracking-tight transition-all duration-300 border {{ $selectedPreset === $key ? 'bg-blue-600 text-white border-blue-600 shadow-xl shadow-blue-200 scale-105' : 'bg-white text-slate-600 hover:bg-blue-100 hover:border-blue-300 border-gray-100' }}">
-                        {{ $preset['name'] }}
+                            class="p-3.5 rounded-2xl text-left border transition-all duration-150 relative group {{ $selectedPreset === $key ? 'bg-indigo-50 border-indigo-400 ring-2 ring-indigo-500/20 shadow-xs' : 'bg-slate-50/80 border-slate-200 hover:bg-slate-100 hover:border-slate-300' }}">
+                        <div class="flex items-center gap-2 mb-1.5">
+                            <span class="text-lg">{{ $preset['icon'] }}</span>
+                            <span class="text-sm font-bold text-slate-900 truncate">{{ $preset['name'] }}</span>
+                        </div>
+                        <div class="flex items-center gap-2 text-xs text-slate-600 font-mono font-medium">
+                            <span class="bg-white/80 px-1.5 py-0.5 rounded border border-slate-200">BM: {{ $preset['bm'] }}%</span>
+                            <span class="bg-white/80 px-1.5 py-0.5 rounded border border-slate-200">PPN: {{ $preset['ppn'] }}%</span>
+                        </div>
                     </button>
                     @endforeach
                 </div>
             </div>
 
-            {{-- FORM INPUT --}}
-            <div class="bg-white rounded-[2.5rem] shadow-xl shadow-blue-900/5 border border-gray-100 p-8 md:p-10 space-y-10">
-                <div class="grid grid-cols-1 md:grid-cols-2 gap-8">
-                    <div class="space-y-3">
-                        <label class="block text-[10px] font-black text-gray-400 uppercase tracking-widest ml-1">Pilih Mata Uang</label>
-                        <select wire:model.live="mata_uang" class="w-full border-gray-100 bg-gray-50/50 rounded-2xl text-sm font-black text-slate-700 focus:ring-blue-500 py-4 shadow-inner">
+            {{-- 2. NILAI TRANSAKSI PABEAN (CIF) --}}
+            <div class="bg-white rounded-3xl shadow-xs border border-slate-200 p-6 md:p-8 space-y-6">
+                <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-slate-100 pb-4">
+                    <div class="flex items-center gap-2.5">
+                        <span class="w-7 h-7 rounded-xl bg-blue-600 text-white flex items-center justify-center text-xs font-black shadow-xs">01</span>
+                        <h4 class="font-extrabold text-slate-900 uppercase text-sm tracking-wider">Nilai Transaksi Pabean (CIF)</h4>
+                    </div>
+
+                    {{-- Switcher CIF: Langsung vs Breakdown --}}
+                    <div class="inline-flex bg-slate-100 p-1.5 rounded-xl text-xs font-bold self-start sm:self-auto border border-slate-200/80">
+                        <button wire:click="$set('cifMethod', 'direct')" 
+                                class="px-3.5 py-1.5 rounded-lg transition {{ $cifMethod === 'direct' ? 'bg-white text-blue-600 shadow-sm font-extrabold' : 'text-slate-600 hover:text-slate-800' }}">
+                            Langsung CIF
+                        </button>
+                        <button wire:click="$set('cifMethod', 'breakdown')" 
+                                class="px-3.5 py-1.5 rounded-lg transition {{ $cifMethod === 'breakdown' ? 'bg-white text-purple-700 shadow-sm font-extrabold' : 'text-slate-600 hover:text-slate-800' }}">
+                            FOB + Freight + Asuransi
+                        </button>
+                    </div>
+                </div>
+
+                {{-- Baris Mata Uang & Kurs --}}
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-5">
+                    <div class="space-y-2">
+                        <label class="block text-xs font-extrabold text-slate-600 uppercase tracking-wide">Mata Uang Faktur / Invoice</label>
+                        <select wire:model.live="mata_uang" class="w-full border-slate-200 rounded-xl text-base font-bold focus:ring-blue-500 focus:border-blue-500 py-3 px-3.5 bg-slate-50/50 shadow-xs text-slate-800">
                             @foreach($currencies as $code => $currency)
-                            <option value="{{ $code }}">{{ $currency['flag'] }} {{ $code }} - {{ $currency['name'] }}</option>
+                            <option value="{{ $code }}">
+                                {{ $currency['flag'] }} {{ $code }} &mdash; {{ $currency['name'] }}
+                            </option>
                             @endforeach
                         </select>
                     </div>
-                    <div class="space-y-3">
-                        <label class="block text-[10px] font-black text-gray-400 uppercase tracking-widest ml-1">Nilai Kurs Berjalan</label>
+
+                    <div class="space-y-2">
+                        <div class="flex justify-between items-center">
+                            <label class="block text-xs font-extrabold text-slate-600 uppercase tracking-wide">Kurs Pajak (IDR)</label>
+                            <span class="text-xs text-slate-500 font-semibold">Resmi Kemenkeu</span>
+                        </div>
                         <div class="relative">
-                            <input type="number" wire:model.live="kurs" class="w-full border-gray-100 bg-gray-50/50 rounded-2xl text-lg font-mono font-black text-blue-900 py-4 pl-6 shadow-inner transition-all" {{ $is_auto_kurs ? 'readonly' : '' }}>
-                            @if($is_auto_kurs)
-                            <div class="absolute right-4 top-4 bg-blue-600 text-white px-3 py-1.5 rounded-lg text-[8px] font-black border border-blue-500 shadow-md">AUTO</div>
-                            @endif
+                            <input type="number" step="0.01" wire:model.live="kurs" class="w-full border-slate-200 rounded-xl text-base font-mono font-bold bg-slate-50 py-3 pl-4 pr-16 text-slate-800" {{ $is_auto_kurs ? 'readonly' : '' }}>
+                            <div class="absolute right-3 top-2.5 flex items-center gap-1 bg-emerald-100 text-emerald-800 px-2.5 py-1 rounded-lg text-[10px] font-black border border-emerald-300">
+                                {{ $is_auto_kurs ? 'KEMENKEU' : 'EDIT' }}
+                            </div>
                         </div>
                     </div>
                 </div>
 
-                <div class="space-y-4">
-                    <label class="block text-sm font-black text-slate-800 tracking-tight ml-1 uppercase text-[10px]">Nilai Barang (CIF)</label>
-                    <div class="relative group">
-                        <div class="absolute inset-y-0 left-0 pl-8 flex items-center pointer-events-none text-slate-300 font-black text-3xl group-focus-within:text-blue-600 transition-colors">{{ $mata_uang }}</div>
-                        <input type="number" step="0.01" wire:model.live.debounce.300ms="nilai_barang" 
-                               class="w-full pl-32 pr-8 py-8 border-4 border-gray-50 rounded-[2rem] text-5xl font-black text-slate-900 focus:ring-0 focus:border-blue-600 transition-all placeholder:text-gray-100 shadow-inner bg-gray-50/50" 
-                               placeholder="0.00">
+                {{-- Form Input Nilai CIF Breakdown --}}
+                @if($cifMethod === 'breakdown')
+                <div class="bg-purple-50/60 rounded-2xl p-5 border border-purple-200 space-y-4">
+                    <div class="flex items-center justify-between text-xs font-black text-purple-900 uppercase tracking-wider">
+                        <span>Rincian Pembentuk Nilai Pabean (Incoterms)</span>
+                        <span class="text-xs text-purple-700 font-semibold">Sesuai invoice & Bill of Lading (B/L)</span>
                     </div>
-                </div>
 
-                <div class="bg-blue-900 rounded-3xl p-8 flex justify-between items-center shadow-2xl shadow-blue-900/20">
-                    <div class="relative z-10">
-                        <p class="text-[9px] font-black text-blue-400 uppercase tracking-[0.4em]">Equivalent IDR</p>
-                        <p class="text-lg text-white font-black mt-1 uppercase tracking-tight">Nilai Pabean</p>
-                    </div>
-                    <div class="text-right relative z-10">
-                        <span class="text-3xl md:text-4xl font-black text-white font-mono tracking-tighter">Rp {{ number_format($nilai_pabean, 0, ',', '.') }}</span>
-                    </div>
-                </div>
-            </div>
-
-            {{-- PARAMETER TARIF --}}
-            <div class="bg-white rounded-[2.5rem] shadow-xl shadow-blue-900/5 border border-gray-100 p-8 md:p-10">
-                <div class="flex items-center gap-3 border-b border-gray-50 pb-6 mb-6">
-                    <span class="bg-slate-900 text-white w-7 h-7 rounded-xl flex items-center justify-center text-xs font-black">02</span>
-                    <h4 class="font-black text-slate-800 uppercase text-xs tracking-widest">Detail Tarif Pajak (%)</h4>
-                    <button wire:click="toggleBreakdown" class="ml-auto text-[10px] font-black text-blue-600 hover:underline uppercase tracking-widest">Info Tarif</button>
-                </div>
-
-                {{-- SWITCH TOGGLE NPWP --}}
-                <div class="p-4 bg-gradient-to-r from-purple-50 to-indigo-50 rounded-2xl border border-purple-200 mb-8 flex items-center justify-between gap-4">
-                    <div>
-                        <div class="flex items-center gap-2">
-                            <span class="font-black text-xs text-purple-900 uppercase">Status Kepemilikan NPWP / API Impor</span>
-                            <span class="px-2 py-0.5 rounded text-[10px] font-bold uppercase {{ $has_npwp ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700' }}">{{ $has_npwp ? 'PPh Normal' : 'PPh 2x Lipat' }}</span>
+                    <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+                        <div class="space-y-1.5">
+                            <label class="text-xs font-bold text-slate-600 uppercase">Nilai Barang (FOB)</label>
+                            <div class="relative">
+                                <span class="absolute left-3.5 top-3 text-xs font-bold text-slate-400">{{ $mata_uang }}</span>
+                                <input type="number" step="0.01" wire:model.live.debounce.300ms="nilai_fob" 
+                                       class="w-full pl-14 pr-3 py-2.5 border-slate-200 rounded-xl text-base font-mono font-bold focus:ring-purple-500 focus:border-purple-500 bg-white" placeholder="0">
+                            </div>
                         </div>
-                        <p class="text-[11px] text-purple-700 mt-0.5">Importir tanpa NPWP dikenakan penyesuaian PPh Impor 2x lipat sesuai PMK & UU PPh Art 22.</p>
-                    </div>
-                    <label class="relative inline-flex items-center cursor-pointer shrink-0">
-                        <input type="checkbox" wire:model.live="has_npwp" class="sr-only peer">
-                        <div class="w-11 h-6 bg-gray-200 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-purple-700"></div>
-                    </label>
-                </div>
 
-                @if($showBreakdown)
-                <div class="mb-8 p-5 bg-blue-50 rounded-2xl border border-blue-100 text-xs text-slate-600 leading-relaxed italic animate-fade-in">
-                    Parameter tarif dihitung dari Nilai Pabean (BM) dan Nilai Impor (PPN, PPnBM, PPh) sesuai UU Harmonisasi Peraturan Perpajakan.
+                        <div class="space-y-1.5">
+                            <label class="text-xs font-bold text-slate-600 uppercase">Ongkos Angkut (Freight)</label>
+                            <div class="relative">
+                                <span class="absolute left-3.5 top-3 text-xs font-bold text-slate-400">{{ $mata_uang }}</span>
+                                <input type="number" step="0.01" wire:model.live.debounce.300ms="nilai_freight" 
+                                       class="w-full pl-14 pr-3 py-2.5 border-slate-200 rounded-xl text-base font-mono font-bold focus:ring-purple-500 focus:border-purple-500 bg-white" placeholder="0">
+                            </div>
+                        </div>
+
+                        <div class="space-y-1.5">
+                            <div class="flex justify-between items-center">
+                                <label class="text-xs font-bold text-slate-600 uppercase">Asuransi</label>
+                                <select wire:model.live="insurance_type" class="text-[10px] border-none bg-transparent p-0 text-purple-700 font-bold focus:ring-0">
+                                    <option value="manual">Manual Polis</option>
+                                    <option value="pmk_dn">Rumus DN (0.5%)</option>
+                                </select>
+                            </div>
+                            <div class="relative">
+                                <span class="absolute left-3.5 top-3 text-xs font-bold text-slate-400">{{ $mata_uang }}</span>
+                                <input type="number" step="0.01" wire:model.live.debounce.300ms="nilai_insurance" 
+                                       class="w-full pl-14 pr-3 py-2.5 border-slate-200 rounded-xl text-base font-mono font-bold focus:ring-purple-500 focus:border-purple-500 bg-white" placeholder="0"
+                                       {{ $insurance_type === 'pmk_dn' ? 'readonly' : '' }}>
+                            </div>
+                        </div>
+                    </div>
                 </div>
                 @endif
 
-                <div class="grid grid-cols-2 md:grid-cols-4 gap-8">
-                    @foreach(['tarif_bm' => 'BM', 'tarif_ppn' => 'PPN', 'tarif_ppnbm' => 'PPnBM', 'tarif_pph' => 'PPh'] as $key => $label)
-                    <div class="space-y-3 text-center group">
-                        <label class="block text-[10px] font-black text-gray-400 uppercase tracking-[0.2em]">{{ $label }}</label>
-                        <div class="relative">
-                            <input type="number" step="0.1" wire:model.live="{{ $key }}" class="w-full border-2 border-gray-50 bg-gray-50/50 rounded-2xl text-2xl font-black text-center py-5 focus:bg-white focus:ring-0 focus:border-blue-600 transition-all shadow-inner">
-                            <span class="absolute right-4 top-6 text-[10px] font-black text-gray-300">%</span>
-                        </div>
+                {{-- Total Input Nilai Barang CIF --}}
+                <div class="space-y-2.5">
+                    <div class="flex justify-between items-center">
+                        <label class="block text-sm font-extrabold text-slate-700 uppercase tracking-wide">
+                            {{ $cifMethod === 'breakdown' ? 'Total Nilai CIF Terhitung' : 'Input Nilai CIF (Cost, Insurance & Freight)' }}
+                        </label>
+                        <span class="text-sm font-black text-blue-600 font-mono">{{ $mata_uang }}</span>
                     </div>
-                    @endforeach
+
+                    <div class="relative">
+                        <div class="absolute inset-y-0 left-0 pl-6 flex items-center pointer-events-none text-slate-400 font-black text-3xl">
+                            {{ $mata_uang }}
+                        </div>
+                        <input type="number" step="0.01" wire:model.live.debounce.300ms="nilai_barang" 
+                               {{ $cifMethod === 'breakdown' ? 'readonly' : '' }}
+                               class="w-full pl-28 pr-6 py-4.5 border-2 border-slate-200 rounded-2xl text-4xl font-black text-slate-900 focus:ring-0 focus:border-blue-600 transition-all placeholder:text-slate-200 bg-slate-50/50 font-mono"
+                               placeholder="0">
+                    </div>
+                </div>
+
+                {{-- Equivalent Rupiah Card --}}
+                <div class="bg-gradient-to-r from-blue-600 via-blue-700 to-indigo-700 rounded-2xl p-6 flex justify-between items-center shadow-lg shadow-blue-500/20 text-white">
+                    <div>
+                        <p class="text-xs font-black text-blue-200 uppercase tracking-widest">Dasar Pengenaan Pajak (CIF × Kurs)</p>
+                        <p class="text-base font-bold mt-1 text-white">Nilai Pabean (IDR)</p>
+                    </div>
+                    <div class="text-right">
+                        <span class="text-3xl md:text-4xl font-black font-mono tracking-tight">Rp {{ number_format($nilai_pabean, 0, ',', '.') }}</span>
+                    </div>
                 </div>
             </div>
-        </div>
 
-        {{-- KOLOM KANAN: RECEIPT STYLE --}}
-        <div class="lg:col-span-5">
-            <div class="bg-slate-900 rounded-[3rem] shadow-[0_35px_60px_-15px_rgba(15,44,89,0.3)] border-8 border-white/5 overflow-hidden sticky top-8">
-                <div class="p-12 text-center relative overflow-hidden">
-                    <div class="absolute -top-32 -right-32 w-80 h-80 bg-blue-600 rounded-full opacity-10 blur-[80px]"></div>
-                    <h4 class="text-blue-400 font-black tracking-[0.5em] uppercase text-[10px] mb-10 relative z-10 opacity-70">Total Estimasi Pungutan</h4>
-                    
-                    <div class="flex flex-col items-center justify-center gap-1 relative z-10 mb-12">
-                        <span class="text-white/20 text-3xl font-black italic tracking-widest leading-none">IDR</span>
-                        <span class="text-6xl md:text-7xl font-black text-white font-mono tracking-tighter leading-none block mt-2" title="Rp {{ number_format($total_pungutan, 0, ',', '.') }}">{{ \App\Support\NumberHelper::formatCompact($total_pungutan) }}</span>
-                        <span class="text-xs text-blue-200/60 font-mono mt-1">Rp {{ number_format($total_pungutan, 0, ',', '.') }}</span>
+            {{-- 3. PARAMETER TARIF, STATUS IMPORTIR & FASILITAS --}}
+            <div class="bg-white rounded-3xl shadow-xs border border-slate-200 p-6 md:p-8 space-y-6">
+                <div class="flex items-center justify-between border-b border-slate-100 pb-4">
+                    <div class="flex items-center gap-2.5">
+                        <span class="w-7 h-7 rounded-xl bg-slate-800 text-white flex items-center justify-center text-xs font-black shadow-xs">02</span>
+                        <h4 class="font-extrabold text-slate-900 uppercase text-sm tracking-wider">Regulasi Tarif & Skema Fasilitas</h4>
                     </div>
-                    
-                    <div class="mt-10 pt-12 border-t border-white/10 relative z-10 space-y-8">
-                        @php
-                        $results = [
-                            ['L' => 'Bea Masuk (BM)', 'V' => $bayar_bm, 'P' => $tarif_bm, 'C' => 'text-blue-400'],
-                            ['L' => 'PPN Impor', 'V' => $bayar_ppn, 'P' => $tarif_ppn, 'C' => 'text-slate-300'],
-                            ['L' => 'PPh Impor', 'V' => $bayar_pph, 'P' => $tarif_pph, 'C' => 'text-slate-300'],
-                        ];
-                        @endphp
-                        @foreach($results as $item)
-                        <div class="flex justify-between items-center group transition-all">
-                            <div class="flex flex-col items-start gap-1">
-                                <span class="text-[10px] font-black uppercase tracking-widest {{ $item['C'] }} opacity-70 group-hover:opacity-100 transition-opacity">{{ $item['L'] }}</span>
-                                <span class="text-[9px] text-white/20 font-bold uppercase tracking-widest">Rate: {{ $item['P'] }}%</span>
-                            </div>
-                            <span class="font-mono font-black text-white text-2xl group-hover:scale-110 transition-transform">Rp {{ number_format($item['V'], 0, ',', '.') }}</span>
-                        </div>
-                        @endforeach
-                    </div>
-                </div>
-                
-                <div class="p-8 bg-white/5 backdrop-blur-3xl border-t border-white/10 space-y-4">
-                    {{-- TOMBOL CONVERT SIMULATION TO BOOKING --}}
-                    <a href="{{ route('customer.shipments.create') }}" class="w-full py-4 bg-gradient-to-r from-emerald-500 to-green-600 hover:from-emerald-600 hover:to-green-700 text-white font-black rounded-2xl transition-all text-xs uppercase tracking-widest flex items-center justify-center gap-2 shadow-xl shadow-emerald-900/30">
-                        🚀 Buat Booking dari Hasil Simulasi
-                    </a>
-
-                    <div class="grid grid-cols-2 gap-3">
-                        <button wire:click="saveToHistory" class="py-3.5 bg-emerald-500 text-white font-black rounded-xl hover:bg-emerald-600 transition-all text-[10px] uppercase tracking-widest flex items-center justify-center gap-2 shadow-xl shadow-emerald-900/20 active:scale-95">
-                            💾 Simpan
-                        </button>
-                        <button wire:click="copyToClipboard" 
-                                x-data x-on:copy-text.window="navigator.clipboard.writeText($event.detail.text); $dispatch('notify', {type: 'success', message: 'Berhasil disalin!'})"
-                                class="py-3.5 bg-blue-600 text-white font-black rounded-xl hover:bg-blue-700 transition-all text-[10px] uppercase tracking-widest flex items-center justify-center gap-2 shadow-xl shadow-blue-900/20 active:scale-95">
-                            📋 Copy Result
-                        </button>
-                    </div>
-
-                    <button wire:click="resetCalculator" class="w-full py-3 bg-white/10 text-gray-300 font-bold rounded-xl hover:bg-red-600 hover:text-white transition-all text-[10px] uppercase tracking-[0.2em] flex items-center justify-center gap-3 active:scale-95">
-                        RESET SIMULASI
+                    <button wire:click="toggleBreakdown" class="text-xs text-blue-600 hover:text-blue-800 font-bold flex items-center gap-1.5">
+                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+                        <span>Panduan Tarif</span>
                     </button>
                 </div>
+
+                @if($showBreakdown)
+                <div class="p-4.5 bg-blue-50/70 rounded-2xl border border-blue-200 text-xs text-slate-700 space-y-2 leading-relaxed">
+                    <p><strong>Bea Masuk (BM):</strong> Tarif BTKI (0% s/d 30%+). Dapatkan Bea Masuk 0% dengan memanfaatkan fasilitas FTA Form E (China) atau Form D (ASEAN) via M2B.</p>
+                    <p><strong>PPN Impor:</strong> Standar 11% (UU HPP). Menjadi Pajak Masukan yang dapat dikreditkan oleh perusahaan Anda.</p>
+                    <p><strong>PPh Pasal 22:</strong> 2.5% bagi perusahaan ber-API (Angka Pengenal Importir), 7.5% untuk Non-API, dan 15% jika tanpa NPWP.</p>
+                </div>
+                @endif
+
+                {{-- Status Importir & Skema FTA --}}
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-5">
+                    <div class="space-y-2">
+                        <label class="block text-xs font-extrabold text-slate-600 uppercase tracking-wide">Status Izin Importir Anda (PPh 22)</label>
+                        <select wire:model.live="status_importir" class="w-full border-slate-200 rounded-xl text-sm font-bold focus:ring-blue-500 focus:border-blue-500 py-3 px-3.5 bg-slate-50/50 shadow-xs text-slate-800">
+                            <option value="api">Memiliki API (Angka Pengenal Importir) &bull; PPh 2.5%</option>
+                            <option value="non_api">Non-API (Punya NPWP tapi belum API) &bull; PPh 7.5%</option>
+                            <option value="no_npwp">Tanpa NPWP &bull; Kenaikan 100% (PPh 15.0%)</option>
+                        </select>
+                    </div>
+
+                    <div class="space-y-2">
+                        <label class="block text-xs font-extrabold text-slate-600 uppercase tracking-wide">Skema Fasilitas Perdagangan (FTA)</label>
+                        <select wire:model.live="skema_fasilitas" class="w-full border-slate-200 rounded-xl text-sm font-bold focus:ring-blue-500 focus:border-blue-500 py-3 px-3.5 bg-slate-50/50 shadow-xs text-slate-800">
+                            <option value="mfn">Normal / Standar (MFN)</option>
+                            <option value="form_e">Form E (ACFTA China &bull; BM 0%)</option>
+                            <option value="form_d">Form D (ATIGA ASEAN &bull; BM 0%)</option>
+                            <option value="form_ak">Form AK (AKFTA Korea &bull; BM 0%)</option>
+                            <option value="kite">KITE / Kawasan Berikat (Pembebasan)</option>
+                            <option value="custom">Kustom / Lainnya</option>
+                        </select>
+                    </div>
+                </div>
+
+                {{-- Banner Edukasi Penghematan Fasilitas FTA --}}
+                @if(in_array($skema_fasilitas, ['form_e', 'form_d', 'form_ak']))
+                <div class="p-4 bg-emerald-50 rounded-2xl border border-emerald-200 flex items-center gap-3">
+                    <span class="text-2xl">🎉</span>
+                    <div class="text-xs text-emerald-900 leading-relaxed">
+                        <strong>Fasilitas FTA Terpilih (Bea Masuk 0%):</strong> Anda menghemat pembayaran Bea Masuk dengan menggunakan fasilitas perjanjian perdagangan internasional. Tim M2B siap membantu verifikasi COO (Certificate of Origin) Anda sebelum kapal bersandar.
+                    </div>
+                </div>
+                @endif
+
+                {{-- Input Persentase Tarif --}}
+                <div class="grid grid-cols-2 sm:grid-cols-4 gap-4 pt-2">
+                    <div class="space-y-1.5 text-center group">
+                        <label class="block text-xs font-black text-slate-500 uppercase tracking-wider">Bea Masuk (BM)</label>
+                        <div class="relative">
+                            <input type="number" step="0.1" wire:model.live.debounce.300ms="tarif_bm" 
+                                   class="w-full border border-slate-200 bg-slate-50 rounded-xl text-xl font-black text-center py-3 focus:bg-white focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 font-mono text-slate-900">
+                            <span class="absolute right-3 top-3.5 text-xs font-bold text-slate-400">%</span>
+                        </div>
+                    </div>
+
+                    <div class="space-y-1.5 text-center group">
+                        <label class="block text-xs font-black text-slate-500 uppercase tracking-wider">PPN Impor</label>
+                        <div class="relative">
+                            <input type="number" step="0.1" wire:model.live.debounce.300ms="tarif_ppn" 
+                                   class="w-full border border-slate-200 bg-slate-50 rounded-xl text-xl font-black text-center py-3 focus:bg-white focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 font-mono text-slate-900">
+                            <span class="absolute right-3 top-3.5 text-xs font-bold text-slate-400">%</span>
+                        </div>
+                    </div>
+
+                    <div class="space-y-1.5 text-center group">
+                        <label class="block text-xs font-black text-slate-500 uppercase tracking-wider">PPnBM</label>
+                        <div class="relative">
+                            <input type="number" step="0.1" wire:model.live.debounce.300ms="tarif_ppnbm" 
+                                   class="w-full border border-slate-200 bg-slate-50 rounded-xl text-xl font-black text-center py-3 focus:bg-white focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 font-mono text-slate-900">
+                            <span class="absolute right-3 top-3.5 text-xs font-bold text-slate-400">%</span>
+                        </div>
+                    </div>
+
+                    <div class="space-y-1.5 text-center group">
+                        <label class="block text-xs font-black text-slate-500 uppercase tracking-wider">PPh Pasal 22</label>
+                        <div class="relative">
+                            <input type="number" step="0.1" wire:model.live.debounce.300ms="tarif_pph" 
+                                   class="w-full border border-slate-200 bg-slate-50 rounded-xl text-xl font-black text-center py-3 focus:bg-white focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 font-mono text-slate-900">
+                            <span class="absolute right-3 top-3.5 text-xs font-bold text-slate-400">%</span>
+                        </div>
+                    </div>
+                </div>
             </div>
+
         </div>
+
+        {{-- =========================================
+             KOLOM KANAN: RECEIPT RESMI KLIEN (COL-5)
+             ========================================= --}}
+        <div class="lg:col-span-5 space-y-6">
+            
+            <div class="bg-gradient-to-b from-slate-900 via-slate-900 to-[#070E1B] rounded-[2.5rem] shadow-2xl shadow-slate-950/60 border border-slate-800 overflow-hidden sticky top-6 relative">
+                {{-- Sleek Accent Line --}}
+                <div class="absolute top-0 inset-x-0 h-1 bg-gradient-to-r from-emerald-500 via-blue-500 to-indigo-500"></div>
+
+                {{-- Panel Atas Resi --}}
+                <div class="p-8 md:p-9 text-center relative">
+                    <div class="relative z-10">
+                        <span class="inline-block px-4 py-1.5 rounded-full bg-emerald-500/15 border border-emerald-400/30 text-emerald-300 text-xs font-black tracking-widest uppercase mb-3">
+                            Estimasi Tagihan Negara (Billing DJBC)
+                        </span>
+
+                        <h4 class="text-slate-400 font-extrabold tracking-[0.2em] uppercase text-xs mb-2">Total Estimasi Setoran Pabean</h4>
+                        
+                        <div class="flex items-baseline justify-center gap-2.5 my-2">
+                            <span class="text-slate-500 text-2xl font-bold font-mono">IDR</span>
+                            <span class="text-4xl md:text-5xl font-black text-white font-mono tracking-tight">{{ number_format($total_pungutan, 0, ',', '.') }}</span>
+                        </div>
+
+                        {{-- Stacked Visual Bar Proporsi Pungutan --}}
+                        @if($total_pungutan > 0)
+                        <div class="mt-6 space-y-2.5">
+                            <div class="w-full h-3 bg-slate-800/90 rounded-full overflow-hidden flex shadow-inner">
+                                @if($proporsi_bm > 0)
+                                <div style="width: {{ $proporsi_bm }}%" class="bg-blue-500 h-full" title="BM: {{ $proporsi_bm }}%"></div>
+                                @endif
+                                @if($proporsi_ppn > 0)
+                                <div style="width: {{ $proporsi_ppn }}%" class="bg-emerald-500 h-full" title="PPN: {{ $proporsi_ppn }}%"></div>
+                                @endif
+                                @if($proporsi_ppnbm > 0)
+                                <div style="width: {{ $proporsi_ppnbm }}%" class="bg-rose-500 h-full" title="PPnBM: {{ $proporsi_ppnbm }}%"></div>
+                                @endif
+                                @if($proporsi_pph > 0)
+                                <div style="width: {{ $proporsi_pph }}%" class="bg-amber-500 h-full" title="PPh: {{ $proporsi_pph }}%"></div>
+                                @endif
+                            </div>
+
+                            <div class="flex justify-between items-center text-xs font-mono font-bold text-slate-300 px-1">
+                                <span class="flex items-center gap-1.5"><span class="w-2.5 h-2.5 rounded-full bg-blue-500 inline-block"></span> BM {{ $proporsi_bm }}%</span>
+                                <span class="flex items-center gap-1.5"><span class="w-2.5 h-2.5 rounded-full bg-emerald-500 inline-block"></span> PPN {{ $proporsi_ppn }}%</span>
+                                <span class="flex items-center gap-1.5"><span class="w-2.5 h-2.5 rounded-full bg-amber-500 inline-block"></span> PPh {{ $proporsi_pph }}%</span>
+                            </div>
+                        </div>
+                        @endif
+
+                        {{-- Breakdown Baris Pungutan --}}
+                        <div class="mt-8 pt-6 border-t border-slate-800/90 space-y-4 text-left">
+                            <div class="flex justify-between items-center group">
+                                <div class="flex items-center gap-2">
+                                    <span class="w-2.5 h-2.5 rounded-full bg-blue-400"></span>
+                                    <span class="text-sm font-bold text-slate-200">Bea Masuk (BM)</span>
+                                    <span class="text-xs text-slate-400 font-mono">({{ $tarif_bm }}%)</span>
+                                </div>
+                                <span class="font-mono font-bold text-white text-base">Rp {{ number_format($bayar_bm, 0, ',', '.') }}</span>
+                            </div>
+
+                            <div class="flex justify-between items-center group">
+                                <div class="flex items-center gap-2">
+                                    <span class="w-2.5 h-2.5 rounded-full bg-emerald-400"></span>
+                                    <span class="text-sm font-bold text-slate-200">PPN Impor</span>
+                                    <span class="text-xs text-slate-400 font-mono">({{ $tarif_ppn }}%)</span>
+                                </div>
+                                <span class="font-mono font-bold text-emerald-400 text-base">Rp {{ number_format($bayar_ppn, 0, ',', '.') }}</span>
+                            </div>
+
+                            @if($tarif_ppnbm > 0)
+                            <div class="flex justify-between items-center group">
+                                <div class="flex items-center gap-2">
+                                    <span class="w-2.5 h-2.5 rounded-full bg-rose-400"></span>
+                                    <span class="text-sm font-bold text-slate-200">PPnBM</span>
+                                    <span class="text-xs text-slate-400 font-mono">({{ $tarif_ppnbm }}%)</span>
+                                </div>
+                                <span class="font-mono font-bold text-rose-400 text-base">Rp {{ number_format($bayar_ppnbm, 0, ',', '.') }}</span>
+                            </div>
+                            @endif
+
+                            <div class="flex justify-between items-center group">
+                                <div class="flex items-center gap-2">
+                                    <span class="w-2.5 h-2.5 rounded-full bg-amber-400"></span>
+                                    <span class="text-sm font-bold text-slate-200">PPh Pasal 22</span>
+                                    <span class="text-xs text-slate-400 font-mono">({{ $tarif_pph }}%)</span>
+                                </div>
+                                <span class="font-mono font-bold text-amber-400 text-base">Rp {{ number_format($bayar_pph, 0, ',', '.') }}</span>
+                            </div>
+                        </div>
+
+                    </div>
+                </div>
+
+                {{-- Panel Bawah Resi: Tax Insight & Action Buttons --}}
+                <div class="p-6 md:p-8 bg-slate-950/90 border-t border-slate-800 space-y-5">
+                    
+                    {{-- Card Manfaat Pajak Perusahaan Anda --}}
+                    <div class="bg-slate-900/90 rounded-2xl p-5 border border-slate-800 space-y-3.5">
+                        <div class="flex items-center justify-between">
+                            <span class="text-xs font-black uppercase tracking-wider text-slate-300">💡 Manfaat Pajak Perusahaan Anda</span>
+                            <span class="text-xs px-2.5 py-1 rounded-full bg-emerald-500/10 text-emerald-400 font-bold border border-emerald-500/20">Tax Deductible</span>
+                        </div>
+
+                        <div class="grid grid-cols-2 gap-3.5 pt-1">
+                            <div class="bg-slate-950 p-3.5 rounded-xl border border-slate-800">
+                                <span class="block text-xs font-bold text-slate-400 uppercase">Pajak Masukan (Dapat Diklaim)</span>
+                                <span class="font-mono font-black text-emerald-400 text-base mt-1 block">Rp {{ number_format($total_kredit_pajak, 0, ',', '.') }}</span>
+                                <span class="block text-xs text-slate-500 mt-1">PPN Masukan + PPh 22 di SPT</span>
+                            </div>
+
+                            <div class="bg-slate-950 p-3.5 rounded-xl border border-slate-800">
+                                <span class="block text-xs font-bold text-slate-400 uppercase">Beban Modal Barang (HPP)</span>
+                                <span class="font-mono font-black text-blue-400 text-base mt-1 block">Rp {{ number_format($beban_pokok, 0, ',', '.') }}</span>
+                                <span class="block text-xs text-slate-500 mt-1">CIF + BM (Nilai Kapitalisasi)</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    {{-- TOMBOL UTAMA: BUAT BOOKING PENGIRIMAN --}}
+                    <button wire:click="convertToBooking" 
+                            class="w-full py-4 px-5 bg-gradient-to-r from-emerald-600 via-teal-600 to-emerald-700 hover:from-emerald-500 hover:to-teal-600 text-white font-extrabold rounded-2xl transition text-sm flex items-center justify-center gap-2.5 shadow-xl shadow-emerald-600/25 active:scale-95">
+                        <span class="text-lg">🚀</span>
+                        <span>Buat Booking dari Hasil Simulasi Ini</span>
+                    </button>
+
+                    {{-- Tombol PDF & Salin WA --}}
+                    <div class="grid grid-cols-2 gap-3.5">
+                        {{-- Tombol Download PDF --}}
+                        <button wire:click="downloadPdf" 
+                                class="py-3.5 px-4 bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white font-bold rounded-xl transition text-sm flex items-center justify-center gap-2 shadow-lg shadow-blue-500/25">
+                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/></svg>
+                            <span>Download PDF</span>
+                        </button>
+
+                        {{-- Tombol Copy Format WhatsApp --}}
+                        <button wire:click="copyToClipboard"
+                                x-data
+                                x-on:copy-text.window="navigator.clipboard.writeText($event.detail.text); $dispatch('notify', {type: 'success', message: 'Teks format WhatsApp berhasil disalin!'})"
+                                class="py-3.5 px-4 bg-slate-800 hover:bg-slate-700 text-white font-bold rounded-xl transition text-sm flex items-center justify-center gap-2 border border-slate-700">
+                            <svg class="w-4 h-4 text-emerald-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 5H6a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2v-1M8 5a2 2 0 002 2h2a2 2 0 002-2M8 5a2 2 0 012-2h2a2 2 0 012 2m0 0h2a2 2 0 012 2v3m2 4H10m0 0l3-3m-3 3l3 3"/></svg>
+                            <span>Salin WA</span>
+                        </button>
+                    </div>
+
+                    {{-- Simpan & Reset --}}
+                    <div class="grid grid-cols-2 gap-3.5">
+                        <button wire:click="saveToHistory" 
+                                class="py-2.5 px-3 bg-slate-800/80 hover:bg-slate-700 text-slate-300 hover:text-white font-bold rounded-xl transition text-xs flex items-center justify-center gap-1.5 border border-slate-700/80">
+                            <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7H5a2 2 0 00-2 2v9a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-3m-1 4l-3 3m0 0l-3-3m3 3V4"/></svg>
+                            <span>Simpan</span>
+                        </button>
+
+                        <button wire:click="resetCalculator" 
+                                class="py-2.5 px-3 bg-slate-800/80 hover:bg-rose-950/60 hover:text-rose-400 text-slate-400 font-bold rounded-xl transition text-xs flex items-center justify-center gap-1.5 border border-slate-700/80">
+                            <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/></svg>
+                            <span>Reset</span>
+                        </button>
+                    </div>
+
+                    <p class="text-xs text-center text-slate-400 font-normal leading-relaxed">
+                        *Estimasi mengacu pada kurs pajak Kemenkeu minggu berjalan. Nilai pungutan resmi yang mengikat ditetapkan oleh Bea Cukai pada dokumen PIB/SPPB.
+                    </p>
+                </div>
+            </div>
+
+        </div>
+
     </div>
 </div>

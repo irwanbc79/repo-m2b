@@ -12,7 +12,7 @@
             <div class="flex items-center gap-2">
                 <span class="text-[10px] font-bold text-slate-400 uppercase tracking-widest leading-none">M2B Portal</span>
                 <span class="text-slate-300 text-xs leading-none">/</span>
-                <h1 class="text-base font-bold text-slate-900 tracking-tight leading-none">{{ $title }}</h1>
+                <h1 class="text-base font-bold text-slate-900 tracking-tight leading-none">{!! $title !!}</h1>
                 @if(auth()->user()->hasRole('auditor'))
                 <span class="ml-2 inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[10px] font-extrabold bg-amber-50 text-amber-800 border border-amber-300/80 uppercase tracking-wider shadow-xs">
                     🔍 Auditor Mode
