@@ -14,11 +14,26 @@ use PhpOffice\PhpSpreadsheet\Writer\Xlsx;
 
 class BankReconciliationExportController extends Controller
 {
+    private function authorizeAccess(): void
+    {
+        $user = auth()->user();
+        abort_unless($user && $user->isAdmin(), 403, 'Akses ditolak.');
+        abort_if($user->hasRole(['auditor', 'konsultan_pajak']), 403, 'Anda tidak memiliki akses ke Rekonsiliasi Bank.');
+
+        $allowed = $user->isAdminLevel()
+            || $user->hasRole(['super_admin', 'director', 'admin', 'manager', 'supervisor', 'finance', 'staff_accounting', 'accounting', 'staff_sales', 'cashier'])
+            || $user->hasPermission('invoice.view')
+            || $user->hasPermission('cashier.view');
+
+        abort_unless($allowed, 403, 'Anda tidak memiliki akses ke Rekonsiliasi Bank.');
+    }
+
     /**
      * Build filtered query dari request params.
      */
     private function buildQuery(Request $request)
     {
+        $this->authorizeAccess();
         $query = BankTransaction::query()->orderBy('transaction_date')->orderBy('id');
 
         if ($request->search) {

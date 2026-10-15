@@ -1022,6 +1022,7 @@ class InvoiceManager extends Component
 
     public function editPayment($paymentId)
     {
+        abort_unless($this->canManage(), 403);
         $payment = \App\Models\InvoicePayment::find($paymentId);
         if ($payment) {
             $this->editingPaymentId = $payment->id;
@@ -1035,6 +1036,7 @@ class InvoiceManager extends Component
 
     public function updatePayment()
     {
+        abort_unless($this->canManage(), 403);
         $this->validate([
             "editingPaymentAmount" => "required|numeric|min:1",
             "editingPaymentDate" => "required|date",
@@ -1060,6 +1062,7 @@ class InvoiceManager extends Component
 
     public function savePaymentProof()
     {
+        abort_unless($this->canManage(), 403);
         $this->validate([
             "editingPaymentProof" => "required|file|mimes:jpeg,png,jpg,pdf|max:10240"
         ]);
@@ -1081,6 +1084,7 @@ class InvoiceManager extends Component
 
     public function deletePayment($paymentId)
     {
+        abort_unless($this->canManage(), 403);
         $payment = \App\Models\InvoicePayment::find($paymentId);
         if ($payment) {
             $invoiceId = $payment->invoice_id;
@@ -1125,6 +1129,7 @@ class InvoiceManager extends Component
      */
     public function openReviseModal($invoiceId)
     {
+        abort_unless($this->canManage(), 403);
         $this->reviseInvoiceId = $invoiceId;
         $this->reviseReason = "";
         $this->showReviseModal = true;
@@ -1142,6 +1147,7 @@ class InvoiceManager extends Component
      */
     public function revisePayment()
     {
+        abort_unless($this->canManage(), 403);
         $this->validate([
             "reviseReason" => "required|min:10"
         ], [
@@ -1189,6 +1195,7 @@ class InvoiceManager extends Component
 
     public function submitClaimDirect($invoiceId)
     {
+        abort_unless($this->canManage(), 403);
         $this->validate([
             "claimProofFile" => "required|file|mimes:jpeg,png,jpg,pdf|max:10240",
         ], [
@@ -1226,6 +1233,7 @@ class InvoiceManager extends Component
 
     public function openFakturPajakModal($invoiceId)
     {
+        abort_unless($this->canManage(), 403);
         $this->fakturPajakInvoiceId = $invoiceId;
         $invoice = \App\Models\Invoice::find($invoiceId);
         $this->fakturPajakNumber = $invoice->faktur_pajak_number ?? '';
@@ -1235,6 +1243,7 @@ class InvoiceManager extends Component
 
     public function saveFakturPajak()
     {
+        abort_unless($this->canManage(), 403);
         $this->validate([
             'fakturPajakNumber' => 'required|string|max:50',
             'fakturPajakFile' => 'required|file|mimes:pdf|max:5120',
@@ -1262,6 +1271,7 @@ class InvoiceManager extends Component
 
     public function deleteFakturPajak($invoiceId)
     {
+        abort_unless($this->canManage(), 403);
         $invoice = \App\Models\Invoice::findOrFail($invoiceId);
 
         // Hapus file dari storage
@@ -1290,6 +1300,7 @@ class InvoiceManager extends Component
 
     public function openBuktiPotongModal($invoiceId)
     {
+        abort_unless($this->canManage(), 403);
         $this->buktiPotongInvoiceId = $invoiceId;
         $invoice = \App\Models\Invoice::findOrFail($invoiceId);
         $this->buktiPotongNumber = $invoice->bukti_potong_number ?? '';
@@ -1301,6 +1312,7 @@ class InvoiceManager extends Component
 
     public function saveBuktiPotong()
     {
+        abort_unless($this->canManage(), 403);
         $invoice = \App\Models\Invoice::findOrFail($this->buktiPotongInvoiceId);
 
         $rules = [
@@ -1343,6 +1355,7 @@ class InvoiceManager extends Component
 
     public function deleteBuktiPotong($invoiceId)
     {
+        abort_unless($this->canManage(), 403);
         $invoice = \App\Models\Invoice::findOrFail($invoiceId);
 
         if ($invoice->bukti_potong_path) {

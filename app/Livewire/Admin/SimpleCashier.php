@@ -125,10 +125,26 @@ class SimpleCashier extends Component
     public function canAccess(): bool
     {
         $user = auth()->user();
-        return $user && (
-            $user->isAdminLevel() ||
+        if (!$user || $user->hasRole(['auditor', 'konsultan_pajak'])) {
+            return false;
+        }
+
+        return $user->isAdminLevel() ||
             $user->hasRole(['super_admin', 'director', 'admin', 'manager', 'staff_accounting', 'finance', 'cashier']) ||
             $user->hasPermission('cashier.view') ||
+            $user->hasPermission('cashier.input');
+    }
+
+    public function canInput(): bool
+    {
+        $user = auth()->user();
+        if (!$user || $user->hasRole(['auditor', 'konsultan_pajak'])) {
+            return false;
+        }
+
+        return $this->canAccess() && (
+            $user->isAdminLevel() ||
+            $user->hasRole(['super_admin', 'director', 'admin', 'manager', 'staff_accounting', 'finance', 'cashier']) ||
             $user->hasPermission('cashier.input')
         );
     }
@@ -372,6 +388,7 @@ class SimpleCashier extends Component
     
     public function editTransaction($id)
     {
+        abort_unless($this->canInput(), 403, 'Akses ditolak.');
         \Log::info("🔵 EditTransaction", ["id" => $id, "user" => auth()->id()]);
         $transaction = CashTransaction::with(['journal'])->findOrFail($id);
 
@@ -404,6 +421,7 @@ class SimpleCashier extends Component
     
     public function confirmDelete($id)
     {
+        abort_unless($this->canInput(), 403, 'Akses ditolak.');
         \Log::info("🟠 ConfirmDelete", ["id" => $id, "user" => auth()->id()]);
         $transaction = CashTransaction::with(['journal'])->findOrFail($id);
 
@@ -418,6 +436,7 @@ class SimpleCashier extends Component
     
     public function deleteTransaction()
     {
+        abort_unless($this->canInput(), 403, 'Akses ditolak.');
         \Log::info("🔴 DeleteTransaction", ["deleteId" => $this->deleteId]);
         try {
             DB::beginTransaction();
@@ -645,6 +664,7 @@ class SimpleCashier extends Component
 
     public function openUploadProofModal($id)
     {
+        abort_unless($this->canInput(), 403, 'Akses ditolak.');
         $this->uploadProofId         = $id;
         $this->proofAttachment       = null;
         $this->showUploadProofModal  = true;
@@ -660,6 +680,7 @@ class SimpleCashier extends Component
 
     public function saveProof()
     {
+        abort_unless($this->canInput(), 403, 'Akses ditolak.');
         $this->validate([
             'proofAttachment' => 'required|file|max:5120|mimes:jpg,jpeg,png,gif,webp,pdf',
         ], [
@@ -919,6 +940,7 @@ class SimpleCashier extends Component
     
     public function save()
     {
+        abort_unless($this->canInput(), 403, 'Akses ditolak.');
         $this->isSubmitting = true;
         
         $this->validate([

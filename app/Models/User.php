@@ -225,6 +225,56 @@ class User extends Authenticatable
     }
 
     /**
+     * True kalau user termasuk staf/admin internal portal (bukan customer / field_uploader murni).
+     */
+    public function isAdmin(): bool
+    {
+        if ($this->isOnlyFieldUploader()) {
+            return false;
+        }
+
+        $adminRoles = [
+            'super_admin', 'director', 'manager', 'supervisor', 'admin',
+            'staff', 'staff_accounting', 'staff_operations', 'staff_sales',
+            'staff_ppjk', 'staff_documentation', 'cashier', 'auditor',
+            'finance', 'accounting', 'konsultan_pajak',
+        ];
+
+        return $this->isAdminLevel() || $this->hasRole($adminRoles);
+    }
+
+    /**
+     * Alias kompatibilitas untuk cek apakah user adalah petugas lapangan murni.
+     */
+    public function isFieldUploader(): bool
+    {
+        return $this->isOnlyFieldUploader();
+    }
+
+    /**
+     * True kalau user adalah akun customer (via role maupun relasi customer).
+     */
+    public function isCustomer(): bool
+    {
+        return $this->hasRole(['customer'])
+            || $this->customer()->exists()
+            || $this->customers()->exists();
+    }
+
+    /**
+     * Ambil ID customer milik user (mendukung relasi langsung maupun pivot multi-PIC).
+     */
+    public function getCustomerId(): ?int
+    {
+        if ($this->customer) {
+            return (int) $this->customer->id;
+        }
+
+        $viaPivot = $this->getCustomerViaRelation();
+        return $viaPivot ? (int) $viaPivot->id : null;
+    }
+
+    /**
      * Relasi ke Customer via pivot table (Many-to-Many)
      * Untuk mendukung multi-user per customer
      */

@@ -12,8 +12,29 @@ use Barryvdh\DomPDF\Facade\Pdf;
 
 class SimpleInvoiceController extends Controller
 {
+    private function authorizeAccess(bool $write = false): void
+    {
+        $user = auth()->user();
+        abort_unless($user && $user->isAdmin(), 403, 'Akses ditolak.');
+
+        if ($write) {
+            abort_if($user->hasRole(['auditor', 'konsultan_pajak']), 403, 'Akses baca-saja tidak diizinkan mengubah Simple Invoice.');
+            $allowed = $user->isAdminLevel()
+                || $user->hasRole(['super_admin', 'director', 'admin', 'manager', 'supervisor', 'finance', 'staff_accounting', 'accounting', 'staff_sales', 'cashier', 'staff_operations', 'staff'])
+                || $user->hasPermission('invoice.create')
+                || $user->hasPermission('invoice.edit');
+            abort_unless($allowed, 403, 'Anda tidak memiliki izin untuk mengubah Simple Invoice.');
+        } else {
+            $allowed = $user->isAdminLevel()
+                || $user->hasRole(['super_admin', 'director', 'admin', 'manager', 'supervisor', 'finance', 'staff_accounting', 'accounting', 'staff_sales', 'cashier', 'staff_operations', 'staff', 'auditor', 'konsultan_pajak'])
+                || $user->hasPermission('invoice.view');
+            abort_unless($allowed, 403, 'Anda tidak memiliki akses ke Simple Invoice.');
+        }
+    }
+
     public function index(Request $request)
     {
+        $this->authorizeAccess(false);
         $query = SimpleInvoice::with(['creator', 'items']);
 
         // Search
@@ -98,12 +119,14 @@ class SimpleInvoiceController extends Controller
 
     public function create()
     {
+        $this->authorizeAccess(true);
         $bankAccounts = BankAccount::orderBy('is_system', 'desc')->orderBy('created_at', 'asc')->get();
         return view('finance.simple-invoice.create', compact('bankAccounts'));
     }
 
     public function store(Request $request)
     {
+        $this->authorizeAccess(true);
         $validated = $request->validate([
             'customer_name' => 'required|string|max:255',
             'customer_address' => 'nullable|string',
@@ -172,12 +195,14 @@ class SimpleInvoiceController extends Controller
 
     public function pdf($id)
     {
+        $this->authorizeAccess(false);
         $invoice = SimpleInvoice::with('items')->findOrFail($id);
         return view('finance.simple-invoice.pdf', compact('invoice'));
     }
 
     public function download($id)
     {
+        $this->authorizeAccess(false);
         $invoice = SimpleInvoice::with('items')->findOrFail($id);
 
         $pdf = Pdf::loadView('finance.simple-invoice.pdf-print', compact('invoice'));
@@ -191,6 +216,7 @@ class SimpleInvoiceController extends Controller
 
     public function edit($id)
     {
+        $this->authorizeAccess(true);
         $invoice = SimpleInvoice::with('items')->findOrFail($id);
         $bankAccounts = BankAccount::orderBy('is_system', 'desc')->orderBy('created_at', 'asc')->get();
         return view('finance.simple-invoice.edit', compact('invoice', 'bankAccounts'));
@@ -198,12 +224,14 @@ class SimpleInvoiceController extends Controller
 
     public function detail($id)
     {
+        $this->authorizeAccess(false);
         $invoice = SimpleInvoice::with('items')->findOrFail($id);
         return view('finance.simple-invoice.detail', compact('invoice'));
     }
 
     public function update(Request $request, $id)
     {
+        $this->authorizeAccess(true);
         $invoice = SimpleInvoice::findOrFail($id);
 
         $validated = $request->validate([
@@ -273,7 +301,9 @@ class SimpleInvoiceController extends Controller
 
     public function destroy($id)
     {
-        if (!in_array(auth()->user()->role, ['admin', 'director'])) {
+        $this->authorizeAccess(true);
+        $user = auth()->user();
+        if (!$user || !($user->isAdminLevel() || $user->hasRole(['super_admin', 'director', 'admin', 'finance']) || $user->hasPermission('invoice.delete'))) {
             return redirect()->back()->with('error', 'Unauthorized');
         }
 
@@ -290,6 +320,7 @@ class SimpleInvoiceController extends Controller
 
     public function updatePayment(Request $request, $id)
     {
+        $this->authorizeAccess(true);
         $request->validate([
             'status' => 'required|in:paid,unpaid',
             'paid_date' => 'required_if:status,paid|nullable|date',
@@ -329,6 +360,7 @@ class SimpleInvoiceController extends Controller
      */
     public function print($id)
     {
+        $this->authorizeAccess(false);
         $invoice = SimpleInvoice::with(['items', 'customer', 'creator'])->findOrFail($id);
         return view('finance.simple-invoice.print', compact('invoice'));
     }

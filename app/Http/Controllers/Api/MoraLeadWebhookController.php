@@ -12,9 +12,10 @@ class MoraLeadWebhookController extends Controller
 {
     public function store(Request $request): JsonResponse
     {
-        $secret = config('services.mora.portal_secret');
-        if ($secret && $request->header('X-Mora-Secret') !== $secret) {
-            Log::warning('MORA webhook: invalid secret', ['ip' => $request->ip()]);
+        $secret = (string) config('services.mora.portal_secret', '');
+        $provided = (string) $request->header('X-Mora-Secret', '');
+        if ($secret === '' || !hash_equals($secret, $provided)) {
+            Log::warning('MORA webhook: invalid or unconfigured secret', ['ip' => $request->ip()]);
             return response()->json(['error' => 'Unauthorized'], 401);
         }
 

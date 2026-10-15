@@ -122,6 +122,24 @@ class EmailAttachmentController extends Controller
     }
 
     /**
+     * Sanitize untrusted email HTML against Stored XSS before rendering in iframe.
+     */
+    public static function sanitizeEmailHtml(string $html): string
+    {
+        // Strip dangerous executable/embedded elements
+        $html = preg_replace('#<(script|object|embed|applet|iframe|frame|frameset|meta|base)\b[^>]*>.*?</\1>#is', '', $html) ?? $html;
+        $html = preg_replace('#<(script|object|embed|applet|iframe|frame|frameset|meta|base)\b[^>]*/?>#is', '', $html) ?? $html;
+
+        // Strip inline event handlers (onload=, onerror=, onclick=, etc.)
+        $html = preg_replace('/\s+on[a-z]+\s*=\s*(?:"[^"]*"|\'[^\']*\'|[^\s>]+)/i', '', $html) ?? $html;
+
+        // Neutralize javascript: / vbscript: / data:text/html URIs in href/src/action
+        $html = preg_replace('/\b(href|src|action|formaction|xlink:href)\s*=\s*(["\']?)\s*(?:javascript|vbscript|data\s*:\s*text\/html)\s*:[^"\'>\s]*/i', '$1=$2#', $html) ?? $html;
+
+        return $html;
+    }
+
+    /**
      * Show email body (HTML) for iframe.
      * Bypasses Livewire JSON payload limit/WAF rules.
      */
@@ -183,6 +201,8 @@ class EmailAttachmentController extends Controller
                     </body>
                     </html>';
                 } else {
+                    $sanitizedBody = self::sanitizeEmailHtml($cleanedBody);
+
                     // HTML: Inject CSS global untuk menormalkan tampilan
                     $styleBlock = '<style>
                         body {
@@ -205,19 +225,21 @@ class EmailAttachmentController extends Controller
                         }
                     </style>';
                     
-                    if (str_contains(strtolower($cleanedBody), '</head>')) {
-                        $html = str_ireplace('</head>', $styleBlock . '</head>', $cleanedBody);
+                    if (str_contains(strtolower($sanitizedBody), '</head>')) {
+                        $html = str_ireplace('</head>', $styleBlock . '</head>', $sanitizedBody);
                     } else {
-                        $html = $styleBlock . $cleanedBody;
+                        $html = $styleBlock . $sanitizedBody;
                     }
                 }
             }
         }
 
-        // Header anti-cache: cegah LiteSpeed menyajikan body/404 basi dari cache.
+        // Header anti-cache & CSP anti-XSS: cegah eksekusi script di dalam iframe email
         return response($html)
             ->header('Content-Type', 'text/html; charset=UTF-8')
             ->header('X-Frame-Options', 'SAMEORIGIN')
+            ->header('X-Content-Type-Options', 'nosniff')
+            ->header('Content-Security-Policy', "default-src 'none'; script-src 'none'; object-src 'none'; base-uri 'none'; form-action 'none'; img-src * data: blob: cid:; style-src 'unsafe-inline' https:; font-src * data:; frame-ancestors 'self';")
             ->header('Cache-Control', 'no-store, no-cache, must-revalidate, max-age=0')
             ->header('Pragma', 'no-cache')
             ->header('X-LiteSpeed-Cache-Control', 'no-cache');

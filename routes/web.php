@@ -562,7 +562,7 @@ Route::middleware(['auth', 'admin'])->prefix('admin/testimoni')->name('admin.tes
 });
 
 // Simple Invoice Routes (Complete CRUD)
-Route::prefix('finance/simple-invoice')->name('finance.simple-invoice.')->middleware('auth')->group(function () {
+Route::prefix('finance/simple-invoice')->name('finance.simple-invoice.')->middleware(['auth', 'admin'])->group(function () {
     Route::get('/', [App\Http\Controllers\Finance\SimpleInvoiceController::class , 'index'])->name('index');
     Route::get('/create', [App\Http\Controllers\Finance\SimpleInvoiceController::class , 'create'])->name('create');
     Route::post('/', [App\Http\Controllers\Finance\SimpleInvoiceController::class , 'store'])->name('store');
@@ -577,9 +577,9 @@ Route::prefix('finance/simple-invoice')->name('finance.simple-invoice.')->middle
 // Simple Invoice Routes (Complete CRUD)
 
 // Simple Invoice Detail Route (for modal view)
-Route::get('/finance/simple-invoice/{id}/detail', [App\Http\Controllers\Finance\SimpleInvoiceController::class , 'detail'])->name('finance.simple-invoice.detail')->middleware('auth');
+Route::get('/finance/simple-invoice/{id}/detail', [App\Http\Controllers\Finance\SimpleInvoiceController::class , 'detail'])->name('finance.simple-invoice.detail')->middleware(['auth', 'admin']);
 // Route Print Simple Invoice (9.5" x 11")
-Route::get('/finance/simple-invoice/{id}/print', [App\Http\Controllers\Finance\SimpleInvoiceController::class , 'print'])->name('finance.simple-invoice.print')->middleware('auth');
+Route::get('/finance/simple-invoice/{id}/print', [App\Http\Controllers\Finance\SimpleInvoiceController::class , 'print'])->name('finance.simple-invoice.print')->middleware(['auth', 'admin']);
 
 
 // HS Codes - public API dengan rate limiting untuk mencegah abuse
@@ -716,11 +716,18 @@ Route::middleware(['auth'])->group(function () {
     Route::get('/document/{id}/view', function ($id) {
             $doc = \App\Models\Document::findOrFail($id);
 
-            // SECURITY CHECK: Customer hanya bisa lihat dokumen miliknya
+            // SECURITY CHECK: Non-admin (Customer / Field Uploader) dibatasi ketat
             $user = \Illuminate\Support\Facades\Auth::user();
-            if ($user->role === 'customer') {
+            if (!$user || !$user->isAdmin()) {
+                if (!$user || $user->isFieldUploader() || !$user->isCustomer()) {
+                    abort(403, 'Akses ditolak.');
+                }
                 $shipment = $doc->shipment;
-                if (!$shipment || !$user->customer || $shipment->customer_id !== $user->customer->id || $doc->is_internal || !$doc->is_public) {
+                $customerIds = $user->customers()->pluck('customers.id')->all();
+                if ($user->customer) {
+                    $customerIds[] = $user->customer->id;
+                }
+                if (!$shipment || empty($customerIds) || !in_array($shipment->customer_id, $customerIds, true) || $doc->is_internal || !$doc->is_public) {
                     abort(403, 'Akses ditolak.');
                 }
             }
@@ -782,9 +789,16 @@ Route::middleware(['auth'])->group(function () {
             $doc = \App\Models\Document::findOrFail($id);
 
             $user = \Illuminate\Support\Facades\Auth::user();
-            if ($user->role === 'customer') {
+            if (!$user || !$user->isAdmin()) {
+                if (!$user || $user->isFieldUploader() || !$user->isCustomer()) {
+                    abort(403, 'Akses ditolak.');
+                }
                 $shipment = $doc->shipment;
-                if (!$shipment || !$user->customer || $shipment->customer_id !== $user->customer->id || $doc->is_internal || !$doc->is_public) {
+                $customerIds = $user->customers()->pluck('customers.id')->all();
+                if ($user->customer) {
+                    $customerIds[] = $user->customer->id;
+                }
+                if (!$shipment || empty($customerIds) || !in_array($shipment->customer_id, $customerIds, true) || $doc->is_internal || !$doc->is_public) {
                     abort(403, 'Akses ditolak.');
                 }
             }
@@ -828,7 +842,7 @@ Route::middleware(['auth'])->group(function () {
         )->name('document.download');
     });
 
-// API Search Customer untuk Simple Invoice - aman dari SQL injection
+// API Search Customer untuk Simple Invoice - aman dari SQL injection & khusus internal staff
 Route::get('/api/customers/search', function (Illuminate\Http\Request $request) {
     $query = \Illuminate\Support\Str::limit($request->get('q', ''), 100);
     $pattern = '%' . $query . '%';
@@ -840,7 +854,7 @@ Route::get('/api/customers/search', function (Illuminate\Http\Request $request) 
         ->limit(20)
         ->get(['id', 'company_name', 'address', 'phone', 'city']);
     return response()->json($customers);
-})->name('api.customers.search')->middleware(['auth', 'throttle:60,1']);
+})->name('api.customers.search')->middleware(['auth', 'admin', 'throttle:60,1']);
 
 // ========== KAS KECIL & ABSENSI ==========
 Route::middleware(['auth', 'admin'])->group(function () {
