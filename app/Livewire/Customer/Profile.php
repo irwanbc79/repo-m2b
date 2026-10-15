@@ -452,6 +452,9 @@ class Profile extends Component
 
     public function cancelRequest($requestId)
     {
+        abort_unless(Auth::user()?->canEditCustomerPortal(), 403, 'Akun View-Only tidak diizinkan membatalkan request user.');
+        abort_unless($this->customer !== null, 403, 'Profil customer tidak ditemukan.');
+
         $request = UserRequest::where('id', $requestId)
             ->where('customer_id', $this->customer->id)
             ->where('status', 'pending')
@@ -466,7 +469,12 @@ class Profile extends Component
 
     public function render()
     {
-        return view('livewire.customer.profile')
-            ->layout('layouts.customer');
+        $companyUsers = $this->customer
+            ? $this->customer->users()->orderByPivot('is_primary', 'desc')->get()
+            : collect();
+
+        return view('livewire.customer.profile', [
+            'companyUsers' => $companyUsers,
+        ])->layout('layouts.customer');
     }
 }

@@ -4,12 +4,19 @@
     {{-- Header Selamat Datang --}}
     <div class="bg-white rounded-xl shadow-sm p-6 border-l-4 border-m2b-primary flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
         <div>
-            <h2 class="text-2xl font-bold text-gray-800">Halo, {{ auth()->user()->name }}! 👋</h2>
+            <div class="flex flex-wrap items-center gap-2">
+                <h2 class="text-2xl font-bold text-gray-800">Halo, {{ auth()->user()->name }}! 👋</h2>
+                @if(auth()->user()->isCustomerViewer())
+                    <span class="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-bold bg-amber-100 text-amber-800 border border-amber-200">
+                        👁️ Mode Lihat Saja (View-Only)
+                    </span>
+                @endif
+            </div>
             <p class="text-gray-600 mt-1">Selamat datang di M2B Portal. Pantau kiriman logistik Anda secara real-time.</p>
         </div>
         <div class="text-left md:text-right bg-gray-50 px-5 py-3 rounded-lg border border-gray-200">
             <p class="text-xs text-gray-500 uppercase font-bold tracking-wider mb-1">Customer Code</p>
-            <p class="text-xl font-black text-m2b-primary font-mono tracking-tight">{{ auth()->user()->customer->customer_code ?? '-' }}</p>
+            <p class="text-xl font-black text-m2b-primary font-mono tracking-tight">{{ auth()->user()->getEffectiveCustomer()?->customer_code ?? '-' }}</p>
         </div>
     </div>
 
@@ -31,8 +38,8 @@
     </div>
     @endforeach
 
-    {{-- ⭐ Ajakan isi testimoni --}}
-    @if(($testimonialCta ?? null) === 'invite')
+    {{-- ⭐ Ajakan isi testimoni (hanya Full Access) --}}
+    @if(auth()->user()->canEditCustomerPortal() && ($testimonialCta ?? null) === 'invite')
     <a href="{{ route('customer.testimonial') }}" class="block group">
         <div class="relative overflow-hidden rounded-xl border border-yellow-200 bg-gradient-to-r from-yellow-50 via-white to-white shadow-sm hover:shadow-md transition p-5 flex items-center gap-4">
             <div class="shrink-0 text-3xl">⭐</div>

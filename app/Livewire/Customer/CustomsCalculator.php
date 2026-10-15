@@ -347,7 +347,7 @@ class CustomsCalculator extends Component
             'bayar_pph' => $this->bayar_pph,
             'total_pungutan' => $this->total_pungutan,
             'selectedPreset' => $this->presets[$this->selectedPreset]['name'] ?? 'Manual',
-            'customer' => Auth::user()->customer ?? null,
+            'customer' => Auth::user()?->getEffectiveCustomer(),
             'user' => Auth::user(),
         ];
 

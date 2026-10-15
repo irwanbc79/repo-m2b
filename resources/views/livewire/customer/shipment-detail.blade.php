@@ -96,7 +96,9 @@
                             @if($req->due_date)
                                 <span class="text-[10px] font-bold {{ \Carbon\Carbon::parse($req->due_date)->isPast() ? 'text-red-600' : 'text-red-500/80' }}">• tenggat {{ \Carbon\Carbon::parse($req->due_date)->format('d M Y') }}</span>
                             @endif
+                            @if(auth()->user()->canEditCustomerPortal())
                             <button type="button" wire:click="pilihUntukUpload({{ $req->id }})" class="ml-1 text-m2b-primary hover:text-m2b-accent underline decoration-dotted">Upload</button>
+                            @endif
                         </li>
                     @endforeach
                 </ul>
@@ -257,6 +259,7 @@
                     </div>
                 </div>
 
+                @if(auth()->user()->canEditCustomerPortal())
                 <div class="space-y-4">
                     <div>
                         <label class="block text-xs font-bold text-gray-500 uppercase mb-1">Jenis Dokumen</label>
@@ -286,6 +289,12 @@
                         <span wire:loading wire:target="uploadDoc" class="text-xs">Mengunggah...</span>
                     </button>
                 </div>
+                @else
+                <div class="rounded-lg bg-amber-50 border border-amber-200 p-4 text-xs text-amber-800">
+                    <p class="font-bold flex items-center gap-1.5 mb-1">👁️ Mode Lihat Saja (View-Only)</p>
+                    <p>Akun Anda memiliki akses baca saja. Pengunggahan dokumen dilakukan oleh PIC utama atau PIC dengan level <strong>Full Access</strong>.</p>
+                </div>
+                @endif
 
                 {{-- Kelengkapan Dokumen (dinamis) --}}
                 <div class="mt-6 pt-4 border-t border-blue-200">
@@ -306,7 +315,9 @@
                                     <span class="text-gray-700 font-medium truncate">{{ $req->doc_type }}</span>
                                     @if($req->is_mandatory)<span class="text-[8px] font-bold bg-red-50 text-red-600 px-1 rounded shrink-0">WAJIB</span>@endif
                                     @if($req->due_date)<span class="text-[9px] text-amber-600 shrink-0">s/d {{ \Carbon\Carbon::parse($req->due_date)->format('d M') }}</span>@endif
+                                    @if(auth()->user()->canEditCustomerPortal())
                                     <button wire:click="pilihUntukUpload({{ $req->id }})" class="ml-auto text-[10px] font-bold text-blue-600 hover:underline shrink-0">Upload</button>
+                                    @endif
                                 @endif
                             </div>
                         @empty
@@ -425,6 +436,7 @@
             </div>
 
             {{-- Form --}}
+            @if(auth()->user()->canEditCustomerPortal())
             <form wire:submit.prevent="sendMessage" class="flex items-end gap-2">
                 <div class="flex-1">
                     <textarea wire:model="newMessage" rows="2" placeholder="Tulis pertanyaan Anda… (mis. perkiraan tiba, status dokumen)"
@@ -437,6 +449,12 @@
                     <span wire:loading wire:target="sendMessage">…</span>
                 </button>
             </form>
+            @else
+            <div class="rounded-xl bg-amber-50 border border-amber-200 px-4 py-3 text-xs text-amber-800 flex items-center gap-2">
+                <span>👁️</span>
+                <span>Mode View-Only — Pengiriman pesan diskusi hanya dapat dilakukan oleh PIC Full Access.</span>
+            </div>
+            @endif
         </div>
     </div>
 

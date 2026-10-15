@@ -9,6 +9,13 @@
     </div>
 
     {{-- Flash Messages --}}
+    @if(auth()->user()->isCustomerViewer())
+        <div class="mb-4 p-4 bg-amber-50 border border-amber-200 text-amber-800 rounded-lg flex items-center gap-2 text-sm">
+            <span>👁️</span>
+            <span><strong>Mode Lihat Saja (View-Only)</strong> — Anda dapat melihat profil perusahaan dan mengganti password akun Anda sendiri, namun perubahan data perusahaan dan penambahan PIC hanya dapat dilakukan oleh PIC <strong>Full Access</strong>.</span>
+        </div>
+    @endif
+
     @if (session()->has('message'))
         <div class="mb-4 p-4 bg-green-100 border border-green-300 text-green-800 rounded-lg flex items-center gap-2">
             <span>✅</span> {{ session('message') }}
@@ -35,30 +42,30 @@
                     <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
                         <div>
                             <label class="block text-xs font-bold text-gray-500 uppercase tracking-wide mb-1">Nama Perusahaan <span class="text-red-500">*</span></label>
-                            <input type="text" wire:model="company_name" placeholder="mis. PT Maju Bersama" class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 font-semibold">
+                            <input type="text" wire:model="company_name" @disabled(!auth()->user()->canEditCustomerPortal()) placeholder="mis. PT Maju Bersama" class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 font-semibold disabled:bg-gray-100 disabled:text-gray-500">
                             @error('company_name') <span class="text-red-500 text-xs">{{ $message }}</span> @enderror
                         </div>
                         <div>
                             <label class="block text-xs font-bold text-gray-500 uppercase tracking-wide mb-1">NPWP Perusahaan</label>
-                            <input type="text" wire:model="npwp" class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 font-mono" placeholder="XX.XXX.XXX.X-XXX.XXX">
+                            <input type="text" wire:model="npwp" @disabled(!auth()->user()->canEditCustomerPortal()) class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 font-mono disabled:bg-gray-100 disabled:text-gray-500" placeholder="XX.XXX.XXX.X-XXX.XXX">
                         </div>
                         <div class="md:col-span-2">
                             <label class="block text-xs font-bold text-gray-500 uppercase tracking-wide mb-1">Alamat Lengkap (Kantor)</label>
-                            <textarea wire:model="address" rows="2" placeholder="Jl. Nama Jalan No. xx, Kelurahan, Kecamatan" class="w-full border border-gray-300 rounded-lg px-4 py-2 focus:ring-2 focus:ring-blue-500 focus:border-blue-500"></textarea>
+                            <textarea wire:model="address" rows="2" @disabled(!auth()->user()->canEditCustomerPortal()) placeholder="Jl. Nama Jalan No. xx, Kelurahan, Kecamatan" class="w-full border border-gray-300 rounded-lg px-4 py-2 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 disabled:bg-gray-100 disabled:text-gray-500"></textarea>
                             @error('address') <span class="text-red-500 text-xs">{{ $message }}</span> @enderror
                         </div>
                         <div>
                             <label class="block text-xs font-bold text-gray-500 uppercase tracking-wide mb-1">Kota / Wilayah</label>
-                            <input type="text" wire:model="city" placeholder="mis. Jakarta" class="w-full border border-gray-300 rounded-lg px-4 py-2 focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
+                            <input type="text" wire:model="city" @disabled(!auth()->user()->canEditCustomerPortal()) placeholder="mis. Jakarta" class="w-full border border-gray-300 rounded-lg px-4 py-2 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 disabled:bg-gray-100 disabled:text-gray-500">
                             @error('city') <span class="text-red-500 text-xs">{{ $message }}</span> @enderror
                         </div>
                         <div>
                             <label class="block text-xs font-bold text-gray-500 uppercase tracking-wide mb-1">No. Telepon / HP PIC</label>
-                            <input type="text" wire:model="phone" class="w-full border border-gray-300 rounded-lg px-4 py-2 focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
+                            <input type="text" wire:model="phone" @disabled(!auth()->user()->canEditCustomerPortal()) class="w-full border border-gray-300 rounded-lg px-4 py-2 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 disabled:bg-gray-100 disabled:text-gray-500">
                         </div>
                         <div class="md:col-span-2">
                             <label class="block text-xs font-bold text-gray-500 uppercase tracking-wide mb-1">Alamat Gudang (Warehouse)</label>
-                            <textarea wire:model="warehouse_address" rows="2" placeholder="Jika berbeda dengan alamat kantor" class="w-full border border-gray-300 rounded-lg px-4 py-2 focus:ring-2 focus:ring-blue-500 focus:border-blue-500"></textarea>
+                            <textarea wire:model="warehouse_address" rows="2" @disabled(!auth()->user()->canEditCustomerPortal()) placeholder="Jika berbeda dengan alamat kantor" class="w-full border border-gray-300 rounded-lg px-4 py-2 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 disabled:bg-gray-100 disabled:text-gray-500"></textarea>
                         </div>
                     </div>
                 </div>
@@ -75,7 +82,7 @@
                     <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
                         <div>
                             <label class="block text-xs font-bold text-gray-500 uppercase tracking-wide mb-1">Nama Lengkap PIC</label>
-                            <input type="text" wire:model="name" class="w-full border border-gray-300 rounded-lg px-4 py-2 focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
+                            <input type="text" wire:model="name" @disabled(!auth()->user()->canEditCustomerPortal()) class="w-full border border-gray-300 rounded-lg px-4 py-2 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 disabled:bg-gray-100 disabled:text-gray-500">
                             @error('name') <span class="text-red-500 text-xs">{{ $message }}</span> @enderror
                         </div>
                         <div>
@@ -83,11 +90,13 @@
                             <p class="text-gray-800 bg-gray-50 px-4 py-2 rounded-lg">{{ $email }}</p>
                         </div>
                     </div>
+                    @if(auth()->user()->canEditCustomerPortal())
                     <div class="mt-6 flex justify-end">
                         <button wire:click="updateProfile" class="bg-blue-600 hover:bg-blue-700 text-white font-bold py-2.5 px-6 rounded-lg transition flex items-center gap-2">
                             Simpan Perubahan
                         </button>
                     </div>
+                    @endif
                 </div>
             </div>
 
@@ -99,6 +108,7 @@
                     </h2>
                 </div>
                 <div class="p-6">
+                    @if(auth()->user()->canEditCustomerPortal())
                     <div class="flex flex-col md:flex-row items-start md:items-center justify-between gap-4 mb-6">
                         <div>
                             <p class="text-gray-600">Tambahkan PIC baru untuk mengakses portal perusahaan Anda.</p>
@@ -114,6 +124,57 @@
                             Request User Baru
                         </button>
                     </div>
+                    @else
+                    <div class="mb-6 text-sm text-gray-600">
+                        Daftar akun PIC yang terhubung dengan perusahaan Anda. Penambahan user baru hanya dapat diajukan oleh akun <strong>Full Access</strong>.
+                    </div>
+                    @endif
+
+                    {{-- Registered Company Users (Multi-PIC) --}}
+                    @if(isset($companyUsers) && count($companyUsers) > 0)
+                    <div class="mb-6">
+                        <h3 class="text-sm font-bold text-gray-600 uppercase tracking-wide mb-3">👤 PIC Aktif Perusahaan ({{ count($companyUsers) }})</h3>
+                        <div class="overflow-x-auto border rounded-lg">
+                            <table class="w-full text-sm">
+                                <thead>
+                                    <tr class="border-b bg-gray-50">
+                                        <th class="text-left py-2.5 px-4 font-bold text-gray-600 uppercase text-xs">Nama PIC</th>
+                                        <th class="text-left py-2.5 px-4 font-bold text-gray-600 uppercase text-xs">Email</th>
+                                        <th class="text-left py-2.5 px-4 font-bold text-gray-600 uppercase text-xs">Peran</th>
+                                        <th class="text-left py-2.5 px-4 font-bold text-gray-600 uppercase text-xs">Level Akses</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    @foreach($companyUsers as $compUser)
+                                    <tr class="border-b last:border-b-0 hover:bg-gray-50">
+                                        <td class="py-2.5 px-4 font-semibold text-gray-800">
+                                            {{ $compUser->name }}
+                                            @if($compUser->id === auth()->id())
+                                                <span class="ml-1 text-[10px] font-bold px-1.5 py-0.5 rounded bg-blue-100 text-blue-700">Anda</span>
+                                            @endif
+                                        </td>
+                                        <td class="py-2.5 px-4 text-gray-600">{{ $compUser->email }}</td>
+                                        <td class="py-2.5 px-4">
+                                            @if($compUser->pivot?->is_primary)
+                                                <span class="px-2 py-0.5 text-xs font-bold rounded-full bg-indigo-100 text-indigo-800">⭐ PIC Utama</span>
+                                            @else
+                                                <span class="px-2 py-0.5 text-xs font-medium rounded-full bg-gray-100 text-gray-700">PIC Tambahan</span>
+                                            @endif
+                                        </td>
+                                        <td class="py-2.5 px-4">
+                                            @if($compUser->isCustomerViewer())
+                                                <span class="px-2 py-0.5 text-xs font-bold rounded-full bg-amber-100 text-amber-800">👁️ View Only</span>
+                                            @else
+                                                <span class="px-2 py-0.5 text-xs font-bold rounded-full bg-emerald-100 text-emerald-800">🔓 Full Access</span>
+                                            @endif
+                                        </td>
+                                    </tr>
+                                    @endforeach
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                    @endif
 
                     {{-- Request History --}}
                     @if(count($userRequests) > 0)
@@ -140,7 +201,7 @@
                                         <td class="py-3 px-4">{!! $req->access_level_label !!}</td>
                                         <td class="py-3 px-4">{!! $req->status_badge !!}</td>
                                         <td class="py-3 px-4 text-center">
-                                            @if($req->status == 'pending')
+                                            @if($req->status == 'pending' && auth()->user()->canEditCustomerPortal())
                                             <button 
                                                 wire:click="cancelRequest({{ $req->id }})"
                                                 wire:confirm="Yakin ingin membatalkan request ini?"

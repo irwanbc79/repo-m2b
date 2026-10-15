@@ -363,7 +363,7 @@ class InvoiceList extends Component
         ]);
 
         $user = Auth::user();
-        $customerName = $user->customer->company_name ?? $user->name;
+        $customerName = $user->getEffectiveCustomer()?->company_name ?? $user->name;
 
         $updateData = [
             'bukti_potong_number' => $this->bupotNumber,

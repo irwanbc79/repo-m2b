@@ -76,7 +76,7 @@ class UserRequestManager extends Component
     {
         // Check permission - only director and super_admin can approve
         $currentUser = Auth::user();
-        if (!$currentUser->isDirectorLevel() && $currentUser->role !== 'super_admin') {
+        if (!$currentUser || (!$currentUser->isDirectorLevel() && !$currentUser->hasRole(['super_admin', 'director']))) {
             session()->flash('error', 'Anda tidak memiliki izin untuk approve request ini. Hanya Direktur dan Super Admin yang dapat melakukan approval.');
             return;
         }
@@ -88,6 +88,13 @@ class UserRequestManager extends Component
             return;
         }
 
+        // Prevent linking internal/admin email as customer PIC
+        $existingUser = User::where('email', $request->pic_email)->first();
+        if ($existingUser && ($existingUser->isAdmin() || !$existingUser->isCustomer())) {
+            session()->flash('error', 'Email ini terdaftar sebagai akun internal M2B dan tidak dapat dijadikan PIC customer.');
+            return;
+        }
+
         DB::beginTransaction();
         try {
             // 1. Generate random password
@@ -96,24 +103,39 @@ class UserRequestManager extends Component
             // 2. Determine role based on access_level
             $role = $request->access_level === 'full_access' ? 'customer' : 'customer_viewer';
             
-            // 3. Create new user
-            $newUser = User::create([
-                'name' => $request->pic_name,
-                'email' => $request->pic_email,
-                'password' => Hash::make($randomPassword),
-                'role' => $role,
-                'roles' => [$role],
-                'email_verified_at' => now(), // Auto verify karena sudah di-approve
-            ]);
+            // 3. Create new user or reuse existing customer-side user
+            if ($existingUser) {
+                $newUser = $existingUser;
+                $newUser->update([
+                    'name' => $request->pic_name ?: $existingUser->name,
+                    'role' => $role,
+                    'roles' => [$role],
+                    'is_active' => true,
+                ]);
+            } else {
+                $newUser = User::create([
+                    'name' => $request->pic_name,
+                    'email' => $request->pic_email,
+                    'password' => Hash::make($randomPassword),
+                    'role' => $role,
+                    'roles' => [$role],
+                    'is_active' => true,
+                    'email_verified_at' => now(), // Auto verify karena sudah di-approve
+                ]);
+            }
             
             // 4. Link user to customer via pivot table
-            DB::table('customer_user')->insert([
-                'customer_id' => $request->customer_id,
-                'user_id' => $newUser->id,
-                'is_primary' => false, // Secondary user
-                'created_at' => now(),
-                'updated_at' => now(),
-            ]);
+            DB::table('customer_user')->updateOrInsert(
+                [
+                    'customer_id' => $request->customer_id,
+                    'user_id' => $newUser->id,
+                ],
+                [
+                    'is_primary' => false, // Secondary user
+                    'created_at' => now(),
+                    'updated_at' => now(),
+                ]
+            );
             
             // 5. Update request status
             $request->update([
@@ -146,7 +168,7 @@ class UserRequestManager extends Component
     {
         // Check permission
         $currentUser = Auth::user();
-        if (!$currentUser->isDirectorLevel() && $currentUser->role !== 'super_admin') {
+        if (!$currentUser || (!$currentUser->isDirectorLevel() && !$currentUser->hasRole(['super_admin', 'director']))) {
             session()->flash('error', 'Anda tidak memiliki izin untuk reject request ini.');
             return;
         }
@@ -365,7 +387,7 @@ class UserRequestManager extends Component
     {
         // Check permission - only super_admin can delete
         $currentUser = Auth::user();
-        if ($currentUser->role !== 'super_admin') {
+        if (!$currentUser || !$currentUser->hasRole(['super_admin'])) {
             session()->flash('error', 'Hanya Super Admin yang dapat menghapus request.');
             return;
         }
@@ -432,7 +454,7 @@ class UserRequestManager extends Component
 
         // Check if current user can approve
         $currentUser = Auth::user();
-        $canApprove = $currentUser->isDirectorLevel() || $currentUser->role === 'super_admin';
+        $canApprove = $currentUser && ($currentUser->isDirectorLevel() || $currentUser->hasRole(['super_admin', 'director']));
 
         return view('livewire.admin.user-request-manager', [
             'requests' => $requests,

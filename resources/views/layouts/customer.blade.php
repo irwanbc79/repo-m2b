@@ -43,9 +43,10 @@
                 @php
                     $docReqBadge = 0;
                     try {
-                        if (auth()->user()?->customer) {
+                        $__navCustomerId = auth()->user()?->getCustomerId();
+                        if ($__navCustomerId) {
                             $docReqBadge = \App\Models\DocumentRequirement::query()
-                                ->whereHas('shipment', fn ($q) => $q->where('customer_id', auth()->user()->customer->id))
+                                ->whereHas('shipment', fn ($q) => $q->where('customer_id', $__navCustomerId))
                                 ->where('status', 'requested')
                                 ->count();
                         }
@@ -59,11 +60,13 @@
                     @endif
                 </a>
 
-                {{-- Create Booking --}}
+                {{-- Create Booking (Full Access Only) --}}
+                @if(auth()->user()?->canEditCustomerPortal())
                 <a href="{{ route('customer.shipments.create') }}" class="flex items-center px-4 py-3 text-sm font-medium rounded-lg {{ request()->routeIs('customer.shipments.create') ? 'bg-m2b-accent text-white' : 'hover:bg-blue-900 text-gray-300' }}">
                     <span class="text-lg mr-3">➕</span>
                     Create Booking
                 </a>
+                @endif
 
                 {{-- MENU KURS PAJAK (BERSIH DARI LINK SAMPAH) --}}
                 <a href="{{ route('customer.kurs') }}" class="flex items-center px-4 py-3 text-sm font-medium rounded-lg {{ request()->routeIs('customer.kurs') ? 'bg-m2b-accent text-white' : 'hover:bg-blue-900 text-gray-300' }}">
@@ -131,7 +134,7 @@
             <div class="bg-purple-700 text-white px-4 py-2 flex items-center justify-between gap-3 text-sm shrink-0">
                 <span class="flex items-center gap-2">
                     <span>👁️</span>
-                    Mode pratinjau — Anda melihat portal sebagai <strong>{{ auth()->user()->customer->company_name ?? auth()->user()->name }}</strong>
+                    Mode pratinjau — Anda melihat portal sebagai <strong>{{ auth()->user()->getEffectiveCustomer()?->company_name ?? auth()->user()->name }}</strong>
                 </span>
                 <a href="{{ route('impersonate.stop') }}" class="bg-white/20 hover:bg-white/30 transition rounded-lg px-3 py-1 font-bold shrink-0">
                     ← Kembali ke Admin
@@ -171,7 +174,11 @@
                 <div class="flex items-center gap-3 border-l border-gray-200 pl-4">
                     <div class="text-right hidden sm:block">
                         <p class="text-sm font-bold text-gray-700 truncate max-w-[150px]">{{ auth()->user()->name }}</p>
-                        <p class="text-[10px] text-gray-400 uppercase tracking-wider">CUSTOMER</p>
+                        @if(auth()->user()->isCustomerViewer())
+                            <span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold bg-amber-100 text-amber-800 uppercase tracking-wider">👁️ View Only</span>
+                        @else
+                            <p class="text-[10px] text-gray-400 uppercase tracking-wider">CUSTOMER</p>
+                        @endif
                     </div>
                     <div class="h-9 w-9 rounded-full bg-m2b-primary text-white flex items-center justify-center font-bold shrink-0 shadow-sm border-2 border-blue-100">
                         {{ substr(auth()->user()->name, 0, 1) }}
@@ -180,10 +187,10 @@
             </header>
 
             <div class="flex-1 overflow-x-hidden overflow-y-auto p-6 w-full">
-                {{-- Soft-gate: pengingat lengkapi data perusahaan --}}
+                {{-- Soft-gate: pengingat lengkapi data perusahaan (hanya untuk Full Access) --}}
                 @php
-                    $__cust = auth()->user()?->customer;
-                    $__dq = $__cust ? $__cust->dataQuality() : null;
+                    $__cust = auth()->user()?->getEffectiveCustomer();
+                    $__dq = ($__cust && auth()->user()?->canEditCustomerPortal()) ? $__cust->dataQuality() : null;
                 @endphp
                 @if($__dq && $__dq['level'] !== 'good' && ! request()->routeIs('customer.profile'))
                 <div x-data="{ show: sessionStorage.getItem('m2b_profile_reminder') !== 'hidden' }"

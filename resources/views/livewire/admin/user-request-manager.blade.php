@@ -147,7 +147,7 @@
                                 >
                                     👁️ Detail
                                 </button>
-                                @if(auth()->user()->role === 'super_admin')
+                                @if(auth()->user()->hasRole(['super_admin']))
                                 <button 
                                     wire:click="deleteRequest({{ $req->id }})"
                                     wire:confirm="PERINGATAN: Ini akan menghapus request dan user terkait (jika sudah dibuat). Lanjutkan?"

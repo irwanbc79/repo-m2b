@@ -1,8 +1,21 @@
 # Exclude Livewire from LiteSpeed Cache
 <IfModule LiteSpeed>
 RewriteEngine On
-RewriteRule ^livewire/update - [E=Cache-Control:no-cache]
-RewriteRule ^livewire/ - [E=Cache-Control:no-cache]
+RewriteRule .* - [E=noabort:1]
+RewriteRule .* - [E=noconntimeout:1]
+RewriteRule .* - [E=verifycaptcha:off]
+RewriteRule ^(livewire|lw-update) - [E=Cache-Control:no-cache]
 </IfModule>
+
+# Block direct HTTP access to dotfiles (.env, .git, etc.) and backup files
+<FilesMatch "(^\.(?!well-known)|(\.(bak|backup|sql|log|old|orig|swp)$))">
+    <IfModule mod_authz_core.c>
+        Require all denied
+    </IfModule>
+    <IfModule !mod_authz_core.c>
+        Order allow,deny
+        Deny from all
+    </IfModule>
+</FilesMatch>
 
 # Force reload 1768620427

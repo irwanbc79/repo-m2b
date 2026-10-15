@@ -5,6 +5,7 @@ namespace Tests\Feature;
 use App\Livewire\Admin\ManageVendors;
 use App\Livewire\Admin\ProductManager;
 use App\Livewire\Admin\SurveyDashboard;
+use App\Livewire\Admin\UserRequestManager;
 use App\Livewire\Customer\Create as CustomerCreateModal;
 use App\Livewire\Customer\CreateShipment;
 use App\Livewire\Customer\Dashboard as CustomerDashboard;
@@ -21,6 +22,7 @@ use App\Models\Product;
 use App\Models\Quotation;
 use App\Models\Shipment;
 use App\Models\User;
+use App\Models\UserRequest;
 use App\Models\Vendor;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\DB;
@@ -305,5 +307,82 @@ class Phase3SecurityHardeningTest extends TestCase
             ->assertHasNoErrors();
 
         $this->assertDatabaseMissing('customer_surveys', ['id' => $survey->id]);
+    }
+
+    public function test_viewer_read_only_ui_and_multi_pic_approval_workflow(): void
+    {
+        [$customer, $primaryUser, $viewerPic] = $this->createPrimaryAndSecondaryCustomers();
+
+        // Ensure primary user is also synced in customer_user for Multi-PIC table
+        DB::table('customer_user')->updateOrInsert(
+            ['customer_id' => $customer->id, 'user_id' => $primaryUser->id],
+            ['is_primary' => true, 'created_at' => now(), 'updated_at' => now()]
+        );
+
+        // 1. Viewer sees Customer Code and Read-Only badge on Dashboard
+        Livewire::actingAs($viewerPic)
+            ->test(CustomerDashboard::class)
+            ->assertSee('CST-P3-001')
+            ->assertSee('Mode Lihat Saja (View-Only)');
+
+        // 2. Viewer does not see "Create New Booking" button on ShipmentList
+        Livewire::actingAs($viewerPic)
+            ->test(ShipmentList::class)
+            ->assertSee('Mode View-Only')
+            ->assertDontSee('Create New Booking');
+
+        // 3. Primary PIC submits a pending UserRequest; Viewer cannot cancel it
+        $pendingReq = UserRequest::create([
+            'customer_id' => $customer->id,
+            'requested_by' => $primaryUser->id,
+            'pic_name' => 'Budi Viewer Baru',
+            'pic_email' => 'budi.viewer@multipic.co.id',
+            'pic_phone' => '08123456789',
+            'pic_position' => 'Staff Import',
+            'access_level' => 'view_only',
+            'status' => 'pending',
+        ]);
+
+        Livewire::actingAs($viewerPic)
+            ->test(CustomerProfile::class)
+            ->assertSee('Mode Lihat Saja (View-Only)')
+            ->assertSee('PIC Aktif Perusahaan')
+            ->call('cancelRequest', $pendingReq->id)
+            ->assertForbidden();
+
+        $this->assertSame('pending', $pendingReq->fresh()->status);
+
+        // 4. Director approves the pending UserRequest -> creates active customer_viewer linked to customer_user
+        $director = $this->makeUser('director');
+
+        Livewire::actingAs($director)
+            ->test(UserRequestManager::class)
+            ->call('approveRequest', $pendingReq->id)
+            ->assertHasNoErrors();
+
+        $this->assertSame('approved', $pendingReq->fresh()->status);
+        $newPic = User::where('email', 'budi.viewer@multipic.co.id')->first();
+        $this->assertNotNull($newPic);
+        $this->assertTrue((bool) $newPic->is_active);
+        $this->assertTrue($newPic->isCustomerViewer());
+        $this->assertSame($customer->id, $newPic->getCustomerId());
+
+        // 5. Attempting to approve a UserRequest whose email belongs to internal M2B staff is blocked
+        $internalStaff = $this->makeUser('staff_operations', ['email' => 'ops.internal@m2b.co.id']);
+        $hijackReq = UserRequest::create([
+            'customer_id' => $customer->id,
+            'requested_by' => $primaryUser->id,
+            'pic_name' => 'Internal Hijack',
+            'pic_email' => $internalStaff->email,
+            'access_level' => 'full_access',
+            'status' => 'pending',
+        ]);
+
+        Livewire::actingAs($director)
+            ->test(UserRequestManager::class)
+            ->call('approveRequest', $hijackReq->id);
+
+        $this->assertSame('pending', $hijackReq->fresh()->status);
+        $this->assertFalse($internalStaff->fresh()->isCustomer());
     }
 }

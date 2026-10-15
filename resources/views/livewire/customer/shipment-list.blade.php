@@ -6,10 +6,16 @@
             <p class="text-gray-500 text-sm">Manage and track your ongoing shipment orders.</p>
         </div>
         
+        @if(auth()->user()->canEditCustomerPortal())
         <a href="{{ route('customer.shipments.create') }}" class="bg-m2b-primary hover:bg-blue-900 text-white px-6 py-3 rounded-lg font-bold shadow-md transition transform hover:-translate-y-0.5 flex items-center gap-2">
             <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"></path></svg>
             Create New Booking
         </a>
+        @else
+        <span class="inline-flex items-center gap-1.5 px-4 py-2 rounded-lg text-xs font-bold bg-amber-50 text-amber-800 border border-amber-200">
+            👁️ Mode View-Only — Pembuatan booking dilakukan oleh PIC Full Access
+        </span>
+        @endif
     </div>
 
     {{-- Search Bar --}}
@@ -179,7 +185,9 @@
                                 <svg class="w-12 h-12 text-gray-300 mb-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 17v-2m3 2v-4m3 4v-6m2 10H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path></svg>
                                 <p class="text-base font-medium">No shipments found.</p>
                                 <p class="text-xs mt-1 mb-4">You haven't created any bookings yet.</p>
+                                @if(auth()->user()->canEditCustomerPortal())
                                 <a href="{{ route('customer.shipments.create') }}" class="text-blue-600 hover:underline text-sm">Create your first booking</a>
+                                @endif
                             </div>
                         </td>
                     </tr>

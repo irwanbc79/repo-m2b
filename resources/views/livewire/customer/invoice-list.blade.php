@@ -220,10 +220,12 @@
                                             <svg class="w-2.5 h-2.5 mr-1 animate-pulse" fill="currentColor" viewBox="0 0 20 20"><circle cx="10" cy="10" r="10"/></svg>
                                             FP Diproses
                                         </span>
-                                    @else
+                                    @elseif(auth()->user()->canEditCustomerPortal())
                                         <button wire:click="requestFakturPajak({{ $invoice->id }})" class="inline-flex items-center px-2 py-0.5 text-[11px] font-medium text-blue-700 bg-blue-50 hover:bg-blue-100 rounded border border-blue-200 transition" title="Request Faktur Pajak PPN">
                                             📄 Request FP
                                         </button>
+                                    @else
+                                        <span class="text-[10px] text-gray-400">FP: Belum diminta</span>
                                     @endif
                                 @else
                                     <span class="text-[10px] text-gray-300 font-mono">FP: N/A</span>
@@ -236,10 +238,12 @@
                                             <span class="font-bold text-purple-700 text-[11px]" title="No Bupot: {{ $invoice->bukti_potong_number }} (Rp {{ number_format($invoice->bukti_potong_amount ?? 0, 0, ',', '.') }})">BP: {{ \Illuminate\Support\Str::limit($invoice->bukti_potong_number, 8) }}</span>
                                             <a href="{{ asset('storage/' . $invoice->bukti_potong_path) }}" target="_blank" download class="p-0.5 text-purple-600 hover:text-purple-800" title="Download Bupot">📥</a>
                                         </div>
-                                    @else
+                                    @elseif(auth()->user()->canEditCustomerPortal())
                                         <button wire:click="openBupotModal({{ $invoice->id }})" class="inline-flex items-center px-2 py-0.5 text-[11px] font-semibold text-purple-700 bg-purple-50 hover:bg-purple-100 rounded border border-purple-200 transition" title="Upload Bukti Potong PPh (e-Bupot)">
                                             📑 Upload Bupot
                                         </button>
+                                    @else
+                                        <span class="text-[10px] text-gray-400">BP: Belum ada</span>
                                     @endif
                                 @else
                                     <span class="text-[10px] text-gray-300 font-mono">BP: N/A</span>
@@ -257,8 +261,8 @@
                                     <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"/></svg>
                                 </button>
                                 
-                                {{-- Upload Payment Proof (untuk unpaid atau partial) --}}
-                                @if(in_array($invoice->status, ['unpaid', 'partial']))
+                                {{-- Upload Payment Proof (untuk unpaid atau partial, Full Access saja) --}}
+                                @if(in_array($invoice->status, ['unpaid', 'partial']) && auth()->user()->canEditCustomerPortal())
                                 <button
                                     wire:click="openUploadModal({{ $invoice->id }})"
                                     class="p-1.5 text-orange-600 hover:bg-orange-100 rounded-lg transition"
