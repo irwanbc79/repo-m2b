@@ -56,8 +56,38 @@ class VendorManagement extends Component
         ];
     }
     
+    public function canAccess(): bool
+    {
+        $user = auth()->user();
+        return $user && (
+            $user->isAdminLevel() ||
+            $user->hasRole(['super_admin', 'director', 'admin', 'manager', 'supervisor', 'staff_accounting', 'finance', 'staff_operations', 'staff_ppjk']) ||
+            $user->hasPermission('vendor.view')
+        );
+    }
+
+    public function canManage(): bool
+    {
+        $user = auth()->user();
+        return $user && (
+            $user->hasRole(['super_admin', 'director', 'admin', 'manager', 'supervisor', 'staff_accounting', 'finance']) ||
+            $user->hasPermission('vendor.create') ||
+            $user->hasPermission('vendor.edit')
+        );
+    }
+
+    public function canDelete(): bool
+    {
+        $user = auth()->user();
+        return $user && (
+            $user->hasRole(['super_admin', 'director', 'admin', 'manager']) ||
+            $user->hasPermission('vendor.delete')
+        );
+    }
+
     public function mount()
     {
+        abort_unless($this->canAccess(), 403, 'Anda tidak memiliki akses ke manajemen vendor.');
         $this->addContact(); 
     }
 
@@ -82,6 +112,8 @@ class VendorManagement extends Component
     // --- RENDER ---
     public function render()
     {
+        abort_unless($this->canAccess(), 403, 'Anda tidak memiliki akses ke manajemen vendor.');
+
         $query = Vendor::with('contacts')
             ->where(function($q) {
                 $q->where('name', 'like', '%' . $this->search . '%')
@@ -101,6 +133,7 @@ class VendorManagement extends Component
 
     public function create()
     {
+        abort_unless($this->canManage(), 403, 'Anda tidak memiliki izin untuk menambah vendor.');
         $this->resetInputFields();
         $this->addContact();
         $this->isEditing = false;
@@ -129,6 +162,7 @@ class VendorManagement extends Component
 
     public function edit($id)
     {
+        abort_unless($this->canManage(), 403, 'Anda tidak memiliki izin untuk mengubah vendor.');
         $vendor = Vendor::with('contacts')->findOrFail($id);
         
         $this->editingId = $id; 
@@ -157,6 +191,8 @@ class VendorManagement extends Component
 
     public function save()
     {
+        abort_unless($this->canManage(), 403, 'Anda tidak memiliki izin untuk menyimpan data vendor.');
+
         // LIVEWIRE FIX 1: Pastikan minimal ada 1 baris kontak untuk divalidasi
         if (empty($this->contacts)) {
             $this->addContact(); 
@@ -238,6 +274,8 @@ class VendorManagement extends Component
 
     public function delete($id)
     {
+        abort_unless($this->canDelete(), 403, 'Anda tidak memiliki izin untuk menghapus vendor.');
+
         try {
             DB::transaction(function () use ($id) {
                  $vendor = Vendor::with('jobCosts', 'contacts')->find($id);

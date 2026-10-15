@@ -71,6 +71,19 @@ class BankReconciliation extends Component
         );
     }
 
+    public function canManage(): bool
+    {
+        $user = auth()->user();
+        if (!$user || $user->hasRole(['auditor', 'konsultan_pajak'])) {
+            return false;
+        }
+        return $user->hasRole(['super_admin', 'director', 'admin', 'staff_accounting', 'finance']) ||
+            $user->hasPermission('accounting.input') ||
+            $user->hasPermission('cashier.*') ||
+            $user->hasPermission('cashier.verify') ||
+            $user->hasPermission('cashier.journal');
+    }
+
     public function mount()
     {
         abort_unless($this->canAccess(), 403, 'Anda tidak memiliki akses ke rekonsiliasi bank.');
@@ -146,6 +159,7 @@ class BankReconciliation extends Component
      */
     public function importCsv()
     {
+        abort_unless($this->canManage(), 403, 'Anda tidak memiliki izin untuk mengimport mutasi bank.');
         $this->validate([
             'csvFile' => 'required|file|mimes:csv,txt|max:10240', // Max 10MB
             'selectedBank' => 'required|in:mandiri,bca',
@@ -246,6 +260,7 @@ class BankReconciliation extends Component
      */
     public function matchWithPayment($paymentId)
     {
+        abort_unless($this->canManage(), 403, 'Anda tidak memiliki izin untuk melakukan rekonsiliasi bank.');
         if (!$this->selectedTransaction) return;
 
         $payment = InvoicePayment::find($paymentId);
@@ -276,6 +291,7 @@ class BankReconciliation extends Component
      */
     public function unmatchTransaction($transactionId)
     {
+        abort_unless($this->canManage(), 403, 'Anda tidak memiliki izin untuk membatalkan rekonsiliasi bank.');
         $transaction = BankTransaction::find($transactionId);
         if (!$transaction) {
             session()->flash('error', 'Transaksi tidak ditemukan');
@@ -298,6 +314,7 @@ class BankReconciliation extends Component
      */
     public function runAutoMatch()
     {
+        abort_unless($this->canManage(), 403, 'Anda tidak memiliki izin untuk menjalankan auto-match.');
         $service = new BankReconciliationService();
         $result = $service->autoMatchAll();
 
@@ -311,6 +328,7 @@ class BankReconciliation extends Component
      */
     public function openCreateJournalModal($transactionId)
     {
+        abort_unless($this->canManage(), 403, 'Anda tidak memiliki izin untuk membuat jurnal dari transaksi bank.');
         $this->journalTransaction = BankTransaction::find($transactionId);
         if (!$this->journalTransaction) {
             session()->flash('error', 'Transaksi bank tidak ditemukan');
@@ -357,6 +375,7 @@ class BankReconciliation extends Component
      */
     public function saveJournalFromTransaction()
     {
+        abort_unless($this->canManage(), 403, 'Anda tidak memiliki izin untuk membuat jurnal dari transaksi bank.');
         $this->validate([
             'journalBankAccountId' => 'required|exists:accounts,id',
             'journalCounterAccountId' => 'required|exists:accounts,id|different:journalBankAccountId',
@@ -421,6 +440,7 @@ class BankReconciliation extends Component
      */
     public function deleteTransaction($transactionId)
     {
+        abort_unless($this->canManage(), 403, 'Anda tidak memiliki izin untuk menghapus transaksi bank.');
         $transaction = BankTransaction::find($transactionId);
         if ($transaction) {
             $transaction->delete();

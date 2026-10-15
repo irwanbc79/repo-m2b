@@ -176,8 +176,40 @@ class ShipmentManagement extends Component
 
     protected $queryString = ['search', 'filterStatus', 'filterCustomer', 'filterServiceType', 'filterLaneStatus', 'filterCustomerData', 'sortField', 'sortDirection'];
 
+    public function canAccess(): bool
+    {
+        $user = Auth::user();
+        return $user && (
+            $user->isAdminLevel() ||
+            $user->hasRole(['super_admin', 'director', 'admin', 'manager', 'supervisor', 'staff_operations', 'staff_sales', 'staff_ppjk', 'staff_documentation', 'staff', 'shipment']) ||
+            $user->hasPermission('shipment.view')
+        );
+    }
+
+    public function canManage(): bool
+    {
+        $user = Auth::user();
+        return $user && (
+            $user->isAdminLevel() ||
+            $user->hasRole(['super_admin', 'director', 'admin', 'manager', 'supervisor', 'staff_operations', 'staff_ppjk', 'staff_documentation', 'shipment']) ||
+            $user->hasPermission('shipment.create') ||
+            $user->hasPermission('shipment.edit')
+        );
+    }
+
+    public function canDelete(): bool
+    {
+        $user = Auth::user();
+        return $user && (
+            $user->hasRole(['super_admin', 'director', 'admin']) ||
+            in_array($user->role, ['admin', 'superadmin', 'super_admin', 'director'], true)
+        );
+    }
+
     public function mount(): void
     {
+        abort_unless($this->canAccess(), 403, 'Anda tidak memiliki akses ke manajemen pengiriman.');
+
         $etaRevisionId = request()->integer('eta_revision');
 
         if ($etaRevisionId > 0) {
@@ -336,6 +368,7 @@ class ShipmentManagement extends Component
      */
     public function openCancelModal($shipmentId)
     {
+        abort_unless($this->canManage(), 403, 'Anda tidak memiliki izin untuk membatalkan pengiriman.');
         $shipment = \App\Models\Shipment::find($shipmentId);
         
         if (!$shipment) {
@@ -368,6 +401,7 @@ class ShipmentManagement extends Component
      */
     public function confirmCancel()
     {
+        abort_unless($this->canManage(), 403, 'Anda tidak memiliki izin untuk membatalkan pengiriman.');
         if (!$this->shipmentToCancel) {
             $this->closeCancelModal();
             return;
@@ -402,6 +436,8 @@ class ShipmentManagement extends Component
 
     public function render()
     {
+        abort_unless($this->canAccess(), 403, 'Anda tidak memiliki akses ke manajemen pengiriman.');
+
         $shipments = $this->getShipmentsQuery()->paginate($this->perPage);
         $customers = $this->getCustomersList();
         $stats = $this->getStats();
@@ -714,6 +750,7 @@ class ShipmentManagement extends Component
 
     public function quickStatusUpdate($id, $status)
     {
+        abort_unless($this->canManage(), 403, 'Anda tidak memiliki izin untuk mengubah status pengiriman.');
         $shipment = Shipment::find($id);
         if ($shipment) {
             $oldStatus = $shipment->status;
@@ -737,6 +774,7 @@ class ShipmentManagement extends Component
 
     public function bulkStatusUpdate()
     {
+        abort_unless($this->canManage(), 403, 'Anda tidak memiliki izin untuk mengubah status pengiriman.');
         if (empty($this->selectedShipments) || empty($this->bulkStatus)) {
             session()->flash('error', 'Pilih shipment dan status terlebih dahulu.');
             return;
@@ -762,6 +800,7 @@ class ShipmentManagement extends Component
 
     public function exportExcel()
     {
+        abort_unless($this->canAccess(), 403, 'Anda tidak memiliki izin untuk mengunduh data pengiriman.');
         $shipments = $this->getShipmentsQuery()->get();
 
         $csvContent = "AWB Number,Customer,Origin,Destination,Service,Type,Mode,Status,Weight (Kg),Volume (CBM),Pieces,ETA,Created\n";
@@ -793,6 +832,7 @@ class ShipmentManagement extends Component
 
     public function create()
     {
+        abort_unless($this->canManage(), 403, 'Anda tidak memiliki izin untuk membuat pengiriman.');
         $this->resetValidation();
         $this->resetForm();
         $this->isEditing = false;
@@ -801,6 +841,7 @@ class ShipmentManagement extends Component
 
     public function edit($id)
     {
+        abort_unless($this->canManage(), 403, 'Anda tidak memiliki izin untuk mengubah pengiriman.');
         $this->resetValidation();
         $this->editingId = $id;
         $shipment = Shipment::findOrFail($id);
@@ -823,6 +864,7 @@ class ShipmentManagement extends Component
 
     public function save()
     {
+        abort_unless($this->canManage(), 403, 'Anda tidak memiliki izin untuk menyimpan pengiriman.');
         $this->validate([
             'form.customer_id' => 'required',
             'form.origin' => 'required',
@@ -884,6 +926,7 @@ class ShipmentManagement extends Component
 
     public function confirmDelete($id)
     {
+        abort_unless($this->canDelete(), 403, 'Anda tidak memiliki izin untuk menghapus pengiriman.');
         $this->deleteId = $id;
         $this->showDeleteConfirm = true;
     }
@@ -896,12 +939,8 @@ class ShipmentManagement extends Component
 
     public function deleteShipment($id = null)
     {
+        abort_unless($this->canDelete(), 403, 'Anda tidak memiliki izin untuk menghapus pengiriman.');
         $targetId = $id ?? $this->deleteId;
-        
-        if (!in_array(Auth::user()->role, ['admin', 'superadmin', 'director'])) {
-            session()->flash('error', 'Access Denied');
-            return;
-        }
         
         $shipment = Shipment::find($targetId);
         if ($shipment) {
@@ -921,6 +960,7 @@ class ShipmentManagement extends Component
     
     public function uploadInternalEvidence()
     {
+        abort_unless($this->canManage(), 403, 'Anda tidak memiliki izin untuk mengunggah bukti internal.');
         $this->validate([
             'internal_photo' => 'required|image|max:10240',
             'internal_note' => 'required|string|max:255'
@@ -958,6 +998,7 @@ class ShipmentManagement extends Component
     // === MODAL CETAK SURAT JALAN ===
     public function openPrintDoModal($shipmentId)
     {
+        abort_unless($this->canManage(), 403, 'Anda tidak memiliki izin untuk mencetak surat jalan.');
         $this->printDoShipmentId = $shipmentId;
         $this->printDoShipment = Shipment::with('customer')->find($shipmentId);
         $this->printDoContainerCount = 1;
@@ -1026,6 +1067,7 @@ class ShipmentManagement extends Component
 
     public function printDo()
     {
+        abort_unless($this->canManage(), 403, 'Anda tidak memiliki izin untuk mencetak surat jalan.');
         // Simpan data DO ke shipment supaya bisa di-recall berikutnya
         Shipment::where('id', $this->printDoShipmentId)->update([
             'do_containers'    => $this->printDoContainers,

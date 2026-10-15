@@ -65,8 +65,45 @@ class ShipmentDetail extends Component
     public $ref_keterangan = '';
     public $ref_doc_types = [];
 
+    public function canAccess(): bool
+    {
+        $user = Auth::user();
+        return $user && (
+            $user->isAdminLevel() ||
+            $user->hasRole(['super_admin', 'director', 'admin', 'manager', 'supervisor', 'staff_operations', 'staff_sales', 'staff_ppjk', 'staff_documentation', 'staff', 'shipment']) ||
+            $user->hasPermission('shipment.view') ||
+            $user->hasPermission('documentation.view')
+        );
+    }
+
+    public function canManage(): bool
+    {
+        $user = Auth::user();
+        return $user && (
+            $user->isAdminLevel() ||
+            $user->hasRole(['super_admin', 'director', 'admin', 'manager', 'supervisor', 'staff_operations', 'staff_ppjk', 'staff_documentation', 'shipment']) ||
+            $user->hasPermission('shipment.edit') ||
+            $user->hasPermission('documentation.upload') ||
+            $user->hasPermission('documentation.edit')
+        );
+    }
+
+    public function canDeleteDoc(): bool
+    {
+        $user = Auth::user();
+        return $user && (
+            $user->isAdminLevel() ||
+            $user->hasRole(['super_admin', 'director', 'admin', 'manager', 'staff_operations', 'staff_ppjk', 'staff_documentation']) ||
+            $user->hasPermission('shipment.edit') ||
+            $user->hasPermission('shipment.delete') ||
+            $user->hasPermission('documentation.edit')
+        );
+    }
+
     public function mount($id)
     {
+        abort_unless($this->canAccess(), 403, 'Anda tidak memiliki akses ke detail pengiriman.');
+
         // Pastikan ringkasan operasional dan riwayat ETA siap tanpa query berulang.
         $this->shipment = Shipment::with([
             'customer.user',
@@ -121,12 +158,14 @@ class ShipmentDetail extends Component
 
     public function openDocReqModal()
     {
+        abort_unless($this->canManage(), 403);
         $this->reset(['req_doc_type', 'req_note', 'req_due']);
         $this->showDocReqModal = true;
     }
 
     public function mintaDokumen()
     {
+        abort_unless($this->canManage(), 403);
         $this->validate([
             'req_doc_type' => 'required|string',
             'req_note'     => 'nullable|string|max:500',
@@ -143,6 +182,7 @@ class ShipmentDetail extends Component
 
     public function tetapkanWajib($reqId)
     {
+        abort_unless($this->canManage(), 403);
         $req = \App\Models\DocumentRequirement::where('shipment_id', $this->shipment->id)->find($reqId);
         if ($req) {
             app(\App\Services\DocumentChecklistService::class)->confirmMandatory($req, Auth::id());
@@ -152,6 +192,7 @@ class ShipmentDetail extends Component
 
     public function waiveRequirement($reqId)
     {
+        abort_unless($this->canManage(), 403);
         $req = \App\Models\DocumentRequirement::where('shipment_id', $this->shipment->id)->find($reqId);
         if ($req && $req->status !== 'fulfilled') {
             $req->update(['status' => 'waived', 'is_mandatory' => false]);
@@ -160,6 +201,7 @@ class ShipmentDetail extends Component
 
     public function hapusRequirement($reqId)
     {
+        abort_unless($this->canManage(), 403);
         \App\Models\DocumentRequirement::where('shipment_id', $this->shipment->id)
             ->where('id', $reqId)->where('status', '!=', 'fulfilled')->delete();
     }
@@ -167,6 +209,7 @@ class ShipmentDetail extends Component
     /** Tandai "Sudah Ada" secara manual (verifikasi staf). */
     public function tandaiLengkap($reqId)
     {
+        abort_unless($this->canManage(), 403);
         $req = \App\Models\DocumentRequirement::where('shipment_id', $this->shipment->id)->find($reqId);
         if ($req) {
             app(\App\Services\DocumentChecklistService::class)->markFulfilledManual($req, Auth::id());
@@ -177,6 +220,7 @@ class ShipmentDetail extends Component
     /** Batalkan status lengkap → kembali belum. */
     public function batalkanLengkap($reqId)
     {
+        abort_unless($this->canManage(), 403);
         $req = \App\Models\DocumentRequirement::where('shipment_id', $this->shipment->id)->find($reqId);
         if ($req && $req->status === 'fulfilled') {
             app(\App\Services\DocumentChecklistService::class)->revertFulfillment($req);
@@ -186,6 +230,7 @@ class ShipmentDetail extends Component
     /** Cocokkan ulang seluruh dokumen shipment ke checklist. */
     public function cocokkanUlang()
     {
+        abort_unless($this->canManage(), 403);
         $this->shipment->load('documents');
         $n = app(\App\Services\DocumentChecklistService::class)->rescanShipment($this->shipment);
         session()->flash('message', "Cocokkan ulang selesai — {$n} dokumen tercocokkan ke checklist.");
@@ -210,6 +255,7 @@ class ShipmentDetail extends Component
     /** Jalankan analisa AI lartas (staf yang memicu; hasil disimpan). */
     public function analisaLartas()
     {
+        abort_unless($this->canManage(), 403);
         try {
             $analysis = app(\App\Services\LartasAiService::class)->analyze($this->shipment, Auth::id());
             $this->showLartasPanel = true;
@@ -224,6 +270,7 @@ class ShipmentDetail extends Component
     /** Rekomendasi AI → minta ke customer (jadi WAJIB + notifikasi kuat). */
     public function mintaLartasKeCustomer($docType)
     {
+        abort_unless($this->canManage(), 403);
         $note = 'Perkiraan izin/lartas dari analisa AI — mohon konfirmasi & lengkapi bila berlaku.';
         app(\App\Services\DocumentChecklistService::class)->requestFromCustomer(
             $this->shipment, $docType, $note, null, Auth::id()
@@ -235,6 +282,7 @@ class ShipmentDetail extends Component
     /** Rekomendasi AI → tambah ke checklist (belum tentu wajib; keputusan staf). */
     public function tambahLartasKeChecklist($docType)
     {
+        abort_unless($this->canManage(), 403);
         app(\App\Services\DocumentChecklistService::class)->addRequirement(
             $this->shipment, $docType, ['source' => 'ai-lartas', 'responsibility' => 'customer']
         );
@@ -285,6 +333,7 @@ class ShipmentDetail extends Component
 
     public function openRekamInsw()
     {
+        abort_unless($this->canManage(), 403);
         $ref = $this->lartasReference;
         $this->ref_is_free       = $ref->is_free ?? false;
         $this->ref_izin_names    = $ref->izin_names ?? '';
@@ -299,6 +348,7 @@ class ShipmentDetail extends Component
 
     public function simpanRekamInsw()
     {
+        abort_unless($this->canManage(), 403);
         $hs = trim((string) $this->shipment->hs_code);
         if ($hs === '') {
             session()->flash('lartas_error', 'HS code belum diisi pada shipment ini.');
@@ -337,6 +387,7 @@ class ShipmentDetail extends Component
     /** 1-klik: tandai HS ini BEBAS lartas untuk arah shipment (kasus paling umum). */
     public function tandaiBebasLartas()
     {
+        abort_unless($this->canManage(), 403);
         $hs = trim((string) $this->shipment->hs_code);
         if ($hs === '') {
             session()->flash('lartas_error', 'HS code belum diisi pada shipment ini.');
@@ -363,6 +414,7 @@ class ShipmentDetail extends Component
     /** Referensi INSW → minta dokumen ter-mapping ke customer sekaligus. */
     public function mintaSemuaDariReferensi()
     {
+        abort_unless($this->canManage(), 403);
         $ref = $this->lartasReference;
         if (! $ref || empty($ref->doc_types)) return;
         $svc = app(\App\Services\DocumentChecklistService::class);
@@ -375,6 +427,7 @@ class ShipmentDetail extends Component
 
     public function edit()
     {
+        abort_unless($this->canManage(), 403, 'Anda tidak memiliki izin untuk mengubah pengiriman.');
         $this->form = $this->shipment->only([
             'customer_id', 'awb_number', 'origin', 'destination', 
             'service_type', 'shipment_type', 'container_mode', 'container_info',
@@ -394,6 +447,7 @@ class ShipmentDetail extends Component
 
     public function save()
     {
+        abort_unless($this->canManage(), 403, 'Anda tidak memiliki izin untuk menyimpan perubahan pengiriman.');
         // Batas atas sengaja dipasang JAUH di atas kebutuhan nyata (data
         // terberat sejauh ini 525.360 kg untuk 20x40ft) — tugasnya bukan
         // menebak kiriman sebesar apa yang wajar, tapi menangkap salah ketik
@@ -462,6 +516,7 @@ class ShipmentDetail extends Component
 
     protected function processUpload($isInternal)
     {
+        abort_unless($this->canManage(), 403, 'Anda tidak memiliki izin untuk mengunggah dokumen.');
         $this->validate([
             'file_upload' => 'required|file|mimes:pdf,jpg,jpeg,png,xls,xlsx,doc,docx,webp|max:20480',
             'doc_type' => 'required|string',
@@ -614,7 +669,8 @@ class ShipmentDetail extends Component
 
     public function deleteDocument($id)
     {
-        $doc = Document::findOrFail($id);
+        abort_unless($this->canDeleteDoc(), 403, 'Anda tidak memiliki izin untuk menghapus dokumen.');
+        $doc = $this->shipment->documents()->whereKey($id)->firstOrFail();
         if (Storage::disk('public')->exists($doc->file_path)) {
             Storage::disk('public')->delete($doc->file_path);
         }
@@ -625,7 +681,8 @@ class ShipmentDetail extends Component
 
     public function openRenameModal($id)
     {
-        $doc = Document::findOrFail($id);
+        abort_unless($this->canManage(), 403, 'Anda tidak memiliki izin untuk mengubah dokumen.');
+        $doc = $this->shipment->documents()->whereKey($id)->firstOrFail();
         $this->editingDocId = $doc->id;
         $this->editingDocDescription = $doc->description ?? '';
 
@@ -662,6 +719,7 @@ class ShipmentDetail extends Component
 
     public function updateDocumentName()
     {
+        abort_unless($this->canManage(), 403, 'Anda tidak memiliki izin untuk mengubah nama dokumen.');
         $this->validate([
             'editingDocDescription' => 'required|string|max:255',
             'editingDocFilename' => 'required|string|max:255',
@@ -671,7 +729,7 @@ class ShipmentDetail extends Component
             return;
         }
 
-        $doc = Document::findOrFail($this->editingDocId);
+        $doc = $this->shipment->documents()->whereKey($this->editingDocId)->firstOrFail();
         $oldDesc = $doc->description;
         $ext = ltrim($this->editingDocExtension, '.');
         $rawFilename = trim($this->editingDocFilename);
@@ -707,7 +765,10 @@ class ShipmentDetail extends Component
 
     public function viewDocument($docId)
     {
-        $this->previewDoc = Document::find($docId);
+        $this->previewDoc = $this->shipment->documents()
+            ->whereKey($docId)
+            ->where('is_internal', false)
+            ->firstOrFail();
         $this->allPublicDocs = $this->shipment->documents()->where('is_internal', false)->get();
         $this->currentDocIndex = $this->allPublicDocs->search(function($doc) use ($docId) {
             return $doc->id == $docId;
@@ -717,7 +778,9 @@ class ShipmentDetail extends Component
 
     public function viewInternalDoc($docId)
     {
-        $this->previewDoc = Document::find($docId);
+        $this->previewDoc = $this->shipment->documents()
+            ->whereKey($docId)
+            ->firstOrFail();
         $this->allPublicDocs = collect();
         $this->currentDocIndex = 0;
         $this->showDocPreview = true;
@@ -741,6 +804,7 @@ class ShipmentDetail extends Component
 
     public function render()
     {
+        abort_unless($this->canAccess(), 403, 'Anda tidak memiliki akses ke detail pengiriman.');
         return view('livewire.admin.shipment-detail')->layout('layouts.admin');
     }
 

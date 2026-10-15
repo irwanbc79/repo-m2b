@@ -123,6 +123,29 @@ class JobCostingManager extends Component
         );
     }
 
+    public function canManage(): bool
+    {
+        $user = auth()->user();
+        if (!$user || $user->hasRole(['auditor', 'konsultan_pajak'])) {
+            return false;
+        }
+        return $user->isAdminLevel() ||
+            $user->hasRole(['super_admin', 'director', 'admin', 'manager', 'staff_accounting', 'finance', 'staff_operations']) ||
+            $user->hasPermission('job_costing.create') ||
+            $user->hasPermission('job_costing.edit') ||
+            $user->hasPermission('job_costing.approve');
+    }
+
+    public function canDelete(): bool
+    {
+        $user = auth()->user();
+        if (!$user || $user->hasRole(['auditor', 'konsultan_pajak'])) {
+            return false;
+        }
+        return $user->hasRole(['super_admin', 'director', 'admin', 'manager', 'staff_accounting', 'finance']) ||
+            $user->hasPermission('job_costing.delete');
+    }
+
     public function mount()
     {
         abort_unless($this->canAccess(), 403, 'Anda tidak memiliki akses ke Job Costing.');
@@ -359,6 +382,7 @@ class JobCostingManager extends Component
      */
     public function bukukan($costId)
     {
+        abort_unless($this->canManage(), 403, 'Anda tidak memiliki izin untuk membukukan biaya Job Costing.');
         $cost = JobCost::find($costId);
         if (!$cost || $cost->status !== 'paid') {
             session()->flash('error', 'Biaya tidak ditemukan atau belum berstatus Lunas.');
@@ -523,6 +547,7 @@ class JobCostingManager extends Component
     
     public function saveCost()
     {
+        abort_unless($this->canManage(), 403, 'Anda tidak memiliki izin untuk menyimpan biaya Job Costing.');
         // Convert empty vendor_id to null before validation
         if (empty($this->vendor_id)) {
             $this->vendor_id = null;
@@ -622,6 +647,7 @@ class JobCostingManager extends Component
     
     public function editCost($costId)
     {
+        abort_unless($this->canManage(), 403, 'Anda tidak memiliki izin untuk mengubah biaya Job Costing.');
         try {
             $cost = JobCost::findOrFail($costId);
             
@@ -721,6 +747,7 @@ class JobCostingManager extends Component
     
     public function confirmDelete($costId)
     {
+        abort_unless($this->canDelete(), 403, 'Anda tidak memiliki izin untuk menghapus biaya Job Costing.');
         $this->costToDelete = $costId;
         $this->showDeleteConfirm = true;
     }
@@ -733,6 +760,7 @@ class JobCostingManager extends Component
 
     public function deleteCost($costId = null)
     {
+        abort_unless($this->canDelete(), 403, 'Anda tidak memiliki izin untuk menghapus biaya Job Costing.');
         
         // Support direct call with ID or via confirmDelete
         if ($costId) {
@@ -803,7 +831,7 @@ class JobCostingManager extends Component
      */
     public function markAsZeroCost($shipmentId)
     {
-        abort_unless($this->canAccess(), 403, 'Anda tidak memiliki akses ke Job Costing.');
+        abort_unless($this->canManage(), 403, 'Anda tidak memiliki izin untuk menandai Zero Cost pada Job Costing.');
 
         try {
             $shipment = Shipment::findOrFail($shipmentId);
@@ -858,6 +886,7 @@ class JobCostingManager extends Component
     
     public function toggleStatus($costId)
     {
+        abort_unless($this->canManage(), 403, 'Anda tidak memiliki izin untuk mengubah status biaya Job Costing.');
         try {
             $cost = JobCost::findOrFail($costId);
             
@@ -1007,6 +1036,7 @@ class JobCostingManager extends Component
     
     public function openRatingModal($vendorId, $jobCostId = null)
     {
+        abort_unless($this->canManage(), 403, 'Anda tidak memiliki izin untuk memberikan penilaian vendor.');
         $vendor = Vendor::find($vendorId);
         if (!$vendor) {
             session()->flash('error', 'Vendor tidak ditemukan');
@@ -1033,6 +1063,7 @@ class JobCostingManager extends Component
     
     public function submitRating()
     {
+        abort_unless($this->canManage(), 403, 'Anda tidak memiliki izin untuk memberikan penilaian vendor.');
         if (!$this->ratingVendorId) {
             session()->flash('error', 'Vendor tidak valid');
             return;

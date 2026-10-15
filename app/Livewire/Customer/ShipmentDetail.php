@@ -29,8 +29,23 @@ class ShipmentDetail extends Component
     // Pesan / diskusi shipment
     public $newMessage = '';
 
+    protected function ensureAuthorizedForShipment(): void
+    {
+        $user = Auth::user();
+        abort_if(!$user, 403, 'Akses ditolak.');
+
+        if (!$user->isAdmin()) {
+            abort_unless($user->isCustomer(), 403, 'Akses ditolak.');
+            $customerId = $user->getCustomerId();
+            abort_if(!$customerId || (int) $this->shipment?->customer_id !== (int) $customerId, 403, 'Akses ditolak.');
+        }
+    }
+
     public function mount($id)
     {
+        $user = Auth::user();
+        abort_if(!$user, 403, 'Akses ditolak.');
+
         // LOGIC KEAMANAN PINTAR:
         // 1. Ambil data shipment beserta dokumennya
         $query = Shipment::with([
@@ -40,9 +55,11 @@ class ShipmentDetail extends Component
             'etaRevisions' => fn ($q) => $q->where('customer_visible', true)->with('sourceDocument'),
         ])->where('id', $id);
 
-        // 2. Jika yang akses adalah CUSTOMER, paksa filter hanya miliknya
-        if (Auth::user()->role === 'customer') {
-            $query->where('customer_id', Auth::user()->customer->id);
+        // 2. Jika BUKAN admin/staf internal, wajib merupakan customer & hanya bisa akses shipment miliknya
+        if (!$user->isAdmin()) {
+            abort_unless($user->isCustomer(), 403, 'Akses ditolak.');
+            $customerId = $user->getCustomerId();
+            $query->where('customer_id', $customerId ?? 0);
         }
 
         // 3. Jika ADMIN, loloskan saja (Bisa lihat semua shipment)
@@ -50,7 +67,7 @@ class ShipmentDetail extends Component
         $this->shipment = $query->firstOrFail();
 
         // Tandai pesan dari admin sebagai sudah dibaca saat customer membuka detail.
-        if (Auth::user()->role === 'customer') {
+        if ($user->isCustomer() && !$user->isAdmin()) {
             $this->shipment->messages()->unreadForCustomer()->update(['read_at' => now()]);
         }
 
@@ -131,6 +148,7 @@ class ShipmentDetail extends Component
      */
     public function sendMessage()
     {
+        $this->ensureAuthorizedForShipment();
         $this->validate(
             ['newMessage' => 'required|string|max:2000'],
             ['newMessage.required' => 'Pesan tidak boleh kosong.']
@@ -188,6 +206,7 @@ class ShipmentDetail extends Component
 
     public function uploadDoc()
     {
+        $this->ensureAuthorizedForShipment();
         $this->validate([
             'file_upload' => 'required|file|mimes:pdf,jpg,jpeg,png,xls,xlsx,doc,docx|max:5120',
             'doc_type' => 'required|string']);
