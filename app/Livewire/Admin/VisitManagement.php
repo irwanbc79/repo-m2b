@@ -20,6 +20,8 @@ class VisitManagement extends Component
 
     public function mount(): void
     {
+        $user = auth()->user();
+        abort_unless($user && $user->isAdmin(), 403, 'Anda tidak memiliki akses ke modul kunjungan.');
         $this->filterMonth = now()->format('Y-m');
     }
 

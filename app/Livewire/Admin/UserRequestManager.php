@@ -26,6 +26,22 @@ class UserRequestManager extends Component
 
     protected $queryString = ['search', 'statusFilter'];
 
+    public function canAccess(): bool
+    {
+        $user = Auth::user();
+        return $user && (
+            $user->isAdminLevel() ||
+            $user->hasRole(['super_admin', 'director', 'admin', 'manager']) ||
+            $user->hasPermission('user.view') ||
+            $user->hasPermission('customer.view')
+        );
+    }
+
+    public function mount(): void
+    {
+        abort_unless($this->canAccess(), 403, 'Anda tidak memiliki akses ke manajemen request user.');
+    }
+
     public function updatingSearch()
     {
         $this->resetPage();
@@ -86,6 +102,7 @@ class UserRequestManager extends Component
                 'email' => $request->pic_email,
                 'password' => Hash::make($randomPassword),
                 'role' => $role,
+                'roles' => [$role],
                 'email_verified_at' => now(), // Auto verify karena sudah di-approve
             ]);
             
@@ -384,6 +401,8 @@ class UserRequestManager extends Component
     }
     public function render()
     {
+        abort_unless($this->canAccess(), 403, 'Anda tidak memiliki akses ke manajemen request user.');
+
         $query = UserRequest::with(['customer', 'requestedBy', 'processedBy'])
             ->orderBy('created_at', 'desc');
 

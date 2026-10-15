@@ -26,6 +26,9 @@ class CreateShipment extends Component
 
     public function mount()
     {
+        $user = Auth::user();
+        abort_unless($user && $user->canEditCustomerPortal() && $user->getCustomerId(), 403, 'Akun View-Only tidak diizinkan membuat booking baru.');
+
         if (request()->has('origin')) {
             $this->origin = request()->get('origin');
         }
@@ -64,6 +67,10 @@ class CreateShipment extends Component
 
     public function save()
     {
+        $user = Auth::user();
+        $customerId = $user?->getCustomerId();
+        abort_unless($user && $user->canEditCustomerPortal() && $customerId, 403, 'Akun View-Only tidak diizinkan membuat booking baru.');
+
         $this->validate();
 
         // --- LOGIKA BARU: SESUAIKAN PREFIX DENGAN SERVICE TYPE ---
@@ -78,23 +85,32 @@ class CreateShipment extends Component
         $refNumber = $prefix . '-' . date('ymd') . '-' . rand(100, 999);
 
         // Simpan ke Database
-        $shipment = Shipment::create([
-            'customer_id' => Auth::user()->customer->id,
+        $payload = [
+            'customer_id' => $customerId,
             'awb_number' => $refNumber, // <--- SUDAH SESUAI PREFIX
             'origin' => $this->origin,
             'destination' => $this->destination,
             'service_type' => $this->service_type,
             'shipment_type' => $this->shipment_type,
-            'container_mode' => $this->container_mode,
-            'container_info' => $this->container_info,
             'pieces' => $this->pieces,
-            'package_type' => $this->package_type,
             'weight' => $this->weight ?: 0,
             'volume' => $this->volume ?: 0,
             'status' => 'pending', 
             'notes' => $this->notes,
             'hs_code' => $this->hs_code,
-        ]);
+        ];
+
+        foreach ([
+            'container_mode' => $this->container_mode,
+            'container_info' => $this->container_info,
+            'package_type' => $this->package_type,
+        ] as $col => $val) {
+            if (\Illuminate\Support\Facades\Schema::hasColumn('shipments', $col)) {
+                $payload[$col] = $val;
+            }
+        }
+
+        $shipment = Shipment::create($payload);
 
         // Opsional: Kirim Email Notifikasi ke Admin
         // try { Mail::to('admin@m2b.co.id')->send(new NewBookingAlert($shipment)); } catch (\Exception $e) {}

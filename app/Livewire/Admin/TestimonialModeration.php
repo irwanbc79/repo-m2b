@@ -27,8 +27,20 @@ class TestimonialModeration extends Component
     public $editRating = 5;
     public $editContent = '';
 
+    protected function canAccessModeration(): bool
+    {
+        $user = Auth::user();
+        return $user && $user->isAdmin();
+    }
+
+    public function mount(): void
+    {
+        abort_unless($this->canAccessModeration(), 403, 'Anda tidak memiliki akses ke moderasi testimoni.');
+    }
+
     public function startEdit($id)
     {
+        abort_unless($this->canAccessModeration(), 403);
         $t = Testimonial::findOrFail($id);
         $this->editingId = $t->id;
         $this->editDisplayName = $t->display_name;

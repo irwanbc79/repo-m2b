@@ -183,6 +183,24 @@ class QuotationManager extends Component
         return $user->isAdminLevel() || $user->hasRole(['super_admin', 'director', 'admin', 'manager', 'supervisor', 'staff_sales', 'staff']) || $user->hasPermission('quotation.view');
     }
 
+    public function canManage(): bool
+    {
+        $user = auth()->user();
+        if (!$user || $user->hasRole(['auditor', 'konsultan_pajak'])) return false;
+        return $user->isAdminLevel()
+            || $user->hasRole(['super_admin', 'director', 'admin', 'manager', 'staff_sales'])
+            || $user->hasPermission('quotation.create')
+            || $user->hasPermission('quotation.edit')
+            || $user->hasPermission('quotation.send');
+    }
+
+    public function canDelete(): bool
+    {
+        $user = auth()->user();
+        if (!$user || $user->hasRole(['auditor', 'konsultan_pajak'])) return false;
+        return $user->hasRole(['super_admin', 'director', 'admin', 'manager']);
+    }
+
     public function mount()
     {
         abort_unless($this->canAccess(), 403, 'Anda tidak memiliki akses ke manajemen penawaran.');
@@ -198,6 +216,7 @@ class QuotationManager extends Component
      */
     public function translateNotesToEnglish()
     {
+        abort_unless($this->canManage(), 403);
         $service = app(QuotationTranslationService::class);
 
         if (!$service->isConfigured()) {
@@ -249,6 +268,7 @@ class QuotationManager extends Component
 
     public function create($type = 'shipment')
     {
+        abort_unless($this->canManage(), 403, 'Anda tidak memiliki izin untuk membuat penawaran.');
         $this->resetInput();
         $this->isEditing = false;
         $this->is_new_customer = false;
@@ -267,6 +287,7 @@ class QuotationManager extends Component
 
     public function edit($id)
     {
+        abort_unless($this->canManage(), 403, 'Anda tidak memiliki izin untuk mengubah penawaran.');
         $q = Quotation::with(['items', 'commodities'])->find($id);
         if($q) {
             $this->isEditing = true;
@@ -323,6 +344,7 @@ class QuotationManager extends Component
 
     public function save()
     {
+        abort_unless($this->canManage(), 403, 'Anda tidak memiliki izin untuk menyimpan penawaran.');
         // 1. Validasi Input
         $rules = [
             'quotation_date' => 'required|date',
@@ -672,6 +694,7 @@ class QuotationManager extends Component
     }
     public function delete($id)
     {
+        abort_unless($this->canDelete(), 403, 'Anda tidak memiliki izin untuk menghapus penawaran.');
         $q = Quotation::find($id);
         if ($q) {
             \App\Models\ActivityLog::record('Quotation', 'DELETE', $q->quotation_number, "Hapus penawaran harga {$q->quotation_number}");
@@ -681,6 +704,7 @@ class QuotationManager extends Component
     }
     
     public function convertToShipment($id) { 
+        abort_unless($this->canManage(), 403, 'Anda tidak memiliki izin untuk mengonversi penawaran.');
         $q = Quotation::find($id); if (!$q) return;
         $customerId = $q->customer_id;
         if (!$customerId) { 
@@ -690,7 +714,7 @@ class QuotationManager extends Component
                 $existingCustomer = Customer::where('user_id', $existingUser->id)->first();
                 $customerId = $existingCustomer ? $existingCustomer->id : Customer::create(['user_id'=>$existingUser->id, 'customer_code'=>Customer::generateCustomerCode(), 'company_name'=>$q->manual_company, 'phone'=>$q->manual_phone, 'address'=>'-', 'city'=>'Indonesia'])->id;
              } else {
-                $newUser = User::create(['name'=>$q->manual_pic??'New','email'=>$email?:'cl'.time().'@m.co','password'=>Hash::make('12345678'),'role'=>'customer']);
+                $newUser = User::create(['name'=>$q->manual_pic??'New','email'=>$email?:'cl'.time().'@m.co','password'=>Hash::make(\Illuminate\Support\Str::random(16)),'role'=>'customer','roles'=>['customer']]);
                 $customerId = Customer::create(['user_id'=>$newUser->id, 'customer_code'=>Customer::generateCustomerCode(), 'company_name'=>$q->manual_company, 'phone'=>$q->manual_phone, 'address'=>'-', 'city'=>'Indonesia'])->id;
              }
              $q->update(['customer_id'=>$customerId, 'manual_company'=>null, 'manual_pic'=>null, 'manual_email'=>null, 'manual_phone'=>null]);
@@ -745,6 +769,7 @@ class QuotationManager extends Component
 
     public function openSendModal($id)
     {
+        abort_unless($this->canManage(), 403, 'Anda tidak memiliki izin untuk mengirim penawaran.');
         $q = Quotation::with(['customer.user', 'commodities'])->find($id);
         if ($q) {
             $this->resetErrorBag();
@@ -793,6 +818,7 @@ class QuotationManager extends Component
 
     public function sendQuotation()
     {
+        abort_unless($this->canManage(), 403, 'Anda tidak memiliki izin untuk mengirim penawaran.');
         $this->validate([
             'sendToEmail' => 'required|email',
         ], [

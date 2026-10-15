@@ -225,6 +225,86 @@ class User extends Authenticatable
     }
 
     /**
+     * True kalau user termasuk staf/admin internal portal (bukan customer / field_uploader murni).
+     */
+    public function isAdmin(): bool
+    {
+        if ($this->isOnlyFieldUploader()) {
+            return false;
+        }
+
+        $adminRoles = [
+            'super_admin', 'director', 'manager', 'supervisor', 'admin',
+            'staff', 'staff_accounting', 'staff_operations', 'staff_sales',
+            'staff_ppjk', 'staff_documentation', 'cashier', 'auditor',
+            'finance', 'accounting', 'konsultan_pajak',
+        ];
+
+        return $this->isAdminLevel() || $this->hasRole($adminRoles);
+    }
+
+    /**
+     * Alias kompatibilitas untuk cek apakah user adalah petugas lapangan murni.
+     */
+    public function isFieldUploader(): bool
+    {
+        return $this->isOnlyFieldUploader();
+    }
+
+    /**
+     * True kalau user adalah akun customer (via role maupun relasi customer).
+     */
+    public function isCustomer(): bool
+    {
+        return $this->hasRole(['customer', 'customer_viewer'])
+            || $this->customer()->exists()
+            || $this->customers()->exists();
+    }
+
+    /**
+     * True kalau user adalah akun customer view-only (tidak boleh mutasi data di portal customer).
+     */
+    public function isCustomerViewer(): bool
+    {
+        return $this->hasRole(['customer_viewer'])
+            && !$this->hasRole(['customer'])
+            && !$this->isAdmin();
+    }
+
+    /**
+     * True kalau user diizinkan melakukan aksi tulis/mutasi di Customer Portal.
+     */
+    public function canEditCustomerPortal(): bool
+    {
+        if ($this->isAdmin()) {
+            return true;
+        }
+
+        if (!$this->isCustomer() || $this->isCustomerViewer()) {
+            return false;
+        }
+
+        return true;
+    }
+
+    /**
+     * Ambil model Customer efektif milik user (relasi langsung atau via pivot customer_user).
+     */
+    public function getEffectiveCustomer(): ?\App\Models\Customer
+    {
+        return $this->customer ?? $this->getCustomerViaRelation();
+    }
+
+    /**
+     * Ambil ID customer milik user (mendukung relasi langsung maupun pivot multi-PIC).
+     */
+    public function getCustomerId(): ?int
+    {
+        $customer = $this->getEffectiveCustomer();
+        return $customer ? (int) $customer->id : null;
+    }
+
+    /**
      * Relasi ke Customer via pivot table (Many-to-Many)
      * Untuk mendukung multi-user per customer
      */

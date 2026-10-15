@@ -23,6 +23,7 @@ class QuotationList extends Component
 
     public function approve(int $id)
     {
+        abort_unless(Auth::user()?->canEditCustomerPortal(), 403, 'Akun View-Only tidak diizinkan menyetujui penawaran.');
         $quotation = $this->findOwnQuotation($id);
         if (!$quotation || $quotation->approval_status !== 'pending') return;
 
@@ -39,6 +40,7 @@ class QuotationList extends Component
 
     public function reject(int $id)
     {
+        abort_unless(Auth::user()?->canEditCustomerPortal(), 403, 'Akun View-Only tidak diizinkan menolak penawaran.');
         $quotation = $this->findOwnQuotation($id);
         if (!$quotation || $quotation->approval_status !== 'pending') return;
 
@@ -55,6 +57,7 @@ class QuotationList extends Component
 
     public function openUpload(int $id)
     {
+        abort_unless(Auth::user()?->canEditCustomerPortal(), 403, 'Akun View-Only tidak diizinkan mengunggah dokumen penawaran.');
         $quotation = $this->findOwnQuotation($id);
         if (!$quotation || $quotation->approval_status !== 'approved') return;
 
@@ -70,6 +73,8 @@ class QuotationList extends Component
 
     public function uploadSignedDocument()
     {
+        abort_unless(Auth::user()?->canEditCustomerPortal(), 403, 'Akun View-Only tidak diizinkan mengunggah dokumen penawaran.');
+
         $this->validate([
             'signedDocument' => 'required|file|mimes:pdf|max:5120', // 5 MB max
         ], [
@@ -78,7 +83,7 @@ class QuotationList extends Component
             'signedDocument.max'      => 'Ukuran file maksimal 5 MB.',
         ]);
 
-        $quotation = $this->findOwnQuotation($this->uploadQuotationId);
+        $quotation = $this->findOwnQuotation((int) $this->uploadQuotationId);
         if (!$quotation || $quotation->approval_status !== 'approved') {
             $this->cancelUpload();
             return;
@@ -106,19 +111,19 @@ class QuotationList extends Component
 
     private function findOwnQuotation(int $id): ?Quotation
     {
-        $customer = Auth::user()->customer;
-        if (!$customer) return null;
+        $customerId = Auth::user()?->getCustomerId();
+        if (!$customerId) return null;
 
         return Quotation::where('id', $id)
-            ->where('customer_id', $customer->id)
+            ->where('customer_id', $customerId)
             ->first();
     }
 
     public function render()
     {
-        $customer = Auth::user()->customer;
+        $customerId = Auth::user()?->getCustomerId();
 
-        $quotations = Quotation::where('customer_id', $customer?->id)
+        $quotations = Quotation::where('customer_id', $customerId ?? 0)
             ->when($this->filterStatus, function ($q) {
                 if ($this->filterStatus === 'expired') {
                     $q->where('valid_until', '<', now())->where('status', '!=', 'accepted');

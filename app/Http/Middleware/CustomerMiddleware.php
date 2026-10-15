@@ -31,10 +31,12 @@ class CustomerMiddleware
             ]);
         }
 
-        // Customer harus punya role 'customer'
-        // Cek di roles array atau role single
+        // Customer harus punya role 'customer' / 'customer_viewer' atau relasi customer
+        // Cek di roles array, role single, atau relasi customer/pivot
         $primaryRole = $user->getPrimaryRole();
-        $isCustomer = $primaryRole === 'customer' || $user->hasRole('customer');
+        $isCustomer = in_array($primaryRole, ['customer', 'customer_viewer'], true)
+            || $user->hasRole(['customer', 'customer_viewer'])
+            || $user->isCustomer();
 
         if (!$isCustomer && ! $isImpersonating) {
             // Non-customer yang coba akses customer portal -> redirect ke admin
@@ -44,7 +46,7 @@ class CustomerMiddleware
         // Catat bahwa customer "melihat" banner pengingat (kunjungan portal saat
         // data belum lengkap). Hanya untuk customer asli, bukan saat impersonate.
         if (! $isImpersonating) {
-            $customer = $user->customer;
+            $customer = $user->getEffectiveCustomer();
             if ($customer
                 && ! $customer->profile_reminder_seen_at
                 && ! $customer->profile_completed_at

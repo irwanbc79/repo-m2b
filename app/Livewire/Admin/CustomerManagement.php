@@ -135,8 +135,82 @@ class CustomerManagement extends Component
             ->pluck('city');
     }
 
+    public function canAccess(): bool
+    {
+        $user = auth()->user();
+        if (!$user) {
+            return false;
+        }
+        if ($user->hasRole(['auditor', 'konsultan_pajak', 'cashier'])) {
+            return false;
+        }
+
+        return $user->isAdminLevel()
+            || $user->hasRole([
+                'super_admin',
+                'director',
+                'admin',
+                'manager',
+                'supervisor',
+                'staff_sales',
+                'finance',
+                'staff_accounting',
+                'staff_operations',
+                'staff_ppjk',
+                'staff_documentation',
+                'staff',
+            ])
+            || $user->hasPermission('customer.view');
+    }
+
+    public function canManage(): bool
+    {
+        $user = auth()->user();
+        if (!$user) {
+            return false;
+        }
+        if ($user->hasRole(['auditor', 'konsultan_pajak', 'cashier'])) {
+            return false;
+        }
+
+        return $user->isAdminLevel()
+            || $user->hasRole([
+                'super_admin',
+                'director',
+                'admin',
+                'manager',
+                'supervisor',
+                'staff_sales',
+                'finance',
+                'staff_accounting',
+                'staff_operations',
+            ])
+            || $user->hasPermission('customer.create')
+            || $user->hasPermission('customer.edit');
+    }
+
+    public function canDelete(): bool
+    {
+        $user = auth()->user();
+        if (!$user) {
+            return false;
+        }
+        if ($user->hasRole(['auditor', 'konsultan_pajak', 'cashier'])) {
+            return false;
+        }
+
+        return $user->isAdminLevel()
+            || $user->hasRole(['super_admin', 'director', 'admin', 'manager']);
+    }
+
+    public function mount(): void
+    {
+        abort_unless($this->canAccess(), 403, 'Anda tidak memiliki akses ke manajemen customer.');
+    }
+
     public function create()
     {
+        abort_unless($this->canManage(), 403, 'Anda tidak memiliki izin untuk menambah customer.');
         $this->resetValidation();
         $this->resetForm();
         $this->isEditing = false;
@@ -147,8 +221,9 @@ class CustomerManagement extends Component
 
     public function updatedRole($value)
     {
+        $this->role = 'customer';
         if ($this->isEditing) return;
-        $this->customer_code = $this->generateSmartCode($value);
+        $this->customer_code = Customer::generateCustomerCode();
     }
 
     public function openModal()
@@ -185,20 +260,19 @@ class CustomerManagement extends Component
 
     public function generateSmartCode($roleType)
     {
-        if (in_array($roleType, ['admin', 'manager', 'staff', 'finance', 'shipment'])) {
-            $count = Customer::count() + 1;
-            $number = str_pad($count, 6, '0', STR_PAD_LEFT);
-            return 'M2B-' . $number;
-        }
         return Customer::generateCustomerCode();
     }
 
     public function save()
     {
+        abort_unless($this->canManage(), 403, 'Anda tidak memiliki izin untuk menyimpan data customer.');
+
+        // Keamanan: Paksa role akun customer selalu 'customer' untuk mencegah privilege escalation
+        $this->role = 'customer';
+
         $rules = [
             'name' => 'required',
             'email' => 'required|email|unique:users,email,' . ($this->customerId ? (Customer::find($this->customerId)?->user_id ?? '') : ''),
-            'role' => 'required|in:admin,manager,staff,finance,shipment,customer',
             'company_name' => 'required',
         ];
 
@@ -218,7 +292,11 @@ class CustomerManagement extends Component
                     }
 
                     if ($customer->user) {
-                        $userData = ['name' => $this->name, 'role' => $this->role, 'email' => $this->email, 'is_active' => (bool) $this->is_active];
+                        $userData = [
+                            'name' => $this->name,
+                            'email' => $this->email,
+                            'is_active' => (bool) $this->is_active,
+                        ];
                         if (!empty($this->password)) {
                             $userData['password'] = Hash::make($this->password);
                         }
@@ -246,7 +324,8 @@ class CustomerManagement extends Component
                         'name' => $this->name,
                         'email' => $this->email,
                         'password' => Hash::make($this->password),
-                        'role' => $this->role,
+                        'role' => 'customer',
+                        'roles' => ['customer'],
                         'is_active' => (bool) $this->is_active,
                     ]);
 
@@ -302,12 +381,13 @@ class CustomerManagement extends Component
 
     public function edit($id)
     {
+        abort_unless($this->canManage(), 403, 'Anda tidak memiliki izin untuk mengedit customer.');
         $customer = Customer::with('user')->find($id);
         if ($customer) {
             $this->customerId = $id;
             $this->name = $customer->user->name ?? '';
             $this->email = $customer->user->email ?? '';
-            $this->role = $customer->user->role ?? 'customer';
+            $this->role = 'customer';
             $this->is_active = (bool) ($customer->user->is_active ?? true);
 
             $this->customer_code = $customer->customer_code;
@@ -333,6 +413,7 @@ class CustomerManagement extends Component
      */
     public function approveCustomer($id)
     {
+        abort_unless($this->canManage(), 403, 'Anda tidak memiliki izin untuk mengubah status customer.');
         $customer = Customer::with('user')->find($id);
         if ($customer && $customer->user) {
             $customer->user->update(['is_active' => true]);
@@ -345,6 +426,7 @@ class CustomerManagement extends Component
      */
     public function deactivateCustomer($id)
     {
+        abort_unless($this->canManage(), 403, 'Anda tidak memiliki izin untuk mengubah status customer.');
         $customer = Customer::with('user')->find($id);
         if ($customer && $customer->user) {
             $customer->user->update(['is_active' => false]);
@@ -358,6 +440,7 @@ class CustomerManagement extends Component
      */
     public function convertToLead($id)
     {
+        abort_unless($this->canManage(), 403, 'Anda tidak memiliki izin untuk mengonversi customer ke lead.');
         $customer = Customer::with('user')->find($id);
         if (! $customer || ! $customer->user) {
             session()->flash('error', 'Customer tidak ditemukan.');
@@ -433,6 +516,7 @@ class CustomerManagement extends Component
 
     public function confirmDelete($id)
     {
+        abort_unless($this->canDelete(), 403, 'Anda tidak memiliki izin untuk menghapus customer.');
         $this->deleteId = $id;
         $this->showDeleteConfirm = true;
     }
@@ -445,6 +529,7 @@ class CustomerManagement extends Component
 
     public function delete($id = null)
     {
+        abort_unless($this->canDelete(), 403, 'Anda tidak memiliki izin untuk menghapus customer.');
         $targetId = $id ?? $this->deleteId;
         
         try {
@@ -497,6 +582,7 @@ class CustomerManagement extends Component
 
     public function bulkDelete()
     {
+        abort_unless($this->canDelete(), 403, 'Anda tidak memiliki izin untuk menghapus customer.');
         if (empty($this->selectedCustomers)) {
             session()->flash('error', 'Pilih customer yang akan dihapus.');
             return;
@@ -577,6 +663,7 @@ class CustomerManagement extends Component
 
     public function toggleFollowupEmail($customerId)
     {
+        abort_unless($this->canManage(), 403, 'Anda tidak memiliki izin untuk mengubah pengaturan customer.');
         $customer = Customer::find($customerId);
         if ($customer) {
             $customer->update(['no_followup_email' => !$customer->no_followup_email]);
@@ -587,6 +674,7 @@ class CustomerManagement extends Component
 
     public function updateTag($customerId, $tag)
     {
+        abort_unless($this->canManage(), 403, 'Anda tidak memiliki izin untuk mengubah tag customer.');
         $customer = Customer::find($customerId);
         if ($customer) {
             $customer->update(['business_type' => $tag]);

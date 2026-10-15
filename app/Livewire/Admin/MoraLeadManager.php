@@ -48,8 +48,15 @@ class MoraLeadManager extends Component
 
     protected $queryString = ['filter', 'search'];
 
+    protected function canAccessLeads(): bool
+    {
+        $user = auth()->user();
+        return $user && $user->isAdmin();
+    }
+
     public function mount(): void
     {
+        abort_unless($this->canAccessLeads(), 403, 'Anda tidak memiliki akses ke modul leads.');
         $this->refreshStats();
     }
 

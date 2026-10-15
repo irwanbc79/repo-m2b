@@ -36,9 +36,9 @@ class SsoWebController extends Controller
         Auth::login($user, remember: false);
         $request->session()->regenerate();
 
-        // Hanya izinkan redirect ke path internal (cegah open redirect)
-        $redirect = $data['redirect'];
-        if (!str_starts_with($redirect, '/')) {
+        // Hanya izinkan redirect ke path internal (cegah open redirect / protocol-relative URL)
+        $redirect = (string) ($data['redirect'] ?? '');
+        if (!str_starts_with($redirect, '/') || str_starts_with($redirect, '//') || str_starts_with($redirect, '/\\')) {
             $redirect = '/admin/dashboard';
         }
 

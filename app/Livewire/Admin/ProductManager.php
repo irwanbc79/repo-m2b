@@ -41,8 +41,30 @@ class ProductManager extends Component
         'sort_order' => 'integer',
     ];
 
+    protected function canViewProducts(): bool
+    {
+        $user = auth()->user();
+        return $user && ($user->isAdmin() || $user->hasPermission('quotation.view') || $user->hasPermission('invoice.view'));
+    }
+
+    protected function canManageProducts(): bool
+    {
+        $user = auth()->user();
+        return $user && (
+            $user->isAdminLevel() ||
+            $user->hasRole(['super_admin', 'director', 'admin', 'manager', 'supervisor', 'finance', 'staff_accounting']) ||
+            $user->hasPermission('settings.edit')
+        );
+    }
+
+    public function mount()
+    {
+        abort_unless($this->canViewProducts(), 403, 'Anda tidak memiliki izin melihat master produk.');
+    }
+
     public function render()
     {
+        abort_unless($this->canViewProducts(), 403, 'Anda tidak memiliki izin melihat master produk.');
         $products = Product::query()
             ->when($this->search, function ($query) {
                 $query->where(function ($q) {
@@ -70,6 +92,7 @@ class ProductManager extends Component
 
     public function create()
     {
+        abort_unless($this->canManageProducts(), 403, 'Anda tidak memiliki izin mengelola master produk.');
         $this->resetForm();
         $this->isModalOpen = true;
         $this->isEditing = false;
@@ -77,6 +100,7 @@ class ProductManager extends Component
 
     public function edit($id)
     {
+        abort_unless($this->canManageProducts(), 403, 'Anda tidak memiliki izin mengelola master produk.');
         $product = Product::findOrFail($id);
         
         $this->product_id = $product->id;
@@ -96,6 +120,7 @@ class ProductManager extends Component
 
     public function save()
     {
+        abort_unless($this->canManageProducts(), 403, 'Anda tidak memiliki izin mengelola master produk.');
         if ($this->isEditing) {
             $this->rules['code'] = 'required|string|max:50|unique:products,code,' . $this->product_id;
         }
@@ -127,12 +152,14 @@ class ProductManager extends Component
 
     public function delete($id)
     {
+        abort_unless($this->canManageProducts(), 403, 'Anda tidak memiliki izin menghapus master produk.');
         Product::find($id)->delete();
         session()->flash('message', 'Product deleted successfully!');
     }
 
     public function toggleActive($id)
     {
+        abort_unless($this->canManageProducts(), 403, 'Anda tidak memiliki izin mengubah status produk.');
         $product = Product::find($id);
         $product->is_active = !$product->is_active;
         $product->save();

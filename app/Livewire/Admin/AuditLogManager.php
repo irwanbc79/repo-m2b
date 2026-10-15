@@ -26,6 +26,22 @@ class AuditLogManager extends Component
     public $showDetailModal = false;
     public $selectedLog = null;
 
+    public function canAccess(): bool
+    {
+        $user = Auth::user();
+        return $user && !$user->hasRole('auditor') && (
+            $user->isAdminLevel() ||
+            $user->hasRole(['super_admin', 'director', 'admin', 'manager']) ||
+            $user->hasPermission('audit_log.view') ||
+            in_array($user->role, ['super_admin', 'director', 'admin', 'manager'], true)
+        );
+    }
+
+    public function mount(): void
+    {
+        abort_unless($this->canAccess(), 403, 'Anda tidak memiliki akses ke audit log.');
+    }
+
     public function updatingSearch() { $this->resetPage(); }
     public function updatingFilterUser() { $this->resetPage(); }
     public function updatingFilterModule() { $this->resetPage(); }
@@ -116,6 +132,7 @@ class AuditLogManager extends Component
      */
     public function viewDetail($logId)
     {
+        abort_unless($this->canAccess(), 403);
         $this->selectedLog = ActivityLog::find($logId);
         $this->showDetailModal = true;
     }
@@ -134,6 +151,7 @@ class AuditLogManager extends Component
      */
     public function exportExcel()
     {
+        abort_unless($this->canAccess(), 403);
         $query = $this->getFilteredQuery();
         $logs = $query->get();
 
@@ -240,15 +258,7 @@ class AuditLogManager extends Component
 
     public function render()
     {
-        $user = Auth::user();
-        $canView = $user && !$user->hasRole('auditor') && (
-            $user->isAdminLevel() ||
-            $user->hasRole(['super_admin', 'director', 'admin', 'manager']) ||
-            $user->hasPermission('audit_log.view') ||
-            in_array($user->role, ['super_admin', 'director', 'admin', 'manager'])
-        );
-
-        if (!$canView) abort(403);
+        abort_unless($this->canAccess(), 403);
 
         $query = $this->getFilteredQuery();
         $logs = $query->paginate($this->perPage);

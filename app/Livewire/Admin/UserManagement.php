@@ -65,11 +65,30 @@ class UserManagement extends Component
     {
         $user = auth()->user();
         return $user && (
-            $user->isAdminLevel() ||
             $user->hasRole(['super_admin', 'director', 'admin']) ||
             $user->hasPermission('user.edit') ||
             $user->hasPermission('user.create')
         );
+    }
+
+    public function canDelete(): bool
+    {
+        $user = auth()->user();
+        return $user && (
+            $user->hasRole(['super_admin', 'director', 'admin']) ||
+            $user->hasPermission('user.delete')
+        );
+    }
+
+    protected function canManageHighPrivilege(): bool
+    {
+        $user = auth()->user();
+        return $user && $user->hasRole(['super_admin', 'director']);
+    }
+
+    protected function isHighPrivilegeTarget(User $target): bool
+    {
+        return $target->hasRole(['super_admin', 'director']);
     }
 
     public function mount(): void
@@ -116,6 +135,9 @@ class UserManagement extends Component
         abort_unless($this->canManage(), 403, 'Anda tidak memiliki hak untuk mengubah pengguna.');
         $user = User::find($id);
         if ($user) {
+            if ($this->isHighPrivilegeTarget($user) && !$this->canManageHighPrivilege()) {
+                abort(403, 'Hanya Super Admin atau Direktur yang dapat mengubah akun level Direktur/Super Admin.');
+            }
             $this->editingId = $id;
             $this->name = $user->name;
             $this->email = $user->email;
@@ -131,10 +153,12 @@ class UserManagement extends Component
     public function save()
     {
         abort_unless($this->canManage(), 403, 'Anda tidak memiliki hak untuk menyimpan data pengguna.');
+        $allowedRoles = implode(',', array_keys($this->rolesList));
         $rules = [
             'name' => 'required|string|max:255',
             'email' => 'required|email|unique:users,email,' . $this->editingId,
             'selectedRoles' => 'required|array|min:1', // Wajib pilih minimal 1 role
+            'selectedRoles.*' => 'required|string|in:' . $allowedRoles,
         ];
 
         if (!$this->isEditing) {
@@ -142,6 +166,11 @@ class UserManagement extends Component
         }
 
         $this->validate($rules);
+
+        $assigningHighPrivilege = !empty(array_intersect($this->selectedRoles, ['super_admin', 'director']));
+        if ($assigningHighPrivilege && !$this->canManageHighPrivilege()) {
+            abort(403, 'Hanya Super Admin atau Direktur yang dapat menetapkan role Super Admin atau Direktur.');
+        }
 
         $data = [
             'name' => $this->name,
@@ -155,7 +184,10 @@ class UserManagement extends Component
         }
 
         if ($this->isEditing) {
-            $user = User::find($this->editingId);
+            $user = User::findOrFail($this->editingId);
+            if ($this->isHighPrivilegeTarget($user) && !$this->canManageHighPrivilege()) {
+                abort(403, 'Hanya Super Admin atau Direktur yang dapat mengubah akun level Direktur/Super Admin.');
+            }
             $oldRoles = $user->roles ?? [$user->role];
             $user->update($data);
             
@@ -181,12 +213,17 @@ class UserManagement extends Component
 
     public function delete($id)
     {
+        abort_unless($this->canDelete(), 403, 'Anda tidak memiliki hak untuk menghapus pengguna.');
+
         if ($id == auth()->id()) {
             session()->flash('error', 'Tidak bisa menghapus diri sendiri!');
             return;
         }
         $user = User::find($id);
         if ($user) {
+            if ($this->isHighPrivilegeTarget($user) && !$this->canManageHighPrivilege()) {
+                abort(403, 'Hanya Super Admin atau Direktur yang dapat menghapus akun level Direktur/Super Admin.');
+            }
             \App\Models\ActivityLog::record('UserManagement', 'DELETE_USER', $user->email, "Menghapus akun staf: {$user->name} ({$user->email})");
             $user->delete();
             session()->flash('message', 'User berhasil dihapus.');

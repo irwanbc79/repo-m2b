@@ -52,7 +52,7 @@ class Profile extends Component
         $this->name = $user->name;
         $this->email = $user->email;
 
-        $customer = Customer::where('user_id', $user->id)->first();
+        $customer = $user->getEffectiveCustomer() ?? Customer::where('user_id', $user->id)->first();
         $this->customer = $customer;
         
         if ($customer) {
@@ -72,6 +72,9 @@ class Profile extends Component
 
     public function updateProfile()
     {
+        $user = Auth::user();
+        abort_unless($user && $user->canEditCustomerPortal(), 403, 'Akun View-Only tidak diizinkan mengubah profil perusahaan.');
+
         $this->validate([
             'name' => 'required|min:3',
             'company_name' => [
@@ -92,11 +95,10 @@ class Profile extends Component
             'company_name.required' => 'Nama perusahaan wajib diisi.',
         ]);
 
-        $user = Auth::user();
         $user->name = $this->name;
         $user->save();
 
-        $customer = Customer::where('user_id', $user->id)->first();
+        $customer = $user->getEffectiveCustomer() ?? Customer::where('user_id', $user->id)->first();
         if ($customer) {
             $customer->company_name = $this->company_name;
             $customer->phone = $this->phone;
@@ -155,6 +157,7 @@ class Profile extends Component
 
     public function openRequestUserModal()
     {
+        abort_unless(Auth::user()?->canEditCustomerPortal(), 403, 'Akun View-Only tidak diizinkan meminta penambahan user.');
         $this->resetRequestForm();
         $this->showRequestUserModal = true;
     }
@@ -189,6 +192,9 @@ class Profile extends Component
 
     public function submitUserRequest()
     {
+        abort_unless(Auth::user()?->canEditCustomerPortal(), 403, 'Akun View-Only tidak diizinkan meminta penambahan user.');
+        abort_unless($this->customer !== null, 403, 'Profil customer tidak ditemukan.');
+
         $this->validate([
             'pic_name' => 'required|string|min:3|max:100',
             'pic_email' => 'required|email|max:100',

@@ -42,19 +42,10 @@ class InvoiceList extends Component
 
     public function openPaymentHistory($invoiceId)
     {
-        $user = Auth::user();
-        if (!$user->customer) {
-            return;
-        }
+        $this->paymentHistoryInvoice = $this->findOwnInvoice($invoiceId, ['shipment', 'payments']);
+        abort_unless($this->paymentHistoryInvoice !== null, 403, 'Akses ditolak.');
 
-        $this->paymentHistoryInvoice = Invoice::with(['shipment', 'payments'])
-            ->where('id', $invoiceId)
-            ->where('customer_id', $user->customer->id)
-            ->first();
-
-        if ($this->paymentHistoryInvoice) {
-            $this->showPaymentHistoryModal = true;
-        }
+        $this->showPaymentHistoryModal = true;
     }
 
     public function closePaymentHistory()
@@ -63,10 +54,29 @@ class InvoiceList extends Component
         $this->paymentHistoryInvoice = null;
     }
 
+    private function findOwnInvoice($invoiceId, array $with = []): ?Invoice
+    {
+        $user = Auth::user();
+        $customerId = $user?->customer?->id ?? $user?->getCustomerId();
+        if (!$customerId || !$invoiceId) {
+            return null;
+        }
+
+        $query = Invoice::where('customer_id', $customerId);
+        if (!empty($with)) {
+            $query->with($with);
+        }
+
+        return $query->find($invoiceId);
+    }
+
     public function openUploadModal($invoiceId)
     {
+        abort_unless(Auth::user()?->canEditCustomerPortal(), 403, 'Akun View-Only tidak diizinkan mengunggah bukti bayar.');
+        $this->selectedInvoice = $this->findOwnInvoice($invoiceId, ['shipment', 'payments']);
+        abort_unless($this->selectedInvoice !== null, 403, 'Akses ditolak.');
+
         $this->selectedInvoiceId = $invoiceId;
-        $this->selectedInvoice = Invoice::with(['shipment', 'payments'])->find($invoiceId);
         $this->paymentDate = now()->format('Y-m-d');
         $this->paymentProof = null;
         $this->paymentNote = '';
@@ -85,6 +95,10 @@ class InvoiceList extends Component
 
     public function uploadPaymentProof()
     {
+        abort_unless(Auth::user()?->canEditCustomerPortal(), 403, 'Akun View-Only tidak diizinkan mengunggah bukti bayar.');
+        $invoice = $this->findOwnInvoice($this->selectedInvoiceId);
+        abort_unless($invoice !== null, 403, 'Akses ditolak.');
+
         $this->validate([
             'paymentProof' => 'required|file|mimes:jpg,jpeg,png,pdf|max:5120',
             'paymentDate' => 'required|date',
@@ -95,9 +109,9 @@ class InvoiceList extends Component
             'paymentDate.required' => 'Tanggal pembayaran wajib diisi',
         ]);
 
-        $invoice = Invoice::findOrFail($this->selectedInvoiceId);
         $user = Auth::user();
-        $customerName = $user->customer->company_name ?? $user->name;
+        $customer = $user?->getEffectiveCustomer();
+        $customerName = $customer->company_name ?? $user->name;
 
         // Upload file
         $filename = 'payment_' . str_replace(['/', '\\'], '-', $invoice->invoice_number) . '_' . time() . '.' . $this->paymentProof->getClientOriginalExtension();
@@ -130,8 +144,9 @@ class InvoiceList extends Component
     public function render()
     {
         $user = Auth::user();
+        $customerId = $user?->getCustomerId();
 
-        if (!$user->customer) {
+        if (!$customerId) {
             return view('livewire.customer.invoice-list', [
                 'invoices' => Invoice::whereRaw('1=0')->paginate(25),
                 'stats' => [
@@ -142,8 +157,6 @@ class InvoiceList extends Component
                 ]
             ])->layout('layouts.customer');
         }
-
-        $customerId = $user->customer->id;
 
         // Query invoices
         $query = Invoice::with(['shipment', 'payments'])
@@ -201,8 +214,11 @@ class InvoiceList extends Component
     public function requestFakturPajak($invoiceId)
     {
         $user = Auth::user();
-        $invoice = Invoice::where('id', $invoiceId)
-            ->where('customer_id', $user->customer->id)
+        abort_unless($user && $user->canEditCustomerPortal(), 403, 'Akun View-Only tidak diizinkan meminta faktur pajak.');
+        $ownedInvoice = $this->findOwnInvoice($invoiceId);
+        abort_unless($ownedInvoice !== null, 403, 'Akses ditolak.');
+
+        $invoice = Invoice::where('id', $ownedInvoice->id)
             ->whereIn('status', ['paid', 'partial'])
             ->first();
 
@@ -221,7 +237,8 @@ class InvoiceList extends Component
             return;
         }
 
-        $customerName = $user->customer->company_name ?? $user->name;
+        $customer = $user->getEffectiveCustomer();
+        $customerName = $customer->company_name ?? $user->name;
 
         // Update invoice
         $invoice->update([
@@ -269,12 +286,10 @@ class InvoiceList extends Component
 
     public function openFakturPajakPreview($invoiceId)
     {
-        $user = Auth::user();
-        $invoice = Invoice::where('id', $invoiceId)
-            ->where('customer_id', $user->customer->id)
-            ->first();
+        $invoice = $this->findOwnInvoice($invoiceId);
+        abort_unless($invoice !== null, 403, 'Akses ditolak.');
 
-        if ($invoice && $invoice->faktur_pajak_path) {
+        if ($invoice->faktur_pajak_path) {
             $this->previewFakturPajakPath = $invoice->faktur_pajak_path;
             $this->previewFakturPajakNumber = $invoice->faktur_pajak_number;
             $this->previewFakturPajakModal = true;
@@ -299,14 +314,10 @@ class InvoiceList extends Component
 
     public function openBupotModal($invoiceId)
     {
-        $user = Auth::user();
-        $invoice = Invoice::where('id', $invoiceId)
-            ->where('customer_id', $user->customer->id)
-            ->first();
+        $invoice = $this->findOwnInvoice($invoiceId);
 
         if (!$invoice) {
-            session()->flash('error', 'Invoice tidak ditemukan.');
-            return;
+            abort(403, 'Akses ditolak.');
         }
 
         $this->bupotInvoiceId = $invoiceId;
@@ -331,7 +342,8 @@ class InvoiceList extends Component
 
     public function uploadBupotProof()
     {
-        $invoice = Invoice::findOrFail($this->bupotInvoiceId);
+        $invoice = $this->findOwnInvoice($this->bupotInvoiceId);
+        abort_unless($invoice !== null, 403, 'Akses ditolak.');
 
         $rules = [
             'bupotNumber' => 'required|string|max:100',

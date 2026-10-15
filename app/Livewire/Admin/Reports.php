@@ -24,8 +24,38 @@ class Reports extends Component
     public $serviceType = '';
     public $shipmentType = '';
 
+    public function canAccess(): bool
+    {
+        $user = auth()->user();
+        if (!$user) {
+            return false;
+        }
+        if ($user->hasRole(['konsultan_pajak', 'cashier'])) {
+            return false;
+        }
+
+        return $user->isAdminLevel()
+            || $user->hasRole([
+                'super_admin',
+                'director',
+                'admin',
+                'manager',
+                'supervisor',
+                'finance',
+                'staff_accounting',
+                'accounting',
+                'auditor',
+                'staff_sales',
+                'staff_operations',
+            ])
+            || $user->hasPermission('report.view_basic')
+            || $user->hasPermission('report.view_financial')
+            || $user->hasPermission('accounting.view');
+    }
+
     public function mount()
     {
+        abort_unless($this->canAccess(), 403, 'Anda tidak memiliki akses ke modul laporan.');
         $this->startDate = now()->startOfMonth()->format('Y-m-d');
         $this->endDate = now()->format('Y-m-d');
     }
