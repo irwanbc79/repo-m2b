@@ -20,16 +20,15 @@ class ShipmentList extends Component
 
     public function render()
 {
-    $user = Auth::user()->loadMissing('customer');
+    $user = Auth::user()?->loadMissing('customer');
+    $customerId = $user?->getCustomerId();
 
     // Defensive guard: jika relasi customer belum siap / tidak ada
-    if (!$user->customer) {
+    if (!$customerId) {
         return view('livewire.customer.shipment-list', [
             'shipments' => Shipment::whereRaw('1=0')->paginate(25),
         ])->layout('layouts.customer');
     }
-
-    $customerId = $user->customer->id;
 
     $shipments = Shipment::where('customer_id', $customerId)
         ->where(function ($query) {

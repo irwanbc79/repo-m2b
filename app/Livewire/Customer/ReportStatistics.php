@@ -17,10 +17,11 @@ class ReportStatistics extends Component
     public function mount()
     {
         $user = Auth::user();
+        $customerId = $user?->getCustomerId();
         
-        if ($user->customer) {
+        if ($customerId) {
             // Get available years from shipments
-            $years = Shipment::where('customer_id', $user->customer->id)
+            $years = Shipment::where('customer_id', $customerId)
                 ->selectRaw('YEAR(created_at) as year')
                 ->distinct()
                 ->orderBy('year', 'desc')
@@ -45,11 +46,10 @@ class ReportStatistics extends Component
     public function getShipmentStats()
     {
         $user = Auth::user();
-        if (!$user->customer) {
+        $customerId = $user?->getCustomerId();
+        if (!$customerId) {
             return $this->emptyStats();
         }
-
-        $customerId = $user->customer->id;
 
         // Monthly shipment count
         $monthlyShipments = Shipment::where('customer_id', $customerId)
@@ -72,11 +72,10 @@ class ReportStatistics extends Component
     public function getRevenueStats()
     {
         $user = Auth::user();
-        if (!$user->customer) {
+        $customerId = $user?->getCustomerId();
+        if (!$customerId) {
             return $this->emptyStats();
         }
-
-        $customerId = $user->customer->id;
 
         // Monthly invoice total
         $monthlyRevenue = Invoice::where('customer_id', $customerId)
@@ -100,11 +99,10 @@ class ReportStatistics extends Component
     public function getShipmentByStatus()
     {
         $user = Auth::user();
-        if (!$user->customer) {
+        $customerId = $user?->getCustomerId();
+        if (!$customerId) {
             return [];
         }
-
-        $customerId = $user->customer->id;
 
         return Shipment::where('customer_id', $customerId)
             ->whereYear('created_at', $this->year)
@@ -117,11 +115,10 @@ class ReportStatistics extends Component
     public function getShipmentByType()
     {
         $user = Auth::user();
-        if (!$user->customer) {
+        $customerId = $user?->getCustomerId();
+        if (!$customerId) {
             return [];
         }
-
-        $customerId = $user->customer->id;
 
         return Shipment::where('customer_id', $customerId)
             ->whereYear('created_at', $this->year)
@@ -134,7 +131,8 @@ class ReportStatistics extends Component
     public function getSummaryStats()
     {
         $user = Auth::user();
-        if (!$user->customer) {
+        $customerId = $user?->getCustomerId();
+        if (!$customerId) {
             return [
                 'total_shipments' => 0,
                 'total_invoices' => 0,
@@ -144,8 +142,6 @@ class ReportStatistics extends Component
                 'avg_per_shipment' => 0,
             ];
         }
-
-        $customerId = $user->customer->id;
 
         $totalShipments = Shipment::where('customer_id', $customerId)
             ->whereYear('created_at', $this->year)
@@ -175,11 +171,10 @@ class ReportStatistics extends Component
     public function getTopRoutes()
     {
         $user = Auth::user();
-        if (!$user->customer) {
+        $customerId = $user?->getCustomerId();
+        if (!$customerId) {
             return [];
         }
-
-        $customerId = $user->customer->id;
 
         return Shipment::where('customer_id', $customerId)
             ->whereYear('created_at', $this->year)

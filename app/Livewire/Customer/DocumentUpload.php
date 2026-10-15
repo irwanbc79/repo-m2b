@@ -37,7 +37,11 @@ class DocumentUpload extends Component
 
     public function mount($shipmentId)
     {
-        $this->shipment = Auth::user()->customer->shipments()->findOrFail($shipmentId);
+        $user = Auth::user();
+        $customerId = $user?->getCustomerId();
+        abort_unless($user && $user->canEditCustomerPortal() && $customerId, 403, 'Akun View-Only tidak diizinkan mengunggah dokumen.');
+
+        $this->shipment = Shipment::where('customer_id', $customerId)->findOrFail($shipmentId);
     }
 
     public function updatedFiles()
@@ -48,6 +52,14 @@ class DocumentUpload extends Component
 
     public function uploadDocuments()
     {
+        $user = Auth::user();
+        $customerId = $user?->getCustomerId();
+        abort_unless(
+            $user && $user->canEditCustomerPortal() && $customerId && (int) $this->shipment?->customer_id === (int) $customerId,
+            403,
+            'Akun View-Only tidak diizinkan mengunggah dokumen.'
+        );
+
         $this->validate();
         $this->uploading = true;
 

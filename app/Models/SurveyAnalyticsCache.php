@@ -9,6 +9,8 @@ class SurveyAnalyticsCache extends Model
 {
     use HasFactory;
 
+    protected $table = 'survey_analytics_cache';
+
     protected $fillable = [
         'cache_key',
         'cache_data',

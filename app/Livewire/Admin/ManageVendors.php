@@ -46,16 +46,42 @@ class ManageVendors extends Component
         ];
     }
 
+    protected function canViewVendor(): bool
+    {
+        $user = auth()->user();
+        return $user && ($user->isAdminLevel() || $user->hasPermission('vendor.view'));
+    }
+
+    protected function canCreateVendor(): bool
+    {
+        $user = auth()->user();
+        return $user && ($user->isAdminLevel() || $user->hasPermission('vendor.create'));
+    }
+
+    protected function canEditVendor(): bool
+    {
+        $user = auth()->user();
+        return $user && ($user->isAdminLevel() || $user->hasPermission('vendor.edit'));
+    }
+
+    protected function canDeleteVendor(): bool
+    {
+        $user = auth()->user();
+        return $user && ($user->isAdminLevel() || $user->hasPermission('vendor.delete'));
+    }
+
     /* =========================
      |  LIFECYCLE
      ========================= */
     public function mount()
     {
+        abort_unless($this->canViewVendor(), 403, 'Anda tidak memiliki izin melihat data vendor.');
         $this->resetForm();
     }
 
     public function render()
     {
+        abort_unless($this->canViewVendor(), 403, 'Anda tidak memiliki izin melihat data vendor.');
         $vendors = Vendor::with('contacts')
             ->where(function ($q) {
                 $q->where('name', 'like', '%' . $this->search . '%')
@@ -74,6 +100,7 @@ class ManageVendors extends Component
      ========================= */
     public function create()
     {
+        abort_unless($this->canCreateVendor(), 403, 'Anda tidak memiliki izin menambah vendor.');
         $this->resetForm();
 
         // CODE hanya untuk ditampilkan di UI
@@ -85,6 +112,7 @@ class ManageVendors extends Component
 
     public function edit($id)
     {
+        abort_unless($this->canEditVendor(), 403, 'Anda tidak memiliki izin mengubah vendor.');
         $vendor = Vendor::with('contacts')->findOrFail($id);
 
         $this->vendorId     = $vendor->id;
@@ -107,6 +135,12 @@ class ManageVendors extends Component
 
     public function save()
     {
+        if ($this->isEditing) {
+            abort_unless($this->canEditVendor(), 403, 'Anda tidak memiliki izin mengubah vendor.');
+        } else {
+            abort_unless($this->canCreateVendor(), 403, 'Anda tidak memiliki izin menambah vendor.');
+        }
+
         $this->validate();
 
         try {
@@ -162,6 +196,7 @@ class ManageVendors extends Component
 
     public function delete($id)
     {
+        abort_unless($this->canDeleteVendor(), 403, 'Anda tidak memiliki izin menghapus vendor.');
         $vendor = Vendor::find($id);
         if ($vendor) {
             $vendor->contacts()->delete();

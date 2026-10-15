@@ -12,10 +12,11 @@ class Dashboard extends Component
     public function render()
     {
         $user = Auth::user();
+        $customer = $user?->getEffectiveCustomer();
 
         // SECURITY CHECK: Pastikan user punya profil customer
         // Jika tidak ada, tampilkan dashboard kosong (JANGAN CRASH)
-        if (!$user->customer) {
+        if (!$customer) {
             return view('livewire.customer.dashboard', [
                 'stats' => [
                     'total' => 0,
@@ -29,21 +30,21 @@ class Dashboard extends Component
             ])->layout('layouts.customer');
         }
 
-        $customerId = $user->customer->id;
+        $customerId = $customer->id;
         $cacheKey = 'customer_dashboard_' . $customerId;
         $cacheVersion = Cache::get('customer_dashboard_version_' . $customerId, 1);
 
         // Cache dashboard data selama 5 menit dengan versioning
-        $cachedData = Cache::remember($cacheKey . '_v' . $cacheVersion, now()->addMinutes(5), function () use ($user, $customerId) {
+        $cachedData = Cache::remember($cacheKey . '_v' . $cacheVersion, now()->addMinutes(5), function () use ($customer) {
             // Ambil Statistik
             $stats = [
-                'total' => $user->customer->shipments()->count(),
-                'active' => $user->customer->shipments()->whereIn('status', ['pending', 'in_progress', 'in_transit'])->count(),
-                'completed' => $user->customer->shipments()->where('status', 'completed')->count(),
+                'total' => $customer->shipments()->count(),
+                'active' => $customer->shipments()->whereIn('status', ['pending', 'in_progress', 'in_transit'])->count(),
+                'completed' => $customer->shipments()->where('status', 'completed')->count(),
             ];
 
             // Ambil 5 Shipment Terakhir
-            $shipments = $user->customer->shipments()
+            $shipments = $customer->shipments()
                 ->with(['etaRevisions' => fn ($q) => $q->where('customer_visible', true)])
                 ->latest()->take(5)->get();
             
@@ -67,7 +68,7 @@ class Dashboard extends Component
         $docRequests = collect();
         try {
             $docRequests = \App\Models\DocumentRequirement::query()
-                ->whereHas('shipment', fn ($q) => $q->where('customer_id', $user->customer->id))
+                ->whereHas('shipment', fn ($q) => $q->where('customer_id', $customerId))
                 ->where('status', 'requested')
                 ->with('shipment:id,awb_number')
                 ->orderByRaw('due_date IS NULL, due_date ASC')
@@ -81,7 +82,7 @@ class Dashboard extends Component
         $testimonialCta = null;
         try {
             if ($stats['completed'] > 0) {
-                $t = \App\Models\Testimonial::where('customer_id', $user->customer->id)
+                $t = \App\Models\Testimonial::where('customer_id', $customerId)
                     ->where('status', '!=', 'rejected')->latest()->first();
                 if (! $t) {
                     $testimonialCta = 'invite';        // belum ada sama sekali
@@ -107,7 +108,7 @@ class Dashboard extends Component
 
     public function acknowledgeEtaRevision(int $revisionId): void
     {
-        $customerId = Auth::user()->customer?->id;
+        $customerId = Auth::user()?->getCustomerId();
 
         $revision = \App\Models\ShipmentEtaRevision::query()
             ->whereKey($revisionId)

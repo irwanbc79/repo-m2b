@@ -55,9 +55,33 @@ class Create extends Component
     
     // ------------------------------------------------
 
+    protected function canViewCustomer(): bool
+    {
+        $user = auth()->user();
+        return $user && ($user->isAdminLevel() || $user->hasPermission('customer.view'));
+    }
+
+    protected function canCreateCustomer(): bool
+    {
+        $user = auth()->user();
+        return $user && ($user->isAdminLevel() || $user->hasPermission('customer.create'));
+    }
+
+    protected function canEditCustomer(): bool
+    {
+        $user = auth()->user();
+        return $user && ($user->isAdminLevel() || $user->hasPermission('customer.edit'));
+    }
+
+    public function mount(): void
+    {
+        abort_unless($this->canViewCustomer(), 403, 'Anda tidak memiliki izin mengakses modul customer.');
+    }
+
     #[On('open-create-modal')] 
     public function openCreateModal()
     {
+        abort_unless($this->canCreateCustomer(), 403, 'Anda tidak memiliki izin membuat customer.');
         $this->reset(); 
         $this->isEditing = false;
         $this->isOpen = true;
@@ -67,6 +91,7 @@ class Create extends Component
     #[On('edit-customer')] 
     public function editCustomer($id)
     {
+        abort_unless($this->canEditCustomer(), 403, 'Anda tidak memiliki izin mengubah customer.');
         $this->reset();
         $this->isEditing = true;
         $this->isOpen = true;
@@ -104,6 +129,12 @@ class Create extends Component
 
     public function store()
     {
+        if ($this->isEditing) {
+            abort_unless($this->canEditCustomer(), 403, 'Anda tidak memiliki izin mengubah customer.');
+        } else {
+            abort_unless($this->canCreateCustomer(), 403, 'Anda tidak memiliki izin membuat customer.');
+        }
+
         $rules = [
             'companyName' => 'required|string|max:255',
             'name'        => 'required|string',

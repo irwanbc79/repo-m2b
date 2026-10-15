@@ -24,8 +24,15 @@ class SurveyDashboard extends Component
         $this->analyticsService = $service;
     }
 
+    protected function canAccessSurvey(): bool
+    {
+        $user = auth()->user();
+        return $user && $user->isAdmin();
+    }
+
     public function mount()
     {
+        abort_unless($this->canAccessSurvey(), 403, 'Anda tidak memiliki akses ke dashboard survei.');
         $this->selectedYear = date('Y');
     }
 
@@ -84,10 +91,14 @@ class SurveyDashboard extends Component
 
     public function deleteResponse($id)
     {
-        if (auth()->user()->roles && str_contains(auth()->user()->roles, 'admin')) {
-            CustomerSurvey::findOrFail($id)->delete();
-            session()->flash('message', 'Survey berhasil dihapus.');
-        }
+        $user = auth()->user();
+        abort_unless(
+            $user && ($user->isAdminLevel() || $user->hasRole(['super_admin', 'director', 'admin'])),
+            403,
+            'Anda tidak memiliki izin menghapus survei.'
+        );
+        CustomerSurvey::findOrFail($id)->delete();
+        session()->flash('message', 'Survey berhasil dihapus.');
     }
 
     public function exportExcel()

@@ -28,7 +28,7 @@ class TestimonialForm extends Component
 
     public function mount()
     {
-        $customer = Auth::user()->customer;
+        $customer = Auth::user()?->getEffectiveCustomer();
         if (! $customer) {
             $this->state = 'locked';
             return;
@@ -82,6 +82,7 @@ class TestimonialForm extends Component
 
     public function submit()
     {
+        abort_unless(Auth::user()?->canEditCustomerPortal(), 403, 'Akun View-Only tidak diizinkan mengirim testimoni.');
         $this->validate([
             'display_name' => 'required|string|max:100',
             'company_name' => 'nullable|string|max:150',
@@ -94,7 +95,7 @@ class TestimonialForm extends Component
             'content.min' => 'Testimoni minimal 10 karakter.',
         ]);
 
-        $customer = Auth::user()->customer;
+        $customer = Auth::user()?->getEffectiveCustomer();
         if (! $customer) {
             $this->state = 'locked';
             return;

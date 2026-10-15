@@ -256,9 +256,43 @@ class User extends Authenticatable
      */
     public function isCustomer(): bool
     {
-        return $this->hasRole(['customer'])
+        return $this->hasRole(['customer', 'customer_viewer'])
             || $this->customer()->exists()
             || $this->customers()->exists();
+    }
+
+    /**
+     * True kalau user adalah akun customer view-only (tidak boleh mutasi data di portal customer).
+     */
+    public function isCustomerViewer(): bool
+    {
+        return $this->hasRole(['customer_viewer'])
+            && !$this->hasRole(['customer'])
+            && !$this->isAdmin();
+    }
+
+    /**
+     * True kalau user diizinkan melakukan aksi tulis/mutasi di Customer Portal.
+     */
+    public function canEditCustomerPortal(): bool
+    {
+        if ($this->isAdmin()) {
+            return true;
+        }
+
+        if (!$this->isCustomer() || $this->isCustomerViewer()) {
+            return false;
+        }
+
+        return true;
+    }
+
+    /**
+     * Ambil model Customer efektif milik user (relasi langsung atau via pivot customer_user).
+     */
+    public function getEffectiveCustomer(): ?\App\Models\Customer
+    {
+        return $this->customer ?? $this->getCustomerViaRelation();
     }
 
     /**
@@ -266,12 +300,8 @@ class User extends Authenticatable
      */
     public function getCustomerId(): ?int
     {
-        if ($this->customer) {
-            return (int) $this->customer->id;
-        }
-
-        $viaPivot = $this->getCustomerViaRelation();
-        return $viaPivot ? (int) $viaPivot->id : null;
+        $customer = $this->getEffectiveCustomer();
+        return $customer ? (int) $customer->id : null;
     }
 
     /**

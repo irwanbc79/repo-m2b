@@ -149,6 +149,7 @@ class ShipmentDetail extends Component
     public function sendMessage()
     {
         $this->ensureAuthorizedForShipment();
+        abort_unless(Auth::user()?->canEditCustomerPortal(), 403, 'Akun View-Only tidak diizinkan mengirim pesan.');
         $this->validate(
             ['newMessage' => 'required|string|max:2000'],
             ['newMessage.required' => 'Pesan tidak boleh kosong.']
@@ -207,6 +208,7 @@ class ShipmentDetail extends Component
     public function uploadDoc()
     {
         $this->ensureAuthorizedForShipment();
+        abort_unless(Auth::user()?->canEditCustomerPortal(), 403, 'Akun View-Only tidak diizinkan mengunggah dokumen.');
         $this->validate([
             'file_upload' => 'required|file|mimes:pdf,jpg,jpeg,png,xls,xlsx,doc,docx|max:5120',
             'doc_type' => 'required|string']);

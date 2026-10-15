@@ -72,6 +72,7 @@ class InvoiceList extends Component
 
     public function openUploadModal($invoiceId)
     {
+        abort_unless(Auth::user()?->canEditCustomerPortal(), 403, 'Akun View-Only tidak diizinkan mengunggah bukti bayar.');
         $this->selectedInvoice = $this->findOwnInvoice($invoiceId, ['shipment', 'payments']);
         abort_unless($this->selectedInvoice !== null, 403, 'Akses ditolak.');
 
@@ -94,6 +95,7 @@ class InvoiceList extends Component
 
     public function uploadPaymentProof()
     {
+        abort_unless(Auth::user()?->canEditCustomerPortal(), 403, 'Akun View-Only tidak diizinkan mengunggah bukti bayar.');
         $invoice = $this->findOwnInvoice($this->selectedInvoiceId);
         abort_unless($invoice !== null, 403, 'Akses ditolak.');
 
@@ -108,7 +110,8 @@ class InvoiceList extends Component
         ]);
 
         $user = Auth::user();
-        $customerName = $user->customer->company_name ?? $user->name;
+        $customer = $user?->getEffectiveCustomer();
+        $customerName = $customer->company_name ?? $user->name;
 
         // Upload file
         $filename = 'payment_' . str_replace(['/', '\\'], '-', $invoice->invoice_number) . '_' . time() . '.' . $this->paymentProof->getClientOriginalExtension();
@@ -141,8 +144,9 @@ class InvoiceList extends Component
     public function render()
     {
         $user = Auth::user();
+        $customerId = $user?->getCustomerId();
 
-        if (!$user->customer) {
+        if (!$customerId) {
             return view('livewire.customer.invoice-list', [
                 'invoices' => Invoice::whereRaw('1=0')->paginate(25),
                 'stats' => [
@@ -153,8 +157,6 @@ class InvoiceList extends Component
                 ]
             ])->layout('layouts.customer');
         }
-
-        $customerId = $user->customer->id;
 
         // Query invoices
         $query = Invoice::with(['shipment', 'payments'])
@@ -212,6 +214,7 @@ class InvoiceList extends Component
     public function requestFakturPajak($invoiceId)
     {
         $user = Auth::user();
+        abort_unless($user && $user->canEditCustomerPortal(), 403, 'Akun View-Only tidak diizinkan meminta faktur pajak.');
         $ownedInvoice = $this->findOwnInvoice($invoiceId);
         abort_unless($ownedInvoice !== null, 403, 'Akses ditolak.');
 
@@ -234,7 +237,8 @@ class InvoiceList extends Component
             return;
         }
 
-        $customerName = $user->customer->company_name ?? $user->name;
+        $customer = $user->getEffectiveCustomer();
+        $customerName = $customer->company_name ?? $user->name;
 
         // Update invoice
         $invoice->update([
