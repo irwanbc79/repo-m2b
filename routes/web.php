@@ -768,17 +768,48 @@ Route::middleware(['auth'])->group(function () {
                 return response()->view('errors.document-not-found', ['document' => $doc], 404);
             }
 
-            $fullPath = $diskName === 'local'
-                ? storage_path('app/' . $existingPath)
-                : storage_path('app/public/' . $existingPath);
-            $mimeType = $doc->mime_type ?? (function_exists('mime_content_type') ? mime_content_type($fullPath) : 'application/octet-stream');
+            $fullPath = \Illuminate\Support\Facades\Storage::disk($diskName)->path($existingPath);
 
-            $inlineTypes = ['application/pdf', 'image/jpeg', 'image/jpg', 'image/png', 'image/gif', 'image/webp'];
+            $ext = strtolower(pathinfo($doc->filename ?? $existingPath, PATHINFO_EXTENSION));
+            $extMimeMap = [
+                'pdf'  => 'application/pdf',
+                'jpg'  => 'image/jpeg',
+                'jpeg' => 'image/jpeg',
+                'png'  => 'image/png',
+                'gif'  => 'image/gif',
+                'webp' => 'image/webp',
+                'svg'  => 'image/svg+xml',
+                'bmp'  => 'image/bmp',
+                'ico'  => 'image/x-icon',
+                'docx' => 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+                'doc'  => 'application/msword',
+                'xlsx' => 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+                'xls'  => 'application/vnd.ms-excel',
+                'csv'  => 'text/csv',
+                'txt'  => 'text/plain',
+                'json' => 'application/json',
+            ];
+
+            $mimeType = $extMimeMap[$ext]
+                ?? $doc->mime_type
+                ?? (function_exists('mime_content_type') ? mime_content_type($fullPath) : 'application/octet-stream');
+
+            $inlineTypes = [
+                'application/pdf',
+                'image/jpeg', 'image/jpg', 'image/png', 'image/gif', 'image/webp', 'image/svg+xml', 'image/bmp', 'image/x-icon',
+                'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+                'application/msword',
+                'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+                'application/vnd.ms-excel',
+                'text/csv',
+                'text/plain',
+                'application/json',
+            ];
             $disposition = in_array($mimeType, $inlineTypes) ? 'inline' : 'attachment';
 
             return response()->file($fullPath, [
-            'Content-Type' => $mimeType,
-            'Content-Disposition' => $disposition . '; filename="' . ($doc->filename ?? basename($existingPath)) . '"',
+                'Content-Type' => $mimeType,
+                'Content-Disposition' => $disposition . '; filename="' . ($doc->filename ?? basename($existingPath)) . '"',
             ]);
 
         }

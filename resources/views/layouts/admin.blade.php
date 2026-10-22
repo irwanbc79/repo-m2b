@@ -466,6 +466,7 @@ a:hover .sb-ico { background: rgba(255, 255, 255, 0.12); transform: scale(1.05);
         </div>
     </div>
 
+    <script src="{{ asset('vendor/doc-viewer/doc-viewer.js') }}"></script>
     @livewireScripts
     @stack('scripts')
 </body>

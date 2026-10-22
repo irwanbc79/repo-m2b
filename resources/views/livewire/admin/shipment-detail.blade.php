@@ -482,13 +482,38 @@
                 @if($shipment->documents->where('is_internal', false)->count() > 0)
                     <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
                         @foreach($shipment->documents->where('is_internal', false) as $doc)
+                        @php
+                            $dExt = strtolower(pathinfo($doc->filename, PATHINFO_EXTENSION));
+                            $isDocx = in_array($dExt, ['docx', 'doc']);
+                            $isXlsx = in_array($dExt, ['xlsx', 'xls', 'csv']);
+                            $isImg = in_array($dExt, ['jpg', 'jpeg', 'png', 'gif', 'webp', 'svg', 'bmp']);
+                            $isPdf = $dExt === 'pdf';
+                        @endphp
                         <div class="flex items-center p-3 border border-gray-200 rounded-lg hover:bg-slate-50 transition group relative">
-                            <div class="bg-red-50 text-red-600 p-2.5 rounded mr-3">
-                                <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 21h10a2 2 0 002-2V9.414a1 1 0 00-.293-.707l-5.414-5.414A1 1 0 0012.586 3H7a2 2 0 00-2 2v14a2 2 0 002 2z"></path></svg>
-                            </div>
+                            @if($isDocx)
+                                <div class="bg-blue-50 text-blue-600 p-2.5 rounded mr-3" title="Dokumen Word">
+                                    <svg class="w-6 h-6" fill="currentColor" viewBox="0 0 24 24"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8l-6-6zm1 9h-2l-1 4-1-4H9l-1.5 6h1.5l.8-3.5 1 3.5h1.4l1-3.5.8 3.5h1.5L15 11zm-2-7l4 4h-4V4z"/></svg>
+                                </div>
+                            @elseif($isXlsx)
+                                <div class="bg-emerald-50 text-emerald-600 p-2.5 rounded mr-3" title="Spreadsheet Excel">
+                                    <svg class="w-6 h-6" fill="currentColor" viewBox="0 0 24 24"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8l-6-6zm1.8 15h-1.6l-1.2-2.5-1.2 2.5H9.2l2-3.8-1.9-3.7h1.6l1.1 2.4 1.1-2.4h1.6l-1.9 3.7 2 3.8zm-2.8-9V4l4 4h-4z"/></svg>
+                                </div>
+                            @elseif($isImg)
+                                <div class="bg-purple-50 text-purple-600 p-2.5 rounded mr-3" title="Gambar">
+                                    <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"></path></svg>
+                                </div>
+                            @elseif($isPdf)
+                                <div class="bg-red-50 text-red-600 p-2.5 rounded mr-3" title="Dokumen PDF">
+                                    <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 21h10a2 2 0 002-2V9.414a1 1 0 00-.293-.707l-5.414-5.414A1 1 0 0012.586 3H7a2 2 0 00-2 2v14a2 2 0 002 2z"></path></svg>
+                                </div>
+                            @else
+                                <div class="bg-slate-100 text-slate-600 p-2.5 rounded mr-3" title="Dokumen">
+                                    <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path></svg>
+                                </div>
+                            @endif
                             <div class="overflow-hidden flex-1">
                                 <p class="text-sm font-bold text-gray-700 truncate group-hover:text-blue-800">{{ $doc->description }}</p>
-                                <p class="text-[10px] text-gray-400 uppercase mt-0.5">{{ pathinfo($doc->filename, PATHINFO_EXTENSION) }} • {{ $doc->created_at->format('d M H:i') }}</p>
+                                <p class="text-[10px] text-gray-400 uppercase mt-0.5">{{ $dExt }} • {{ $doc->created_at->format('d M H:i') }}</p>
                                 <div class="flex gap-1">
                                     <button wire:click="viewDocument({{ $doc->id }})" title="Lihat Dokumen" class="p-1.5 text-blue-500 hover:bg-blue-100 rounded"><svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"></path><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"></path></svg></button>
                                     <button wire:click="openRenameModal({{ $doc->id }})" title="Ubah Nama Dokumen" class="p-1.5 text-amber-600 hover:bg-amber-100 rounded"><svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z"></path></svg></button>
@@ -1045,47 +1070,9 @@ style="display: none;">
         </div>
         
         {{-- Preview Content --}}
-        <div class="flex-1 bg-gray-900/30 rounded-lg overflow-hidden flex items-center justify-center">
+        <div class="flex-1 bg-gray-900/30 rounded-lg overflow-hidden flex items-center justify-center min-h-0">
             @if($previewDoc)
-                @php
-                    $ext = strtolower(pathinfo($previewDoc->filename, PATHINFO_EXTENSION));
-                    $isImage = in_array($ext, ['jpg', 'jpeg', 'png', 'gif', 'webp', 'svg']);
-                    $isPdf = $ext === 'pdf';
-                @endphp
-                
-                @if($isImage)
-                    {{-- Image Preview --}}
-                    <div class="overflow-auto max-h-full max-w-full p-8">
-                        <img 
-                            src="{{ route('document.view', $previewDoc->id) }}" 
-                            alt="{{ $previewDoc->filename }}"
-                            :style="`transform: scale(${zoom/100}) rotate(${rotation}deg); transition: transform 0.3s ease;`"
-                            class="max-w-none"
-                        >
-                    </div>
-                @elseif($isPdf)
-                    {{-- PDF Preview --}}
-                    <iframe 
-                        src="{{ route('document.view', $previewDoc->id) }}#toolbar=1&navpanes=0&scrollbar=1&view=FitH" 
-                        class="w-full h-full border-0"
-                        :style="`transform: scale(${zoom/100}); transform-origin: top center;`"
-                    ></iframe>
-                @else
-                    {{-- Other File Types --}}
-                    <div class="text-center text-white p-8">
-                        <svg class="w-24 h-24 mx-auto mb-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 21h10a2 2 0 002-2V9.414a1 1 0 00-.293-.707l-5.414-5.414A1 1 0 0012.586 3H7a2 2 0 00-2 2v14a2 2 0 002 2z"></path>
-                        </svg>
-                        <h3 class="text-xl font-bold mb-2">Preview tidak tersedia</h3>
-                        <p class="text-gray-400 mb-6">File tipe .{{ $ext }} tidak dapat di-preview di browser</p>
-                        <a href="{{ route('document.download', $previewDoc->id) }}" download class="inline-flex items-center gap-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg px-6 py-3 font-bold transition">
-                            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"></path>
-                            </svg>
-                            Download File
-                        </a>
-                    </div>
-                @endif
+                <x-document-viewer-content :preview-doc="$previewDoc" />
             @endif
         </div>
         

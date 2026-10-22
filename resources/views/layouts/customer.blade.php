@@ -267,6 +267,7 @@
         </div>
     </div>
 
+    <script src="{{ asset('vendor/doc-viewer/doc-viewer.js') }}"></script>
     @livewireScripts
 </body>
 </html>
