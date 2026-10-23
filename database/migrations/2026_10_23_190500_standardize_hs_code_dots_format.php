@@ -11,20 +11,33 @@ return new class extends Migration
      */
     public function up(): void
     {
-        // Standardize hs_code and parent_code to:
-        // 4-digit: xxxx (tanpa titik, cth: 8501)
-        // 6-digit: xxxx.xx (cth: 8501.10)
-        // 8-digit: xxxx.xx.xx (cth: 8501.10.21)
-        $codes = DB::table('hs_codes')->select('id', 'hs_code', 'parent_code', 'hs_level')->get();
+        // 1. Prune or standardize any legacy 4-digit headings that have dots (e.g., '01.01' -> '0101')
+        $dottedHeadings = DB::table('hs_codes')
+            ->where('hs_level', 'heading')
+            ->where('hs_code', 'LIKE', '%.%')
+            ->get();
 
-        foreach ($codes as $item) {
-            $newHs = HsCode::formatDisplay($item->hs_code);
-            $newParent = !empty($item->parent_code) ? HsCode::formatDisplay($item->parent_code) : $item->parent_code;
+        foreach ($dottedHeadings as $item) {
+            $clean = str_replace('.', '', $item->hs_code);
+            $alreadyExists = DB::table('hs_codes')->where('hs_code', $clean)->where('id', '!=', $item->id)->exists();
+            if ($alreadyExists) {
+                DB::table('hs_codes')->where('id', $item->id)->delete();
+            } else {
+                DB::table('hs_codes')->where('id', $item->id)->update(['hs_code' => $clean]);
+            }
+        }
 
-            if ($newHs !== $item->hs_code || $newParent !== $item->parent_code) {
+        // 2. Standardize parent_code references for 4-digit headings (e.g. '85.01' -> '8501')
+        $dottedParents = DB::table('hs_codes')
+            ->whereNotNull('parent_code')
+            ->where('parent_code', 'LIKE', '%.%')
+            ->get();
+
+        foreach ($dottedParents as $item) {
+            $digitsOnly = preg_replace('/[^0-9]/', '', (string)$item->parent_code);
+            if (strlen($digitsOnly) === 4) {
                 DB::table('hs_codes')->where('id', $item->id)->update([
-                    'hs_code' => $newHs,
-                    'parent_code' => $newParent,
+                    'parent_code' => $digitsOnly,
                 ]);
             }
         }
