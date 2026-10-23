@@ -200,7 +200,7 @@ a:hover .sb-ico { background: rgba(255, 255, 255, 0.12); transform: scale(1.05);
 
             <nav class="flex-1 px-3 space-y-1 overflow-y-auto py-5 custom-scrollbar">
 
-                @if(auth()->user()->hasRole('auditor'))
+                @if(auth()->check() && auth()->user()->hasRole('auditor'))
                 <div class="sb-hide-rail mx-1 mb-3 px-3 py-2 bg-amber-950/40 border border-amber-500/30 rounded-xl shadow-xs">
                     <div class="flex items-center gap-2">
                         <span class="text-amber-400 text-base leading-none">🔍</span>

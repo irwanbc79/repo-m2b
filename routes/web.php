@@ -603,7 +603,7 @@ Route::prefix('hs-codes')->middleware('throttle:120,1')->group(function () {
 // // HS CODE EXPLORER ROUTES
 // // ============================================
 // Route::middleware(['auth'])->group(function () {
-Route::get('/hs-codes', \App\Livewire\HsCode\Explorer::class)->name('hs-codes.explorer');
+Route::get('/hs-codes', \App\Livewire\HsCode\Explorer::class)->name('hs-codes.explorer')->middleware(['auth']);
 
 // API endpoint for autocomplete - aman dari SQL injection (parameter binding)
 Route::get('/api/hs-codes/search', function (Request $request) {
