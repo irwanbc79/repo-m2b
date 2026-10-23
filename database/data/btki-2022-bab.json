@@ -1,0 +1,427 @@
+{
+ "_meta": {
+  "source": "Lampiran II PMK 26/PMK.010/2022 (BTKI 2022), https://peraturan.bpk.go.id/Download/209374/26_PMK.010_2022.pdf",
+  "pdf_sha256_prefix": "ae0caa3d9f49fbdd",
+  "retrieved_at": "2026-10-15",
+  "method": "pdftotext -layout, judul di bawah baris \"Bab N / Chapter N\"; teks verbatim kecuali koreksi OCR berikut",
+  "ocr_corrections": [
+   "03 id: \"Jkan\" -> \"Ikan\"",
+   "08 id: \"bertempumng\" -> \"bertempurung\"",
+   "12 id: \"bermacam- macam\" -> \"bermacam-macam\"",
+   "12 en: \"fruit;industrial\" -> \"fruit; industrial\"",
+   "27 en: \"wax.es\" -> \"waxes\"",
+   "28 id: \"mulia,dari\" -> \"mulia, dari\"",
+   "28 en: \"metals,of\" -> \"metals, of\"",
+   "66 en: \"seat- sticks\" -> \"seat-sticks\"",
+   "68 id: \"ashes\" -> \"asbes\"",
+   "70 id: \"Kaea\" -> \"Kaca\"",
+   "71 en: \"semi- precious\" -> \"semi-precious\"",
+   "75 id: \"Nike!\" -> \"Nikel\"",
+   "77 id: \"masayang\" -> \"masa yang\"",
+   "86 id: \"elektro- mekanis\" -> \"elektro-mekanis\"",
+   "86 en: \"iJXtures\" -> \"fixtures\"",
+   "87 en: \"rolling- stock\" -> \"rolling-stock\"",
+   "89 id: \"Kapa!\" -> \"Kapal\"",
+   "90 en: \"instrumens\" -> \"instruments\"",
+   "94 en: \"name\"plates\" -> \"name-plates\""
+  ]
+ },
+ "chapters": {
+  "01": {
+   "id": "Binatang hidup",
+   "en": "Live animals"
+  },
+  "02": {
+   "id": "Daging dan sisa daging yang dapat dimakan",
+   "en": "Meat and edible meat offal"
+  },
+  "03": {
+   "id": "Ikan dan krustasea, moluska serta invertebrata air lainnya",
+   "en": "Fish and crustaceans, molluscs and other aquatic invertebrates"
+  },
+  "04": {
+   "id": "Produk susu; telur unggas; madu alam; produk hewani yang dapat dimakan, tidak dirinci atau termasuk dalam pos lain",
+   "en": "Dairy produce; birds' eggs; natural honey; edible products of animal origin, not elsewhere specified or included"
+  },
+  "05": {
+   "id": "Produk hewani, tidak dirinci atau termasuk dalam pos lain",
+   "en": "Products of animal origin, not elsewhere specified or included"
+  },
+  "06": {
+   "id": "Pohon hidup dan tanaman lainnya; umbi, akar dan sejenisnya; bunga potong dan daun ornamen",
+   "en": "Live trees and other plants; bulbs, roots and the like; cut flowers and ornamental foliage"
+  },
+  "07": {
+   "id": "Sayuran dan akar serta bonggol tertentu yang dapat dimakan",
+   "en": "Edible vegetables and certain roots and tubers"
+  },
+  "08": {
+   "id": "Buah dan buah bertempurung yang dapat dimakan; kulit dari buah jeruk atau melon",
+   "en": "Edible fruit and nuts; peel of citrus fruit or melons"
+  },
+  "09": {
+   "id": "Kopi, teh, mate dan rempah-rempah",
+   "en": "Coffee, tea, mate and spices"
+  },
+  "10": {
+   "id": "Serealia",
+   "en": "Cereals"
+  },
+  "11": {
+   "id": "Produk industri penggilingan; malt; pati; inulin; gluten gandum",
+   "en": "Products of the milling industry; malt; starches; inulin; wheat gluten"
+  },
+  "12": {
+   "id": "Biji dan buah mengandung minyak; bermacam-macam butir, biji dan buah; tanaman industri atau tanaman obat; jerami dan makanan ternak",
+   "en": "Oil seeds and oleaginous fruits; miscellaneous grains, seeds and fruit; industrial or medicinal plants; straw and fodder"
+  },
+  "13": {
+   "id": "Lak; getah, damar dan sap serta ekstrak nabati lainnya",
+   "en": "Lac; gums, resins and other vegetable saps and extracts"
+  },
+  "14": {
+   "id": "Bahan anyaman nabati; produk nabati tidak dirinci atau termasuk dalam pos lain",
+   "en": "Vegetable plaiting materials; vegetable products not elsewhere specified or included"
+  },
+  "15": {
+   "id": "Lemak dan minyak hewani, nabati atau mikroba serta produk disosiasinya; lemak olahan yang dapat dimakan; malam hewani atau malam nabati",
+   "en": "Animal, vegetable or microbial fats and oils and their cleavage products; prepared edible fats; animal or vegetable waxes"
+  },
+  "16": {
+   "id": "Olahan dari daging, dari ikan, dari krustasea, moluska atau invertebrata air lainnya, atau dari serangga",
+   "en": "Preparations of meat, of fish, of crustaceans, molluscs or other aquatic invertebrates, or of insects"
+  },
+  "17": {
+   "id": "Gula dan kembang gula",
+   "en": "Sugars and sugar confectionery"
+  },
+  "18": {
+   "id": "Kakao dan olahan kakao",
+   "en": "Cocoa and cocoa preparations"
+  },
+  "19": {
+   "id": "Olahan dari serealia, tepung, pati atau susu; produk industri kue",
+   "en": "Preparations of cereals, flour, starch or milk; pastrycooks' products"
+  },
+  "20": {
+   "id": "Olahan dari sayuran, buah, biji/ kacang atau bagian lain dari tanaman",
+   "en": "Preparations of vegetables, fruit, nuts or other parts of plants"
+  },
+  "21": {
+   "id": "Bermacam-macam olahan yang dapat dimakan",
+   "en": "Miscellaneous edible preparations"
+  },
+  "22": {
+   "id": "Minuman, alkohol dan cuka",
+   "en": "Beverages, spirits and vinegar"
+  },
+  "23": {
+   "id": "Residu dan sisa dari industri makanan; olahan makanan hewan",
+   "en": "Residues and waste from the food industries; prepared animal fodder"
+  },
+  "24": {
+   "id": "Tembakau dan pengganti tembakau dipabrikasi; produk, yang mengandung nikotin atau tidak, dimaksudkan untuk inhalasi tanpa pembakaran; produk mengandung nikotin lainnya yang dimaksudkan untuk memasukan nikotin ke dalam tubuh manusia.",
+   "en": "Tobacco and manufactured tobacco substitutes; products, whether or not containing nicotine, intended for inhalation without combustion; other nicotine containing products intended for the intake of nicotine into the human body."
+  },
+  "25": {
+   "id": "Garam; belerang; tanah dan batu; bahan pemlester, kapur dan semen",
+   "en": "Salt; sulphur; earths and stone; plastering materials, lime and cement"
+  },
+  "26": {
+   "id": "Bijih logam, terak dan abu",
+   "en": "Ores, slag and ash"
+  },
+  "27": {
+   "id": "Bahan bakar mineral, minyak mineral dan produk sulingannya; zat mengandung bitumen; malam mineral",
+   "en": "Mineral fuels, mineral oils and products of their distillation; bituminous substances; mineral waxes"
+  },
+  "28": {
+   "id": "Bahan kimia anorganik; senyawa organik atau anorganik dari logam mulia, dari logam tanah jarang, dari unsur radioaktif atau dari isotop",
+   "en": "Inorganic chemicals; organic or inorganic compounds of precious metals, of rare-earth metals, of radioactive elements or of isotopes"
+  },
+  "29": {
+   "id": "Bahan Kimia Organik",
+   "en": "Organic Chemicals"
+  },
+  "30": {
+   "id": "Produk farmasi",
+   "en": "Pharmaceutical products"
+  },
+  "31": {
+   "id": "Pupuk",
+   "en": "Fertilisers"
+  },
+  "32": {
+   "id": "Ekstrak penyamak atau pencelup; tanin dan turunannya; bahan celup, pigmen dan bahan pewarna lainnya; cat dan pernis; dempul dan mastik lainnya; tinta",
+   "en": "Tanning or dyeing extracts; tannins and their derivatives; dyes, pigments and other colouring matter; paints and varnishes; putty and other mastics; inks"
+  },
+  "33": {
+   "id": "Minyak atsiri dan resinoida; preparat wewangian, kosmetika atau rias",
+   "en": "Essential oils and resinoids; perfumery, cosmetic or toilet preparations"
+  },
+  "34": {
+   "id": "Sabun, bahan aktif permukaan organik, preparat pembersih, preparat pelumas, malam artifisial, malam olahan, preparat pemoles dan penggosok, lilin dan barang semacam itu, pasta untuk model, \"malam untuk gigi\" dan preparat untuk gigi dengan bahan dasar plester",
+   "en": "Soap, organic surface-active agents, washing preparations, lubricating preparations, artificial waxes, prepared waxes, polishing and scouring preparations, candles and similar articles, modelling pastes, \"dental waxes\" and dental preparations with a basis of plaster"
+  },
+  "35": {
+   "id": "Zat albumina; pati dimodifikasi; perekat; enzim",
+   "en": "Albuminoidal substances; modified starches; glues; enzymes"
+  },
+  "36": {
+   "id": "Bahan peledak; produk piroteknik; korek api; paduan piroforik; preparat tertentu yang mudah terbakar",
+   "en": "Explosives; pyrotechnic products; matches; pyrophoric alloys; certain combustible preparations"
+  },
+  "37": {
+   "id": "Barang fotografi atau sinematografi",
+   "en": "Photographic or cinematographic goods"
+  },
+  "38": {
+   "id": "Aneka produk kimia",
+   "en": "Miscellaneous chemical products"
+  },
+  "39": {
+   "id": "Plastik dan barang daripadanya",
+   "en": "Plastics and articles thereof"
+  },
+  "40": {
+   "id": "Karet dan barang daripadanya",
+   "en": "Rubber and articles thereof"
+  },
+  "41": {
+   "id": "Hide dan skin mentah (selain kulit berbulu) dan kulit samak",
+   "en": "Raw hides and skins (other than furskins) and leather"
+  },
+  "42": {
+   "id": "Barang dari kulit samak; saddlery dan harness; barang untuk bepergian, tas tangan dan kemasan semacam itu; barang dari usus binatang (selain benang ulat sutra)",
+   "en": "Articles of leather; saddlery and harness; travel goods, handbags and similar containers; articles of animal gut (other than silk-worm gut)"
+  },
+  "43": {
+   "id": "Kulit berbulu dan bulu artifisial; barang daripadanya",
+   "en": "Furskins and artificial fur; manufactures thereof"
+  },
+  "44": {
+   "id": "Kayu dan barang dari kayu; arang kayu",
+   "en": "Wood and articles of wood; wood charcoal"
+  },
+  "45": {
+   "id": "Gabus dan barang dari gabus",
+   "en": "Cork and articles of cork"
+  },
+  "46": {
+   "id": "Barang dari jerami, dari rumput esparto dan dari bahan anyaman lainnya; keranjang dan barang anyaman",
+   "en": "Manufactures of straw, of esparto and of other plaiting materials; basketware and wickerwork"
+  },
+  "47": {
+   "id": "Pulp dari kayu atau dari bahan selulosa berserat lainnya; Kertas atau kertas karton yang dipulihkan (sisa dan skrap)",
+   "en": "Pulp of wood or of other fibrous cellulosic material; Recovered (waste and scrap) paper or paperboard"
+  },
+  "48": {
+   "id": "Kertas dan kertas karton; barang dari pulp kertas, dari kertas atau dari kertas karton",
+   "en": "Paper and paperboard; articles of paper pulp, of paper or of paperboard"
+  },
+  "49": {
+   "id": "Buku, koran, gambar cetakan dan produk lainnya dari industri percetakan; naskah tulisan tangan, naskah ketikan dan rancangan",
+   "en": "Printed books, newspapers, pictures and other products of the printing industry; manuscripts, typescripts and plans"
+  },
+  "50": {
+   "id": "Sutra",
+   "en": "Silk"
+  },
+  "51": {
+   "id": "Wol, bulu hewan halus atau kasar; benang bulu kuda dan kain tenunan",
+   "en": "Wool, fine or coarse animal hair; horsehair yarn and woven fabric"
+  },
+  "52": {
+   "id": "Kapas",
+   "en": "Cotton"
+  },
+  "53": {
+   "id": "Serat tekstil nabati lainnya; benang kertas dan kain tenunan dari benang kertas",
+   "en": "Other vegetable textile fibres; paper yarn and woven fabrics of paper yarn"
+  },
+  "54": {
+   "id": "Filamen buatan; strip dan sejenisnya dari bahan tekstil buatan",
+   "en": "Man-made filaments; strip and the like of man-made textile materials"
+  },
+  "55": {
+   "id": "Serat stapel buatan",
+   "en": "Man-made staple fibres"
+  },
+  "56": {
+   "id": "Gumpalan, kain kempa dan bukan tenunan; benang khusus; benang pintal, tali, tambang dan kabel serta barang daripadanya",
+   "en": "Wadding, felt and nonwovens; special yarns; twine, cordage, ropes and cables and articles thereof"
+  },
+  "57": {
+   "id": "Karpet dan penutup lantai tekstil lainnya",
+   "en": "Carpets and other textile floor coverings"
+  },
+  "58": {
+   "id": "Kain tenunan khusus; kain tekstil berumbai; renda; permadani dinding; hiasan; sulaman",
+   "en": "Special woven fabrics; tufted textile fabrics; lace; tapestries; trimmings; embroidery"
+  },
+  "59": {
+   "id": "Kain tekstil diresapi, dilapisi, ditutupi atau dilaminasi; barang tekstil dari jenis yang cocok untuk keperluan industri",
+   "en": "Impregnated, coated, covered or laminated textile fabrics; textile articles of a kind suitable for industrial use"
+  },
+  "60": {
+   "id": "Kain rajutan atau kain kaitan",
+   "en": "Knitted or crocheted fabrics"
+  },
+  "61": {
+   "id": "Pakaian dan aksesori pakaian, rajutan atau kaitan",
+   "en": "Articles of apparel and clothing accessories, knitted or crocheted"
+  },
+  "62": {
+   "id": "Pakaian dan aksesori pakaian, bukan rajutan atau kaitan",
+   "en": "Articles of apparel and clothing accessories, not knitted or crocheted"
+  },
+  "63": {
+   "id": "Barang tekstil sudah jadi lainnya; set; pakaian bekas dan barang tekstil bekas; rag",
+   "en": "Other made up textile articles; sets; worn clothing and worn textile articles; rags"
+  },
+  "64": {
+   "id": "Alas kaki, pelindung kaki dan sejenisnya; bagian dari barang tersebut",
+   "en": "Footwear, gaiters and the like; parts of such articles"
+  },
+  "65": {
+   "id": "Tutup kepala dan bagiannya",
+   "en": "Headgear and parts thereof"
+  },
+  "66": {
+   "id": "Payung, payung panas, tongkat jalan, tongkat duduk, cambuk, pecut dan bagiannya",
+   "en": "Umbrellas, sun umbrellas, walking-sticks, seat-sticks, whips, riding-crops and parts thereof"
+  },
+  "67": {
+   "id": "Bulu dan bulu halus unggas olahan serta barang dibuat dari bulu atau bulu halus unggas; bunga artifisial; barang dari rambut manusia",
+   "en": "Prepared feathers and down and articles made of feathers or of down; artificial flowers; articles of human hair"
+  },
+  "68": {
+   "id": "Barang dari batu, plester, semen, asbes, mika atau bahan semacam itu",
+   "en": "Articles of stone, plaster, cement, asbestos, mica or similar materials"
+  },
+  "69": {
+   "id": "Produk keramik",
+   "en": "Ceramic products"
+  },
+  "70": {
+   "id": "Kaca dan barang dari kaca",
+   "en": "Glass and glassware"
+  },
+  "71": {
+   "id": "Mutiara alam atau mutiara budidaya, batu mulia atau batu semi mulia, logam mulia, logam yang dipalut dengan logam mulia, dan barang daripadanya; perhiasan imitasi; koin",
+   "en": "Natural or cultured pearls, precious or semi-precious stones, precious metals, metals clad with precious metal, and articles thereof; imitation jewellery; coin"
+  },
+  "72": {
+   "id": "Besi dan baja",
+   "en": "Iron and steel"
+  },
+  "73": {
+   "id": "Barang dari besi atau baja",
+   "en": "Articles of iron or steel"
+  },
+  "74": {
+   "id": "Tembaga dan barang daripadanya",
+   "en": "Copper and articles thereof"
+  },
+  "75": {
+   "id": "Nikel dan barang daripadanya",
+   "en": "Nickel and articles thereof"
+  },
+  "76": {
+   "id": "Aluminium dan barang daripadanya",
+   "en": "Aluminium and articles thereof"
+  },
+  "77": {
+   "id": "(Disiapkan untuk kemungkinan penggunaan di masa yang akan datang dalam Harmonized System)",
+   "en": "(Reserved for possible future use in the Harmonized System)"
+  },
+  "78": {
+   "id": "Timbal dan barang daripadanya",
+   "en": "Lead and articles thereof"
+  },
+  "79": {
+   "id": "Seng dan barang daripadanya",
+   "en": "Zinc and articles thereof"
+  },
+  "80": {
+   "id": "Timah dan barang daripadanya",
+   "en": "Tin and articles thereof"
+  },
+  "81": {
+   "id": "Logam tidak mulia lainnya; sermet; barang daripadanya",
+   "en": "Other base metals; cermets; articles thereof"
+  },
+  "82": {
+   "id": "Perkakas, peralatan, barang tajam, sendok dan garpu, dari logam tidak mulia; bagiannya dari logam tidak mulia",
+   "en": "Tools, implements, cutlery, spoons and forks, of base metal; parts thereof of base metal"
+  },
+  "83": {
+   "id": "Bermacam-macam barang dari logam tidak mulia",
+   "en": "Miscellaneous articles of base metal"
+  },
+  "84": {
+   "id": "Reaktor nuklir, ketel, mesin dan peralatan mekanis; bagian daripadanya",
+   "en": "Nuclear reactors, boilers, machinery and mechanical appliances; parts thereof"
+  },
+  "85": {
+   "id": "Mesin dan perlengkapan elektris serta bagiannya; perekam dan pereproduksi suara, perekam dan pereproduksi gambar dan suara televisi, dan bagian serta aksesori dari barang tersebut",
+   "en": "Electrical machinery and equipment and parts thereof; sound recorders and reproducers, television image and sound recorders and reproducers, and parts and accessories of such articles"
+  },
+  "86": {
+   "id": "Lokomotif kereta api atau trem, kendaraan yang bergerak di atas rel dan bagiannya; track fixture dan alat kelengkapan rel kereta api atau trem serta bagiannya; perlengkapan pemberi isyarat lalu-lintas mekanis (termasuk elektro-mekanis) dari segala jenis.",
+   "en": "Railway or tramway locomotives, rolling-stock and parts thereof; railway or tramway track fixtures and fittings and parts thereof; mechanical (including electro-mechanical) traffic signalling equipment of all kinds."
+  },
+  "87": {
+   "id": "Kendaraan selain yang bergerak di atas rel kereta api atau trem, dan bagian serta aksesorinya",
+   "en": "Vehicles other than railway or tramway rolling-stock, and parts thereof and accessories thereof"
+  },
+  "88": {
+   "id": "Kendaraan udara, kendaraan luar angkasa, dan bagiannya",
+   "en": "Aircraft, spacecraft, and parts thereof"
+  },
+  "89": {
+   "id": "Kapal, perahu dan struktur terapung",
+   "en": "Ships, boats and floating structures"
+  },
+  "90": {
+   "id": "Instrumen dan aparatus optis, fotografi, sinematografi, pengukur, pemeriksa, presisi, medis dan bedah; bagian dan aksesorinya",
+   "en": "Optical, photographic, cinematographic, measuring, checking, precision, medical or surgical instruments and apparatus; parts and accessories thereof"
+  },
+  "91": {
+   "id": "Jam dan arloji serta bagiannya",
+   "en": "Clocks and watches and parts thereof"
+  },
+  "92": {
+   "id": "Instrumen musik; bagian dan aksesori barang tersebut",
+   "en": "Musical instruments; parts and accessories of such articles"
+  },
+  "93": {
+   "id": "Senjata dan amunisi; bagian dan aksesorinya",
+   "en": "Arms and ammunition; parts and accessories thereof"
+  },
+  "94": {
+   "id": "Perabotan; keperluan tidur, kasur, alas kasur, bantalan kursi dan perabotan yang diisi semacam itu; luminer dan alat kelengkapan penerangan, tidak dirinci atau termasuk dalam pos lain; tanda iluminasi, papan nama iluminasi dan sejenisnya; bangunan prapabrikasi",
+   "en": "Furniture; bedding, mattresses, mattress supports, cushions and similar stuffed furnishings; luminaires and lighting fittings, not elsewhere specified or included; illuminated signs, illuminated name-plates and the like; prefabricated buildings"
+  },
+  "95": {
+   "id": "Mainan, permainan dan keperluan olah raga; bagian dan aksesorinya",
+   "en": "Toys, games and sports requisites; parts and accessories thereof"
+  },
+  "96": {
+   "id": "Bermacam-macam barang hasil pabrik",
+   "en": "Miscellaneous manufactured articles"
+  },
+  "97": {
+   "id": "Karya seni, barang kolektor dan barang antik",
+   "en": "Works of art, collectors' pieces and antiques"
+  },
+  "98": {
+   "id": "Ketentuan khusus untuk industri alat transportasi",
+   "en": "Special provisions for the transportation equipment industry"
+  },
+  "99": {
+   "id": "Peranti lunak dan barang digital lainnya",
+   "en": "Software and other digital goods"
+  }
+ }
+}

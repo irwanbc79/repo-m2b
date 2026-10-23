@@ -1,201 +1,556 @@
-<div>
-    <style>
-        @keyframes spin { to { transform: rotate(360deg); } }
-        .search-container { max-width: 1400px; margin: 0 auto; padding: 1.5rem; }
-        .header-section { background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; padding: 2rem; border-radius: 12px; margin-bottom: 2rem; }
-        .search-box { background: white; padding: 1.5rem; border-radius: 8px; box-shadow: 0 2px 4px rgba(0,0,0,0.1); margin-bottom: 2rem; }
-        .search-input { width: 100%; padding: 12px 16px; border: 2px solid #e2e8f0; border-radius: 6px; font-size: 16px; }
-        .search-input:focus { outline: none; border-color: #667eea; }
-        .btn-clear { background: #ef4444; color: white; padding: 12px 24px; border: none; border-radius: 6px; font-weight: 600; cursor: pointer; }
-        .result-card { background: white; padding: 1rem 1.5rem; border-radius: 8px; border-left: 4px solid #667eea; margin-bottom: 0.5rem; transition: all 0.2s; }
-        .result-card:hover { box-shadow: 0 4px 12px rgba(0,0,0,0.1); }
-        .result-card.selected { border-left-color: #10b981; background: #ecfdf5; }
-        .hs-code { font-family: monospace; font-size: 16px; font-weight: bold; color: #667eea; }
-        .badge { display: inline-block; padding: 3px 8px; border-radius: 4px; font-size: 11px; font-weight: 500; }
-        .badge-level { background: #e0e7ff; color: #4c51bf; }
-        .badge-chapter { background: #fef3c7; color: #92400e; margin-left: 4px; }
-        .btn-detail { background: #10b981; color: white; padding: 4px 8px; border-radius: 4px; font-size: 12px; font-weight: 600; cursor: pointer; border: none; margin-left: 8px; }
-        .btn-detail:hover { background: #059669; }
-        .hierarchy-panel { background: white; border-radius: 12px; padding: 1.5rem; margin-bottom: 1.5rem; box-shadow: 0 4px 12px rgba(0,0,0,0.1); border: 2px solid #10b981; }
-        .hierarchy-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem; padding-bottom: 1rem; border-bottom: 2px solid #e5e7eb; }
-        .hierarchy-title { font-size: 18px; font-weight: bold; color: #059669; }
-        .btn-close { background: #f3f4f6; border: none; padding: 6px 12px; border-radius: 6px; cursor: pointer; }
-        .hierarchy-section { background: #fef3c7; padding: 12px 16px; border-radius: 8px; margin-bottom: 12px; }
-        .hierarchy-chapter { background: #dbeafe; padding: 12px 16px; border-radius: 8px; margin-bottom: 12px; margin-left: 20px; }
-        .tree-item { padding: 10px 16px; border-left: 3px solid #d1d5db; margin-left: 20px; margin-bottom: 8px; background: #f9fafb; border-radius: 0 8px 8px 0; }
-        .tree-item.level-4 { border-left-color: #f59e0b; background: #fffbeb; }
-        .tree-item.level-6 { border-left-color: #3b82f6; background: #eff6ff; margin-left: 40px; }
-        .tree-item.level-8 { border-left-color: #10b981; background: #ecfdf5; margin-left: 60px; }
-        .tree-item.selected { border-left-color: #ef4444; background: #fef2f2; }
-        .tree-code { font-family: monospace; font-weight: bold; color: #374151; }
-        .tree-desc-row { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-top: 6px; font-size: 13px; }
-        .siblings-section { margin-top: 1rem; padding-top: 1rem; border-top: 1px dashed #d1d5db; }
-        .sibling-item { display: inline-block; background: #f3f4f6; padding: 4px 10px; border-radius: 4px; margin: 4px; font-size: 13px; cursor: pointer; }
-        .sibling-item:hover { background: #e5e7eb; }
-        .table-header { display: grid; grid-template-columns: 130px 1fr 1fr 80px 80px 140px; gap: 1rem; font-size: 11px; font-weight: 600; color: #6b7280; padding: 10px 16px; background: #f1f5f9; border-radius: 8px; margin-bottom: 8px; text-transform: uppercase; }
-        .table-row { display: grid; grid-template-columns: 130px 1fr 1fr 80px 80px 140px; gap: 1rem; align-items: center; }
-    </style>
-    <div class="search-container">
-        <div class="header-section">
-            <h1 style="margin: 0 0 0.5rem 0; font-size: 28px;">🔍 HS Code Explorer - BTKI 2022</h1>
-            <p style="margin: 0; opacity: 0.9;">Database {{ number_format(\DB::table('hs_codes')->count()) }} kode HS - Klik DETAIL untuk lihat hierarki klasifikasi</p>
-        <div x-data="{ showKum: false }" style="margin-top:12px;">
-            <button @click="showKum = !showKum" style="background:linear-gradient(135deg,#10b981,#059669);color:white;border:none;padding:8px 16px;border-radius:8px;cursor:pointer;font-size:13px;font-weight:600;display:flex;align-items:center;gap:6px;">
-                <span>📚</span> <span x-text="showKum ? 'Tutup KUM HS' : 'Lihat KUM HS (Ketentuan Umum Menginterpretasikan HS)'"></span>
+<div class="space-y-6 pb-12" x-data="{ copyTooltip: null }">
+    {{-- TOP BANNER / HERO SECTION --}}
+    <div class="bg-gradient-to-br from-slate-900 via-slate-800 to-blue-950 rounded-2xl p-6 md:p-8 text-white shadow-xl border border-slate-700/60 relative overflow-hidden">
+        {{-- Decorative background glow --}}
+        <div class="absolute -top-24 -right-24 w-96 h-96 bg-blue-500/10 rounded-full blur-3xl pointer-events-none"></div>
+        <div class="absolute -bottom-24 -left-24 w-96 h-96 bg-emerald-500/10 rounded-full blur-3xl pointer-events-none"></div>
+
+        <div class="relative z-10 flex flex-col md:flex-row md:items-center justify-between gap-6">
+            <div class="space-y-2">
+                <div class="flex items-center gap-2 flex-wrap">
+                    <span class="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold bg-emerald-500/15 text-emerald-300 border border-emerald-500/30">
+                        <span class="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse"></span>
+                        BTKI 2022 Resmi (PMK 26/PMK.010/2022)
+                    </span>
+                    <span class="text-xs text-slate-400 font-medium">
+                        • {{ number_format($totalHsCodes) }} Pos Tarif Terindeks
+                    </span>
+                </div>
+                <h1 class="text-2xl md:text-3xl font-extrabold tracking-tight text-white flex items-center gap-3">
+                    <span>🔍 HS Code Explorer</span>
+                    <span class="text-xs uppercase px-2.5 py-1 rounded-md bg-blue-500/20 text-blue-300 border border-blue-400/30 font-semibold tracking-wider">Internal M2B</span>
+                </h1>
+                <p class="text-slate-300 text-sm max-w-2xl leading-relaxed">
+                    Eksplorasi klasifikasi kepabeanan, struktur hierarki pos tarif (4, 6, 8 digit), serta tarif Bea Masuk (MFN), PPN, dan PPh Impor secara cepat dan terstruktur.
+                </p>
+            </div>
+
+            <div class="flex items-center gap-3 shrink-0 flex-wrap">
+                <button type="button" wire:click="toggleKumModal" class="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-bold shadow-lg shadow-emerald-900/30 border border-emerald-400/30 transition-all hover:scale-[1.02] active:scale-[0.98]">
+                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253"></path></svg>
+                    <span>KUM HS (Pedoman Klasifikasi)</span>
+                </button>
+            </div>
+        </div>
+    </div>
+
+    {{-- SEARCH & FILTER BAR --}}
+    <div class="bg-white rounded-2xl p-5 md:p-6 shadow-sm border border-slate-200 space-y-4">
+        {{-- Search Input Row --}}
+        <div class="grid grid-cols-1 lg:grid-cols-12 gap-3">
+            <div class="lg:col-span-8 relative">
+                <div class="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none text-slate-400">
+                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path></svg>
+                </div>
+                <input 
+                    type="text" 
+                    wire:model.live.debounce.300ms="search" 
+                    placeholder="Cari kode HS (cth: 8471, 8471.30.20) atau nama komoditas (cth: laptop, pompa, beras)..." 
+                    class="w-full pl-11 pr-24 py-3 bg-slate-50 border border-slate-300 rounded-xl text-sm font-medium text-slate-800 placeholder-slate-400 focus:bg-white focus:border-blue-600 focus:ring-2 focus:ring-blue-100 transition shadow-inner"
+                />
+                @if(!empty($search))
+                <button 
+                    type="button" 
+                    wire:click="$set('search', '')" 
+                    class="absolute inset-y-0 right-0 pr-3 flex items-center text-xs font-semibold text-slate-400 hover:text-red-500 transition"
+                >
+                    <span class="bg-slate-200 hover:bg-red-100 hover:text-red-600 px-2 py-1 rounded-md">✕ Hapus</span>
+                </button>
+                @endif
+            </div>
+
+            {{-- Chapter Dropdown --}}
+            <div class="lg:col-span-4">
+                <select 
+                    wire:model.live="selectedChapter" 
+                    class="w-full py-3 px-3 bg-slate-50 border border-slate-300 rounded-xl text-sm font-medium text-slate-700 focus:bg-white focus:border-blue-600 focus:ring-2 focus:ring-blue-100 transition"
+                >
+                    <option value="">Semua Bab BTKI (01 - 99)</option>
+                    @foreach($chapters as $chap)
+                        <option value="{{ $chap->chapter_number }}">
+                            Bab {{ $chap->chapter_number }} — {{ Str::limit($chap->title_id, 45) }}
+                        </option>
+                    @endforeach
+                </select>
+            </div>
+        </div>
+
+        {{-- Level Filter Tabs & Quick Chips --}}
+        <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pt-3 border-t border-slate-100">
+            {{-- Level Tabs --}}
+            <div class="flex items-center gap-1.5 p-1 bg-slate-100 rounded-xl border border-slate-200/80 text-xs font-semibold">
+                <button 
+                    type="button" 
+                    wire:click="filterByLevel('')" 
+                    class="px-3 py-1.5 rounded-lg transition {{ empty($selectedLevel) ? 'bg-white text-slate-900 shadow-sm font-bold' : 'text-slate-600 hover:text-slate-900' }}"
+                >
+                    Semua Level
+                </button>
+                <button 
+                    type="button" 
+                    wire:click="filterByLevel('4')" 
+                    class="px-3 py-1.5 rounded-lg transition {{ $selectedLevel === '4' ? 'bg-blue-600 text-white shadow-sm font-bold' : 'text-slate-600 hover:text-blue-600' }}"
+                >
+                    Pos 4-Digit
+                </button>
+                <button 
+                    type="button" 
+                    wire:click="filterByLevel('6')" 
+                    class="px-3 py-1.5 rounded-lg transition {{ $selectedLevel === '6' ? 'bg-blue-600 text-white shadow-sm font-bold' : 'text-slate-600 hover:text-blue-600' }}"
+                >
+                    Subpos 6-Digit
+                </button>
+                <button 
+                    type="button" 
+                    wire:click="filterByLevel('8')" 
+                    class="px-3 py-1.5 rounded-lg transition {{ $selectedLevel === '8' ? 'bg-emerald-600 text-white shadow-sm font-bold' : 'text-slate-600 hover:text-emerald-600' }}"
+                >
+                    Tarif 8-Digit (Aktif)
+                </button>
+            </div>
+
+            {{-- Reset Filter Button --}}
+            @if(!empty($search) || !empty($selectedChapter) || !empty($selectedLevel))
+            <button 
+                type="button" 
+                wire:click="resetFilters" 
+                class="inline-flex items-center gap-1.5 text-xs font-bold text-red-600 hover:text-red-700 bg-red-50 hover:bg-red-100 px-3 py-1.5 rounded-lg transition self-start sm:self-center"
+            >
+                <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"></path></svg>
+                <span>Reset Semua Filter</span>
             </button>
-            <div x-show="showKum" x-cloak style="background:linear-gradient(135deg,#ecfdf5,#d1fae5);padding:16px;border-radius:10px;margin-top:12px;border:2px solid #10b981;">
-                <div style="font-weight:700;color:#065f46;font-size:15px;margin-bottom:12px;">📚 KUM HS - Ketentuan Umum Menginterpretasikan Harmonized System</div>
-                <div style="font-size:12px;color:#065f46;margin-bottom:12px;">Panduan resmi untuk mengklasifikasikan barang ke dalam kode HS yang benar.</div>
-                @foreach(DB::table('hs_kum')->orderBy('rule_number')->get() as $kum)
-                <div style="background:white;padding:12px;border-radius:8px;margin-bottom:8px;border-left:3px solid #10b981;" x-data="{ expanded: false }">
-                    <div style="font-weight:600;color:#047857;font-size:13px;margin-bottom:4px;">{{ $kum->title }}</div>
-                    <div style="color:#065f46;font-size:12px;line-height:1.5;">
-                        <span x-show="!expanded">{{ Str::limit($kum->content, 150) }}</span>
-                        <span x-show="expanded" x-cloak>{{ $kum->content }}</span>
-                        @if(strlen($kum->content) > 150)
-                        <button @click="expanded = !expanded" style="background:none;border:none;color:#6b7280;font-size:12px;cursor:pointer;padding:4px 8px;margin-top:4px;">
-                            <span x-show="!expanded">Selengkapnya...</span>
-                            <span x-show="expanded">Sembunyikan</span>
-                        </button>
+            @endif
+        </div>
+
+        {{-- Popular Industry Chips --}}
+        <div class="pt-2 flex items-center gap-2 flex-wrap">
+            <span class="text-[11px] uppercase tracking-wider font-bold text-slate-400">Pilihan Cepat:</span>
+            <button type="button" wire:click="filterByChapter('84')" class="px-2.5 py-1 rounded-lg text-xs font-medium transition {{ $selectedChapter === '84' ? 'bg-blue-600 text-white' : 'bg-slate-100 text-slate-700 hover:bg-slate-200' }}">
+                ⚙️ Bab 84: Mesin
+            </button>
+            <button type="button" wire:click="filterByChapter('85')" class="px-2.5 py-1 rounded-lg text-xs font-medium transition {{ $selectedChapter === '85' ? 'bg-blue-600 text-white' : 'bg-slate-100 text-slate-700 hover:bg-slate-200' }}">
+                📱 Bab 85: Elektronik
+            </button>
+            <button type="button" wire:click="filterByChapter('39')" class="px-2.5 py-1 rounded-lg text-xs font-medium transition {{ $selectedChapter === '39' ? 'bg-blue-600 text-white' : 'bg-slate-100 text-slate-700 hover:bg-slate-200' }}">
+                🧪 Bab 39: Plastik
+            </button>
+            <button type="button" wire:click="filterByChapter('73')" class="px-2.5 py-1 rounded-lg text-xs font-medium transition {{ $selectedChapter === '73' ? 'bg-blue-600 text-white' : 'bg-slate-100 text-slate-700 hover:bg-slate-200' }}">
+                🔩 Bab 73: Besi Baja
+            </button>
+            <button type="button" wire:click="filterByChapter('87')" class="px-2.5 py-1 rounded-lg text-xs font-medium transition {{ $selectedChapter === '87' ? 'bg-blue-600 text-white' : 'bg-slate-100 text-slate-700 hover:bg-slate-200' }}">
+                🚗 Bab 87: Otomotif
+            </button>
+            <button type="button" wire:click="filterByChapter('09')" class="px-2.5 py-1 rounded-lg text-xs font-medium transition {{ $selectedChapter === '09' ? 'bg-blue-600 text-white' : 'bg-slate-100 text-slate-700 hover:bg-slate-200' }}">
+                ☕ Bab 09: Kopi & Rempah
+            </button>
+        </div>
+    </div>
+
+    {{-- HIERARCHY DETAIL MODAL / DRAWER (WHEN SELECTED) --}}
+    @if($selectedCode && is_array($hierarchy) && count($hierarchy) > 0)
+    <div class="bg-white rounded-2xl shadow-xl border-2 border-emerald-500 overflow-hidden transition-all duration-300">
+        {{-- Header Panel --}}
+        <div class="bg-gradient-to-r from-emerald-800 to-teal-900 text-white p-5 flex items-center justify-between">
+            <div class="flex items-center gap-3">
+                <span class="text-2xl">📊</span>
+                <div>
+                    <div class="text-xs font-bold uppercase tracking-wider text-emerald-200">Struktur Hierarki Klasifikasi</div>
+                    <div class="text-lg font-extrabold flex items-center gap-2">
+                        <span class="font-mono bg-emerald-950/60 px-2.5 py-0.5 rounded border border-emerald-400/30">{{ $selectedCode }}</span>
+                        @if(isset($hierarchy['current']->description_id))
+                            <span class="text-sm font-medium text-emerald-100 truncate max-w-md hidden sm:inline">• {{ $hierarchy['current']->description_id }}</span>
                         @endif
                     </div>
                 </div>
-                @endforeach
             </div>
+            <button type="button" wire:click="closeHierarchy" class="text-white/80 hover:text-white bg-white/10 hover:bg-white/20 px-3 py-1.5 rounded-lg text-xs font-bold transition">
+                ✕ Tutup Panel
+            </button>
         </div>
-        </div>
-        <div class="search-box">
-            <div style="display: flex; gap: 12px; flex-wrap: wrap;">
-                <div style="flex: 1; min-width: 300px;">
-                    <input type="text" wire:model.live.debounce.300ms="search" class="search-input" placeholder="Cari kode HS atau deskripsi barang...">
+
+        <div class="p-5 md:p-6 space-y-5 bg-slate-50/70">
+            {{-- Section & Chapter Summary --}}
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                @if(isset($hierarchy['section']))
+                <div class="bg-amber-50/80 border border-amber-200/80 rounded-xl p-4 space-y-1.5">
+                    <div class="flex items-center justify-between">
+                        <span class="text-xs font-bold uppercase tracking-wider text-amber-900">📦 Bagian {{ $hierarchy['section']['number'] }}</span>
+                    </div>
+                    <div class="text-sm font-bold text-amber-950">{{ $hierarchy['section']['title_id'] }}</div>
+                    @if(!empty($hierarchy['section']['title_en']))
+                        <div class="text-xs italic text-amber-700/90">{{ $hierarchy['section']['title_en'] }}</div>
+                    @endif
                 </div>
-                @if($search)<button wire:click="$set('search', '')" class="btn-clear">✕ Clear</button>@endif
+                @endif
+
+                @if(isset($hierarchy['chapter']))
+                <div class="bg-blue-50/80 border border-blue-200/80 rounded-xl p-4 space-y-1.5">
+                    <div class="flex items-center justify-between">
+                        <span class="text-xs font-bold uppercase tracking-wider text-blue-900">📁 Bab {{ $hierarchy['chapter']['number'] }}</span>
+                    </div>
+                    <div class="text-sm font-bold text-blue-950">{{ $hierarchy['chapter']['title_id'] }}</div>
+                    @if(!empty($hierarchy['chapter']['title_en']))
+                        <div class="text-xs italic text-blue-700/90">{{ $hierarchy['chapter']['title_en'] }}</div>
+                    @endif
+                </div>
+                @endif
             </div>
-            @if($search)<div style="margin-top: 12px; padding: 10px; background: #eff6ff; border-radius: 6px; color: #1e40af;">📌 Pencarian: "{{ $search }}" ({{ $results->total() }} hasil)</div>@endif
-        </div>
-        @if($selectedCode && is_array($hierarchy) && count($hierarchy) > 0)
-        <div class="hierarchy-panel">
-            <div class="hierarchy-header">
-                <div class="hierarchy-title">📊 Hierarki Klasifikasi: {{ $selectedCode }}</div>
-                <button wire:click="closeHierarchy" class="btn-close">✕ Tutup</button>
-            </div>
-            @if(isset($hierarchy['section']))<div class="hierarchy-section"><div style="font-weight:600;color:#92400e;">📦 Bagian {{ $hierarchy['section']['number'] }}</div><div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-top:6px;font-size:14px;"><span style="color:#78350f;">{{ $hierarchy['section']['title_id'] }}</span><span style="color:#a16207;font-style:italic;">{{ $hierarchy['section']['title_en'] }}</span></div>
-                @php $sectionNotes = DB::table('hs_sections')->where('section_number', $hierarchy['section']['number'])->value('section_notes'); @endphp
-                @if($sectionNotes)<div class="section-notes" x-data="{ open: false }"><div class="section-notes-title">⚠️ Catatan Bagian:</div><div class="section-notes-content"><span x-show="!open">{{ Str::limit($sectionNotes, 150) }}</span><span x-show="open" x-cloak>{{ $sectionNotes }}</span>@if(strlen($sectionNotes) > 150)<button class="notes-toggle" @click="open = !open"><span x-show="!open">Selengkapnya...</span><span x-show="open">Sembunyikan</span></button>@endif</div></div>@endif
-            </div>@endif
-            @if(isset($hierarchy['chapter']))<div class="hierarchy-chapter"><div style="font-weight:600;color:#1e40af;">📁 Bab {{ $hierarchy['chapter']['number'] }}</div><div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-top:6px;font-size:14px;"><span style="color:#1e3a8a;">{{ $hierarchy['chapter']['title_id'] }}</span><span style="color:#3b82f6;font-style:italic;">{{ $hierarchy['chapter']['title_en'] }}</span></div>
-                @php $chapterNotes = DB::table('hs_chapters')->where('chapter_number', $hierarchy['chapter']['number'])->value('chapter_notes'); @endphp
-                @if($chapterNotes)<div class="chapter-notes" x-data="{ open: false }"><div class="chapter-notes-title">📋 Catatan Bab:</div><div class="chapter-notes-content"><span x-show="!open">{{ Str::limit($chapterNotes, 200) }}</span><span x-show="open" x-cloak>{{ $chapterNotes }}</span>@if(strlen($chapterNotes) > 200)<button class="notes-toggle" @click="open = !open"><span x-show="!open">Selengkapnya...</span><span x-show="open">Sembunyikan</span></button>@endif</div></div>@endif
-            </div>@endif
+
+            {{-- Tree Path --}}
             @if(isset($hierarchy['levels']) && count($hierarchy['levels']) > 0)
-            <div style="margin-left:20px;">
-                @foreach($hierarchy['levels'] as $level)
-                <div class="tree-item level-{{ $level['level'] }} {{ (isset($level['is_selected']) && $level['is_selected']) ? 'selected' : '' }}">
-                    <div class="tree-code">{{ $level['code'] }} <span class="badge badge-level">{{ $level['level'] }} Digit</span>@if(isset($level['is_selected']) && $level['is_selected'])<span class="badge" style="background:#fee2e2;color:#dc2626;margin-left:4px;">← Dipilih</span>@endif</div>
-                    <div class="tree-desc-row"><span style="color:#374151;">{{ $level['description_id'] ?? '-' }}</span><span style="color:#6b7280;font-style:italic;">{{ $level['description_en'] ?? '-' }}</span></div>
+            <div class="space-y-2">
+                <div class="text-xs font-bold text-slate-500 uppercase tracking-wider">Tingkatan Pos Klasifikasi:</div>
+                <div class="space-y-2">
+                    @foreach($hierarchy['levels'] as $level)
+                    <div class="p-3.5 rounded-xl border transition {{ $level['is_selected'] ? 'bg-emerald-50/90 border-emerald-500 shadow-sm ring-1 ring-emerald-400' : 'bg-white border-slate-200' }}" style="margin-left: {{ ($level['level'] - 4) * 16 }}px">
+                        <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+                            <div class="flex items-center gap-2">
+                                <span class="font-mono text-sm font-bold {{ $level['is_selected'] ? 'text-emerald-800' : 'text-slate-800' }}">{{ $level['code'] }}</span>
+                                <span class="px-2 py-0.5 rounded text-[10px] font-bold uppercase {{ $level['level'] == 8 ? 'bg-emerald-100 text-emerald-800' : ($level['level'] == 6 ? 'bg-blue-100 text-blue-800' : 'bg-amber-100 text-amber-800') }}">
+                                    {{ $level['level_label'] }}
+                                </span>
+                                @if($level['is_selected'])
+                                    <span class="text-[10px] font-extrabold text-emerald-600 bg-emerald-100/80 px-2 py-0.5 rounded-full">← Pos Yang Dipilih</span>
+                                @endif
+                            </div>
+
+                            @if(isset($level['import_duty']) && $level['level'] == 8)
+                            <div class="flex items-center gap-2 flex-wrap">
+                                <span class="px-2 py-0.5 rounded text-xs font-bold bg-emerald-600 text-white">
+                                    BM: {{ $level['import_duty'] }}{{ is_numeric($level['import_duty']) ? '%' : '' }}
+                                </span>
+                                <span class="px-2 py-0.5 rounded text-xs font-semibold bg-slate-200 text-slate-800">
+                                    PPN: {{ $level['ppn'] ?? '11' }}{{ is_numeric($level['ppn'] ?? '11') ? '%' : '' }}
+                                </span>
+                                <span class="px-2 py-0.5 rounded text-xs font-semibold bg-teal-100 text-teal-800">
+                                    PPh: {{ $level['pph_api'] ?? '2.5' }}%
+                                </span>
+                            </div>
+                            @endif
+                        </div>
+                        <div class="mt-2 text-xs text-slate-800 font-medium leading-relaxed">{{ $level['description_id'] }}</div>
+                        @if(!empty($level['description_en']))
+                            <div class="mt-0.5 text-xs text-slate-500 italic">{{ $level['description_en'] }}</div>
+                        @endif
+                    </div>
+                    @endforeach
                 </div>
-                @endforeach
             </div>
             @endif
-            @if(isset($hierarchy['siblings']) && count($hierarchy['siblings']) > 0)<div class="siblings-section"><div style="font-size:14px;color:#6b7280;margin-bottom:8px;">🔗 Kode sejenis (level sama):</div>@foreach($hierarchy['siblings'] as $sib)<span class="sibling-item" wire:click="showHierarchy('{{ $sib->hs_code }}')">{{ $sib->hs_code }}</span>@endforeach</div>@endif
-            @php 
-                $explanatoryNote = $this->getExplanatoryNote($selectedCode);
-                $previewLength = 500;
-            @endphp
-            @if($explanatoryNote)
-            <div class="explanatory-section">
-                <div class="explanatory-title">📖 Catatan Penjelasan (Explanatory Notes)</div>
-                @if($explanatoryNote->note_title)<div style="font-weight:600;color:#6b21a8;margin-bottom:8px;">{{ $explanatoryNote->note_title }}</div>@endif
-                @php $fullContent = $explanatoryNote->note_content; $isLong = strlen($fullContent) > $previewLength; @endphp
-                <div class="explanatory-content" x-data="{ expanded: false }">
-                    <div x-show="!expanded">
-                        {{ $isLong ? Str::limit($fullContent, $previewLength, '...') : $fullContent }}
+
+            {{-- Sibling Codes under same parent --}}
+            @if(isset($hierarchy['siblings']) && count($hierarchy['siblings']) > 0)
+            <div class="pt-3 border-t border-slate-200 space-y-2">
+                <div class="text-xs font-bold text-slate-500 uppercase tracking-wider">Pos Terkait Dalam Subpos yang Sama:</div>
+                <div class="flex flex-wrap gap-1.5">
+                    @foreach($hierarchy['siblings'] as $sib)
+                    <button 
+                        type="button" 
+                        wire:click="showHierarchy('{{ $sib->hs_code }}')" 
+                        class="px-2.5 py-1 bg-white hover:bg-slate-100 border border-slate-200 hover:border-slate-300 text-slate-700 font-mono text-xs rounded-lg transition"
+                        title="{{ $sib->description_id }}"
+                    >
+                        {{ $sib->hs_code }}
+                    </button>
+                    @endforeach
+                </div>
+            </div>
+            @endif
+
+            {{-- Official Explanatory Notes if exists --}}
+            @php $enote = $this->getExplanatoryNote($selectedCode); @endphp
+            @if($enote)
+            <div class="pt-3 border-t border-slate-200" x-data="{ expandedNote: false }">
+                <div class="bg-purple-50/90 border border-purple-200 rounded-xl p-4 space-y-2">
+                    <div class="flex items-center justify-between">
+                        <span class="text-xs font-bold uppercase tracking-wider text-purple-900 flex items-center gap-1.5">
+                            <span>📖</span> Catatan Penjelasan Resmi (Explanatory Notes)
+                        </span>
+                        <span class="text-[10px] text-purple-700 bg-purple-100 px-2 py-0.5 rounded">Ref: {{ $enote->hs_code }}</span>
                     </div>
-                    <div x-show="expanded" x-cloak style="white-space: pre-wrap;">{{ $fullContent }}</div>
-                    @if($isLong)
-                    <button @click="expanded = !expanded" style="margin-top:10px;background:#a855f7;color:white;border:none;padding:6px 14px;border-radius:6px;cursor:pointer;font-size:13px;font-weight:600;">
-                        <span x-show="!expanded">📄 Lihat Selengkapnya</span>
-                        <span x-show="expanded">📄 Sembunyikan</span>
+                    @if($enote->note_title)
+                        <div class="text-xs font-bold text-purple-950">{{ $enote->note_title }}</div>
+                    @endif
+                    <div class="text-xs text-purple-950/90 leading-relaxed">
+                        <div x-show="!expandedNote">{{ Str::limit($enote->note_content, 350) }}</div>
+                        <div x-show="expandedNote" x-cloak class="whitespace-pre-wrap">{{ $enote->note_content }}</div>
+                    </div>
+                    @if(strlen($enote->note_content) > 350)
+                    <button type="button" @click="expandedNote = !expandedNote" class="text-xs font-bold text-purple-700 hover:text-purple-900 transition">
+                        <span x-show="!expandedNote">Baca Selengkapnya ➔</span>
+                        <span x-show="expandedNote">Tutup Catatan Penjelasan</span>
                     </button>
                     @endif
                 </div>
-                <div class="explanatory-source">Sumber: {{ $explanatoryNote->source ?? 'BTKI 2022' }} | Kode Referensi: {{ $explanatoryNote->hs_code }}</div>
-            </div>
-            @else
-            <div class="explanatory-section" style="background: #f3f4f6; border-left-color: #9ca3af;">
-                <div class="explanatory-title" style="color: #6b7280;">📖 Catatan Penjelasan</div>
-                <div style="color: #9ca3af; font-size: 14px;">Tidak ada catatan penjelasan untuk kode HS ini.</div>
             </div>
             @endif
         </div>
-        @endif
-        <div wire:loading style="text-align:center;padding:2rem;"><div style="width:40px;height:40px;border:4px solid #e5e7eb;border-top-color:#667eea;border-radius:50%;animation:spin 0.8s linear infinite;margin:0 auto;"></div><p style="color:#6b7280;margin-top:1rem;">Memuat...</p></div>
-        <div wire:loading.remove>
-            @if($results->count() > 0)
-            <div style="margin-bottom:1rem;"><h2 style="font-size:18px;color:#374151;margin:0;">📊 Hasil Pencarian ({{ $results->total() }} kode)</h2></div>
-            <div class="table-header"><span>KODE</span><span>URAIAN (INDONESIA)</span><span>DESCRIPTION (ENGLISH)</span><span>BEA MASUK</span><span>BEA KELUAR</span><span>INFO</span></div>
-            @foreach($results as $code)
-            <div class="result-card {{ $selectedCode == $code->hs_code ? 'selected' : '' }}">
-                <div class="table-row">
-                    <div class="hs-code">{{ $code->hs_code }}</div>
-                    <div style="color:#374151;font-size:14px;">{{ $code->description_id ?: '-' }}</div>
-                    <div style="color:#6b7280;font-size:14px;font-style:italic;">{{ $code->description_en ?: '-' }}</div>
-                    <div style="text-align:center;font-size:13px;">@if($code->hs_level == 8 && $code->import_duty)<span style="background:#dcfce7;color:#166534;padding:2px 8px;border-radius:4px;font-weight:600;">{{ $code->import_duty }}{{ is_numeric($code->import_duty) ? '%' : '' }}</span>@else<span style="color:#9ca3af;">-</span>@endif</div>
-                    <div style="text-align:center;font-size:13px;" x-data="{ showTooltip: false }">
-    @if($code->hs_level == 8 && $code->export_duty && $code->export_duty != '-')
-        @if($code->export_duty == '*)' || str_contains($code->export_duty, '*'))
-            <span @mouseenter="showTooltip = true" @mouseleave="showTooltip = false" style="background:#fef3c7;color:#92400e;padding:2px 8px;border-radius:4px;font-weight:600;cursor:help;position:relative;">
-                {{ $code->export_duty }}
-                <div x-show="showTooltip" x-cloak style="position:absolute;bottom:100%;left:50%;transform:translateX(-50%);background:#1f2937;color:white;padding:12px;border-radius:8px;width:280px;font-size:11px;font-weight:normal;text-align:left;z-index:1000;margin-bottom:8px;box-shadow:0 4px 12px rgba(0,0,0,0.3);">
-                    <div style="font-weight:600;margin-bottom:6px;">📋 Tarif Bea Keluar Khusus</div>
-                    <div style="line-height:1.5;">Tarif bersifat <b>progresif</b> atau mengikuti ketentuan PMK. Dapat berubah sesuai Harga Patokan Ekspor (HPE).</div>
-                    <a href="https://insw.go.id/intr" target="_blank" style="display:block;margin-top:8px;color:#60a5fa;text-decoration:underline;">🔗 Cek tarif resmi di INSW</a>
-                    <div style="position:absolute;bottom:-6px;left:50%;transform:translateX(-50%);border-left:6px solid transparent;border-right:6px solid transparent;border-top:6px solid #1f2937;"></div>
-                </div>
-            </span>
-        @else
-            <span style="background:#ffedd5;color:#9a3412;padding:2px 8px;border-radius:4px;font-weight:600;">{{ $code->export_duty }}{{ is_numeric($code->export_duty) ? '%' : '' }}</span>
-        @endif
-    @else
-        <span style="color:#9ca3af;">-</span>
+    </div>
     @endif
-</div>
-                    <div style="display:flex;align-items:center;flex-wrap:wrap;gap:4px;">
-                        <span class="badge badge-level">{{ $code->hs_level }} Digit</span>
-                        @if($code->chapter_number)<span class="badge badge-chapter">Bab {{ $code->chapter_number }}</span>@endif
-                        <button wire:click="showHierarchy('{{ $code->hs_code }}')" class="btn-detail" title="Lihat Detail Hierarki">👁</button>
-                    </div>
+
+    {{-- LOADING STATE --}}
+    <div wire:loading class="w-full py-12 text-center">
+        <div class="inline-flex items-center gap-3 px-5 py-2.5 rounded-xl bg-white shadow-md border border-slate-200 text-slate-700 text-sm font-semibold">
+            <svg class="animate-spin w-5 h-5 text-blue-600" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8H4z"></path></svg>
+            <span>Memperbarui data klasifikasi...</span>
+        </div>
+    </div>
+
+    {{-- RESULTS TABLE / CARDS --}}
+    <div wire:loading.remove>
+        @if($results->count() > 0)
+        <div class="space-y-3">
+            {{-- Results counter & summary --}}
+            <div class="flex items-center justify-between text-xs text-slate-500 font-semibold px-1">
+                <span>Menampilkan {{ number_format($results->firstItem()) }} - {{ number_format($results->lastItem()) }} dari {{ number_format($results->total()) }} pos tarif</span>
+                <span>Halaman {{ $results->currentPage() }} dari {{ $results->lastPage() }}</span>
+            </div>
+
+            {{-- Desktop / Tablet Table View --}}
+            <div class="bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden">
+                <div class="overflow-x-auto">
+                    <table class="w-full text-left border-collapse">
+                        <thead>
+                            <tr class="bg-slate-50/80 border-b border-slate-200 text-[11px] font-bold text-slate-600 uppercase tracking-wider">
+                                <th class="py-3.5 px-4 w-44">KODE HS & LEVEL</th>
+                                <th class="py-3.5 px-4">URAIAN BARANG (ID & EN)</th>
+                                <th class="py-3.5 px-3 text-center w-36">BEA MASUK (MFN)</th>
+                                <th class="py-3.5 px-3 text-center w-36">PPN & PPH</th>
+                                <th class="py-3.5 px-3 text-center w-28">BEA KELUAR</th>
+                                <th class="py-3.5 px-4 text-center w-24">AKSI</th>
+                            </tr>
+                        </thead>
+                        <tbody class="divide-y divide-slate-100 text-sm">
+                            @foreach($results as $item)
+                            <tr class="hover:bg-slate-50/60 transition {{ $selectedCode === $item->hs_code ? 'bg-emerald-50/40' : '' }}">
+                                {{-- Column 1: HS Code & Level Badge --}}
+                                <td class="py-3.5 px-4 align-top">
+                                    <div class="space-y-1.5">
+                                        <div class="flex items-center gap-1.5">
+                                            <span class="font-mono font-black text-slate-900 tracking-tight text-sm">{{ $item->hs_code }}</span>
+                                            <button 
+                                                type="button" 
+                                                @click="navigator.clipboard.writeText('{{ $item->hs_code }}'); copyTooltip = '{{ $item->hs_code }}'; setTimeout(() => copyTooltip = null, 1500)"
+                                                class="text-slate-400 hover:text-blue-600 transition p-1 rounded" 
+                                                title="Salin Kode HS"
+                                            >
+                                                <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z"></path></svg>
+                                            </button>
+                                        </div>
+                                        <div x-show="copyTooltip === '{{ $item->hs_code }}'" x-cloak class="text-[10px] text-emerald-600 font-bold">
+                                            ✓ Tersalin!
+                                        </div>
+
+                                        <div class="flex items-center gap-1 flex-wrap">
+                                            @if($item->hs_level == 8)
+                                                <span class="px-2 py-0.5 rounded text-[10px] font-bold bg-emerald-100 text-emerald-800">
+                                                    8-Digit
+                                                </span>
+                                            @elseif($item->hs_level == 6)
+                                                <span class="px-2 py-0.5 rounded text-[10px] font-bold bg-blue-100 text-blue-800">
+                                                    Subpos 6
+                                                </span>
+                                            @elseif($item->hs_level == 4)
+                                                <span class="px-2 py-0.5 rounded text-[10px] font-bold bg-amber-100 text-amber-800">
+                                                    Pos 4
+                                                </span>
+                                            @endif
+
+                                            @if($item->chapter_number)
+                                                <span class="px-1.5 py-0.5 rounded text-[10px] font-medium bg-slate-100 text-slate-600">
+                                                    Bab {{ $item->chapter_number }}
+                                                </span>
+                                            @endif
+                                        </div>
+                                    </div>
+                                </td>
+
+                                {{-- Column 2: Description (ID & EN) --}}
+                                <td class="py-3.5 px-4 align-top">
+                                    <div class="space-y-1">
+                                        <div class="font-medium text-slate-900 leading-snug">
+                                            {{ $item->description_id ?: '-' }}
+                                        </div>
+                                        @if(!empty($item->description_en) && $item->description_en !== $item->description_id)
+                                            <div class="text-xs text-slate-500 italic leading-snug">
+                                                {{ $item->description_en }}
+                                            </div>
+                                        @endif
+                                    </div>
+                                </td>
+
+                                {{-- Column 3: Bea Masuk (MFN) --}}
+                                <td class="py-3.5 px-3 align-top text-center">
+                                    @if($item->hs_level == 8 && $item->import_duty !== null && $item->import_duty !== '')
+                                        @php
+                                            $bmVal = trim($item->import_duty);
+                                            $isZero = ($bmVal === '0' || $bmVal === '0%');
+                                            $isNumeric = is_numeric(str_replace(['%', ','], ['', '.'], $bmVal));
+                                        @endphp
+                                        <div class="inline-flex flex-col items-center">
+                                            @if($isZero)
+                                                <span class="px-2.5 py-1 rounded-md text-xs font-black bg-emerald-100 text-emerald-800 border border-emerald-200">
+                                                    0% (Bebas)
+                                                </span>
+                                            @elseif($bmVal === '5' || $bmVal === '5%')
+                                                <span class="px-2.5 py-1 rounded-md text-xs font-black bg-blue-100 text-blue-800 border border-blue-200">
+                                                    5%
+                                                </span>
+                                            @elseif($isNumeric)
+                                                <span class="px-2.5 py-1 rounded-md text-xs font-black bg-amber-100 text-amber-900 border border-amber-200">
+                                                    {{ $bmVal }}{{ !str_contains($bmVal, '%') ? '%' : '' }}
+                                                </span>
+                                            @else
+                                                <span class="px-2 py-1 rounded-md text-[11px] font-bold bg-purple-100 text-purple-900 border border-purple-200">
+                                                    {{ $bmVal }}
+                                                </span>
+                                            @endif
+                                            <span class="text-[9px] text-slate-400 mt-0.5">MFN Rate</span>
+                                        </div>
+                                    @else
+                                        <span class="text-xs text-slate-400 italic">Pos Induk</span>
+                                    @endif
+                                </td>
+
+                                {{-- Column 4: PPN & PPh Impor --}}
+                                <td class="py-3.5 px-3 align-top text-center">
+                                    @if($item->hs_level == 8)
+                                        <div class="space-y-1 inline-flex flex-col items-center">
+                                            <span class="px-2 py-0.5 rounded text-[11px] font-bold bg-slate-100 text-slate-800 border border-slate-200">
+                                                PPN: {{ $item->ppn ?? '11' }}{{ is_numeric($item->ppn ?? '11') ? '%' : '' }}
+                                            </span>
+                                            <span class="px-2 py-0.5 rounded text-[10px] font-semibold bg-teal-50 text-teal-800 border border-teal-200" title="PPh Pasal 22 Impor: 2.5% dengan API / 7.5% tanpa API">
+                                                PPh: {{ $item->pph_api ?? '2.5' }}% / {{ $item->pph_non_api ?? '7.5' }}%
+                                            </span>
+                                        </div>
+                                    @else
+                                        <span class="text-xs text-slate-300">-</span>
+                                    @endif
+                                </td>
+
+                                {{-- Column 5: Bea Keluar --}}
+                                <td class="py-3.5 px-3 align-top text-center" x-data="{ bkTooltip: false }">
+                                    @if($item->hs_level == 8 && !empty($item->export_duty) && $item->export_duty !== '-')
+                                        <div class="relative inline-block">
+                                            <span 
+                                                @mouseenter="bkTooltip = true" 
+                                                @mouseleave="bkTooltip = false" 
+                                                class="px-2 py-1 rounded text-xs font-bold bg-amber-100 text-amber-900 border border-amber-300 cursor-help"
+                                            >
+                                                {{ $item->export_duty }}
+                                            </span>
+                                            <div 
+                                                x-show="bkTooltip" 
+                                                x-cloak 
+                                                class="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 w-52 p-2.5 bg-slate-900 text-white text-[11px] rounded-lg shadow-xl z-50 text-left leading-normal"
+                                            >
+                                                <div class="font-bold text-amber-300 mb-1">Tarif BK Khusus/HPE</div>
+                                                <div>Mengikuti ketentuan PMK berdasarkan Harga Patokan Ekspor (HPE) berkala.</div>
+                                            </div>
+                                        </div>
+                                    @else
+                                        <span class="text-xs text-slate-400">Bebas (-)</span>
+                                    @endif
+                                </td>
+
+                                {{-- Column 6: Action Button --}}
+                                <td class="py-3.5 px-4 align-top text-center">
+                                    <button 
+                                        type="button" 
+                                        wire:click="showHierarchy('{{ $item->hs_code }}')" 
+                                        class="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-lg bg-slate-100 hover:bg-emerald-600 text-slate-700 hover:text-white text-xs font-bold transition shadow-sm"
+                                        title="Buka Hierarki & Catatan Bab"
+                                    >
+                                        <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"></path><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"></path></svg>
+                                        <span>Detail</span>
+                                    </button>
+                                </td>
+                            </tr>
+                            @endforeach
+                        </tbody>
+                    </table>
+                </div>
+
+                {{-- Pagination --}}
+                <div class="p-4 border-t border-slate-200 bg-slate-50/50">
+                    {{ $results->links() }}
                 </div>
             </div>
-            @endforeach
-            <div style="margin-top:1.5rem;">{{ $results->links() }}</div>
-            @else
-            <div style="text-align:center;padding:3rem;"><div style="font-size:64px;">🔍</div><h3 style="color:#6b7280;">Tidak ada hasil ditemukan</h3><p style="color:#9ca3af;">Coba kata kunci lain</p></div>
-            @endif
         </div>
+        @else
+        {{-- Empty State --}}
+        <div class="bg-white rounded-2xl p-12 text-center border border-slate-200 shadow-sm space-y-3">
+            <div class="text-5xl">🔍</div>
+            <h3 class="text-base font-bold text-slate-800">Tidak ada kode HS yang cocok</h3>
+            <p class="text-sm text-slate-500 max-w-md mx-auto">
+                Coba gunakan kata kunci lain (contoh: <span class="font-medium text-slate-700">laptop, mesin, kopi, beras</span>) atau cari berdasarkan nomor pos 4-digit.
+            </p>
+            <button type="button" wire:click="resetFilters" class="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl bg-blue-600 hover:bg-blue-700 text-white text-xs font-bold transition shadow-md">
+                Reset Pencarian
+            </button>
+        </div>
+        @endif
     </div>
 
-<!-- Disclaimer Section -->
-<div style="margin-top:30px;padding:20px;background:linear-gradient(135deg,#f8fafc,#f1f5f9);border-radius:12px;border:1px solid #e2e8f0;">
-    <div style="display:flex;align-items:flex-start;gap:12px;">
-        <div style="font-size:24px;">⚠️</div>
-        <div>
-            <div style="font-weight:700;color:#334155;font-size:14px;margin-bottom:8px;">Disclaimer - Penyangkalan</div>
-            <div style="color:#64748b;font-size:12px;line-height:1.7;">
-                <p style="margin-bottom:8px;">Data tarif Bea Masuk (BM) dan Bea Keluar (BK) yang ditampilkan bersumber dari <b>BTKI 2022 (Buku Tarif Kepabeanan Indonesia)</b> dan bersifat <b>informatif</b>. Tarif dapat berubah sewaktu-waktu sesuai dengan peraturan pemerintah yang berlaku.</p>
-                <p style="margin-bottom:8px;"><b>Keterangan Simbol:</b></p>
-                <ul style="margin:0 0 8px 16px;padding:0;">
-                    <li><b>-</b> : Tidak dikenakan bea</li>
-                    <li><b>*)</b> : Tarif progresif/khusus, mengikuti ketentuan PMK dan Harga Patokan Ekspor (HPE)</li>
-                    <li><b>0%, 5%, dst</b> : Tarif bea sesuai persentase</li>
-                </ul>
-                <p style="margin-bottom:0;">Untuk informasi tarif resmi, ketentuan lartas (larangan/pembatasan), dan regulasi terkini, silakan kunjungi: 
-                    <a href="https://insw.go.id/intr" target="_blank" style="color:#2563eb;font-weight:600;text-decoration:underline;">Indonesia National Single Window (INSW)</a> | 
-                    <a href="https://www.beacukai.go.id" target="_blank" style="color:#2563eb;font-weight:600;text-decoration:underline;">Bea Cukai</a>
-                </p>
+    {{-- KUM HS MODAL OVERLAY --}}
+    @if($showKumModal)
+    <div class="fixed inset-0 z-50 overflow-y-auto" aria-labelledby="modal-title" role="dialog" aria-modal="true">
+        <div class="flex items-center justify-center min-h-screen px-4 pt-4 pb-20 text-center sm:p-0">
+            <div class="fixed inset-0 bg-slate-900/70 backdrop-blur-sm transition-opacity" wire:click="toggleKumModal"></div>
+
+            <div class="inline-block align-bottom bg-white rounded-3xl text-left overflow-hidden shadow-2xl transform transition-all sm:my-8 sm:align-middle sm:max-w-3xl sm:w-full border border-slate-100">
+                {{-- Modal Header --}}
+                <div class="bg-gradient-to-r from-emerald-900 via-teal-900 to-slate-900 p-6 text-white flex items-center justify-between">
+                    <div class="flex items-center gap-3">
+                        <span class="text-3xl">📚</span>
+                        <div>
+                            <h3 class="text-lg font-black tracking-tight text-white">KUM HS - Ketentuan Umum Menginterpretasikan HS</h3>
+                            <p class="text-xs text-emerald-200/90">Aturan dasar hukum resmi klasifikasi barang Kepabeanan Indonesia</p>
+                        </div>
+                    </div>
+                    <button type="button" wire:click="toggleKumModal" class="text-white/70 hover:text-white text-2xl font-bold leading-none p-2">&times;</button>
+                </div>
+
+                {{-- Modal Content --}}
+                <div class="p-6 max-h-[70vh] overflow-y-auto space-y-4 bg-slate-50">
+                    @foreach($kumRules as $rule)
+                    <div class="bg-white rounded-xl p-5 border border-slate-200 shadow-sm space-y-2">
+                        <div class="text-sm font-black text-emerald-800 flex items-center gap-2">
+                            <span class="w-6 h-6 rounded-full bg-emerald-100 text-emerald-800 inline-flex items-center justify-center text-xs font-bold">{{ $rule->rule_number }}</span>
+                            <span>{{ $rule->title }}</span>
+                        </div>
+                        <div class="text-xs text-slate-700 leading-relaxed pl-8">
+                            {{ $rule->content }}
+                        </div>
+                    </div>
+                    @endforeach
+                </div>
+
+                {{-- Modal Footer --}}
+                <div class="bg-slate-100 px-6 py-4 flex justify-between items-center border-t border-slate-200">
+                    <span class="text-xs text-slate-500 font-medium">Sumber: PMK 26/PMK.010/2022 (BTKI 2022)</span>
+                    <button type="button" wire:click="toggleKumModal" class="px-5 py-2 bg-slate-800 hover:bg-slate-900 text-white rounded-xl text-xs font-bold transition">
+                        Tutup Panduan
+                    </button>
+                </div>
             </div>
         </div>
     </div>
-</div>
+    @endif
 
+    {{-- OFFICIAL LEGAL DISCLAIMER --}}
+    <div class="bg-slate-50 rounded-2xl p-5 border border-slate-200/80 text-xs text-slate-600 space-y-2 leading-relaxed">
+        <div class="flex items-center gap-2 font-bold text-slate-800">
+            <span class="text-amber-500">⚠️</span>
+            <span>Disclaimer &amp; Ketentuan Hukum Tarif</span>
+        </div>
+        <p>
+            Data tarif Bea Masuk (MFN), Bea Keluar (BK), PPN, dan PPh Impor ditampilkan bersumber dari <b>Buku Tarif Kepabeanan Indonesia (BTKI) 2022</b> dan bersifat informatif untuk perencanaan logistik &amp; forwarder. Tarif riil dapat disesuaikan dengan skema Preferensi Tarif Perjanjian Dagang Internasional (FTA / Form D/E/AK) atau instrumen Bea Masuk Tindakan Pengamanan (BMTP) / Anti Dumping (BMAD).
+        </p>
+        <p>
+            Untuk konfirmasi status regulasi LARTAS resmi dan simulasi pabean terkini, kunjungi portal resmi:
+            <a href="https://insw.go.id/intr" target="_blank" rel="noopener noreferrer" class="text-blue-600 font-semibold hover:underline">Indonesia National Single Window (INSW)</a> atau
+            <a href="https://www.beacukai.go.id" target="_blank" rel="noopener noreferrer" class="text-blue-600 font-semibold hover:underline">Direktorat Jenderal Bea dan Cukai</a>.
+        </p>
+    </div>
 </div>
