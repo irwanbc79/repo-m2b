@@ -63,7 +63,7 @@ class HsCodeExplorerRevampTest extends TestCase
         // Seed sample HS codes with duties
         $rows = [
             [
-                'hs_code' => '84.71',
+                'hs_code' => '8471',
                 'hs_level' => 4,
                 'parent_code' => '84',
                 'description_id' => 'Mesin pengolah data otomatis dan unitnya',
@@ -81,7 +81,7 @@ class HsCodeExplorerRevampTest extends TestCase
             [
                 'hs_code' => '8471.30',
                 'hs_level' => 6,
-                'parent_code' => '84.71',
+                'parent_code' => '8471',
                 'description_id' => 'Mesin pengolah data otomatis portabel, dengan berat tidak lebih dari 10 kg',
                 'description_en' => 'Portable automatic data processing machines, weighing not more than 10 kg',
                 'chapter_number' => '84',
@@ -121,6 +121,7 @@ class HsCodeExplorerRevampTest extends TestCase
         Livewire::actingAs($this->admin)
             ->test(AdminHsCodeExplorer::class)
             ->assertStatus(200)
+            ->assertSee('8471')
             ->assertSee('8471.30.20')
             ->assertSee('Laptop termasuk notebook dan subnotebook')
             ->assertSee('0% (Bebas)')
@@ -143,7 +144,7 @@ class HsCodeExplorerRevampTest extends TestCase
             ->set('selectedLevel', '8')
             ->set('selectedChapter', '84')
             ->assertSee('8471.30.20')
-            ->assertDontSee('84.71');
+            ->assertDontSee('Mesin pengolah data otomatis dan unitnya');
     }
 
     public function test_admin_hierarchy_builder()

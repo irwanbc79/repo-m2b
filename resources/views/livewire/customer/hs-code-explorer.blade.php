@@ -154,7 +154,7 @@
                 <div>
                     <div class="text-xs font-bold uppercase tracking-wider text-emerald-200">Hierarki Klasifikasi Kepabeanan</div>
                     <div class="text-lg font-black flex items-center gap-2">
-                        <span class="font-mono bg-emerald-950/60 px-2.5 py-0.5 rounded border border-emerald-400/30">{{ $selectedCode }}</span>
+                        <span class="font-mono bg-emerald-950/60 px-2.5 py-0.5 rounded border border-emerald-400/30">{{ \App\Models\HsCode::formatDisplay($selectedCode) }}</span>
                         @if(isset($hierarchy['current']->description_id))
                             <span class="text-sm font-medium text-emerald-100 truncate max-w-md hidden sm:inline">• {{ $hierarchy['current']->description_id }}</span>
                         @endif
@@ -244,7 +244,7 @@
                         class="px-3 py-1 bg-white hover:bg-slate-100 border border-slate-200 text-slate-700 font-mono text-xs rounded-xl transition"
                         title="{{ $sib->description_id }}"
                     >
-                        {{ $sib->hs_code }}
+                        {{ \App\Models\HsCode::formatDisplay($sib->hs_code) }}
                     </button>
                     @endforeach
                 </div>
@@ -319,10 +319,10 @@
                                 <td class="py-4 px-5 align-top">
                                     <div class="space-y-1.5">
                                         <div class="flex items-center gap-1.5">
-                                            <span class="font-mono font-black text-slate-900 tracking-tight text-sm">{{ $item->hs_code }}</span>
+                                            <span class="font-mono font-black text-slate-900 tracking-tight text-sm">{{ \App\Models\HsCode::formatDisplay($item->hs_code) }}</span>
                                             <button 
                                                 type="button" 
-                                                @click="navigator.clipboard.writeText('{{ $item->hs_code }}'); copyTooltip = '{{ $item->hs_code }}'; setTimeout(() => copyTooltip = null, 1500)"
+                                                @click="navigator.clipboard.writeText('{{ \App\Models\HsCode::formatDisplay($item->hs_code) }}'); copyTooltip = '{{ $item->hs_code }}'; setTimeout(() => copyTooltip = null, 1500)"
                                                 class="text-slate-400 hover:text-blue-600 transition p-1 rounded" 
                                                 title="Salin Kode HS"
                                             >

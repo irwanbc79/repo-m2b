@@ -40,7 +40,7 @@ class HsCode extends Model
         'effective_date' => 'date'
     ];
 
-    protected $appends = ['level_name', 'short_description'];
+    protected $appends = ['level_name', 'short_description', 'formatted_code'];
 
     /**
      * Relasi ke parent HS Code
@@ -213,20 +213,43 @@ class HsCode extends Model
     }
 
     /**
-     * Format HS Code for display
+     * Format HS Code for display (format: xxxx, xxxx.xx, xxxx.xx.xx)
      */
     public function getFormattedCode(): string
     {
-        $digits = str_replace('.', '', $this->hs_code);
-        
-        return match($this->hs_level) {
-            2 => substr($digits, 0, 2),
-            4 => substr($digits, 0, 2) . '.' . substr($digits, 2, 2),
-            6 => substr($digits, 0, 2) . '.' . substr($digits, 2, 2) . '.' . substr($digits, 4, 2),
-            8 => substr($digits, 0, 2) . '.' . substr($digits, 2, 2) . '.' . substr($digits, 4, 2) . '.' . substr($digits, 6, 2),
-            10 => substr($digits, 0, 2) . '.' . substr($digits, 2, 2) . '.' . substr($digits, 4, 2) . '.' . substr($digits, 6, 2) . '.' . substr($digits, 8, 2),
-            default => $this->hs_code
+        return self::formatDisplay($this->hs_code);
+    }
+
+    /**
+     * Static helper to format any HS Code string to official xxxx.xx.xx
+     */
+    public static function formatDisplay(?string $hsCode): string
+    {
+        if (empty($hsCode)) {
+            return '';
+        }
+
+        $digits = preg_replace('/\D+/', '', $hsCode);
+        $length = strlen($digits);
+
+        return match ($length) {
+            2 => $digits,
+            4 => $digits,                                                                 // 4 digit: xxxx (tanpa titik)
+            6 => substr($digits, 0, 4) . '.' . substr($digits, 4, 2),                   // 6 digit: xxxx.xx
+            8 => substr($digits, 0, 4) . '.' . substr($digits, 4, 2) . '.' . substr($digits, 6, 2), // 8 digit: xxxx.xx.xx
+            10 => substr($digits, 0, 4) . '.' . substr($digits, 4, 2) . '.' . substr($digits, 6, 2) . '.' . substr($digits, 8, 2),
+            default => $hsCode
         };
+    }
+
+    /**
+     * Accessor for formatted_code
+     */
+    protected function formattedCode(): Attribute
+    {
+        return Attribute::make(
+            get: fn () => self::formatDisplay($this->hs_code)
+        );
     }
 
     /**

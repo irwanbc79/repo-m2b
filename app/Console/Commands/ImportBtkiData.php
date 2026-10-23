@@ -256,29 +256,32 @@ class ImportBtkiData extends Command
             $ppnbm = trim($row[7] ?? '');
             $level = (int)($row[8] ?? 8);
 
-            // Normalize level if not provided
-            $cleanCode = str_replace(['.', ' '], '', $hsCode);
-            if ($level <= 0) {
-                $len = strlen($cleanCode);
-                $level = $len <= 2 ? 2 : ($len <= 4 ? 4 : ($len <= 6 ? 6 : 8));
-            }
-
-            // Calculate parent code
+            // Format standard HS Code: xxxx, xxxx.xx, xxxx.xx.xx
+            $cleanCode = preg_replace('/\D+/', '', $hsCode);
+            $codeLen = strlen($cleanCode);
             $parentCode = null;
-            if ($level == 4) {
+
+            if ($codeLen === 4) {
+                $standardHsCode = $cleanCode; // Pos 4-digit: xxxx (tanpa titik)
+                $level = 4;
                 $parentCode = $chapter;
-                $headingMap[substr($cleanCode, 0, 4)] = $hsCode;
-            } elseif ($level == 6) {
-                $parentCode = substr($cleanCode, 0, 2) . '.' . substr($cleanCode, 2, 2);
-                $headingMap[substr($cleanCode, 0, 6)] = $hsCode;
-            } elseif ($level == 8) {
-                // If 6-digit exists, parent is 6-digit; otherwise 4-digit
+                $headingMap[substr($cleanCode, 0, 4)] = $standardHsCode;
+            } elseif ($codeLen === 6) {
+                $standardHsCode = substr($cleanCode, 0, 4) . '.' . substr($cleanCode, 4, 2); // Subpos 6-digit: xxxx.xx
+                $level = 6;
+                $parentCode = substr($cleanCode, 0, 4); // Pos 4-digit induk: xxxx
+                $headingMap[substr($cleanCode, 0, 6)] = $standardHsCode;
+            } elseif ($codeLen === 8) {
+                $standardHsCode = substr($cleanCode, 0, 4) . '.' . substr($cleanCode, 4, 2) . '.' . substr($cleanCode, 6, 2); // 8-digit: xxxx.xx.xx
+                $level = 8;
                 $sub6 = substr($cleanCode, 0, 4) . '.' . substr($cleanCode, 4, 2);
                 if (isset($headingMap[substr($cleanCode, 0, 6)])) {
                     $parentCode = $sub6;
                 } else {
-                    $parentCode = substr($cleanCode, 0, 2) . '.' . substr($cleanCode, 2, 2);
+                    $parentCode = substr($cleanCode, 0, 4);
                 }
+            } else {
+                $standardHsCode = $hsCode;
             }
 
             // Standardize duties
@@ -297,7 +300,7 @@ class ImportBtkiData extends Command
             }
 
             $batch[] = [
-                'hs_code' => $hsCode,
+                'hs_code' => $standardHsCode,
                 'hs_level' => $level,
                 'parent_code' => $parentCode,
                 'description_id' => $descId,

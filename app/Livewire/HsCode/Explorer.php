@@ -84,12 +84,18 @@ class Explorer extends Component
     private function buildHierarchy($hsCode)
     {
         $result = [];
+        $cleanCode = preg_replace('/\D+/', '', $hsCode);
 
-        $code = DB::table('hs_codes')->where('hs_code', $hsCode)->first();
+        $code = DB::table('hs_codes')
+            ->where(function($q) use ($hsCode, $cleanCode) {
+                $q->where('hs_code', $hsCode)
+                  ->orWhereRaw("REPLACE(hs_code, '.', '') = ?", [$cleanCode]);
+            })
+            ->first();
         if (!$code) return [];
 
         $result['current'] = $code;
-        $chapterNum = $code->chapter_number ?? substr(str_replace('.', '', $hsCode), 0, 2);
+        $chapterNum = $code->chapter_number ?? substr($cleanCode, 0, 2);
 
         // Section & Chapter
         $chapter = DB::table('hs_chapters')->where('chapter_number', $chapterNum)->first();
@@ -115,48 +121,67 @@ class Explorer extends Component
         }
 
         // Build levels hierarchy
-        $cleanCode = str_replace('.', '', $hsCode);
         $levels = [];
 
-        // Level 4 Heading
+        // Level 4 Heading (Format: xxxx, tanpa titik)
         if (strlen($cleanCode) >= 4) {
-            $heading = substr($cleanCode, 0, 2) . '.' . substr($cleanCode, 2, 2);
-            $hData = DB::table('hs_codes')->where('hs_code', $heading)->first();
+            $headingClean = substr($cleanCode, 0, 4);
+            $hData = DB::table('hs_codes')
+                ->where(function($q) use ($headingClean) {
+                    $q->where('hs_code', $headingClean)
+                      ->orWhere('hs_code', substr($headingClean, 0, 2) . '.' . substr($headingClean, 2, 2))
+                      ->orWhereRaw("REPLACE(hs_code, '.', '') = ?", [$headingClean]);
+                })
+                ->first();
             if ($hData) {
                 $levels[] = [
-                    'code' => $heading,
+                    'code' => $headingClean,
                     'level' => 4,
                     'level_label' => 'Pos (Heading)',
                     'description_id' => $hData->description_id,
                     'description_en' => $hData->description_en ?? '',
-                    'is_selected' => ($heading == $hsCode)
+                    'is_selected' => ($headingClean === $cleanCode)
                 ];
             }
         }
 
-        // Level 6 Subheading
+        // Level 6 Subheading (Format: xxxx.xx)
         if (strlen($cleanCode) >= 6) {
-            $sub = substr($cleanCode, 0, 4) . '.' . substr($cleanCode, 4, 2);
-            $sData = DB::table('hs_codes')->where('hs_code', $sub)->first();
+            $subClean = substr($cleanCode, 0, 6);
+            $subFormatted = substr($cleanCode, 0, 4) . '.' . substr($cleanCode, 4, 2);
+            $sData = DB::table('hs_codes')
+                ->where(function($q) use ($subFormatted, $subClean) {
+                    $q->where('hs_code', $subFormatted)
+                      ->orWhere('hs_code', substr($subClean, 0, 2) . '.' . substr($subClean, 2, 2) . '.' . substr($subClean, 4, 2))
+                      ->orWhereRaw("REPLACE(hs_code, '.', '') = ?", [$subClean]);
+                })
+                ->first();
             if ($sData) {
                 $levels[] = [
-                    'code' => $sub,
+                    'code' => $subFormatted,
                     'level' => 6,
                     'level_label' => 'Subpos (Subheading)',
                     'description_id' => $sData->description_id,
                     'description_en' => $sData->description_en ?? '',
-                    'is_selected' => ($sub == $hsCode)
+                    'is_selected' => ($subClean === $cleanCode)
                 ];
             }
         }
 
-        // Level 8 National
+        // Level 8 National (Format: xxxx.xx.xx)
         if (strlen($cleanCode) >= 8) {
-            $nat = substr($cleanCode, 0, 4) . '.' . substr($cleanCode, 4, 2) . '.' . substr($cleanCode, 6, 2);
-            $nData = DB::table('hs_codes')->where('hs_code', $nat)->first();
+            $natClean = substr($cleanCode, 0, 8);
+            $natFormatted = substr($cleanCode, 0, 4) . '.' . substr($cleanCode, 4, 2) . '.' . substr($cleanCode, 6, 2);
+            $nData = DB::table('hs_codes')
+                ->where(function($q) use ($natFormatted, $natClean) {
+                    $q->where('hs_code', $natFormatted)
+                      ->orWhere('hs_code', substr($natClean, 0, 2) . '.' . substr($natClean, 2, 2) . '.' . substr($natClean, 4, 2) . '.' . substr($natClean, 6, 2))
+                      ->orWhereRaw("REPLACE(hs_code, '.', '') = ?", [$natClean]);
+                })
+                ->first();
             if ($nData) {
                 $levels[] = [
-                    'code' => $nat,
+                    'code' => $natFormatted,
                     'level' => 8,
                     'level_label' => 'Pos Tarif Nasional (8-Digit)',
                     'description_id' => $nData->description_id,
@@ -166,7 +191,7 @@ class Explorer extends Component
                     'ppn' => $nData->ppn,
                     'pph_api' => $nData->pph_api,
                     'pph_non_api' => $nData->pph_non_api,
-                    'is_selected' => ($nat == $hsCode)
+                    'is_selected' => ($natClean === $cleanCode)
                 ];
             }
         }
