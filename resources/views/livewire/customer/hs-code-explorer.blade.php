@@ -38,8 +38,8 @@
     {{-- SEARCH & FILTER CARD --}}
     <div class="bg-white rounded-3xl p-6 md:p-8 shadow-sm border border-slate-200 space-y-4">
         {{-- Search Input Row --}}
-        <div class="grid grid-cols-1 lg:grid-cols-12 gap-3">
-            <div class="lg:col-span-8 relative">
+        <div class="flex flex-col md:flex-row items-stretch gap-3">
+            <div class="flex-1 relative min-w-0">
                 <div class="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none text-slate-400">
                     <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path></svg>
                 </div>
@@ -48,6 +48,7 @@
                     wire:model.live.debounce.300ms="search" 
                     placeholder="Ketik 8-digit (cth: 84713020 / 8471.30.20) atau nama barang (cth: laptop, kopi, genset)..." 
                     class="w-full pl-11 pr-24 py-3.5 bg-slate-50 border-2 border-slate-200 rounded-2xl text-sm font-medium text-slate-800 placeholder-slate-400 focus:bg-white focus:border-blue-600 focus:ring-0 transition shadow-inner"
+                    style="width: 100%; min-width: 0;"
                 />
                 @if(!empty($search))
                 <button 
@@ -61,15 +62,16 @@
             </div>
 
             {{-- Chapter Dropdown --}}
-            <div class="lg:col-span-4">
+            <div class="w-full md:w-80 flex-shrink-0">
                 <select 
                     wire:model.live="selectedChapter" 
                     class="w-full py-3.5 px-3.5 bg-slate-50 border-2 border-slate-200 rounded-2xl text-sm font-medium text-slate-700 focus:bg-white focus:border-blue-600 focus:ring-0 transition"
+                    style="width: 100%;"
                 >
                     <option value="">Pilih Bab BTKI (01 - 99)</option>
                     @foreach($chapters as $chap)
                         <option value="{{ $chap->chapter_number }}">
-                            Bab {{ $chap->chapter_number }} — {{ Str::limit($chap->title_id, 45) }}
+                            Bab {{ $chap->chapter_number }} — {{ Str::limit($chap->title_id, 40) }}
                         </option>
                     @endforeach
                 </select>

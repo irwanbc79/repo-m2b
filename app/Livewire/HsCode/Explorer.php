@@ -276,34 +276,83 @@ class Explorer extends Component
             $query->where('hs_level', (int)$this->selectedLevel);
         }
 
-        // Search text / code
+        // Smart Search: HS Code or Keywords with relevance ranking
         if (!empty(trim($this->search))) {
             $raw = trim($this->search);
             $cleanDigits = preg_replace('/[^0-9]/', '', $raw);
-            $searchTerm = '%' . $raw . '%';
 
-            $formattedDots = null;
-            if (strlen($cleanDigits) === 8) {
-                $formattedDots = substr($cleanDigits, 0, 4) . '.' . substr($cleanDigits, 4, 2) . '.' . substr($cleanDigits, 6, 2);
-            } elseif (strlen($cleanDigits) === 6) {
-                $formattedDots = substr($cleanDigits, 0, 4) . '.' . substr($cleanDigits, 4, 2);
-            } elseif (strlen($cleanDigits) === 4) {
-                $formattedDots = substr($cleanDigits, 0, 2) . '.' . substr($cleanDigits, 2, 2);
+            // 1. If searching predominantly with digits (HS Code search)
+            if (strlen($cleanDigits) >= 2 && (strlen($cleanDigits) / max(strlen($raw), 1)) >= 0.5) {
+                $query->where(function($q) use ($raw, $cleanDigits) {
+                    $q->where('hs_code', 'LIKE', $raw . '%')
+                      ->orWhere('hs_code', 'LIKE', '%' . $raw . '%')
+                      ->orWhereRaw("REPLACE(hs_code, '.', '') LIKE ?", [$cleanDigits . '%'])
+                      ->orWhereRaw("REPLACE(hs_code, '.', '') LIKE ?", ['%' . $cleanDigits . '%']);
+                });
+
+                // Prioritize exact match or prefix match
+                $query->orderByRaw("
+                    CASE 
+                        WHEN REPLACE(hs_code, '.', '') = ? THEN 1
+                        WHEN REPLACE(hs_code, '.', '') LIKE ? THEN 2
+                        WHEN hs_code LIKE ? THEN 3
+                        ELSE 4
+                    END ASC
+                ", [$cleanDigits, $cleanDigits . '%', $raw . '%']);
+            } else {
+                // 2. Keyword Search (Commodity name)
+                $words = array_values(array_filter(explode(' ', strtolower($raw)), fn($w) => mb_strlen(trim($w)) >= 2));
+                
+                $query->where(function($q) use ($raw, $words) {
+                    // Full phrase match first
+                    $q->where('description_id', 'LIKE', '%' . $raw . '%')
+                      ->orWhere('description_en', 'LIKE', '%' . $raw . '%')
+                      ->orWhere('description_full', 'LIKE', '%' . $raw . '%')
+                      ->orWhere('description_full_en', 'LIKE', '%' . $raw . '%');
+
+                    // If multiple words, match records containing ALL words across descriptions
+                    if (count($words) > 1) {
+                        $q->orWhere(function($subQ) use ($words) {
+                            foreach ($words as $word) {
+                                $subQ->where(function($wQ) use ($word) {
+                                    $wQ->where('description_id', 'LIKE', '%' . $word . '%')
+                                       ->orWhere('description_en', 'LIKE', '%' . $word . '%')
+                                       ->orWhere('description_full', 'LIKE', '%' . $word . '%')
+                                       ->orWhere('description_full_en', 'LIKE', '%' . $word . '%');
+                                });
+                            }
+                        });
+                    }
+                });
+
+                // Smart Ranking Order:
+                // 1. Exact phrase at the beginning of description_id / description_en (Commodity name)
+                // 2. Exact phrase anywhere in description_id / description_en
+                // 3. Exact phrase in description_full
+                // 4. Penalize rows that are just 'Lain-lain' / 'Other'
+                // 5. Shortest description (more specific)
+                $query->orderByRaw("
+                    CASE 
+                        WHEN LOWER(description_id) LIKE ? THEN 1
+                        WHEN LOWER(description_en) LIKE ? THEN 2
+                        WHEN LOWER(description_id) LIKE ? THEN 3
+                        WHEN LOWER(description_en) LIKE ? THEN 4
+                        WHEN LOWER(description_full) LIKE ? THEN 5
+                        ELSE 6
+                    END ASC,
+                    CASE 
+                        WHEN LOWER(description_id) LIKE '%lain-lain%' OR LOWER(description_id) LIKE '%other%' THEN 2
+                        ELSE 1
+                    END ASC,
+                    LENGTH(description_id) ASC
+                ", [
+                    strtolower($raw) . '%',
+                    strtolower($raw) . '%',
+                    '%' . strtolower($raw) . '%',
+                    '%' . strtolower($raw) . '%',
+                    '%' . strtolower($raw) . '%'
+                ]);
             }
-
-            $query->where(function($q) use ($searchTerm, $cleanDigits, $formattedDots) {
-                $q->where('hs_code', 'LIKE', $searchTerm)
-                  ->orWhere('description_id', 'LIKE', $searchTerm)
-                  ->orWhere('description_en', 'LIKE', $searchTerm)
-                  ->orWhere('description_full', 'LIKE', $searchTerm);
-
-                if (!empty($cleanDigits) && strlen($cleanDigits) >= 2) {
-                    $q->orWhereRaw("REPLACE(hs_code, '.', '') LIKE ?", ['%' . $cleanDigits . '%']);
-                }
-                if ($formattedDots) {
-                    $q->orWhere('hs_code', 'LIKE', '%' . $formattedDots . '%');
-                }
-            });
         }
 
         $results = $query->orderBy('hs_code')->paginate(25);
