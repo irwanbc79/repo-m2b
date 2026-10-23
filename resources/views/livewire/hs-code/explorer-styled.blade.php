@@ -150,23 +150,23 @@
 
     {{-- HIERARCHY DETAIL MODAL / DRAWER (WHEN SELECTED) --}}
     @if($selectedCode && is_array($hierarchy) && count($hierarchy) > 0)
-    <div class="bg-white rounded-2xl shadow-xl border-2 border-emerald-500 overflow-hidden transition-all duration-300">
+    <div class="bg-white rounded-2xl shadow-xl border-2 border-slate-800 overflow-hidden transition-all duration-300">
         {{-- Header Panel --}}
-        <div class="bg-gradient-to-r from-emerald-800 to-teal-900 text-white p-5 flex items-center justify-between">
-            <div class="flex items-center gap-3">
-                <span class="text-2xl">📊</span>
+        <div class="bg-slate-900 text-white p-5 flex items-center justify-between border-b border-slate-800">
+            <div class="flex items-center gap-3.5">
+                <span class="text-2xl p-2 bg-slate-800 rounded-xl border border-slate-700">📊</span>
                 <div>
-                    <div class="text-xs font-bold uppercase tracking-wider text-emerald-200">Struktur Hierarki Klasifikasi</div>
-                    <div class="text-lg font-extrabold flex items-center gap-2">
-                        <span class="font-mono bg-emerald-950/60 px-2.5 py-0.5 rounded border border-emerald-400/30">{{ \App\Models\HsCode::formatDisplay($selectedCode) }}</span>
+                    <div class="text-[11px] font-black uppercase tracking-wider text-emerald-400">Struktur Hierarki Klasifikasi</div>
+                    <div class="text-lg font-black flex items-center gap-2 mt-0.5">
+                        <span class="font-mono bg-white text-slate-950 px-3 py-0.5 rounded-lg border border-slate-300 shadow-sm font-extrabold">{{ \App\Models\HsCode::formatDisplay($selectedCode) }}</span>
                         @if(isset($hierarchy['current']->description_id))
-                            <span class="text-sm font-medium text-emerald-100 truncate max-w-md hidden sm:inline">• {{ $hierarchy['current']->description_id }}</span>
+                            <span class="text-sm font-bold text-white truncate max-w-lg hidden sm:inline">• {{ $hierarchy['current']->description_id }}</span>
                         @endif
                     </div>
                 </div>
             </div>
-            <button type="button" wire:click="closeHierarchy" class="text-white/80 hover:text-white bg-white/10 hover:bg-white/20 px-3 py-1.5 rounded-lg text-xs font-bold transition">
-                ✕ Tutup Panel
+            <button type="button" wire:click="closeHierarchy" class="text-white bg-rose-600 hover:bg-rose-700 px-4 py-2 rounded-xl text-xs font-black shadow-sm transition flex items-center gap-1.5">
+                <span>✕</span> <span>Tutup Panel</span>
             </button>
         </div>
 
@@ -174,25 +174,21 @@
             {{-- Section & Chapter Summary --}}
             <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
                 @if(isset($hierarchy['section']))
-                <div class="bg-amber-50/80 border border-amber-200/80 rounded-xl p-4 space-y-1.5">
-                    <div class="flex items-center justify-between">
-                        <span class="text-xs font-bold uppercase tracking-wider text-amber-900">📦 Bagian {{ $hierarchy['section']['number'] }}</span>
-                    </div>
-                    <div class="text-sm font-bold text-amber-950">{{ $hierarchy['section']['title_id'] }}</div>
+                <div class="bg-amber-50 border-2 border-amber-200 rounded-2xl p-4 space-y-1 shadow-xs">
+                    <span class="text-xs font-black uppercase tracking-wider text-amber-800">📦 Bagian {{ $hierarchy['section']['number'] }}</span>
+                    <div class="text-sm font-extrabold text-slate-900 leading-snug">{{ $hierarchy['section']['title_id'] }}</div>
                     @if(!empty($hierarchy['section']['title_en']))
-                        <div class="text-xs italic text-amber-700/90">{{ $hierarchy['section']['title_en'] }}</div>
+                        <div class="text-xs italic text-slate-600 font-medium">{{ $hierarchy['section']['title_en'] }}</div>
                     @endif
                 </div>
                 @endif
 
                 @if(isset($hierarchy['chapter']))
-                <div class="bg-blue-50/80 border border-blue-200/80 rounded-xl p-4 space-y-1.5">
-                    <div class="flex items-center justify-between">
-                        <span class="text-xs font-bold uppercase tracking-wider text-blue-900">📁 Bab {{ $hierarchy['chapter']['number'] }}</span>
-                    </div>
-                    <div class="text-sm font-bold text-blue-950">{{ $hierarchy['chapter']['title_id'] }}</div>
+                <div class="bg-blue-50 border-2 border-blue-200 rounded-2xl p-4 space-y-1 shadow-xs">
+                    <span class="text-xs font-black uppercase tracking-wider text-blue-800">📁 Bab {{ $hierarchy['chapter']['number'] }}</span>
+                    <div class="text-sm font-extrabold text-slate-900 leading-snug">{{ $hierarchy['chapter']['title_id'] }}</div>
                     @if(!empty($hierarchy['chapter']['title_en']))
-                        <div class="text-xs italic text-blue-700/90">{{ $hierarchy['chapter']['title_en'] }}</div>
+                        <div class="text-xs italic text-slate-600 font-medium">{{ $hierarchy['chapter']['title_en'] }}</div>
                     @endif
                 </div>
                 @endif
@@ -201,38 +197,38 @@
             {{-- Tree Path --}}
             @if(isset($hierarchy['levels']) && count($hierarchy['levels']) > 0)
             <div class="space-y-2">
-                <div class="text-xs font-bold text-slate-500 uppercase tracking-wider">Tingkatan Pos Klasifikasi:</div>
+                <div class="text-xs font-bold text-slate-600 uppercase tracking-wider">Tingkatan Pos Klasifikasi:</div>
                 <div class="space-y-2">
                     @foreach($hierarchy['levels'] as $level)
-                    <div class="p-3.5 rounded-xl border transition {{ $level['is_selected'] ? 'bg-emerald-50/90 border-emerald-500 shadow-sm ring-1 ring-emerald-400' : 'bg-white border-slate-200' }}" style="margin-left: {{ ($level['level'] - 4) * 16 }}px">
+                    <div class="p-4 rounded-2xl border-2 transition {{ $level['is_selected'] ? 'bg-blue-50/70 border-blue-600 shadow-sm ring-2 ring-blue-100' : 'bg-white border-slate-200 shadow-xs' }}" style="margin-left: {{ ($level['level'] - 4) * 16 }}px">
                         <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
                             <div class="flex items-center gap-2">
-                                <span class="font-mono text-sm font-bold {{ $level['is_selected'] ? 'text-emerald-800' : 'text-slate-800' }}">{{ $level['code'] }}</span>
-                                <span class="px-2 py-0.5 rounded text-[10px] font-bold uppercase {{ $level['level'] == 8 ? 'bg-emerald-100 text-emerald-800' : ($level['level'] == 6 ? 'bg-blue-100 text-blue-800' : 'bg-amber-100 text-amber-800') }}">
+                                <span class="font-mono text-sm font-black {{ $level['is_selected'] ? 'text-blue-900 bg-blue-100/80 px-2.5 py-0.5 rounded-lg border border-blue-300' : 'text-slate-900 bg-slate-100 px-2 py-0.5 rounded-lg' }}">{{ $level['code'] }}</span>
+                                <span class="px-2.5 py-0.5 rounded-full text-[10px] font-black uppercase {{ $level['level'] == 8 ? 'bg-emerald-700 text-white' : ($level['level'] == 6 ? 'bg-blue-700 text-white' : 'bg-amber-600 text-white') }}">
                                     {{ $level['level_label'] }}
                                 </span>
                                 @if($level['is_selected'])
-                                    <span class="text-[10px] font-extrabold text-emerald-600 bg-emerald-100/80 px-2 py-0.5 rounded-full">← Pos Yang Dipilih</span>
+                                    <span class="text-[10px] font-black text-white bg-blue-600 px-2.5 py-0.5 rounded-full shadow-xs">← Pos Yang Dipilih</span>
                                 @endif
                             </div>
 
                             @if(isset($level['import_duty']) && $level['level'] == 8)
                             <div class="flex items-center gap-2 flex-wrap">
-                                <span class="px-2 py-0.5 rounded text-xs font-bold bg-emerald-600 text-white">
+                                <span class="px-3 py-1 rounded-lg text-xs font-black bg-emerald-700 text-white shadow-xs">
                                     BM: {{ $level['import_duty'] }}{{ is_numeric($level['import_duty']) ? '%' : '' }}
                                 </span>
-                                <span class="px-2 py-0.5 rounded text-xs font-semibold bg-slate-200 text-slate-800">
+                                <span class="px-3 py-1 rounded-lg text-xs font-black bg-slate-800 text-white shadow-xs">
                                     PPN: {{ $level['ppn'] ?? '11' }}{{ is_numeric($level['ppn'] ?? '11') ? '%' : '' }}
                                 </span>
-                                <span class="px-2 py-0.5 rounded text-xs font-semibold bg-teal-100 text-teal-800">
+                                <span class="px-3 py-1 rounded-lg text-xs font-black bg-amber-600 text-white shadow-xs">
                                     PPh: {{ $level['pph_api'] ?? '2.5' }}%
                                 </span>
                             </div>
                             @endif
                         </div>
-                        <div class="mt-2 text-xs text-slate-800 font-medium leading-relaxed">{{ $level['description_id'] }}</div>
+                        <div class="mt-2 text-xs text-slate-900 font-bold leading-relaxed">{{ $level['description_id'] }}</div>
                         @if(!empty($level['description_en']))
-                            <div class="mt-0.5 text-xs text-slate-500 italic">{{ $level['description_en'] }}</div>
+                            <div class="mt-0.5 text-xs text-slate-600 italic font-medium">{{ $level['description_en'] }}</div>
                         @endif
                     </div>
                     @endforeach
@@ -243,13 +239,13 @@
             {{-- Sibling Codes under same parent --}}
             @if(isset($hierarchy['siblings']) && count($hierarchy['siblings']) > 0)
             <div class="pt-3 border-t border-slate-200 space-y-2">
-                <div class="text-xs font-bold text-slate-500 uppercase tracking-wider">Pos Terkait Dalam Subpos yang Sama:</div>
-                <div class="flex flex-wrap gap-1.5">
+                <div class="text-xs font-bold text-slate-600 uppercase tracking-wider">Pos Terkait Dalam Subpos yang Sama:</div>
+                <div class="flex flex-wrap gap-2">
                     @foreach($hierarchy['siblings'] as $sib)
                     <button 
                         type="button" 
                         wire:click="showHierarchy('{{ $sib->hs_code }}')" 
-                        class="px-2.5 py-1 bg-white hover:bg-slate-100 border border-slate-200 hover:border-slate-300 text-slate-700 font-mono text-xs rounded-lg transition"
+                        class="px-3 py-1.5 bg-white hover:bg-blue-50 border-2 border-slate-300 hover:border-blue-400 text-slate-800 hover:text-blue-700 font-mono text-xs font-bold rounded-xl transition shadow-xs"
                         title="{{ $sib->description_id }}"
                     >
                         {{ \App\Models\HsCode::formatDisplay($sib->hs_code) }}
@@ -263,22 +259,22 @@
             @php $enote = $this->getExplanatoryNote($selectedCode); @endphp
             @if($enote)
             <div class="pt-3 border-t border-slate-200" x-data="{ expandedNote: false }">
-                <div class="bg-purple-50/90 border border-purple-200 rounded-xl p-4 space-y-2">
+                <div class="bg-purple-50 border-2 border-purple-200 rounded-2xl p-4 space-y-2 shadow-xs">
                     <div class="flex items-center justify-between">
-                        <span class="text-xs font-bold uppercase tracking-wider text-purple-900 flex items-center gap-1.5">
+                        <span class="text-xs font-black uppercase tracking-wider text-purple-900 flex items-center gap-1.5">
                             <span>📖</span> Catatan Penjelasan Resmi (Explanatory Notes)
                         </span>
-                        <span class="text-[10px] text-purple-700 bg-purple-100 px-2 py-0.5 rounded">Ref: {{ $enote->hs_code }}</span>
+                        <span class="text-[10px] text-white bg-purple-700 px-2 py-0.5 rounded-md font-bold">Ref: {{ $enote->hs_code }}</span>
                     </div>
                     @if($enote->note_title)
-                        <div class="text-xs font-bold text-purple-950">{{ $enote->note_title }}</div>
+                        <div class="text-xs font-black text-slate-900">{{ $enote->note_title }}</div>
                     @endif
-                    <div class="text-xs text-purple-950/90 leading-relaxed">
+                    <div class="text-xs text-slate-800 font-medium leading-relaxed">
                         <div x-show="!expandedNote">{{ Str::limit($enote->note_content, 350) }}</div>
                         <div x-show="expandedNote" x-cloak class="whitespace-pre-wrap">{{ $enote->note_content }}</div>
                     </div>
                     @if(strlen($enote->note_content) > 350)
-                    <button type="button" @click="expandedNote = !expandedNote" class="text-xs font-bold text-purple-700 hover:text-purple-900 transition">
+                    <button type="button" @click="expandedNote = !expandedNote" class="text-xs font-black text-purple-700 hover:text-purple-900 underline transition">
                         <span x-show="!expandedNote">Baca Selengkapnya ➔</span>
                         <span x-show="expandedNote">Tutup Catatan Penjelasan</span>
                     </button>
