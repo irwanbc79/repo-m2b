@@ -32,9 +32,9 @@
                 <span class="text-[10px] tracking-widest uppercase mt-1 text-blue-200">Logistic Solution</span>
             </div>
 
-            <nav class="flex-1 px-4 space-y-2 overflow-y-auto py-6">
+            <nav class="flex-1 px-4 space-y-1.5 overflow-y-auto py-6">
                 {{-- Dashboard --}}
-                <a href="{{ route('customer.dashboard') }}" class="flex items-center px-4 py-3 text-sm font-medium rounded-lg {{ request()->routeIs('customer.dashboard') ? 'bg-m2b-accent text-white' : 'hover:bg-blue-900 text-gray-300' }}">
+                <a href="{{ route('customer.dashboard') }}" class="flex items-center px-4 py-2.5 text-sm rounded-lg transition {{ request()->routeIs('customer.dashboard') ? 'bg-blue-600 text-white font-semibold shadow-sm' : 'hover:bg-blue-900/60 text-slate-300 hover:text-white' }}">
                     <span class="text-lg mr-3">🏠</span>
                     Dashboard
                 </a>
@@ -52,7 +52,7 @@
                         }
                     } catch (\Throwable $e) { $docReqBadge = 0; }
                 @endphp
-                <a href="{{ route('customer.shipments.index') }}" class="flex items-center px-4 py-3 text-sm font-medium rounded-lg {{ request()->routeIs('customer.shipments.index') ? 'bg-m2b-accent text-white' : 'hover:bg-blue-900 text-gray-300' }}">
+                <a href="{{ route('customer.shipments.index') }}" class="flex items-center px-4 py-2.5 text-sm rounded-lg transition {{ request()->routeIs('customer.shipments.index') ? 'bg-blue-600 text-white font-semibold shadow-sm' : 'hover:bg-blue-900/60 text-slate-300 hover:text-white' }}">
                     <span class="text-lg mr-3">📦</span>
                     Shipments
                     @if($docReqBadge > 0)
@@ -62,55 +62,55 @@
 
                 {{-- Create Booking (Full Access Only) --}}
                 @if(auth()->user()?->canEditCustomerPortal())
-                <a href="{{ route('customer.shipments.create') }}" class="flex items-center px-4 py-3 text-sm font-medium rounded-lg {{ request()->routeIs('customer.shipments.create') ? 'bg-m2b-accent text-white' : 'hover:bg-blue-900 text-gray-300' }}">
+                <a href="{{ route('customer.shipments.create') }}" class="flex items-center px-4 py-2.5 text-sm rounded-lg transition {{ request()->routeIs('customer.shipments.create') ? 'bg-blue-600 text-white font-semibold shadow-sm' : 'hover:bg-blue-900/60 text-slate-300 hover:text-white' }}">
                     <span class="text-lg mr-3">➕</span>
                     Create Booking
                 </a>
                 @endif
 
                 {{-- MENU KURS PAJAK (BERSIH DARI LINK SAMPAH) --}}
-                <a href="{{ route('customer.kurs') }}" class="flex items-center px-4 py-3 text-sm font-medium rounded-lg {{ request()->routeIs('customer.kurs') ? 'bg-m2b-accent text-white' : 'hover:bg-blue-900 text-gray-300' }}">
+                <a href="{{ route('customer.kurs') }}" class="flex items-center px-4 py-2.5 text-sm rounded-lg transition {{ request()->routeIs('customer.kurs') ? 'bg-blue-600 text-white font-semibold shadow-sm' : 'hover:bg-blue-900/60 text-slate-300 hover:text-white' }}">
                     <span class="text-lg mr-3">💱</span>
                     Kurs Pajak
                 </a>
 
                 {{-- MENU KALKULATOR (TAMBAHAN BARU) --}}
-                <a href="{{ route('customer.calculator') }}" class="flex items-center px-4 py-3 text-sm font-medium rounded-lg {{ request()->routeIs('customer.calculator') ? 'bg-m2b-accent text-white' : 'hover:bg-blue-900 text-gray-300' }}">
+                <a href="{{ route('customer.calculator') }}" class="flex items-center px-4 py-2.5 text-sm rounded-lg transition {{ request()->routeIs('customer.calculator') ? 'bg-blue-600 text-white font-semibold shadow-sm' : 'hover:bg-blue-900/60 text-slate-300 hover:text-white' }}">
                     <span class="text-lg mr-3">🧮</span>
                     Kalkulator Pabean
                 </a>
                 {{-- MENU HS CODE EXPLORER --}}
-                <a href="{{ route('customer.hs-codes') }}" class="flex items-center px-4 py-3 text-sm font-medium rounded-lg {{ request()->routeIs('customer.hs-codes') ? 'bg-m2b-accent text-white' : 'hover:bg-blue-900 text-gray-300' }}">
+                <a href="{{ route('customer.hs-codes') }}" class="flex items-center px-4 py-2.5 text-sm rounded-lg transition {{ request()->routeIs('customer.hs-codes') ? 'bg-blue-600 text-white font-semibold shadow-sm' : 'hover:bg-blue-900/60 text-slate-300 hover:text-white' }}">
                     <span class="text-lg mr-3">📋</span>
                     HS Code Explorer
                 </a>
 
                 {{-- MENU PENAWARAN --}}
-                <a href="{{ route('customer.quotations') }}" class="flex items-center px-4 py-3 text-sm font-medium rounded-lg {{ request()->routeIs('customer.quotations') ? 'bg-m2b-accent text-white' : 'hover:bg-blue-900 text-gray-300' }}">
+                <a href="{{ route('customer.quotations') }}" class="flex items-center px-4 py-2.5 text-sm rounded-lg transition {{ request()->routeIs('customer.quotations') ? 'bg-blue-600 text-white font-semibold shadow-sm' : 'hover:bg-blue-900/60 text-slate-300 hover:text-white' }}">
                     <span class="text-lg mr-3">📄</span>
                     Penawaran Saya
                 </a>
 
                 {{-- MENU PEMBAYARAN --}}
-                <a href="{{ route('customer.invoices') }}" class="flex items-center px-4 py-3 text-sm font-medium rounded-lg {{ request()->routeIs('customer.invoices') ? 'bg-m2b-accent text-white' : 'hover:bg-blue-900 text-gray-300' }}">
+                <a href="{{ route('customer.invoices') }}" class="flex items-center px-4 py-2.5 text-sm rounded-lg transition {{ request()->routeIs('customer.invoices') ? 'bg-blue-600 text-white font-semibold shadow-sm' : 'hover:bg-blue-900/60 text-slate-300 hover:text-white' }}">
                     <span class="text-lg mr-3">💳</span>
                     Pembayaran
                 </a>
 
                 {{-- MENU LAPORAN --}}
-                <a href="{{ route('customer.reports') }}" class="flex items-center px-4 py-3 text-sm font-medium rounded-lg {{ request()->routeIs('customer.reports') ? 'bg-m2b-accent text-white' : 'hover:bg-blue-900 text-gray-300' }}">
+                <a href="{{ route('customer.reports') }}" class="flex items-center px-4 py-2.5 text-sm rounded-lg transition {{ request()->routeIs('customer.reports') ? 'bg-blue-600 text-white font-semibold shadow-sm' : 'hover:bg-blue-900/60 text-slate-300 hover:text-white' }}">
                     <span class="text-lg mr-3">📊</span>
                     Laporan
                 </a>
 
                 {{-- Testimoni --}}
-                <a href="{{ route('customer.testimonial') }}" class="flex items-center px-4 py-3 text-sm font-medium rounded-lg {{ request()->routeIs('customer.testimonial') ? 'bg-m2b-accent text-white' : 'hover:bg-blue-900 text-gray-300' }}">
+                <a href="{{ route('customer.testimonial') }}" class="flex items-center px-4 py-2.5 text-sm rounded-lg transition {{ request()->routeIs('customer.testimonial') ? 'bg-blue-600 text-white font-semibold shadow-sm' : 'hover:bg-blue-900/60 text-slate-300 hover:text-white' }}">
                     <span class="text-lg mr-3">⭐</span>
                     Testimoni
                 </a>
 
                 {{-- My Profile --}}
-                <a href="{{ route('customer.profile') }}" class="flex items-center px-4 py-3 text-sm font-medium rounded-lg {{ request()->routeIs('customer.profile') ? 'bg-m2b-accent text-white' : 'hover:bg-blue-900 text-gray-300' }}">
+                <a href="{{ route('customer.profile') }}" class="flex items-center px-4 py-2.5 text-sm rounded-lg transition {{ request()->routeIs('customer.profile') ? 'bg-blue-600 text-white font-semibold shadow-sm' : 'hover:bg-blue-900/60 text-slate-300 hover:text-white' }}">
                     <span class="text-lg mr-3">👤</span>
                     My Profile
                 </a>

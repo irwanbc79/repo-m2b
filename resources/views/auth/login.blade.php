@@ -5,6 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <title>Login - M2B Portal</title>
     <link rel="icon" href="{{ asset('images/m2b-logo.png') }}" type="image/png">
+    @vite(['resources/css/app.css', 'resources/js/app.js'])
     <script src="https://cdn.tailwindcss.com"></script>
     <script>
         tailwind.config = {
@@ -134,22 +135,22 @@
                     @csrf
 
                     <div>
-                        <label class="block text-m2b-primary text-sm font-bold mb-2 ml-1">Email Address</label>
+                        <label for="email" class="block text-m2b-primary text-sm font-bold mb-2 ml-1 cursor-pointer">Alamat Email</label>
                         <input class="w-full px-4 py-3 bg-gray-50 border border-blue-200 rounded-lg focus:outline-none focus:border-m2b-primary focus:ring-2 focus:ring-m2b-primary/20 transition duration-200"
-                               id="email" type="email" name="email" value="{{ old('email') }}" required autofocus placeholder="name@company.com">
+                               id="email" type="email" name="email" value="{{ old('email') }}" required autofocus placeholder="nama@perusahaan.com">
                     </div>
 
                     <div>
                         <div class="flex justify-between items-center mb-2 ml-1">
-                            <label class="block text-m2b-primary text-sm font-bold">Password</label>
-                            <a href="{{ route('password.request') }}" class="text-xs text-m2b-accent font-semibold hover:underline">Forgot Password?</a>
+                            <label for="password" class="block text-m2b-primary text-sm font-bold cursor-pointer">Kata Sandi</label>
+                            <a href="{{ route('password.request') }}" class="text-xs text-m2b-accent font-semibold hover:underline">Lupa Kata Sandi?</a>
                         </div>
                         <input class="w-full px-4 py-3 bg-gray-50 border border-blue-200 rounded-lg focus:outline-none focus:border-m2b-primary focus:ring-2 focus:ring-m2b-primary/20 transition duration-200"
                                id="password" type="password" name="password" required placeholder="••••••••">
                     </div>
 
                     <button class="w-full bg-m2b-primary hover:bg-blue-900 text-white font-bold py-3.5 px-4 rounded-lg shadow-lg hover:shadow-xl transition duration-200 transform hover:-translate-y-0.5" type="submit">
-                        SIGN IN
+                        Masuk ke Akun
                     </button>
                 </form>
 

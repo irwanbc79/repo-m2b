@@ -1,20 +1,20 @@
 <header class="bg-white/85 backdrop-blur-md supports-[backdrop-filter]:bg-white/80 border-b border-slate-200/80 h-16 flex items-center justify-between px-6 w-full sticky top-0 z-30 transition-all shadow-[0_1px_3px_rgba(0,0,0,0.03)]" x-data="{ sidebarOpen: false }">
     
     {{-- BAGIAN KIRI: TOGGLE SIDEBAR & JUDUL --}}
-    <div class="flex items-center gap-3">
+    <div class="flex items-center gap-3 min-w-0">
         {{-- Tombol Hamburger (Mobile) --}}
-        <button @click="$dispatch('toggle-sidebar')" class="p-2 rounded-lg text-slate-500 hover:text-slate-800 hover:bg-slate-100 lg:hidden focus:outline-none transition">
+        <button @click="$dispatch('toggle-sidebar')" aria-label="Buka navigasi menu" class="p-2 rounded-lg text-slate-500 hover:text-slate-800 hover:bg-slate-100 lg:hidden focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 transition shrink-0">
             <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16"></path></svg>
         </button>
         
         {{-- Judul Halaman & Breadcrumb --}}
-        <div class="hidden md:flex flex-col justify-center">
-            <div class="flex items-center gap-2">
-                <span class="text-[10px] font-bold text-slate-400 uppercase tracking-widest leading-none">M2B Portal</span>
-                <span class="text-slate-300 text-xs leading-none">/</span>
-                <h1 class="text-base font-bold text-slate-900 tracking-tight leading-none">{!! $title !!}</h1>
+        <div class="flex flex-col justify-center min-w-0">
+            <div class="flex items-center gap-1.5 md:gap-2 truncate">
+                <span class="hidden sm:inline text-[10px] font-bold text-slate-400 uppercase tracking-widest leading-none">M2B Portal</span>
+                <span class="hidden sm:inline text-slate-300 text-xs leading-none">/</span>
+                <h1 class="text-sm md:text-base font-bold text-slate-900 tracking-tight leading-none truncate">{!! $title !!}</h1>
                 @if(auth()->user()->hasRole('auditor'))
-                <span class="ml-2 inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[10px] font-extrabold bg-amber-50 text-amber-800 border border-amber-300/80 uppercase tracking-wider shadow-xs">
+                <span class="hidden sm:inline-flex ml-2 items-center gap-1 px-2.5 py-0.5 rounded-full text-[10px] font-extrabold bg-amber-50 text-amber-800 border border-amber-300/80 uppercase tracking-wider shadow-xs">
                     🔍 Auditor Mode
                 </span>
                 @endif

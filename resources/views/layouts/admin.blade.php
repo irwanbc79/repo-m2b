@@ -175,7 +175,7 @@ a:hover .sb-ico { background: rgba(255, 255, 255, 0.12); transform: scale(1.05);
          @keydown.window.meta.b.prevent="autoHide = !autoHide">
 
         <aside id="sidebar"
-                class="fixed inset-y-0 left-0 z-50 w-64 bg-[#070F1E] text-slate-200 transition-transform duration-300 lg:translate-x-0 lg:static lg:inset-0 flex flex-col shrink-0 border-r border-slate-800/80 shadow-2xl"
+                class="fixed inset-y-0 left-0 z-50 w-64 bg-[#070F1E] text-slate-200 transition-transform duration-300 lg:translate-x-0 lg:sticky lg:top-0 lg:h-screen lg:max-h-screen flex flex-col shrink-0 border-r border-slate-800/80 shadow-2xl"
                 :class="sidebarOpen ? 'translate-x-0' : '-translate-x-full'">
 
             <div class="flex flex-col items-center justify-center h-24 bg-[#040A14]/70 border-b border-slate-800/80 shrink-0 px-4">
