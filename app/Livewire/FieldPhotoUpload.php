@@ -58,6 +58,8 @@ class FieldPhotoUpload extends Component
      */
     public function mount($shipment = null)
     {
+        abort_unless(Auth::user()?->canAccessFieldDocs(), 403, 'Akses ditolak: Hanya petugas lapangan atau staf internal yang diizinkan.');
+
         if ($shipment) {
             $this->loadShipmentByAwb($shipment);
         }

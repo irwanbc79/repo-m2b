@@ -17,6 +17,16 @@ class FieldUploaderMiddleware
 
         $user = Auth::user();
 
+        if (!$user->is_active) {
+            Auth::logout();
+            $request->session()->invalidate();
+            $request->session()->regenerateToken();
+
+            return redirect()->route('login')->withErrors([
+                'email' => 'Akun Anda tidak aktif / telah dinonaktifkan.',
+            ]);
+        }
+
         // Hanya field_uploader yang boleh akses portal ini
         if ($user->hasRole(['field_uploader'])) {
             return $next($request);

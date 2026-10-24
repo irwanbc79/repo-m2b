@@ -95,6 +95,8 @@ class FieldDocController extends Controller
      */
     public function mobileUpload($shipment = null)
     {
+        abort_unless(auth()->user()?->canAccessFieldDocs(), 403, 'Akses ditolak: Hanya petugas lapangan atau staf internal yang diizinkan.');
+
         $selectedShipment = null;
         
         if ($shipment) {

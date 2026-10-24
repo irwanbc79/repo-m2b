@@ -252,6 +252,19 @@ class User extends Authenticatable
     }
 
     /**
+     * True kalau user memiliki akses dokumentasi lapangan (petugas lapangan atau staf internal).
+     * Customer tidak diizinkan.
+     */
+    public function canAccessFieldDocs(): bool
+    {
+        if ($this->isCustomer()) {
+            return false;
+        }
+
+        return $this->isAdmin() || $this->hasRole(['field_uploader']);
+    }
+
+    /**
      * True kalau user adalah akun customer (via role maupun relasi customer).
      */
     public function isCustomer(): bool

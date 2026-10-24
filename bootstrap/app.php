@@ -54,6 +54,7 @@ return Application::configure(basePath: dirname(__DIR__))
             'permission'     => \App\Http\Middleware\PermissionMiddleware::class,
             'customer'       => \App\Http\Middleware\CustomerMiddleware::class,
             'field_uploader' => \App\Http\Middleware\FieldUploaderMiddleware::class,
+            'account_active' => \App\Http\Middleware\EnsureAccountIsActive::class,
         ]);
 
         /*
@@ -63,23 +64,6 @@ return Application::configure(basePath: dirname(__DIR__))
         */
         $middleware->web(append: [
             \App\Http\Middleware\DisableLivewireCache::class,
-        ]);
-        
-        /*
-        |--------------------------------------------------------------------------
-        | CSRF EXCEPTION (untuk Livewire)
-        |--------------------------------------------------------------------------
-        */
-        $middleware->validateCsrfTokens(except: [
-            'admin/field-docs/photo/*',
-            'admin/field-docs/photos/*',
-            'livewire/*',
-            'livewire/message/*',
-            'livewire/upload-file',
-            'livewire/upload-file/*',
-            'livewire/update',
-            'livewire/preview-file/*',
-            'lw-update',
         ]);
     })
 

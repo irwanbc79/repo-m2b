@@ -864,9 +864,7 @@ Route::middleware(['auth'])->group(function () {
                 return response()->view('errors.document-not-found', ['document' => $doc], 404);
             }
 
-            $fullPath = $diskName === 'local'
-                ? storage_path('app/' . $existingPath)
-                : storage_path('app/public/' . $existingPath);
+            $fullPath = \Illuminate\Support\Facades\Storage::disk($diskName)->path($existingPath);
             return response()->download($fullPath, $doc->filename ?? basename($existingPath));
 
         }

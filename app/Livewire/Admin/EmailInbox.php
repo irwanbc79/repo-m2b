@@ -293,8 +293,13 @@ class EmailInbox extends Component
         $attachments = DB::table('email_attachments')->whereIn('email_id', $rows->pluck('id'))->get(['file_path']);
         foreach ($attachments as $att) {
             try {
-                if ($att->file_path && Storage::disk('public')->exists($att->file_path)) {
-                    Storage::disk('public')->delete($att->file_path);
+                if ($att->file_path) {
+                    if (Storage::disk('local')->exists($att->file_path)) {
+                        Storage::disk('local')->delete($att->file_path);
+                    }
+                    if (Storage::disk('public')->exists($att->file_path)) {
+                        Storage::disk('public')->delete($att->file_path);
+                    }
                 }
             } catch (\Throwable $e) {
                 // skip, tidak kritis
@@ -387,13 +392,15 @@ class EmailInbox extends Component
             $uid      = $email->uid;
             $restored = 0;
 
+            $dangerousExtensions = ['php', 'phtml', 'php3', 'php4', 'php5', 'php7', 'php8', 'phar', 'exe', 'sh', 'bat', 'cmd', 'cgi', 'pl', 'py', 'svg', 'html', 'htm', 'shtml', 'htaccess'];
             foreach ($message->getAttachments() as $att) {
                 $filename = $att->getName();
-                $slug     = Str::slug(pathinfo($filename, PATHINFO_FILENAME));
-                $ext      = pathinfo($filename, PATHINFO_EXTENSION) ?: 'bin';
-                $newPath  = "email_attachments/{$mailbox}/{$uid}/{$slug}_" . uniqid() . ".{$ext}";
+                $slug     = Str::slug(pathinfo($filename, PATHINFO_FILENAME)) ?: 'attachment';
+                $rawExt   = strtolower(pathinfo($filename, PATHINFO_EXTENSION) ?: 'bin');
+                $ext      = in_array($rawExt, $dangerousExtensions, true) ? 'bin' : $rawExt;
+                $newPath  = "email_attachments/{$mailbox}/{$uid}/{$slug}_" . Str::random(16) . ".{$ext}";
 
-                Storage::disk('public')->put($newPath, $att->getContent());
+                Storage::disk('local')->put($newPath, $att->getContent());
 
                 // Update path di tabel email_attachments (cari by filename yang mirip)
                 $record = DB::table('email_attachments')

@@ -58,11 +58,25 @@ class Document extends Model
     }
 
     /**
+     * Get the configured storage disk for documents.
+     */
+    public function getStorageDisk(): string
+    {
+        if (config('filesystems.disks.backblaze.key') && config('filesystems.disks.backblaze.bucket')) {
+            return 'backblaze';
+        }
+        if (config('filesystems.disks.s3.key') && config('filesystems.disks.s3.bucket')) {
+            return 's3';
+        }
+        return config('filesystems.default', 'local');
+    }
+
+    /**
      * Get the document's download URL.
      */
     public function getDownloadUrlAttribute(): string
     {
-        return Storage::disk('backblaze')->url($this->file_path);
+        return Storage::disk($this->getStorageDisk())->url($this->file_path);
     }
 
     /**
@@ -70,10 +84,19 @@ class Document extends Model
      */
     public function getTemporaryDownloadUrl(): string
     {
-        return Storage::disk('backblaze')->temporaryUrl(
-            $this->file_path,
-            now()->addHour()
-        );
+        $disk = $this->getStorageDisk();
+        $storage = Storage::disk($disk);
+        if (method_exists($storage, 'temporaryUrl')) {
+            try {
+                return $storage->temporaryUrl(
+                    $this->file_path,
+                    now()->addHour()
+                );
+            } catch (\Throwable $e) {
+                // Driver may not support temporaryUrl (e.g. local)
+            }
+        }
+        return $storage->url($this->file_path);
     }
 
     /**
@@ -144,6 +167,6 @@ class Document extends Model
      */
     public function deleteFile(): bool
     {
-        return Storage::disk('backblaze')->delete($this->file_path);
+        return Storage::disk($this->getStorageDisk())->delete($this->file_path);
     }
 }

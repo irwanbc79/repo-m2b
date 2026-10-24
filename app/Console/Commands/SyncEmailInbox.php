@@ -145,15 +145,23 @@ class SyncEmailInbox extends Command
                         'updated_at' => now(),
                     ]);
 
+                    $dangerousExtensions = ['php', 'phtml', 'php3', 'php4', 'php5', 'php7', 'php8', 'phar', 'exe', 'sh', 'bat', 'cmd', 'cgi', 'pl', 'py', 'svg', 'html', 'htm', 'shtml', 'htaccess'];
                     foreach ($message->getAttachments() as $att) {
                         $filename = $att->getName();
                         $path = "email_attachments/{$mailbox}/{$uid}";
-                        $fullPath = "{$path}/" . Str::slug(pathinfo($filename, PATHINFO_FILENAME)) . "_" . uniqid() . "." . (pathinfo($filename, PATHINFO_EXTENSION) ?: 'bin');
-                        Storage::disk('public')->put($fullPath, $att->getContent());
+                        $rawExt = strtolower(pathinfo($filename, PATHINFO_EXTENSION) ?: 'bin');
+                        $ext = in_array($rawExt, $dangerousExtensions, true) ? 'bin' : $rawExt;
+                        $slug = Str::slug(pathinfo($filename, PATHINFO_FILENAME)) ?: 'attachment';
+                        $fullPath = "{$path}/{$slug}_" . Str::random(16) . ".{$ext}";
+                        Storage::disk('local')->put($fullPath, $att->getContent());
 
                         DB::table('email_attachments')->insert([
-                            'email_id' => $emailId, 'filename' => $filename, 'file_path'=> $fullPath,
-                            'mime_type'=> $att->getMimeType(), 'size' => $att->getSize(), 'created_at'=> now(),
+                            'email_id' => $emailId,
+                            'filename' => $filename,
+                            'file_path'=> $fullPath,
+                            'mime_type'=> $att->getMimeType(),
+                            'size' => $att->getSize(),
+                            'created_at'=> now(),
                         ]);
                     }
 

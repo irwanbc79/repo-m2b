@@ -17,6 +17,16 @@ class AdminMiddleware
 
         $user = Auth::user();
 
+        if (!$user->is_active) {
+            Auth::logout();
+            $request->session()->invalidate();
+            $request->session()->regenerateToken();
+
+            return redirect()->route('login')->withErrors([
+                'email' => 'Akun Anda tidak aktif / telah dinonaktifkan.',
+            ]);
+        }
+
         // Hanya blok kalau field_uploader murni (tidak punya role admin/staff lain).
         // Staf yang merangkap petugas lapangan tetap boleh masuk portal admin.
         if ($user->isOnlyFieldUploader()) {

@@ -11,11 +11,27 @@ use Illuminate\Support\Facades\Storage;
 
 class FieldDocController extends Controller
 {
+    protected function authorizeFieldDocsAccess(Request $request): ?JsonResponse
+    {
+        $user = $request->user();
+        if (!$user || !$user->canAccessFieldDocs()) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Unauthorized: Hanya petugas lapangan atau staf internal yang diizinkan mengakses dokumentasi lapangan.',
+            ], 403);
+        }
+        return null;
+    }
+
     /**
      * Cari shipment berdasarkan AWB / BL number (autocomplete).
      */
     public function searchShipments(Request $request): JsonResponse
     {
+        if ($deny = $this->authorizeFieldDocsAccess($request)) {
+            return $deny;
+        }
+
         $q = trim($request->input('q', ''));
 
         if (strlen($q) < 2) {
@@ -53,6 +69,10 @@ class FieldDocController extends Controller
      */
     public function upload(Request $request): JsonResponse
     {
+        if ($deny = $this->authorizeFieldDocsAccess($request)) {
+            return $deny;
+        }
+
         $request->validate([
             'shipment_id' => 'required|exists:shipments,id',
             'photo'       => 'required|image|mimes:jpg,jpeg,png,webp|max:10240',
@@ -77,7 +97,7 @@ class FieldDocController extends Controller
             'latitude'          => $request->input('latitude'),
             'longitude'         => $request->input('longitude'),
             'upload_ip'         => $request->ip(),
-            'status'            => 'active',
+            'status'            => 'approved',
         ]);
 
         $photo->load('shipment');
@@ -102,6 +122,10 @@ class FieldDocController extends Controller
      */
     public function history(Request $request): JsonResponse
     {
+        if ($deny = $this->authorizeFieldDocsAccess($request)) {
+            return $deny;
+        }
+
         $photos = FieldPhoto::where('user_id', $request->user()->id)
             ->with('shipment:id,awb_number,bl_number,origin,destination')
             ->orderByDesc('created_at')

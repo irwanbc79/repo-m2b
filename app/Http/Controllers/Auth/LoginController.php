@@ -27,9 +27,19 @@ class LoginController extends Controller
             ])->withInput();
         }
 
-        $request->session()->regenerate();
-
         $user = Auth::user();
+
+        if (!$user->is_active) {
+            \App\Models\ActivityLog::recordForUser($user, 'Auth', 'LOGIN_BLOCKED', $user->email, 'Login ditolak: akun tidak aktif / dinonaktifkan.');
+            Auth::logout();
+            $request->session()->invalidate();
+            $request->session()->regenerateToken();
+
+            return redirect('/login')->withErrors([
+                'email' => 'Akun Anda tidak aktif atau sedang menunggu persetujuan administrator.',
+            ])->withInput($request->only('email'));
+        }
+
         \App\Models\ActivityLog::recordForUser($user, 'Auth', 'LOGIN', $user->email, 'User berhasil login ke sistem.');
 
         // Arahkan berdasarkan role (mendukung roles array baru & legacy)

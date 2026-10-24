@@ -20,15 +20,22 @@ class DocumentUpload extends Component
 
     protected DocumentService $documentService;
 
-    protected $rules = [
-        'files' => 'required|file|max:10240|mimes:pdf,jpg,jpeg,png,doc,docx,xls,xlsx',
-        'documentType' => 'required|in:invoice,packing_list,certificate,other',
-        'description' => 'nullable|string|max:500'];
+    protected function rules(): array
+    {
+        return [
+            'files' => 'required',
+            'files.*' => 'file|max:10240|mimes:pdf,jpg,jpeg,png,doc,docx,xls,xlsx',
+            'documentType' => 'required|in:invoice,packing_list,certificate,other',
+            'description' => 'nullable|string|max:500',
+        ];
+    }
 
     protected $messages = [
+        'files.required' => 'Please select at least one file',
         'files.*.required' => 'Please select at least one file',
         'files.*.max' => 'File size must not exceed 10MB',
-        'files.*.mimes' => 'Only PDF, images, Word, and Excel files are allowed'];
+        'files.*.mimes' => 'Only PDF, images, Word, and Excel files are allowed',
+    ];
 
     public function boot(DocumentService $documentService)
     {
@@ -46,8 +53,15 @@ class DocumentUpload extends Component
 
     public function updatedFiles()
     {
-        $this->validate([
-            'files.*' => 'required|file|max:10240|mimes:pdf,jpg,jpeg,png,doc,docx,xls,xlsx']);
+        if (is_array($this->files)) {
+            $this->validate([
+                'files.*' => 'required|file|max:10240|mimes:pdf,jpg,jpeg,png,doc,docx,xls,xlsx',
+            ]);
+        } else {
+            $this->validate([
+                'files' => 'required|file|max:10240|mimes:pdf,jpg,jpeg,png,doc,docx,xls,xlsx',
+            ]);
+        }
     }
 
     public function uploadDocuments()
@@ -64,14 +78,22 @@ class DocumentUpload extends Component
         $this->uploading = true;
 
         try {
-            $uploadedDocuments = $this->documentService->uploadDocument(
-                $this->files,
-                $this->shipment,
-                $this->documentType,
-                $this->description
-            );
+            $fileList = is_array($this->files) ? $this->files : [$this->files];
+            $count = 0;
 
-            session()->flash('message', 1 . ' document(s) uploaded successfully!');
+            foreach ($fileList as $file) {
+                if ($file instanceof \Illuminate\Http\UploadedFile) {
+                    $this->documentService->uploadDocument(
+                        $file,
+                        $this->shipment,
+                        $this->documentType,
+                        $this->description
+                    );
+                    $count++;
+                }
+            }
+
+            session()->flash('message', "{$count} document(s) uploaded successfully!");
             
             $this->reset(['files', 'documentType', 'description']);
             $this->uploading = false;

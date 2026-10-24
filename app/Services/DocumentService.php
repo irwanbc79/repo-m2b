@@ -13,6 +13,20 @@ use Illuminate\Support\Facades\DB;
 class DocumentService
 {
     /**
+     * Get the configured storage disk for documents.
+     */
+    public function getStorageDisk(): string
+    {
+        if (config('filesystems.disks.backblaze.key') && config('filesystems.disks.backblaze.bucket')) {
+            return 'backblaze';
+        }
+        if (config('filesystems.disks.s3.key') && config('filesystems.disks.s3.bucket')) {
+            return 's3';
+        }
+        return config('filesystems.default', 'local');
+    }
+
+    /**
      * Upload a document for a shipment.
      */
     public function uploadDocument(
@@ -23,8 +37,8 @@ class DocumentService
         bool $isPublic = false
     ): Document {
         return DB::transaction(function () use ($file, $shipment, $documentType, $description, $isPublic) {
-            // Upload to Backblaze B2
-            $path = Storage::disk('backblaze')->putFile(
+            $disk = $this->getStorageDisk();
+            $path = Storage::disk($disk)->putFile(
                 'shipments/' . $shipment->id,
                 $file,
                 'public'
@@ -45,10 +59,11 @@ class DocumentService
             ]);
 
             // Log activity
-            ActivityLog::log(
-                'created',
-                "Uploaded document {$document->filename} for shipment {$shipment->awb_number}",
-                $document
+            ActivityLog::record(
+                'Document',
+                'CREATE',
+                $shipment->awb_number ?? (string) $shipment->id,
+                "Uploaded document {$document->filename} for shipment " . ($shipment->awb_number ?? $shipment->id)
             );
 
             // Trigger event for notifications
@@ -99,9 +114,11 @@ class DocumentService
             $document->delete();
 
             // Log activity
-            ActivityLog::log(
-                'deleted',
-                "Deleted document {$filename} from shipment {$shipment->awb_number}"
+            ActivityLog::record(
+                'Document',
+                'DELETE',
+                $shipment?->awb_number ?? (string) ($shipment?->id ?? $document->id),
+                "Deleted document {$filename} from shipment " . ($shipment?->awb_number ?? $shipment?->id)
             );
 
             return true;
@@ -130,10 +147,11 @@ class DocumentService
             $document->update($data);
 
             // Log activity
-            ActivityLog::log(
-                'updated',
+            ActivityLog::record(
+                'Document',
+                'UPDATE',
+                (string) $document->id,
                 "Updated document {$document->filename}",
-                $document,
                 $oldValues,
                 $data
             );

@@ -11,7 +11,7 @@ class EmailAttachmentController extends Controller
 {
     /**
      * Download or preview attachment by mailbox & id.
-     * Files are stored in: storage/app/public/email_attachments/{mailbox}/{email_id}/filename
+     * Checks local (private) storage first, then public (legacy).
      */
     public function download(string $mailbox, string $id, Request $request)
     {
@@ -21,37 +21,67 @@ class EmailAttachmentController extends Controller
         if (!$attachment) {
             abort(404, 'Attachment not found in database');
         }
+
+        // Verify attachment matches the requested mailbox via emails table
+        $email = DB::table('emails')->where('id', $attachment->email_id)->first();
+        if (!$email || $email->mailbox !== $mailbox) {
+            abort(404, 'Mailbox mismatch or email not found');
+        }
         
-        // Build the correct path (files are in public storage)
-        $filePath = 'public/' . $attachment->file_path;
-        
-        if (!Storage::exists($filePath)) {
-            // Try alternative path without 'public/' prefix
-            $filePath = $attachment->file_path;
-            if (!Storage::exists($filePath)) {
-                abort(404, 'File not found: ' . $attachment->file_path);
+        // Locate file: check local (private) storage first, then public (legacy) storage
+        $disk = null;
+        $relativePath = $attachment->file_path;
+
+        if (Storage::disk('local')->exists($relativePath)) {
+            $disk = 'local';
+        } elseif (Storage::disk('public')->exists($relativePath)) {
+            $disk = 'public';
+        } else {
+            // Also check if stored with 'public/' prefix in path column
+            $strippedPath = preg_replace('#^public/#', '', $relativePath);
+            if (Storage::disk('public')->exists($strippedPath)) {
+                $disk = 'public';
+                $relativePath = $strippedPath;
+            } elseif (Storage::disk('local')->exists($strippedPath)) {
+                $disk = 'local';
+                $relativePath = $strippedPath;
+            } else {
+                abort(404, 'Attachment file not found on disk');
             }
         }
         
-        $fullPath = Storage::path($filePath);
-        $mimeType = $attachment->mime_type ?? Storage::mimeType($filePath) ?? 'application/octet-stream';
-        $filename = $attachment->filename ?? basename($attachment->file_path);
+        $fullPath = Storage::disk($disk)->path($relativePath);
+        $detectedMime = @mime_content_type($fullPath) ?: ($attachment->mime_type ?? 'application/octet-stream');
+        $filename = $attachment->filename ?: basename($attachment->file_path);
+        $cleanFilename = str_replace(['"', "\r", "\n"], '', $filename);
         
         // Check if inline preview requested
         $mode = $request->query('mode', 'attachment');
         
-        if ($mode === 'inline') {
-            // For inline preview (PDF, images)
-            return response()->file($fullPath, [
-                'Content-Type' => $mimeType,
-                'Content-Disposition' => 'inline; filename="' . $filename . '"',
-            ]);
+        $allowedInlineMimes = [
+            'application/pdf',
+            'image/jpeg',
+            'image/png',
+            'image/webp',
+            'image/gif',
+        ];
+
+        $headers = [
+            'X-Content-Type-Options' => 'nosniff',
+            'Content-Security-Policy' => "default-src 'none'; style-src 'unsafe-inline';",
+        ];
+
+        if ($mode === 'inline' && in_array(strtolower($detectedMime), $allowedInlineMimes, true)) {
+            return response()->file($fullPath, array_merge($headers, [
+                'Content-Type' => $detectedMime,
+                'Content-Disposition' => 'inline; filename="' . $cleanFilename . '"',
+            ]));
         }
         
         // Default: download
-        return response()->download($fullPath, $filename, [
-            'Content-Type' => $mimeType,
-        ]);
+        return response()->download($fullPath, $cleanFilename, array_merge($headers, [
+            'Content-Type' => $detectedMime,
+        ]));
     }
 
     /**
