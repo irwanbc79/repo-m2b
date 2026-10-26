@@ -3899,6 +3899,10 @@
     border-left-color: #0000;
   }
 
+  .bg-\[\#0F2C59\] {
+    background-color: #0f2c59;
+  }
+
   .bg-\[\#1b1b18\] {
     background-color: #1b1b18;
   }
@@ -8671,10 +8675,6 @@
       color: var(--color-indigo-600);
     }
 
-    .group-hover\:text-m2b-accent:is(:where(.group):hover *) {
-      color: var(--color-m2b-accent);
-    }
-
     .group-hover\:text-orange-700:is(:where(.group):hover *) {
       color: var(--color-orange-700);
     }
@@ -11909,6 +11909,12 @@
       color: var(--color-white) !important;
     }
   }
+}
+
+.m2b-login-panel {
+  color: #fff;
+  background-color: #0f2c59;
+  background-image: linear-gradient(#0f2c59 0%, #020617 100%);
 }
 
 .erp-modal-backdrop {

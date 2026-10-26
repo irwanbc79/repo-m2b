@@ -18,6 +18,13 @@
     --color-m2b-blue-glow: #38BDF8;
 }
 
+/* ══ M2B Auth & Side Panels ══════════════════════════════════════════════ */
+.m2b-login-panel {
+    background-color: #0F2C59;
+    background-image: linear-gradient(180deg, #0F2C59 0%, #020617 100%);
+    color: #ffffff;
+}
+
 /* ══ World-Class Enterprise Modal & Pop-up Framework ═════════════════════ */
 .erp-modal-backdrop {
     position: fixed;

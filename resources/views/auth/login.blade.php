@@ -27,7 +27,7 @@
     <div class="w-full max-w-6xl bg-white rounded-2xl shadow-2xl overflow-hidden flex flex-col md:flex-row border border-gray-150">
 
         <!-- Left Side: Partner Production Panel (Dark theme / Gradient) -->
-        <div class="w-full md:w-1/4 order-2 md:order-1 bg-gradient-to-b from-[#0F2C59] to-slate-950 text-white p-5 sm:p-6 flex flex-col justify-between relative overflow-hidden border-t border-gray-200 md:border-t-0 md:border-r md:border-gray-150">
+        <div class="w-full md:w-1/4 order-2 md:order-1 m2b-login-panel bg-[#0F2C59] text-white p-5 sm:p-6 flex flex-col justify-between relative overflow-hidden border-t border-gray-200 md:border-t-0 md:border-r md:border-gray-150" style="background: linear-gradient(180deg, #0F2C59 0%, #020617 100%); background-color: #0F2C59;">
             <!-- Decorative gradients -->
             <div class="absolute -left-20 -top-20 w-48 h-48 rounded-full bg-emerald-600/10 blur-[80px] pointer-events-none"></div>
             <div class="absolute -right-20 -bottom-20 w-48 h-48 rounded-full bg-blue-600/15 blur-[80px] pointer-events-none"></div>
@@ -184,7 +184,7 @@
         </div>
 
         <!-- Right Side: Ecosystem Panel (Dark theme / Gradient) -->
-        <div class="w-full md:w-1/4 order-3 bg-gradient-to-b from-[#0F2C59] to-slate-950 text-white p-5 sm:p-6 flex flex-col justify-between relative overflow-hidden border-t border-gray-200 md:border-t-0 md:border-l md:border-gray-150">
+        <div class="w-full md:w-1/4 order-3 m2b-login-panel bg-[#0F2C59] text-white p-5 sm:p-6 flex flex-col justify-between relative overflow-hidden border-t border-gray-200 md:border-t-0 md:border-l md:border-gray-150" style="background: linear-gradient(180deg, #0F2C59 0%, #020617 100%); background-color: #0F2C59;">
             <!-- Decorative gradients -->
             <div class="absolute -right-20 -top-20 w-48 h-48 rounded-full bg-blue-600/10 blur-[80px] pointer-events-none"></div>
             <div class="absolute -left-20 -bottom-20 w-48 h-48 rounded-full bg-violet-600/15 blur-[80px] pointer-events-none"></div>
