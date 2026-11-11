@@ -714,6 +714,7 @@ class EmailInbox extends Component
                     'file_path'   => $destPath,
                     'filename'    => $filename,
                     'is_internal' => false,
+                    'is_public'   => true,
                     'uploaded_by' => $uploader,
                     'file_size'   => $fileSize,
                     'mime_type'   => $mimeType,

@@ -727,7 +727,7 @@ Route::middleware(['auth'])->group(function () {
                 if ($user->customer) {
                     $customerIds[] = $user->customer->id;
                 }
-                if (!$shipment || empty($customerIds) || !in_array($shipment->customer_id, $customerIds, true) || $doc->is_internal || !$doc->is_public) {
+                if (!$shipment || empty($customerIds) || !in_array($shipment->customer_id, $customerIds, true) || $doc->is_internal) {
                     abort(403, 'Akses ditolak.');
                 }
             }
@@ -829,7 +829,7 @@ Route::middleware(['auth'])->group(function () {
                 if ($user->customer) {
                     $customerIds[] = $user->customer->id;
                 }
-                if (!$shipment || empty($customerIds) || !in_array($shipment->customer_id, $customerIds, true) || $doc->is_internal || !$doc->is_public) {
+                if (!$shipment || empty($customerIds) || !in_array($shipment->customer_id, $customerIds, true) || $doc->is_internal) {
                     abort(403, 'Akses ditolak.');
                 }
             }

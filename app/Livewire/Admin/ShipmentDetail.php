@@ -545,6 +545,7 @@ class ShipmentDetail extends Component
             'file_path' => $path,
             'description' => ($this->doc_type === 'Dokumen Pendukung Lainnya' ? $this->custom_description : $this->doc_type) . ($this->custom_note ? ' - ' . $this->custom_note : ''),
             'is_internal' => $isInternal,
+            'is_public' => !$isInternal,
             'uploaded_by' => Auth::id(),
             'file_size' => $this->file_upload->getSize(),
             'mime_type' => $this->file_upload->getMimeType(),
