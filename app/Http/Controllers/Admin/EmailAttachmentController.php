@@ -36,7 +36,7 @@ class EmailAttachmentController extends Controller
 
         // Khusus video atau file berstatus [IMAP_STREAM]: langsung alirkan dari mail server
         if ($relativePath === '[IMAP_STREAM]') {
-            return $this->streamFromImap($email, $attachment);
+            return $this->streamFromImap($email, $attachment, $request);
         }
 
         if ($relativePath && Storage::disk('local')->exists($relativePath)) {
@@ -54,7 +54,7 @@ class EmailAttachmentController extends Controller
                 $relativePath = $strippedPath;
             } else {
                 // File tidak ditemukan di disk: coba fallback stream langsung dari IMAP
-                return $this->streamFromImap($email, $attachment);
+                return $this->streamFromImap($email, $attachment, $request);
             }
         }
         
@@ -96,7 +96,7 @@ class EmailAttachmentController extends Controller
      * Stream attachment langsung dari mail server IMAP tanpa menyimpan file ke disk server.
      * Menghemat storage hosting & inode untuk file besar seperti video operasional / unboxing kargo.
      */
-    protected function streamFromImap($email, $attachment)
+    protected function streamFromImap($email, $attachment, ?Request $request = null)
     {
         @set_time_limit(300);
 
@@ -155,17 +155,31 @@ class EmailAttachmentController extends Controller
                 abort(404, 'File lampiran tidak ditemukan di dalam email pada mail server.');
             }
 
+            $content = $targetAtt->getContent();
+            $actualSize = strlen($content);
             $cleanFilename = str_replace(['"', "\r", "\n"], '', $attachment->filename);
             $mime = $targetAtt->getMimeType() ?: ($attachment->mime_type ?? 'application/octet-stream');
-            $size = $targetAtt->getSize() ?: $attachment->size;
 
-            return response()->streamDownload(function () use ($targetAtt) {
-                echo $targetAtt->getContent();
-            }, $cleanFilename, [
+            // Sinkronisasi ukuran file riil yang sudah ter-decode (bukan ukuran base64 transfer)
+            if ((int) $attachment->size !== $actualSize) {
+                try {
+                    DB::table('email_attachments')
+                        ->where('id', $attachment->id)
+                        ->update(['size' => $actualSize]);
+                } catch (\Throwable $e) {
+                    // Ignore
+                }
+            }
+
+            $mode = $request ? $request->query('mode', 'attachment') : 'attachment';
+            $dispositionType = ($mode === 'inline') ? 'inline' : 'attachment';
+
+            return response($content, 200, [
                 'Content-Type' => $mime,
-                'Content-Length' => $size,
-                'Content-Disposition' => 'attachment; filename="' . $cleanFilename . '"',
+                'Content-Length' => $actualSize,
+                'Content-Disposition' => $dispositionType . '; filename="' . $cleanFilename . '"',
                 'X-Content-Type-Options' => 'nosniff',
+                'Cache-Control' => 'no-cache, private',
             ]);
         } catch (\Symfony\Component\HttpKernel\Exception\HttpException $e) {
             throw $e;
