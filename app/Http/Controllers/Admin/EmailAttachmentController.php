@@ -5,7 +5,9 @@ namespace App\Http\Controllers\Admin;
 use App\Http\Controllers\Controller;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Log;
 use Illuminate\Http\Request;
+use Webklex\IMAP\Facades\Client;
 
 class EmailAttachmentController extends Controller
 {
@@ -32,21 +34,27 @@ class EmailAttachmentController extends Controller
         $disk = null;
         $relativePath = $attachment->file_path;
 
-        if (Storage::disk('local')->exists($relativePath)) {
+        // Khusus video atau file berstatus [IMAP_STREAM]: langsung alirkan dari mail server
+        if ($relativePath === '[IMAP_STREAM]') {
+            return $this->streamFromImap($email, $attachment);
+        }
+
+        if ($relativePath && Storage::disk('local')->exists($relativePath)) {
             $disk = 'local';
-        } elseif (Storage::disk('public')->exists($relativePath)) {
+        } elseif ($relativePath && Storage::disk('public')->exists($relativePath)) {
             $disk = 'public';
         } else {
             // Also check if stored with 'public/' prefix in path column
-            $strippedPath = preg_replace('#^public/#', '', $relativePath);
-            if (Storage::disk('public')->exists($strippedPath)) {
+            $strippedPath = preg_replace('#^public/#', '', $relativePath ?? '');
+            if ($strippedPath && Storage::disk('public')->exists($strippedPath)) {
                 $disk = 'public';
                 $relativePath = $strippedPath;
-            } elseif (Storage::disk('local')->exists($strippedPath)) {
+            } elseif ($strippedPath && Storage::disk('local')->exists($strippedPath)) {
                 $disk = 'local';
                 $relativePath = $strippedPath;
             } else {
-                abort(404, 'Attachment file not found on disk');
+                // File tidak ditemukan di disk: coba fallback stream langsung dari IMAP
+                return $this->streamFromImap($email, $attachment);
             }
         }
         
@@ -82,6 +90,89 @@ class EmailAttachmentController extends Controller
         return response()->download($fullPath, $cleanFilename, array_merge($headers, [
             'Content-Type' => $detectedMime,
         ]));
+    }
+
+    /**
+     * Stream attachment langsung dari mail server IMAP tanpa menyimpan file ke disk server.
+     * Menghemat storage hosting & inode untuk file besar seperti video operasional / unboxing kargo.
+     */
+    protected function streamFromImap($email, $attachment)
+    {
+        @set_time_limit(300);
+
+        try {
+            $client = Client::account($email->mailbox);
+            if (!$client->isConnected()) {
+                $client->connect();
+            }
+
+            $folders = $client->getFolders();
+            $targetFolder = null;
+            foreach ($folders as $folder) {
+                $name = strtolower($folder->name);
+                if ($name === 'inbox' || str_contains($name, 'fokus') || str_contains($name, 'focused')) {
+                    $targetFolder = $folder;
+                    break;
+                }
+            }
+
+            if (!$targetFolder) {
+                abort(502, 'Folder kotak masuk tidak ditemukan di mail server.');
+            }
+
+            $message = null;
+            try {
+                $result = $targetFolder->messages()->getMessageByUid($email->uid);
+                if ($result && is_object($result)) {
+                    $message = method_exists($result, 'first') ? $result->first() : $result;
+                }
+            } catch (\Throwable $e) {
+                // Fallback pencarian by UID
+            }
+
+            if (!$message) {
+                try {
+                    $col = $targetFolder->messages()->whereUid($email->uid)->get();
+                    $message = $col->first();
+                } catch (\Throwable $e2) {
+                    // Ignore
+                }
+            }
+
+            if (!$message) {
+                abort(404, 'Email tidak ditemukan di mail server (mungkin sudah dihapus dari kotak masuk).');
+            }
+
+            $targetAtt = null;
+            foreach ($message->getAttachments() as $att) {
+                if ($att->getName() === $attachment->filename) {
+                    $targetAtt = $att;
+                    break;
+                }
+            }
+
+            if (!$targetAtt) {
+                abort(404, 'File lampiran tidak ditemukan di dalam email pada mail server.');
+            }
+
+            $cleanFilename = str_replace(['"', "\r", "\n"], '', $attachment->filename);
+            $mime = $targetAtt->getMimeType() ?: ($attachment->mime_type ?? 'application/octet-stream');
+            $size = $targetAtt->getSize() ?: $attachment->size;
+
+            return response()->streamDownload(function () use ($targetAtt) {
+                echo $targetAtt->getContent();
+            }, $cleanFilename, [
+                'Content-Type' => $mime,
+                'Content-Length' => $size,
+                'Content-Disposition' => 'attachment; filename="' . $cleanFilename . '"',
+                'X-Content-Type-Options' => 'nosniff',
+            ]);
+        } catch (\Symfony\Component\HttpKernel\Exception\HttpException $e) {
+            throw $e;
+        } catch (\Throwable $e) {
+            Log::error("Gagal stream lampiran dari IMAP [{$email->mailbox} - UID {$email->uid}]: " . $e->getMessage());
+            abort(502, 'Gagal mengunduh lampiran dari mail server: ' . $e->getMessage());
+        }
     }
 
     /**

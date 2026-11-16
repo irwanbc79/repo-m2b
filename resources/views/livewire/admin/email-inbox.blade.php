@@ -368,12 +368,15 @@
                                     $attId      = data_get($att, 'id', 0);
                                     $attSize    = data_get($att, 'size', 0);
                                     $attPath    = data_get($att, 'file_path');
+                                    $mime       = strtolower(data_get($att, 'mime_type', ''));
                                     $ext        = strtolower(pathinfo($attName, PATHINFO_EXTENSION));
-                                    $isImage    = in_array($ext, ['jpg', 'jpeg', 'png', 'gif', 'webp']);
-                                    $isPdf      = $ext === 'pdf';
-                                    $iconBg     = $isImage ? 'bg-emerald-50 text-emerald-600' : ($isPdf ? 'bg-rose-50 text-rose-600' : 'bg-blue-50 text-blue-600');
+                                    $isImage    = in_array($ext, ['jpg', 'jpeg', 'png', 'gif', 'webp']) || str_starts_with($mime, 'image/');
+                                    $isPdf      = $ext === 'pdf' || $mime === 'application/pdf';
+                                    $isVideo    = in_array($ext, ['mp4', 'mov', 'avi', 'mkv', 'wmv', '3gp', 'webm', 'flv', 'm4v', 'mpeg', 'mpg']) || str_starts_with($mime, 'video/');
+                                    $isImapStream = ($attPath === '[IMAP_STREAM]') || $isVideo;
+                                    $iconBg     = $isImage ? 'bg-emerald-50 text-emerald-600' : ($isPdf ? 'bg-rose-50 text-rose-600' : ($isVideo ? 'bg-purple-50 text-purple-600' : 'bg-blue-50 text-blue-600'));
                                     $isChecked  = in_array($index, $selectedAttachments);
-                                    $fileMissing = $attPath && !\Illuminate\Support\Facades\Storage::disk('public')->exists($attPath) && !\Illuminate\Support\Facades\Storage::disk('local')->exists($attPath);
+                                    $fileMissing = !$isImapStream && $attPath && !\Illuminate\Support\Facades\Storage::disk('public')->exists($attPath) && !\Illuminate\Support\Facades\Storage::disk('local')->exists($attPath);
                                 @endphp
                                 <label class="flex items-center gap-3 bg-white p-3 rounded-xl border-2 cursor-pointer transition group
                                     {{ $fileMissing ? 'border-amber-200 bg-amber-50/30 opacity-70' : ($isChecked ? 'border-blue-400 bg-blue-50/30 shadow-sm' : 'border-gray-200 hover:border-blue-200 hover:shadow-md') }}">
@@ -385,19 +388,37 @@
 
                                     {{-- Icon --}}
                                     <div class="{{ $iconBg }} p-2 rounded-lg shrink-0">
-                                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 21h10a2 2 0 002-2V9.414a1 1 0 00-.293-.707l-5.414-5.414A1 1 0 0012.586 3H7a2 2 0 00-2 2v14a2 2 0 002 2z"></path></svg>
+                                        @if($isVideo)
+                                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 10l4.553-2.276A1 1 0 0121 8.618v6.764a1 1 0 01-1.447.894L15 14M5 18h8a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v8a2 2 0 002 2z"></path></svg>
+                                        @else
+                                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 21h10a2 2 0 002-2V9.414a1 1 0 00-.293-.707l-5.414-5.414A1 1 0 0012.586 3H7a2 2 0 00-2 2v14a2 2 0 002 2z"></path></svg>
+                                        @endif
                                     </div>
 
                                     {{-- Info --}}
                                     <div class="min-w-0 flex-1">
-                                        <p class="text-xs font-bold text-gray-800 truncate">{{ $attName }}</p>
+                                        <div class="flex items-center gap-1.5">
+                                            <p class="text-xs font-bold text-gray-800 truncate">{{ $attName }}</p>
+                                            @if($isVideo)
+                                                <span class="inline-flex items-center px-1.5 py-0.5 rounded text-[9px] font-semibold bg-purple-100 text-purple-700 shrink-0" title="Stream langsung dari server mail, tidak disimpan di disk server">
+                                                    Stream IMAP
+                                                </span>
+                                            @endif
+                                        </div>
                                         <p class="text-[10px] font-bold uppercase tracking-tight {{ $fileMissing ? 'text-amber-500' : 'text-gray-400' }}">
-                                            {{ $fileMissing ? '⚠ File terhapus' : (is_numeric($attSize) ? number_format($attSize / 1024, 1) . ' KB' : $attSize) }}
+                                            @if($fileMissing)
+                                                ⚠ File terhapus
+                                            @else
+                                                {{ is_numeric($attSize) ? number_format($attSize / 1024, 1) . ' KB' : $attSize }}
+                                                @if($isVideo)
+                                                    <span class="text-purple-500 font-normal normal-case ml-1">(Download ke laptop)</span>
+                                                @endif
+                                            @endif
                                         </p>
                                     </div>
 
                                     {{-- Actions --}}
-                                    <div class="flex items-center gap-1 shrink-0" onclick="event.preventDefault()">
+                                    <div class="flex items-center gap-1 shrink-0" onclick="event.stopPropagation()">
                                         @if($isImage || $isPdf)
                                             <button type="button"
                                                     onclick="openPreviewModal('{{ route('admin.inbox.attachment', ['mailbox' => $activeAccount, 'id' => $attId]) . '?mode=inline' }}', '{{ addslashes($attName) }}', '{{ $isImage ? 'image' : 'pdf' }}')"
@@ -406,7 +427,7 @@
                                             </button>
                                         @endif
                                         <a href="{{ route('admin.inbox.attachment', ['mailbox' => $activeAccount, 'id' => $attId]) }}"
-                                           class="p-1.5 text-gray-300 hover:text-blue-600 transition" title="Download">
+                                           class="p-1.5 text-gray-400 hover:text-blue-600 transition" title="Download">
                                             <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"></path></svg>
                                         </a>
                                     </div>

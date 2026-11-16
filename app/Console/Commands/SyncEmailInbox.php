@@ -146,11 +146,30 @@ class SyncEmailInbox extends Command
                     ]);
 
                     $dangerousExtensions = ['php', 'phtml', 'php3', 'php4', 'php5', 'php7', 'php8', 'phar', 'exe', 'sh', 'bat', 'cmd', 'cgi', 'pl', 'py', 'svg', 'html', 'htm', 'shtml', 'htaccess'];
+                    $videoExtensions = ['mp4', 'mov', 'avi', 'mkv', 'wmv', '3gp', 'webm', 'flv', 'm4v', 'mpeg', 'mpg'];
+
                     foreach ($message->getAttachments() as $att) {
                         $filename = $att->getName();
-                        $path = "email_attachments/{$mailbox}/{$uid}";
                         $rawExt = strtolower(pathinfo($filename, PATHINFO_EXTENSION) ?: 'bin');
                         $ext = in_array($rawExt, $dangerousExtensions, true) ? 'bin' : $rawExt;
+                        $mimeType = $att->getMimeType();
+                        $isVideo = in_array($rawExt, $videoExtensions, true) || str_starts_with(strtolower($mimeType ?? ''), 'video/');
+
+                        // Hemat storage server: file video tidak disimpan ke disk server.
+                        // Staf M2B dapat mengunduh langsung on-demand via IMAP streaming.
+                        if ($isVideo) {
+                            DB::table('email_attachments')->insert([
+                                'email_id'   => $emailId,
+                                'filename'   => $filename,
+                                'file_path'  => '[IMAP_STREAM]',
+                                'mime_type'  => $mimeType,
+                                'size'       => $att->getSize(),
+                                'created_at' => now(),
+                            ]);
+                            continue;
+                        }
+
+                        $path = "email_attachments/{$mailbox}/{$uid}";
                         $slug = Str::slug(pathinfo($filename, PATHINFO_FILENAME)) ?: 'attachment';
                         $fullPath = "{$path}/{$slug}_" . Str::random(16) . ".{$ext}";
                         Storage::disk('local')->put($fullPath, $att->getContent());
@@ -159,7 +178,7 @@ class SyncEmailInbox extends Command
                             'email_id' => $emailId,
                             'filename' => $filename,
                             'file_path'=> $fullPath,
-                            'mime_type'=> $att->getMimeType(),
+                            'mime_type'=> $mimeType,
                             'size' => $att->getSize(),
                             'created_at'=> now(),
                         ]);

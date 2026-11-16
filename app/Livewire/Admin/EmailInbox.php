@@ -193,8 +193,18 @@ class EmailInbox extends Component
         
         $this->loadEmails();
         
-        // Auto-select all attachments by default
-        $this->selectedAttachments = array_keys($attachments);
+        // Auto-select all attachments by default KECUALI file video (hemat storage pabean)
+        $this->selectedAttachments = [];
+        $videoExtensions = ['mp4', 'mov', 'avi', 'mkv', 'wmv', '3gp', 'webm', 'flv', 'm4v', 'mpeg', 'mpg'];
+        foreach ($attachments as $idx => $att) {
+            $attFilename = $att['filename'] ?? '';
+            $rawExt = strtolower(pathinfo($attFilename, PATHINFO_EXTENSION) ?: '');
+            $mimeType = strtolower($att['mime_type'] ?? '');
+            $isVideo = in_array($rawExt, $videoExtensions, true) || str_starts_with($mimeType, 'video/');
+            if (!$isVideo) {
+                $this->selectedAttachments[] = $idx;
+            }
+        }
 
         // Cek apakah ada attachment yang filenya sudah hilang dari disk
         $this->checkMissingAttachments();
@@ -207,6 +217,10 @@ class EmailInbox extends Component
         if (!$this->selectedEmail) return;
         foreach ($this->selectedEmail['attachments'] as $att) {
             $path = $att['file_path'] ?? null;
+            // File video sengaja berstatus [IMAP_STREAM] (on-demand streaming), jangan anggap missing
+            if ($path === '[IMAP_STREAM]') {
+                continue;
+            }
             if ($path && !Storage::disk('public')->exists($path) && !Storage::disk('local')->exists($path)) {
                 $this->hasMissingAttachments = true;
                 return;
@@ -393,11 +407,38 @@ class EmailInbox extends Component
             $restored = 0;
 
             $dangerousExtensions = ['php', 'phtml', 'php3', 'php4', 'php5', 'php7', 'php8', 'phar', 'exe', 'sh', 'bat', 'cmd', 'cgi', 'pl', 'py', 'svg', 'html', 'htm', 'shtml', 'htaccess'];
+            $videoExtensions = ['mp4', 'mov', 'avi', 'mkv', 'wmv', '3gp', 'webm', 'flv', 'm4v', 'mpeg', 'mpg'];
+
             foreach ($message->getAttachments() as $att) {
                 $filename = $att->getName();
-                $slug     = Str::slug(pathinfo($filename, PATHINFO_FILENAME)) ?: 'attachment';
                 $rawExt   = strtolower(pathinfo($filename, PATHINFO_EXTENSION) ?: 'bin');
                 $ext      = in_array($rawExt, $dangerousExtensions, true) ? 'bin' : $rawExt;
+                $mimeType = $att->getMimeType();
+                $isVideo  = in_array($rawExt, $videoExtensions, true) || str_starts_with(strtolower($mimeType ?? ''), 'video/');
+
+                if ($isVideo) {
+                    $record = DB::table('email_attachments')
+                        ->where('email_id', $email->id)
+                        ->where('filename', $filename)
+                        ->first();
+
+                    if ($record) {
+                        DB::table('email_attachments')->where('id', $record->id)->update(['file_path' => '[IMAP_STREAM]']);
+                    } else {
+                        DB::table('email_attachments')->insert([
+                            'email_id'   => $email->id,
+                            'filename'   => $filename,
+                            'file_path'  => '[IMAP_STREAM]',
+                            'mime_type'  => $mimeType,
+                            'size'       => $att->getSize(),
+                            'created_at' => now(),
+                        ]);
+                    }
+                    $restored++;
+                    continue;
+                }
+
+                $slug     = Str::slug(pathinfo($filename, PATHINFO_FILENAME)) ?: 'attachment';
                 $newPath  = "email_attachments/{$mailbox}/{$uid}/{$slug}_" . Str::random(16) . ".{$ext}";
 
                 Storage::disk('local')->put($newPath, $att->getContent());
@@ -415,7 +456,7 @@ class EmailInbox extends Component
                         'email_id'  => $email->id,
                         'filename'  => $filename,
                         'file_path' => $newPath,
-                        'mime_type' => $att->getMimeType(),
+                        'mime_type' => $mimeType,
                         'size'      => $att->getSize(),
                         'created_at' => now(),
                     ]);
@@ -697,6 +738,11 @@ class EmailInbox extends Component
 
                 $safeName = pathinfo($filename, PATHINFO_FILENAME);
                 $destPath = 'documents/public/' . $safeName . '_' . uniqid() . '.' . $ext;
+
+                if ($sourcePath === '[IMAP_STREAM]') {
+                    $skippedFiles[] = $filename . ' (Video diunduh langsung via email, tidak disalin ke berkas shipment)';
+                    continue;
+                }
 
                 if ($sourcePath && Storage::disk('public')->exists($sourcePath)) {
                     Storage::disk('public')->copy($sourcePath, $destPath);
