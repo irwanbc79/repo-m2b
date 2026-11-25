@@ -60,6 +60,25 @@ class Phase1SecurityHardeningTest extends TestCase
             ->test(CustomerManagement::class)
             ->call('delete', $customer->id)
             ->assertForbidden();
+
+        // Kasir murni tetap ditolak di CustomerManagement & Reports
+        $pureCashier = User::factory()->create(['role' => 'cashier', 'roles' => ['cashier']]);
+        Livewire::actingAs($pureCashier)
+            ->test(CustomerManagement::class)
+            ->assertForbidden();
+        $this->actingAs($pureCashier);
+        $this->assertFalse((new Reports())->canAccess());
+
+        // Staf multi-role yang merangkap cashier (seperti manager/staff_sales + cashier) tetap boleh akses
+        $multiRoleStaff = User::factory()->create([
+            'role' => 'staff_sales',
+            'roles' => ['staff', 'finance', 'staff_sales', 'staff_accounting', 'staff_operations', 'cashier'],
+        ]);
+        Livewire::actingAs($multiRoleStaff)
+            ->test(CustomerManagement::class)
+            ->assertOk();
+        $this->actingAs($multiRoleStaff);
+        $this->assertTrue((new Reports())->canAccess());
     }
 
     public function test_kritis_02_simple_invoice_customer_search_and_document_routes_enforce_rbac(): void

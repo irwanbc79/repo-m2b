@@ -30,7 +30,7 @@ class Reports extends Component
         if (!$user) {
             return false;
         }
-        if ($user->hasRole(['konsultan_pajak', 'cashier'])) {
+        if ($user->hasRole(['konsultan_pajak'])) {
             return false;
         }
 

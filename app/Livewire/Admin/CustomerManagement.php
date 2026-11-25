@@ -141,7 +141,7 @@ class CustomerManagement extends Component
         if (!$user) {
             return false;
         }
-        if ($user->hasRole(['auditor', 'konsultan_pajak', 'cashier'])) {
+        if ($user->hasRole(['auditor', 'konsultan_pajak'])) {
             return false;
         }
 
@@ -169,7 +169,7 @@ class CustomerManagement extends Component
         if (!$user) {
             return false;
         }
-        if ($user->hasRole(['auditor', 'konsultan_pajak', 'cashier'])) {
+        if ($user->hasRole(['auditor', 'konsultan_pajak'])) {
             return false;
         }
 
@@ -195,7 +195,7 @@ class CustomerManagement extends Component
         if (!$user) {
             return false;
         }
-        if ($user->hasRole(['auditor', 'konsultan_pajak', 'cashier'])) {
+        if ($user->hasRole(['auditor', 'konsultan_pajak'])) {
             return false;
         }
 
