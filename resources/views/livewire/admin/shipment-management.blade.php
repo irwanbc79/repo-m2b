@@ -410,6 +410,11 @@
                                 <p class="font-semibold text-gray-800 whitespace-nowrap">{{ $refRest }}</p>
                             </div>
                             <p class="text-xs text-gray-400 mt-1">{{ $shipment->created_at->format('d M Y') }}</p>
+                            @if($shipment->hasSpecialCustomsRegime())
+                                <span class="inline-block mt-1 px-1.5 py-0.5 text-[9px] font-bold rounded border {{ $shipment->getCustomsRegimeBadgeClass() }}">
+                                    {{ $shipment->getCustomsRegimeShortLabel() }}
+                                </span>
+                            @endif
                         </td>
                         <td class="px-4 py-3">
                             <div class="flex items-center gap-1.5">

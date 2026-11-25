@@ -3451,6 +3451,16 @@
     border-color: var(--color-indigo-200);
   }
 
+  .border-indigo-200\/80 {
+    border-color: #c7d2ffcc;
+  }
+
+  @supports (color: color-mix(in lab, red, red)) {
+    .border-indigo-200\/80 {
+      border-color: color-mix(in oklab, var(--color-indigo-200) 80%, transparent);
+    }
+  }
+
   .border-indigo-300 {
     border-color: var(--color-indigo-300);
   }
@@ -4829,6 +4839,16 @@
     }
   }
 
+  .bg-indigo-50\/60 {
+    background-color: #eef2ff99;
+  }
+
+  @supports (color: color-mix(in lab, red, red)) {
+    .bg-indigo-50\/60 {
+      background-color: color-mix(in oklab, var(--color-indigo-50) 60%, transparent);
+    }
+  }
+
   .bg-indigo-50\/80 {
     background-color: #eef2ffcc;
   }
@@ -4883,6 +4903,10 @@
 
   .bg-indigo-600 {
     background-color: var(--color-indigo-600);
+  }
+
+  .bg-indigo-700 {
+    background-color: var(--color-indigo-700);
   }
 
   .bg-indigo-950 {
@@ -7472,6 +7496,10 @@
     color: var(--color-rose-100);
   }
 
+  .text-rose-300 {
+    color: var(--color-rose-300);
+  }
+
   .text-rose-400 {
     color: var(--color-rose-400);
   }
@@ -7498,6 +7526,10 @@
 
   .text-rose-950 {
     color: var(--color-rose-950);
+  }
+
+  .text-sky-300 {
+    color: var(--color-sky-300);
   }
 
   .text-sky-600 {
@@ -8699,6 +8731,10 @@
       color: var(--color-white);
     }
 
+    .group-hover\:underline:is(:where(.group):hover *) {
+      text-decoration-line: underline;
+    }
+
     .group-hover\:opacity-0:is(:where(.group):hover *) {
       opacity: 0;
     }
@@ -9562,6 +9598,10 @@
 
     .hover\:bg-indigo-700:hover {
       background-color: var(--color-indigo-700);
+    }
+
+    .hover\:bg-indigo-800:hover {
+      background-color: var(--color-indigo-800);
     }
 
     .hover\:bg-indigo-900:hover {
@@ -10510,6 +10550,10 @@
 
   .focus\:ring-red-500:focus {
     --tw-ring-color: var(--color-red-500);
+  }
+
+  .focus\:ring-rose-500:focus {
+    --tw-ring-color: var(--color-rose-500);
   }
 
   .focus\:ring-violet-500:focus {

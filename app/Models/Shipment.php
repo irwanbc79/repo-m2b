@@ -15,12 +15,14 @@ class Shipment extends Model
     protected $fillable = [
         'customer_id',
         'quotation_id',
+        'parent_shipment_id',
         'awb_number',
         'bl_number',
         'shipment_type',
         'container_mode',
         'container_info',
         'service_type',
+        'customs_regime',
         'status',
         'lane_status',
         'origin',
@@ -37,6 +39,9 @@ class Shipment extends Model
         'estimated_arrival',
         'actual_departure',
         'actual_arrival',
+        'customs_deadline_at',
+        'customs_reference_number',
+        'customs_regime_notes',
         'notes',
         'cancelled_at',
         'cancelled_by',
@@ -53,6 +58,7 @@ class Shipment extends Model
         'estimated_arrival' => 'datetime',
         'actual_departure' => 'datetime',
         'actual_arrival' => 'datetime',
+        'customs_deadline_at' => 'date',
         'weight' => 'decimal:2',
         'volume' => 'decimal:2',
         'pieces' => 'integer',
@@ -67,6 +73,18 @@ class Shipment extends Model
     const STATUS_COMPLETED = 'completed';
     const STATUS_CANCELLED = 'cancelled';
     const STATUS_CANCEL = 'cancelled'; // Alias untuk backward compatibility
+    const STATUS_RE_EXPORT = 're_export';
+
+    // =========================================
+    // CUSTOMS REGIME CONSTANTS (LINKED DOSSIER)
+    // =========================================
+    const REGIME_REGULAR = 'regular';
+    const REGIME_TEMPORARY_IMPORT = 'temporary_import';
+    const REGIME_TEMPORARY_EXPORT = 'temporary_export';
+    const REGIME_RE_EXPORT_REJECTION = 're_export_rejection';
+    const REGIME_RE_EXPORT_TEMP = 're_export_temp';
+    const REGIME_RE_IMPORT_RETURN = 're_import_return';
+    const REGIME_RE_IMPORT_TEMP = 're_import_temp';
 
     // =========================================
     // STATUS PER SERVICE TYPE
@@ -819,5 +837,159 @@ class Shipment extends Model
         }
 
         return now()->greaterThan($this->estimated_arrival);
+    }
+
+    // =========================================
+    // LINKED SHIPMENT & CUSTOMS REGIME (DOSSIER)
+    // =========================================
+
+    public function parentShipment(): BelongsTo
+    {
+        return $this->belongsTo(self::class, 'parent_shipment_id');
+    }
+
+    public function childShipments(): HasMany
+    {
+        return $this->hasMany(self::class, 'parent_shipment_id')->orderBy('created_at', 'desc');
+    }
+
+    public static function getCustomsRegimes(): array
+    {
+        return [
+            self::REGIME_REGULAR             => 'Reguler (Impor / Ekspor Biasa)',
+            self::REGIME_TEMPORARY_IMPORT    => 'Impor Sementara',
+            self::REGIME_TEMPORARY_EXPORT    => 'Ekspor Sementara',
+            self::REGIME_RE_EXPORT_REJECTION => 'Re-Ekspor (Penolakan / Lartas)',
+            self::REGIME_RE_EXPORT_TEMP      => 'Re-Ekspor (Penyelesaian Impor Sementara)',
+            self::REGIME_RE_IMPORT_RETURN    => 'Re-Impor (Barang Retur)',
+            self::REGIME_RE_IMPORT_TEMP      => 'Re-Impor (Penyelesaian Ekspor Sementara)',
+        ];
+    }
+
+    public static function getFollowUpRegimesForService(?string $parentServiceType): array
+    {
+        $service = strtolower((string) $parentServiceType);
+
+        if ($service === 'export') {
+            return [
+                self::REGIME_RE_IMPORT_RETURN => [
+                    'label' => 'Re-Impor (Barang Retur / Ditolak Buyer)',
+                    'target_service' => 'import',
+                    'hint' => 'Barang ekspor kembali ke Indonesia (maks. 2 tahun dari PEB untuk pembebasan BM/PDRI).',
+                ],
+                self::REGIME_RE_IMPORT_TEMP => [
+                    'label' => 'Re-Impor (Penyelesaian Ekspor Sementara)',
+                    'target_service' => 'import',
+                    'hint' => 'Barang pameran/perbaikan dari ekspor sementara masuk kembali ke Indonesia.',
+                ],
+            ];
+        }
+
+        return [
+            self::REGIME_RE_EXPORT_REJECTION => [
+                'label' => 'Re-Ekspor (Penolakan Bea Cukai / Lartas)',
+                'target_service' => 'export',
+                'hint' => 'Barang impor dilarang/dibatasi atau salah kirim, diputuskan re-ekspor via BC 3.0.',
+            ],
+            self::REGIME_RE_EXPORT_TEMP => [
+                'label' => 'Re-Ekspor (Penyelesaian Impor Sementara)',
+                'target_service' => 'export',
+                'hint' => 'Pengeluaran kembali barang impor sementara sebelum batas waktu izin BC.',
+            ],
+        ];
+    }
+
+    public function getCustomsRegimeLabel(): string
+    {
+        $regime = $this->customs_regime ?: self::REGIME_REGULAR;
+        return self::getCustomsRegimes()[$regime] ?? 'Reguler';
+    }
+
+    public function getCustomsRegimeShortLabel(): string
+    {
+        return match ($this->customs_regime ?: self::REGIME_REGULAR) {
+            self::REGIME_TEMPORARY_IMPORT    => 'Impor Sementara',
+            self::REGIME_TEMPORARY_EXPORT    => 'Ekspor Sementara',
+            self::REGIME_RE_EXPORT_REJECTION => 'Re-Ekspor (Lartas/Tolak)',
+            self::REGIME_RE_EXPORT_TEMP      => 'Re-Ekspor (Impor Sementara)',
+            self::REGIME_RE_IMPORT_RETURN    => 'Re-Impor (Retur)',
+            self::REGIME_RE_IMPORT_TEMP      => 'Re-Impor (Ekspor Sementara)',
+            default                          => 'Reguler',
+        };
+    }
+
+    public function getCustomsRegimeBadgeClass(): string
+    {
+        return match ($this->customs_regime ?: self::REGIME_REGULAR) {
+            self::REGIME_TEMPORARY_IMPORT,
+            self::REGIME_TEMPORARY_EXPORT    => 'bg-indigo-100 text-indigo-800 border-indigo-200',
+            self::REGIME_RE_EXPORT_REJECTION => 'bg-rose-100 text-rose-800 border-rose-200',
+            self::REGIME_RE_EXPORT_TEMP      => 'bg-amber-100 text-amber-800 border-amber-200',
+            self::REGIME_RE_IMPORT_RETURN,
+            self::REGIME_RE_IMPORT_TEMP      => 'bg-teal-100 text-teal-800 border-teal-200',
+            default                          => 'bg-slate-100 text-slate-700 border-slate-200',
+        };
+    }
+
+    public function hasSpecialCustomsRegime(): bool
+    {
+        return !empty($this->customs_regime) && $this->customs_regime !== self::REGIME_REGULAR;
+    }
+
+    public function isCustomsDeadlineOverdue(): bool
+    {
+        if (!$this->customs_deadline_at) {
+            return false;
+        }
+        if (in_array($this->status, [self::STATUS_COMPLETED, self::STATUS_CANCELLED], true)) {
+            return false;
+        }
+
+        return $this->customs_deadline_at->isPast() && !$this->customs_deadline_at->isToday();
+    }
+
+    public function isCustomsDeadlineApproaching(int $days = 30): bool
+    {
+        if (!$this->customs_deadline_at || $this->isCustomsDeadlineOverdue()) {
+            return false;
+        }
+        if (in_array($this->status, [self::STATUS_COMPLETED, self::STATUS_CANCELLED], true)) {
+            return false;
+        }
+
+        return now()->startOfDay()->diffInDays($this->customs_deadline_at->startOfDay(), false) <= $days;
+    }
+
+    /**
+     * Ambil seluruh shipment terkait dalam satu dossier (induk + anak + saudara jika ada), tidak termasuk diri sendiri.
+     */
+    public function getLinkedShipments()
+    {
+        $rootId = $this->parent_shipment_id ?: $this->id;
+
+        return self::with(['documents'])
+            ->where(function ($q) use ($rootId) {
+                $q->where('id', $rootId)
+                  ->orWhere('parent_shipment_id', $rootId);
+            })
+            ->where('id', '!=', $this->id)
+            ->orderBy('created_at', 'asc')
+            ->get();
+    }
+
+    /**
+     * Daftar ID shipment yang berada dalam satu dossier (termasuk diri sendiri).
+     */
+    public function getDossierShipmentIds(): array
+    {
+        $rootId = $this->parent_shipment_id ?: $this->id;
+
+        return self::where(function ($q) use ($rootId) {
+                $q->where('id', $rootId)
+                  ->orWhere('parent_shipment_id', $rootId);
+            })
+            ->pluck('id')
+            ->map(fn ($id) => (int) $id)
+            ->all();
     }
 }

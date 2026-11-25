@@ -115,7 +115,14 @@
     <div class="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
         <div class="bg-m2b-primary p-6 text-white flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
             <div>
-                <h1 class="text-2xl font-black tracking-tight">{{ $shipment->awb_number }}</h1>
+                <div class="flex flex-wrap items-center gap-2">
+                    <h1 class="text-2xl font-black tracking-tight">{{ $shipment->awb_number }}</h1>
+                    @if($shipment->hasSpecialCustomsRegime())
+                        <span class="px-2.5 py-0.5 rounded-full text-[11px] font-bold border {{ $shipment->getCustomsRegimeBadgeClass() }}">
+                            {{ $shipment->getCustomsRegimeShortLabel() }}
+                        </span>
+                    @endif
+                </div>
                 <p class="text-blue-200 text-sm mt-1 flex items-center gap-2">
                     <span class="font-bold">{{ $shipment->origin }}</span>
                     <svg class="w-4 h-4 opacity-70" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14 5l7 7m0 0l-7 7m7-7H3"></path></svg>
@@ -268,6 +275,60 @@
                     </div>
                 @endif
             </div>
+
+            {{-- BERKAS & ARSIP DOKUMEN TERKAIT (RE-EKSPOR / RE-IMPOR) --}}
+            @if($this->linkedShipments->isNotEmpty())
+            <div class="bg-white rounded-xl shadow-sm border border-indigo-200 p-6 mt-6">
+                <div class="flex items-center justify-between gap-2 mb-4">
+                    <h3 class="font-bold text-indigo-950 flex items-center gap-2">
+                        <svg class="w-5 h-5 text-indigo-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13.828 10.172a4 4 0 00-5.656 0l-4 4a4 4 0 105.656 5.656l1.102-1.101m-.758-4.899a4 4 0 005.656 0l4-4a4 4 0 00-5.656-5.656l-1.1 1.1"></path></svg>
+                        Berkas &amp; Arsip Terkait
+                    </h3>
+                    <span class="text-[11px] font-semibold text-indigo-700 bg-indigo-50 px-2.5 py-0.5 rounded-full">1 Rangkaian Barang</span>
+                </div>
+
+                <div class="space-y-4">
+                    @foreach($this->linkedShipments as $linked)
+                        @php $linkedPublicDocs = $linked->documents->where('is_internal', false); @endphp
+                        <div class="border border-slate-200 rounded-lg overflow-hidden">
+                            <div class="bg-slate-50 px-4 py-2.5 border-b border-slate-200 flex items-center justify-between gap-2 flex-wrap">
+                                <div class="flex items-center gap-2 flex-wrap">
+                                    <span class="text-[10px] font-black uppercase px-1.5 py-0.5 rounded {{ $linked->id === $shipment->parent_shipment_id ? 'bg-slate-800 text-white' : 'bg-indigo-100 text-indigo-800' }}">
+                                        {{ $linked->id === $shipment->parent_shipment_id ? 'Kiriman Asal' : 'Kiriman Lanjutan' }}
+                                    </span>
+                                    <a href="{{ route('customer.shipment.show', $linked->id) }}" class="font-mono font-bold text-xs text-m2b-primary hover:underline">#{{ $linked->awb_number }}</a>
+                                    <span class="text-[10px] font-bold px-2 py-0.5 rounded-full border {{ $linked->getCustomsRegimeBadgeClass() }}">{{ $linked->getCustomsRegimeShortLabel() }}</span>
+                                </div>
+                                <a href="{{ route('customer.shipment.show', $linked->id) }}" class="text-xs font-bold text-indigo-700 hover:underline">Lihat Detail →</a>
+                            </div>
+
+                            @if($linkedPublicDocs->isNotEmpty())
+                                <div class="p-3 grid grid-cols-1 md:grid-cols-2 gap-2.5">
+                                    @foreach($linkedPublicDocs as $lDoc)
+                                        <div class="flex items-center justify-between gap-2 p-2.5 bg-white border border-slate-100 rounded-lg hover:bg-slate-50 transition">
+                                            <div class="min-w-0">
+                                                <p class="text-xs font-bold text-slate-800 truncate">{{ $lDoc->description }}</p>
+                                                <p class="text-[10px] text-slate-400 truncate">{{ $lDoc->filename }}</p>
+                                            </div>
+                                            <div class="flex items-center gap-1 shrink-0">
+                                                <button wire:click="viewLinkedDocument({{ $lDoc->id }})" title="Lihat Dokumen" class="p-1.5 text-blue-600 hover:bg-blue-100 rounded">
+                                                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"></path><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"></path></svg>
+                                                </button>
+                                                <a href="{{ route('document.download', $lDoc->id) }}" download title="Download" class="p-1.5 text-green-600 hover:bg-green-100 rounded">
+                                                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"></path></svg>
+                                                </a>
+                                            </div>
+                                        </div>
+                                    @endforeach
+                                </div>
+                            @else
+                                <p class="px-4 py-3 text-xs text-slate-400 italic">Belum ada dokumen publik pada kiriman terkait ini.</p>
+                            @endif
+                        </div>
+                    @endforeach
+                </div>
+            </div>
+            @endif
         </div>
 
         {{-- KOLOM KANAN: FORM UPLOAD (FITUR BARU) --}}

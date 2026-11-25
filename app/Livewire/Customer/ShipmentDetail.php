@@ -182,6 +182,37 @@ class ShipmentDetail extends Component
         $this->showDocPreview = true;
     }
 
+    /**
+     * Daftar shipment terkait dalam satu dossier milik customer yang sama.
+     */
+    public function getLinkedShipmentsProperty()
+    {
+        return $this->shipment->getLinkedShipments()
+            ->filter(fn ($s) => (int) $s->customer_id === (int) $this->shipment->customer_id)
+            ->values();
+    }
+
+    /**
+     * Preview dokumen publik dari shipment terkait milik customer yang sama.
+     */
+    public function viewLinkedDocument($docId)
+    {
+        $this->ensureAuthorizedForShipment();
+        $allowedShipmentIds = $this->linkedShipments->pluck('id')->all();
+        abort_if(empty($allowedShipmentIds), 403, 'Akses ditolak.');
+
+        $doc = Document::whereKey($docId)
+            ->whereIn('shipment_id', $allowedShipmentIds)
+            ->where('is_internal', false)
+            ->first();
+        abort_if(!$doc, 404, 'Dokumen tidak ditemukan.');
+
+        $this->previewDoc = $doc;
+        $this->allPublicDocs = collect([$this->previewDoc]);
+        $this->currentDocIndex = 0;
+        $this->showDocPreview = true;
+    }
+
     public function nextDocument()
     {
         if ($this->currentDocIndex < $this->allPublicDocs->count() - 1) {

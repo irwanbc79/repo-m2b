@@ -8,6 +8,8 @@ use App\Models\Shipment;
 use App\Models\Document;
 use App\Models\ActivityLog;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Schema;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Facades\Mail;
 use Illuminate\Support\Facades\Cache;
@@ -65,6 +67,29 @@ class ShipmentDetail extends Component
     public $ref_keterangan = '';
     public $ref_doc_types = [];
 
+    // Linked Shipment / Re-Ekspor / Re-Impor (Dossier Terpadu)
+    public $showFollowUpModal = false;
+    public $followUpRegime = '';
+    public $followUpAwb = '';
+    public $followUpOrigin = '';
+    public $followUpDestination = '';
+    public $followUpReference = '';
+    public $followUpDeadline = '';
+    public $followUpPieces = null;
+    public $followUpWeight = null;
+    public $followUpVolume = null;
+    public $followUpNotes = '';
+    public $markParentReExport = false;
+    public $createdFollowUpId = null;
+    public $createdFollowUpAwb = null;
+
+    // Modal Rezim Kepabeanan & Tenggat
+    public $showRegimeModal = false;
+    public $regimeType = 'regular';
+    public $regimeDeadline = '';
+    public $regimeReference = '';
+    public $regimeNotes = '';
+
     public function canAccess(): bool
     {
         $user = Auth::user();
@@ -108,6 +133,8 @@ class ShipmentDetail extends Component
         $this->shipment = Shipment::with([
             'customer.user',
             'documents',
+            'parentShipment.documents',
+            'childShipments.documents',
             'etaRevisions.creator',
             'etaRevisions.sourceDocument',
         ])->findOrFail($id);
@@ -785,6 +812,209 @@ class ShipmentDetail extends Component
         $this->allPublicDocs = collect();
         $this->currentDocIndex = 0;
         $this->showDocPreview = true;
+    }
+
+    /**
+     * Preview dokumen dari shipment terkait (induk / lanjutan) dalam satu dossier.
+     */
+    public function viewLinkedDocument($docId)
+    {
+        $dossierIds = $this->shipment->getDossierShipmentIds();
+        $this->previewDoc = Document::whereKey($docId)
+            ->whereIn('shipment_id', $dossierIds)
+            ->firstOrFail();
+        $this->allPublicDocs = collect([$this->previewDoc]);
+        $this->currentDocIndex = 0;
+        $this->showDocPreview = true;
+    }
+
+    // ===================================
+    // LINKED SHIPMENT & CUSTOMS REGIME (DOSSIER)
+    // ===================================
+
+    public function getLinkedShipmentsProperty()
+    {
+        return $this->shipment->getLinkedShipments();
+    }
+
+    public function getFollowUpOptionsProperty(): array
+    {
+        return Shipment::getFollowUpRegimesForService($this->shipment->service_type);
+    }
+
+    public function openRegimeModal(): void
+    {
+        abort_unless($this->canManage(), 403, 'Anda tidak memiliki izin mengubah rezim kepabeanan.');
+        $this->resetValidation();
+        $this->regimeType = $this->shipment->customs_regime ?: Shipment::REGIME_REGULAR;
+        $this->regimeDeadline = $this->shipment->customs_deadline_at?->format('Y-m-d') ?? '';
+        $this->regimeReference = $this->shipment->customs_reference_number ?? '';
+        $this->regimeNotes = $this->shipment->customs_regime_notes ?? '';
+        $this->showRegimeModal = true;
+    }
+
+    public function saveRegime(): void
+    {
+        abort_unless($this->canManage(), 403, 'Anda tidak memiliki izin mengubah rezim kepabeanan.');
+        $allowedRegimes = array_keys(Shipment::getCustomsRegimes());
+
+        $this->validate([
+            'regimeType'      => 'required|in:' . implode(',', $allowedRegimes),
+            'regimeDeadline'  => 'nullable|date',
+            'regimeReference' => 'nullable|string|max:120',
+            'regimeNotes'     => 'nullable|string|max:1000',
+        ]);
+
+        $this->shipment->update([
+            'customs_regime'           => $this->regimeType,
+            'customs_deadline_at'      => $this->regimeDeadline ?: null,
+            'customs_reference_number' => $this->regimeReference ? trim($this->regimeReference) : null,
+            'customs_regime_notes'     => $this->regimeNotes ? trim($this->regimeNotes) : null,
+        ]);
+
+        ActivityLog::record(
+            'Shipment',
+            'UPDATE REZIM KEPABEANAN',
+            $this->shipment->awb_number,
+            'Rezim: ' . $this->shipment->getCustomsRegimeLabel()
+                . ($this->regimeDeadline ? ' | Tenggat: ' . $this->regimeDeadline : '')
+                . ($this->regimeReference ? ' | Ref: ' . $this->regimeReference : '')
+        );
+
+        $this->showRegimeModal = false;
+        $this->shipment->refresh();
+        session()->flash('message', 'Rezim kepabeanan & tenggat berhasil diperbarui.');
+    }
+
+    public function openFollowUpModal(): void
+    {
+        abort_unless($this->canManage(), 403, 'Anda tidak memiliki izin membuat shipment lanjutan.');
+        $this->resetValidation();
+
+        $service = strtolower((string) $this->shipment->service_type);
+        $currentRegime = $this->shipment->customs_regime ?: Shipment::REGIME_REGULAR;
+
+        if ($service === 'export') {
+            $this->followUpRegime = $currentRegime === Shipment::REGIME_TEMPORARY_EXPORT
+                ? Shipment::REGIME_RE_IMPORT_TEMP
+                : Shipment::REGIME_RE_IMPORT_RETURN;
+            $suffix = 'RI';
+            $this->markParentReExport = false;
+        } else {
+            $this->followUpRegime = $currentRegime === Shipment::REGIME_TEMPORARY_IMPORT
+                ? Shipment::REGIME_RE_EXPORT_TEMP
+                : Shipment::REGIME_RE_EXPORT_REJECTION;
+            $suffix = 'RE';
+            $this->markParentReExport = ($this->followUpRegime === Shipment::REGIME_RE_EXPORT_REJECTION);
+        }
+
+        // Generate saran nomor referensi unik yang mudah dikenali staf
+        $seq = $this->shipment->childShipments()->count() + 1;
+        $baseAwb = trim((string) $this->shipment->awb_number);
+        $candidate = $baseAwb . '-' . $suffix . ($seq > 1 ? $seq : '');
+        while (Shipment::where('awb_number', $candidate)->exists()) {
+            $seq++;
+            $candidate = $baseAwb . '-' . $suffix . $seq;
+        }
+
+        $this->followUpAwb = $candidate;
+        $this->followUpOrigin = (string) ($this->shipment->destination ?? '');
+        $this->followUpDestination = (string) ($this->shipment->origin ?? '');
+        $this->followUpReference = '';
+        $this->followUpDeadline = '';
+        $this->followUpPieces = $this->shipment->pieces;
+        $this->followUpWeight = $this->shipment->weight;
+        $this->followUpVolume = $this->shipment->volume;
+        $this->followUpNotes = 'Tindak lanjut dari shipment asal #' . $this->shipment->awb_number;
+        $this->showFollowUpModal = true;
+    }
+
+    public function createFollowUpShipment(): void
+    {
+        abort_unless($this->canManage(), 403, 'Anda tidak memiliki izin membuat shipment lanjutan.');
+
+        $options = $this->followUpOptions;
+        $allowedFollowUps = array_keys($options);
+
+        $this->validate([
+            'followUpRegime'      => 'required|in:' . implode(',', $allowedFollowUps),
+            'followUpAwb'         => 'required|string|max:100|unique:shipments,awb_number',
+            'followUpOrigin'      => 'required|string|max:255',
+            'followUpDestination' => 'required|string|max:255',
+            'followUpReference'   => 'nullable|string|max:120',
+            'followUpDeadline'    => 'nullable|date',
+            'followUpPieces'      => 'nullable|integer|min:0|max:1000000',
+            'followUpWeight'      => 'nullable|numeric|min:0|max:10000000',
+            'followUpVolume'      => 'nullable|numeric|min:0|max:100000',
+            'followUpNotes'       => 'nullable|string|max:2000',
+        ], [
+            'followUpAwb.unique' => 'Nomor AWB / Referensi ini sudah digunakan shipment lain.',
+        ]);
+
+        $targetService = $options[$this->followUpRegime]['target_service'] ?? 'export';
+        $rootId = $this->shipment->parent_shipment_id ?: $this->shipment->id;
+
+        $child = DB::transaction(function () use ($targetService, $rootId) {
+            $payload = [
+                'customer_id'              => $this->shipment->customer_id,
+                'parent_shipment_id'       => $rootId,
+                'awb_number'               => trim($this->followUpAwb),
+                'shipment_type'            => $this->shipment->shipment_type ?: 'sea',
+                'service_type'             => $targetService,
+                'customs_regime'           => $this->followUpRegime,
+                'status'                   => Shipment::STATUS_PENDING,
+                'origin'                   => trim($this->followUpOrigin),
+                'destination'              => trim($this->followUpDestination),
+                'shipper_name'             => $this->shipment->consignee_name,
+                'consignee_name'           => $this->shipment->shipper_name,
+                'weight'                   => $this->followUpWeight !== '' ? $this->followUpWeight : null,
+                'volume'                   => $this->followUpVolume !== '' ? $this->followUpVolume : null,
+                'pieces'                   => $this->followUpPieces !== '' ? $this->followUpPieces : null,
+                'commodity'                => $this->shipment->commodity,
+                'hs_code'                  => $this->shipment->hs_code,
+                'customs_deadline_at'      => $this->followUpDeadline ?: null,
+                'customs_reference_number' => $this->followUpReference ? trim($this->followUpReference) : null,
+                'customs_regime_notes'     => $this->followUpNotes ? trim($this->followUpNotes) : null,
+                'notes'                    => $this->followUpNotes ? trim($this->followUpNotes) : null,
+            ];
+
+            foreach (['container_mode', 'container_info', 'package_type'] as $optionalCol) {
+                if (Schema::hasColumn('shipments', $optionalCol)) {
+                    $payload[$optionalCol] = $this->shipment->{$optionalCol};
+                }
+            }
+
+            $newShipment = Shipment::create($payload);
+
+            if ($this->markParentReExport && strtolower((string) $this->shipment->service_type) === 'import') {
+                $this->shipment->update([
+                    'status' => Shipment::STATUS_RE_EXPORT,
+                ]);
+            }
+
+            return $newShipment;
+        });
+
+        try {
+            app(\App\Services\DocumentChecklistService::class)->buildForShipment($child);
+        } catch (\Throwable $e) {
+            \Log::warning('buildForShipment (follow-up) gagal: ' . $e->getMessage());
+        }
+
+        ActivityLog::record(
+            'Shipment',
+            'BUAT SHIPMENT LANJUTAN',
+            $child->awb_number,
+            'Membuat ' . $child->getCustomsRegimeLabel() . ' tertaut ke shipment asal #' . $this->shipment->awb_number
+        );
+
+        $this->createdFollowUpId = $child->id;
+        $this->createdFollowUpAwb = $child->awb_number;
+        $this->showFollowUpModal = false;
+        $this->shipment->load(['parentShipment.documents', 'childShipments.documents']);
+        $this->shipment->refresh();
+
+        session()->flash('message', 'Shipment lanjutan #' . $child->awb_number . ' (' . $child->getCustomsRegimeShortLabel() . ') berhasil dibuat dan tertaut ke berkas ini.');
     }
 
     public function nextDocument()

@@ -107,10 +107,32 @@
 
     {{-- KARTU UTAMA --}}
     <div class="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
-        <div class="bg-slate-900 p-6 text-white flex justify-between items-center">
+        <div class="bg-slate-900 p-6 text-white flex flex-wrap justify-between items-center gap-4">
             <div>
-                <h1 class="text-3xl font-black tracking-tight text-white">{{ $shipment->awb_number }}</h1>
+                <div class="flex flex-wrap items-center gap-2.5">
+                    <h1 class="text-3xl font-black tracking-tight text-white">{{ $shipment->awb_number }}</h1>
+                    @if($shipment->hasSpecialCustomsRegime())
+                        <span class="px-2.5 py-1 rounded-full text-[11px] font-bold border {{ $shipment->getCustomsRegimeBadgeClass() }}">
+                            {{ $shipment->getCustomsRegimeShortLabel() }}
+                        </span>
+                    @endif
+                    @if($shipment->status === 're_export')
+                        <span class="px-2.5 py-1 rounded-full text-[11px] font-bold bg-rose-600 text-white">
+                            ↩️ STATUS: RE-EKSPOR
+                        </span>
+                    @endif
+                </div>
                 <p class="text-slate-400 text-sm mt-1 font-mono">CUSTOMER: <span class="text-white font-bold">{{ $shipment->customer->company_name ?? 'N/A' }}</span></p>
+                @if($shipment->customs_deadline_at)
+                    <p class="text-xs mt-1.5 font-semibold {{ $shipment->isCustomsDeadlineOverdue() ? 'text-rose-300' : ($shipment->isCustomsDeadlineApproaching() ? 'text-amber-300' : 'text-sky-300') }}">
+                        ⏱️ Tenggat Kepabeanan: {{ $shipment->customs_deadline_at->format('d M Y') }}
+                        @if($shipment->isCustomsDeadlineOverdue())
+                            (MELEWATI BATAS WAKTU)
+                        @elseif($shipment->isCustomsDeadlineApproaching())
+                            ({{ now()->startOfDay()->diffInDays($shipment->customs_deadline_at->startOfDay(), false) }} hari lagi)
+                        @endif
+                    </p>
+                @endif
             </div>
             <div class="text-right flex flex-col items-end gap-2">
                 <span class="px-3 py-1 rounded text-xs font-bold uppercase tracking-wider border border-white/20 bg-white/10">
@@ -176,10 +198,73 @@
             <div class="p-5 bg-blue-50/60 flex flex-col justify-center gap-2">
                 <button wire:click="openDocReqModal" class="w-full text-xs font-bold bg-blue-700 text-white px-3 py-2 rounded-lg hover:bg-blue-800 transition">Minta Dokumen</button>
                 <button wire:click="edit" class="w-full text-xs font-bold bg-white text-slate-700 border border-slate-300 px-3 py-2 rounded-lg hover:bg-slate-50 transition">Edit Data &amp; Catatan</button>
+                @if($this->canManage())
+                <div class="grid grid-cols-2 gap-1.5 pt-0.5">
+                    <button wire:click="openFollowUpModal" class="text-[11px] font-bold bg-white text-indigo-700 border border-indigo-200 px-2 py-1.5 rounded-lg hover:bg-indigo-50 transition truncate" title="Buat Shipment Re-Ekspor / Re-Impor tertaut ke berkas ini">
+                        ↩️ {{ strtolower($shipment->service_type ?? '') === 'export' ? 'Re-Impor' : 'Re-Ekspor' }}
+                    </button>
+                    <button wire:click="openRegimeModal" class="text-[11px] font-bold bg-white text-slate-700 border border-slate-200 px-2 py-1.5 rounded-lg hover:bg-slate-100 transition truncate" title="Atur Rezim Kepabeanan (Impor/Ekspor Sementara) & Tenggat">
+                        🏷️ Rezim BC
+                    </button>
+                </div>
+                @endif
             </div>
         </div>
 
         {{-- INFO GRID & EDIT BUTTON --}}
+        @if($shipment->hasSpecialCustomsRegime() || $this->linkedShipments->isNotEmpty())
+        <div class="px-6 py-4 bg-indigo-50/60 border-b border-indigo-100">
+            <div class="flex flex-col md:flex-row md:items-center justify-between gap-3">
+                <div class="space-y-1">
+                    <div class="flex flex-wrap items-center gap-2">
+                        <span class="text-xs font-black uppercase tracking-wider text-indigo-900">📂 Berkas Terpadu (Dossier Kepabeanan)</span>
+                        <span class="px-2 py-0.5 rounded-full text-[11px] font-bold border {{ $shipment->getCustomsRegimeBadgeClass() }}">
+                            {{ $shipment->getCustomsRegimeLabel() }}
+                        </span>
+                        @if($shipment->customs_reference_number)
+                            <span class="text-xs font-mono font-bold text-slate-700 bg-white px-2 py-0.5 rounded border border-slate-200">
+                                Ref BC: {{ $shipment->customs_reference_number }}
+                            </span>
+                        @endif
+                    </div>
+                    @if($shipment->customs_regime_notes)
+                        <p class="text-xs text-slate-600">{{ $shipment->customs_regime_notes }}</p>
+                    @endif
+                </div>
+                @if($this->canManage())
+                    <button wire:click="openFollowUpModal" class="shrink-0 text-xs font-bold bg-indigo-700 hover:bg-indigo-800 text-white px-3 py-1.5 rounded-lg transition">
+                        + Buat {{ strtolower($shipment->service_type ?? '') === 'export' ? 'Re-Impor' : 'Re-Ekspor' }} Terkait
+                    </button>
+                @endif
+            </div>
+
+            @if($this->linkedShipments->isNotEmpty())
+                <div class="mt-3 grid grid-cols-1 md:grid-cols-2 gap-2.5">
+                    @foreach($this->linkedShipments as $linked)
+                        <a href="{{ route('admin.shipments.show', $linked->id) }}"
+                           class="flex items-center justify-between gap-3 bg-white hover:bg-blue-50/70 border border-indigo-200/80 rounded-lg px-3.5 py-2.5 transition group">
+                            <div class="min-w-0">
+                                <div class="flex items-center gap-2 flex-wrap">
+                                    <span class="text-[10px] font-black uppercase px-1.5 py-0.5 rounded {{ $linked->id === $shipment->parent_shipment_id ? 'bg-slate-800 text-white' : 'bg-indigo-100 text-indigo-800' }}">
+                                        {{ $linked->id === $shipment->parent_shipment_id ? 'Berkas Asal' : 'Berkas Lanjutan' }}
+                                    </span>
+                                    <span class="font-mono font-bold text-sm text-m2b-primary group-hover:underline truncate">#{{ $linked->awb_number }}</span>
+                                    <span class="text-[10px] font-bold px-2 py-0.5 rounded-full border {{ $linked->getCustomsRegimeBadgeClass() }}">
+                                        {{ $linked->getCustomsRegimeShortLabel() }}
+                                    </span>
+                                </div>
+                                <p class="text-[11px] text-slate-500 mt-1 truncate">
+                                    {{ strtoupper($linked->service_type ?? '-') }} • {{ $linked->origin }} → {{ $linked->destination }} • {{ $linked->documents->count() }} dokumen
+                                </p>
+                            </div>
+                            <span class="text-xs font-bold text-indigo-700 shrink-0">Buka →</span>
+                        </a>
+                    @endforeach
+                </div>
+            @endif
+        </div>
+        @endif
+
         <div class="p-6 bg-white border-b border-gray-200">
             <div class="flex justify-between items-start mb-4">
                 <h3 class="font-bold text-gray-800">Informasi Pengiriman</h3>
@@ -527,6 +612,64 @@
                     <div class="text-center py-10 text-gray-400 text-sm italic border-2 border-dashed border-gray-100 rounded-lg">Belum ada dokumen publik.</div>
                 @endif
             </div>
+
+            {{-- ===== ARSIP DOKUMEN TERKAIT (DOSSIER INDUK / LANJUTAN) ===== --}}
+            @if($this->linkedShipments->isNotEmpty())
+            <div class="bg-white rounded-xl shadow-sm border border-indigo-200 p-6">
+                <div class="flex items-center justify-between gap-2 mb-4">
+                    <h3 class="font-bold text-indigo-950 flex items-center gap-2">
+                        <svg class="w-5 h-5 text-indigo-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13.828 10.172a4 4 0 00-5.656 0l-4 4a4 4 0 105.656 5.656l1.102-1.101m-.758-4.899a4 4 0 005.656 0l4-4a4 4 0 00-5.656-5.656l-1.1 1.1"></path></svg>
+                        Arsip Dokumen Terkait (Induk / Lanjutan)
+                    </h3>
+                    <span class="text-[11px] font-semibold text-indigo-700 bg-indigo-50 px-2.5 py-0.5 rounded-full">Read-Only • Sinkron Otomatis</span>
+                </div>
+
+                <div class="space-y-4">
+                    @foreach($this->linkedShipments as $linked)
+                        <div class="border border-slate-200 rounded-lg overflow-hidden">
+                            <div class="bg-slate-50 px-4 py-2.5 border-b border-slate-200 flex items-center justify-between gap-2 flex-wrap">
+                                <div class="flex items-center gap-2 flex-wrap">
+                                    <span class="text-[10px] font-black uppercase px-1.5 py-0.5 rounded {{ $linked->id === $shipment->parent_shipment_id ? 'bg-slate-800 text-white' : 'bg-indigo-100 text-indigo-800' }}">
+                                        {{ $linked->id === $shipment->parent_shipment_id ? 'Shipment Asal' : 'Shipment Lanjutan' }}
+                                    </span>
+                                    <a href="{{ route('admin.shipments.show', $linked->id) }}" class="font-mono font-bold text-xs text-m2b-primary hover:underline">#{{ $linked->awb_number }}</a>
+                                    <span class="text-[10px] font-bold px-2 py-0.5 rounded-full border {{ $linked->getCustomsRegimeBadgeClass() }}">{{ $linked->getCustomsRegimeShortLabel() }}</span>
+                                </div>
+                                <span class="text-[11px] text-slate-500">{{ $linked->documents->count() }} file</span>
+                            </div>
+
+                            @if($linked->documents->isNotEmpty())
+                                <div class="p-3 grid grid-cols-1 md:grid-cols-2 gap-2.5">
+                                    @foreach($linked->documents as $lDoc)
+                                        <div class="flex items-center justify-between gap-2 p-2.5 bg-white border border-slate-100 rounded-lg hover:bg-slate-50 transition">
+                                            <div class="min-w-0">
+                                                <p class="text-xs font-bold text-slate-800 truncate">
+                                                    {{ $lDoc->description }}
+                                                    @if($lDoc->is_internal)
+                                                        <span class="ml-1 text-[9px] font-bold uppercase px-1.5 py-0.5 rounded bg-amber-100 text-amber-800">Internal</span>
+                                                    @endif
+                                                </p>
+                                                <p class="text-[10px] text-slate-400 truncate">{{ $lDoc->filename }} • {{ $lDoc->created_at?->format('d M Y') }}</p>
+                                            </div>
+                                            <div class="flex items-center gap-1 shrink-0">
+                                                <button wire:click="viewLinkedDocument({{ $lDoc->id }})" title="Preview Dokumen" class="p-1.5 text-blue-600 hover:bg-blue-100 rounded">
+                                                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"></path><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"></path></svg>
+                                                </button>
+                                                <a href="{{ route('document.download', $lDoc->id) }}" title="Unduh Dokumen" class="p-1.5 text-emerald-600 hover:bg-emerald-100 rounded">
+                                                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"></path></svg>
+                                                </a>
+                                            </div>
+                                        </div>
+                                    @endforeach
+                                </div>
+                            @else
+                                <p class="px-4 py-3 text-xs text-slate-400 italic">Belum ada dokumen di shipment terkait ini.</p>
+                            @endif
+                        </div>
+                    @endforeach
+                </div>
+            </div>
+            @endif
 
             {{-- ===== PRA-AUDIT KEPATUHAN BERKAS (AI INTELIJEN PABEAN) ===== --}}
             <livewire:admin.shipment-compliance-panel :shipment-id="$shipment->id" :key="'compliance-panel-'.$shipment->id" />
@@ -1101,6 +1244,150 @@ style="display: none;">
         
     </div>
 </div>
+{{-- MODAL: BUAT SHIPMENT LANJUTAN (RE-EKSPOR / RE-IMPOR) --}}
+@if($showFollowUpModal)
+<div class="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/60 backdrop-blur-sm p-4">
+    <div class="bg-white rounded-2xl shadow-2xl w-full max-w-xl overflow-hidden border border-slate-200">
+        <div class="bg-m2b-primary px-6 py-4 text-white flex items-center justify-between">
+            <div>
+                <h3 class="font-black text-base">↩️ Buat Shipment Lanjutan (Re-Ekspor / Re-Impor)</h3>
+                <p class="text-xs text-blue-200 mt-0.5">Tertaut ke berkas asal #{{ $shipment->awb_number }} — arsip dokumen otomatis sinkron.</p>
+            </div>
+            <button wire:click="$set('showFollowUpModal', false)" class="text-blue-200 hover:text-white text-xl leading-none">&times;</button>
+        </div>
+
+        <form wire:submit.prevent="createFollowUpShipment" class="p-6 space-y-4 max-h-[80vh] overflow-y-auto">
+            <div>
+                <label class="block text-xs font-bold text-slate-600 uppercase mb-1">Jenis Tindak Lanjut Kepabeanan</label>
+                <select wire:model="followUpRegime" class="w-full rounded-lg border-slate-300 text-sm focus:border-m2b-primary focus:ring-m2b-primary">
+                    @foreach($this->followUpOptions as $key => $opt)
+                        <option value="{{ $key }}">{{ $opt['label'] }}</option>
+                    @endforeach
+                </select>
+                @if(isset($this->followUpOptions[$followUpRegime]['hint']))
+                    <p class="text-[11px] text-slate-500 mt-1">{{ $this->followUpOptions[$followUpRegime]['hint'] }}</p>
+                @endif
+                @error('followUpRegime') <span class="text-xs text-red-600">{{ $message }}</span> @enderror
+            </div>
+
+            <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <div>
+                    <label class="block text-xs font-bold text-slate-600 uppercase mb-1">No. AWB / Referensi Baru *</label>
+                    <input type="text" wire:model="followUpAwb" class="w-full rounded-lg border-slate-300 text-sm font-mono" placeholder="Contoh: M2B-EXP-...">
+                    @error('followUpAwb') <span class="text-xs text-red-600">{{ $message }}</span> @enderror
+                </div>
+                <div>
+                    <label class="block text-xs font-bold text-slate-600 uppercase mb-1">No. Ref BC (SPBL / Persetujuan / SKEP)</label>
+                    <input type="text" wire:model="followUpReference" class="w-full rounded-lg border-slate-300 text-sm font-mono" placeholder="Opsional">
+                </div>
+            </div>
+
+            <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <div>
+                    <label class="block text-xs font-bold text-slate-600 uppercase mb-1">Asal (Origin) *</label>
+                    <input type="text" wire:model="followUpOrigin" class="w-full rounded-lg border-slate-300 text-sm">
+                    @error('followUpOrigin') <span class="text-xs text-red-600">{{ $message }}</span> @enderror
+                </div>
+                <div>
+                    <label class="block text-xs font-bold text-slate-600 uppercase mb-1">Tujuan (Destination) *</label>
+                    <input type="text" wire:model="followUpDestination" class="w-full rounded-lg border-slate-300 text-sm">
+                    @error('followUpDestination') <span class="text-xs text-red-600">{{ $message }}</span> @enderror
+                </div>
+            </div>
+
+            <div class="grid grid-cols-3 gap-3">
+                <div>
+                    <label class="block text-xs font-bold text-slate-600 uppercase mb-1">Koli / Pieces</label>
+                    <input type="number" wire:model="followUpPieces" class="w-full rounded-lg border-slate-300 text-sm" placeholder="Parsial? ubah">
+                </div>
+                <div>
+                    <label class="block text-xs font-bold text-slate-600 uppercase mb-1">Berat (Kg)</label>
+                    <input type="number" step="0.01" wire:model="followUpWeight" class="w-full rounded-lg border-slate-300 text-sm">
+                </div>
+                <div>
+                    <label class="block text-xs font-bold text-slate-600 uppercase mb-1">Volume (CBM)</label>
+                    <input type="number" step="0.01" wire:model="followUpVolume" class="w-full rounded-lg border-slate-300 text-sm">
+                </div>
+            </div>
+
+            <div>
+                <label class="block text-xs font-bold text-slate-600 uppercase mb-1">Tenggat Waktu (Opsional)</label>
+                <input type="date" wire:model="followUpDeadline" class="w-full rounded-lg border-slate-300 text-sm">
+            </div>
+
+            <div>
+                <label class="block text-xs font-bold text-slate-600 uppercase mb-1">Catatan Keterkaitan</label>
+                <textarea wire:model="followUpNotes" rows="2" class="w-full rounded-lg border-slate-300 text-sm"></textarea>
+            </div>
+
+            @if(strtolower($shipment->service_type ?? '') === 'import')
+            <label class="flex items-start gap-2.5 p-3 rounded-lg bg-rose-50 border border-rose-200 cursor-pointer">
+                <input type="checkbox" wire:model="markParentReExport" class="mt-0.5 rounded text-rose-600 focus:ring-rose-500">
+                <span class="text-xs text-rose-900">
+                    <strong>Tandai status shipment impor asal sebagai "Re-Ekspor"</strong><br>
+                    <span class="text-rose-700">Disarankan untuk penolakan/Lartas agar jelas bahwa barang tidak masuk ke peredaran bebas. Invoice & dokumen impor tetap utuh.</span>
+                </span>
+            </label>
+            @endif
+
+            <div class="flex items-center justify-end gap-2 pt-3 border-t border-slate-100">
+                <button type="button" wire:click="$set('showFollowUpModal', false)" class="px-4 py-2 text-xs font-bold text-slate-600 bg-slate-100 hover:bg-slate-200 rounded-lg transition">Batal</button>
+                <button type="submit" class="px-4 py-2 text-xs font-bold text-white bg-m2b-primary hover:bg-blue-900 rounded-lg transition">Simpan &amp; Tautkan Berkas</button>
+            </div>
+        </form>
+    </div>
+</div>
+@endif
+
+{{-- MODAL: ATUR REZIM KEPABEANAN & TENGGAT --}}
+@if($showRegimeModal)
+<div class="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/60 backdrop-blur-sm p-4">
+    <div class="bg-white rounded-2xl shadow-2xl w-full max-w-lg overflow-hidden border border-slate-200">
+        <div class="bg-slate-900 px-6 py-4 text-white flex items-center justify-between">
+            <div>
+                <h3 class="font-black text-base">🏷️ Rezim Kepabeanan &amp; Tenggat Waktu</h3>
+                <p class="text-xs text-slate-300 mt-0.5">Tandai Impor Sementara, Ekspor Sementara, atau referensi izin Bea Cukai.</p>
+            </div>
+            <button wire:click="$set('showRegimeModal', false)" class="text-slate-300 hover:text-white text-xl leading-none">&times;</button>
+        </div>
+
+        <form wire:submit.prevent="saveRegime" class="p-6 space-y-4">
+            <div>
+                <label class="block text-xs font-bold text-slate-600 uppercase mb-1">Rezim Kepabeanan</label>
+                <select wire:model="regimeType" class="w-full rounded-lg border-slate-300 text-sm focus:border-m2b-primary focus:ring-m2b-primary">
+                    @foreach(\App\Models\Shipment::getCustomsRegimes() as $key => $label)
+                        <option value="{{ $key }}">{{ $label }}</option>
+                    @endforeach
+                </select>
+                @error('regimeType') <span class="text-xs text-red-600">{{ $message }}</span> @enderror
+            </div>
+
+            <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <div>
+                    <label class="block text-xs font-bold text-slate-600 uppercase mb-1">Tenggat Waktu BC</label>
+                    <input type="date" wire:model="regimeDeadline" class="w-full rounded-lg border-slate-300 text-sm">
+                    <p class="text-[10px] text-slate-400 mt-0.5">Batas izin impor/ekspor sementara atau retur.</p>
+                </div>
+                <div>
+                    <label class="block text-xs font-bold text-slate-600 uppercase mb-1">No. SKEP / SPBL / Ref BC</label>
+                    <input type="text" wire:model="regimeReference" class="w-full rounded-lg border-slate-300 text-sm font-mono" placeholder="Contoh: SKEP-123/WBC.04/2026">
+                </div>
+            </div>
+
+            <div>
+                <label class="block text-xs font-bold text-slate-600 uppercase mb-1">Catatan Kepatuhan / Jaminan</label>
+                <textarea wire:model="regimeNotes" rows="3" class="w-full rounded-lg border-slate-300 text-sm" placeholder="Contoh: Bank Garansi Mandiri Rp 150jt, wajib re-ekspor sebelum jatuh tempo."></textarea>
+            </div>
+
+            <div class="flex items-center justify-end gap-2 pt-3 border-t border-slate-100">
+                <button type="button" wire:click="$set('showRegimeModal', false)" class="px-4 py-2 text-xs font-bold text-slate-600 bg-slate-100 hover:bg-slate-200 rounded-lg transition">Batal</button>
+                <button type="submit" class="px-4 py-2 text-xs font-bold text-white bg-m2b-primary hover:bg-blue-900 rounded-lg transition">Simpan Pengaturan</button>
+            </div>
+        </form>
+    </div>
+</div>
+@endif
+
 <script>
 function hsCodeAutocomplete() {
     return {
