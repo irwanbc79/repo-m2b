@@ -3963,6 +3963,10 @@
     background-color: #dbdbd7;
   }
 
+  .bg-\[\#efeae2\]\/60 {
+    background-color: oklab(93.8735% .00212583 .011795 / .6);
+  }
+
   .bg-\[\#fff2f2\] {
     background-color: #fff2f2;
   }
@@ -10532,6 +10536,10 @@
 
   .focus\:ring-blue-900:focus {
     --tw-ring-color: var(--color-blue-900);
+  }
+
+  .focus\:ring-emerald-400:focus {
+    --tw-ring-color: var(--color-emerald-400);
   }
 
   .focus\:ring-emerald-500:focus {

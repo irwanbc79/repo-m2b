@@ -34,20 +34,45 @@ class MoraLeadNotification extends Model
     protected $fillable = [
         'remote_lead_id', 'name', 'company', 'phone', 'email',
         'score', 'source', 'service_interest', 'product_links', 'summary', 'chat_history', 'read_at',
+        'first_responded_at', 'last_wa_message_at',
         'status', 'assigned_to', 'follow_up_at', 'sales_notes', 'deal_value',
     ];
 
     protected $casts = [
-        'chat_history' => 'array',
-        'sales_notes'  => 'array',
-        'read_at'      => 'datetime',
-        'follow_up_at' => 'datetime',
-        'deal_value'   => 'decimal:2',
+        'chat_history'       => 'array',
+        'sales_notes'        => 'array',
+        'read_at'            => 'datetime',
+        'first_responded_at' => 'datetime',
+        'last_wa_message_at' => 'datetime',
+        'follow_up_at'       => 'datetime',
+        'deal_value'         => 'decimal:2',
     ];
 
     public function assignee()
     {
         return $this->belongsTo(User::class, 'assigned_to');
+    }
+
+    public function waMessages()
+    {
+        return $this->hasMany(WaMessage::class, 'mora_lead_id')->orderBy('wa_timestamp')->orderBy('id');
+    }
+
+    /**
+     * Hitung SLA respon pertama dalam teks ringkas (mis. "4 menit", "1 jam 12 mnt").
+     */
+    public function firstResponseSlaLabel(): ?string
+    {
+        if (!$this->first_responded_at || !$this->created_at) {
+            return null;
+        }
+        $minutes = max(0, (int) $this->created_at->diffInMinutes($this->first_responded_at));
+        if ($minutes < 60) {
+            return $minutes . ' mnt';
+        }
+        $hours = intdiv($minutes, 60);
+        $rem = $minutes % 60;
+        return $rem > 0 ? "{$hours} jam {$rem} mnt" : "{$hours} jam";
     }
 
     public function isUnread(): bool

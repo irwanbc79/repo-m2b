@@ -2,6 +2,7 @@
 
 use App\Http\Controllers\Api\KirimEmailWebhookController;
 use App\Http\Controllers\Api\MoraLeadWebhookController;
+use App\Http\Controllers\Api\WhatsAppWebhookController;
 use App\Http\Controllers\Api\V1\AttendanceController;
 use App\Http\Controllers\Api\V1\AuthController;
 use App\Http\Controllers\Api\V1\DashboardController;
@@ -16,6 +17,11 @@ use Illuminate\Support\Facades\Route;
 // ── MORA Chat Lead Webhook (dari m2b.co.id) ────────────────────────────────
 Route::post('/mora-lead-incoming', [MoraLeadWebhookController::class, 'store'])
     ->middleware('throttle:60,1');
+
+// ── Meta WhatsApp Cloud API & Coexistence Webhook ──────────────────────────
+Route::get('/webhooks/whatsapp', [WhatsAppWebhookController::class, 'verify']);
+Route::post('/webhooks/whatsapp', [WhatsAppWebhookController::class, 'handle'])
+    ->middleware('throttle:300,1');
 
 // ── Peristiwa pengiriman email (dari Kirim Email) ──────────────────────────
 // Token di path karena API mereka tidak bisa mengirim custom header.

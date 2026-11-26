@@ -1,4 +1,4 @@
-<div class="space-y-6" x-data="{ showModal: @entangle('showCreateModal') }">
+<div class="space-y-6" x-data="{ showModal: @entangle('showCreateModal') }" x-on:open-wa-url.window="window.open($event.detail.url, '_blank')">
 
     {{-- Session Flash Alert --}}
     @if (session()->has('message'))
@@ -8,6 +8,17 @@
                 <span class="text-sm font-semibold">{{ session('message') }}</span>
             </div>
             <button @click="$el.parentElement.remove()" class="text-emerald-500 hover:text-emerald-700 transition">
+                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
+            </button>
+        </div>
+    @endif
+    @if (session()->has('error'))
+        <div class="p-4 bg-rose-50 border border-rose-200 text-rose-800 rounded-xl flex items-center justify-between shadow-sm animate-fade-in">
+            <div class="flex items-center gap-2.5">
+                <span class="text-xl">⚠️</span>
+                <span class="text-sm font-semibold">{{ session('error') }}</span>
+            </div>
+            <button @click="$el.parentElement.remove()" class="text-rose-500 hover:text-rose-700 transition">
                 <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
             </button>
         </div>
@@ -106,8 +117,15 @@
         
         {{-- Left: Lead List --}}
         <div class="lg:col-span-7 bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden flex flex-col h-[650px]">
-            <div class="p-4 bg-gray-50 border-b border-gray-100 flex justify-between items-center shrink-0">
-                <span class="text-xs font-bold text-gray-700 uppercase tracking-wide">Daftar Leads</span>
+            <div class="p-4 bg-gray-50 border-b border-gray-100 flex justify-between items-center gap-2 shrink-0 flex-wrap">
+                <div class="flex items-center gap-2">
+                    <span class="text-xs font-bold text-gray-700 uppercase tracking-wide">Daftar Leads</span>
+                    @if($waCloudConfigured)
+                        <span class="text-[10px] font-bold px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-800 border border-emerald-200">🟢 WA Cloud API 2-Arah</span>
+                    @else
+                        <span class="text-[10px] font-bold px-2 py-0.5 rounded-full bg-amber-50 text-amber-700 border border-amber-200" title="Isi WHATSAPP_CLOUD_ENABLED=true & token Meta di .env untuk sync 2-arah otomatis">🟡 Siap Sambung Meta WA API</span>
+                    @endif
+                </div>
                 @if($totalUnread > 0)
                     <button wire:click="markAllRead" wire:confirm="Tandai semua lead sebagai sudah dibaca?"
                         class="text-[10px] text-indigo-600 hover:text-indigo-800 font-bold transition">
@@ -146,7 +164,9 @@
                                     @endif
 
                                     {{-- Source Badge --}}
-                                    @if($lead->source === 'mora_chat')
+                                    @if($lead->source === 'whatsapp_direct')
+                                        <span class="text-[10px] bg-emerald-50 text-emerald-700 font-bold px-2 py-0.5 rounded-full border border-emerald-200">💬 WA Masuk</span>
+                                    @elseif($lead->source === 'mora_chat')
                                         <span class="text-[10px] bg-cyan-50 text-cyan-600 font-bold px-2 py-0.5 rounded-full">🤖 MORA Chat</span>
                                     @elseif($lead->source === 'manual')
                                         <span class="text-[10px] bg-purple-50 text-purple-600 font-bold px-2 py-0.5 rounded-full">👤 Manual</span>
@@ -279,21 +299,117 @@
                             @endif
                         </div>
 
-                        <div class="flex gap-2 mt-2 pt-2 border-t border-gray-200/60">
+                        <div class="flex flex-wrap gap-2 mt-2 pt-2 border-t border-gray-200/60">
+                            @if(!$selectedLead->assigned_to)
+                                <button type="button" wire:click="claimLead({{ $selectedLead->id }})"
+                                    class="flex-1 flex items-center justify-center gap-1.5 bg-indigo-700 hover:bg-indigo-800 text-white text-xs font-bold py-2 px-3 rounded-lg transition shadow-sm">
+                                    🙋 Ambil Lead (Claim)
+                                </button>
+                            @else
+                                <span class="inline-flex items-center gap-1 text-[11px] font-bold px-2.5 py-1.5 rounded-lg bg-indigo-50 text-indigo-800 border border-indigo-200">
+                                    👤 PIC: {{ $selectedLead->assignee?->name ?? 'Staf' }}
+                                    @if($sla = $selectedLead->firstResponseSlaLabel())
+                                        <span class="ml-1 text-[10px] text-emerald-700 bg-emerald-100 px-1.5 py-0.5 rounded">⚡ {{ $sla }}</span>
+                                    @endif
+                                </span>
+                            @endif
                             @if($selectedLead->hasValidPhone())
                             <a href="{{ $whatsappUrl }}" target="_blank"
-                                class="flex-1 flex items-center justify-center gap-1.5 bg-emerald-500 hover:bg-emerald-600 text-white text-xs font-bold py-2 rounded-lg transition shadow-sm">
-                                💬 WhatsApp Chat
+                                class="flex-1 flex items-center justify-center gap-1.5 bg-emerald-500 hover:bg-emerald-600 text-white text-xs font-bold py-2 px-3 rounded-lg transition shadow-sm">
+                                💬 Buka WA
                             </a>
                             @endif
                             @if($selectedLead->email)
                                 <a href="mailto:{{ $selectedLead->email }}"
-                                    class="flex-1 flex items-center justify-center gap-1.5 bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-bold py-2 rounded-lg transition border border-slate-200">
-                                    ✉️ Email Client
+                                    class="flex-1 flex items-center justify-center gap-1.5 bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-bold py-2 px-3 rounded-lg transition border border-slate-200">
+                                    ✉️ Email
                                 </a>
                             @endif
                         </div>
                     </div>
+
+                    @if($selectedLead->hasValidPhone())
+                    {{-- SHARED WHATSAPP LIVE INBOX (2-Arah Meta Cloud API & Coexistence) --}}
+                    <div wire:poll.15s class="bg-slate-50 rounded-xl border border-slate-200 overflow-hidden">
+                        <div class="px-3.5 py-2.5 bg-slate-900 text-white flex items-center justify-between gap-2">
+                            <div class="flex items-center gap-2">
+                                <span class="text-sm">💬</span>
+                                <div>
+                                    <p class="text-xs font-black tracking-wide">Shared WhatsApp Inbox</p>
+                                    <p class="text-[10px] text-slate-300">
+                                        {{ $waCloudConfigured ? 'Live 2-arah via nomor resmi M2B (Coexistence)' : 'Mode log portal + kirim via WA HP' }}
+                                    </p>
+                                </div>
+                            </div>
+                            <span class="text-[10px] font-bold px-2 py-0.5 rounded-full bg-white/10 text-emerald-300">
+                                {{ $selectedLead->waMessages->count() }} pesan
+                            </span>
+                        </div>
+
+                        {{-- Chat Thread --}}
+                        <div class="p-3 space-y-2.5 max-h-60 overflow-y-auto bg-[#efeae2]/60">
+                            @forelse($selectedLead->waMessages as $msg)
+                                <div class="flex {{ $msg->isInbound() ? 'justify-start' : 'justify-end' }}">
+                                    <div class="max-w-[85%] rounded-xl px-3 py-2 text-xs shadow-sm {{ $msg->isInbound() ? 'bg-white text-slate-800 border border-slate-200' : 'bg-emerald-700 text-white' }}">
+                                        <div class="flex items-center justify-between gap-2 mb-0.5">
+                                            <span class="text-[10px] font-bold {{ $msg->isInbound() ? 'text-indigo-700' : 'text-emerald-200' }}">
+                                                {{ $msg->isInbound() ? ($msg->sender_name ?: $selectedLead->name) : ($msg->sender?->name ?: $msg->sender_name ?: 'Tim M2B') }}
+                                            </span>
+                                            @if($msg->isFromBusinessAppEcho())
+                                                <span class="text-[9px] font-bold px-1.5 py-0.2 rounded bg-white/20 text-white">📱 HP WA M2B</span>
+                                            @elseif($msg->origin === \App\Models\WaMessage::ORIGIN_PORTAL_MANUAL)
+                                                <span class="text-[9px] font-bold px-1.5 py-0.2 rounded bg-white/20 text-emerald-100">Log Portal</span>
+                                            @endif
+                                        </div>
+                                        <p class="whitespace-pre-line leading-relaxed">{{ $msg->body }}</p>
+                                        <div class="flex items-center justify-end gap-1 mt-1 text-[9px] {{ $msg->isInbound() ? 'text-slate-400' : 'text-emerald-200' }}">
+                                            <span>{{ ($msg->wa_timestamp ?? $msg->created_at)?->format('d M H:i') }}</span>
+                                            @if(!$msg->isInbound())
+                                                <span>
+                                                    @if($msg->status === 'read') ✓✓
+                                                    @elseif($msg->status === 'delivered') ✓✓
+                                                    @elseif($msg->status === 'failed') ⚠️
+                                                    @else ✓ @endif
+                                                </span>
+                                            @endif
+                                        </div>
+                                    </div>
+                                </div>
+                            @empty
+                                <p class="text-center text-[11px] text-slate-500 py-5 italic">
+                                    Belum ada riwayat percakapan WhatsApp tercatat. Pilih template atau tulis balasan di bawah.
+                                </p>
+                            @endforelse
+                        </div>
+
+                        {{-- Reply Composer --}}
+                        <form wire:submit.prevent="sendWaReply" class="p-2.5 bg-white border-t border-slate-200 space-y-2">
+                            <div class="flex gap-1.5">
+                                <select wire:model.live="selectedTemplateKey"
+                                    class="text-[11px] border border-slate-200 rounded-lg px-2 py-1.5 flex-1 focus:outline-none bg-slate-50">
+                                    <option value="">⚡ Isi cepat dari Template...</option>
+                                    <option value="intro">👋 Perkenalan Tim M2B</option>
+                                    @if($selectedLead->source === 'portal_signup')
+                                        <option value="portal">🌐 Sambutan Daftar Portal</option>
+                                    @endif
+                                    <option value="service">📦 Tanya Detail Layanan</option>
+                                    <option value="followup">⏰ Follow-up Penawaran</option>
+                                    <option value="deal">🎉 Konfirmasi Deal</option>
+                                </select>
+                            </div>
+                            <div class="flex gap-2 items-end">
+                                <textarea wire:model="waReplyText" rows="2" placeholder="Tulis balasan WhatsApp ke {{ $selectedLead->name }}..."
+                                    class="text-xs border border-slate-200 rounded-lg p-2 flex-1 focus:outline-none focus:ring-2 focus:ring-emerald-400 resize-none"></textarea>
+                                <button type="submit" wire:loading.attr="disabled"
+                                    class="bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold px-3.5 py-2.5 rounded-lg transition shrink-0 disabled:opacity-50">
+                                    <span wire:loading.remove wire:target="sendWaReply">{{ $waCloudConfigured ? 'Kirim 🚀' : 'Log & WA 🚀' }}</span>
+                                    <span wire:loading wire:target="sendWaReply">...</span>
+                                </button>
+                            </div>
+                            @error('waReplyText') <p class="text-[10px] text-rose-600 font-semibold">{{ $message }}</p> @enderror
+                        </form>
+                    </div>
+                    @endif
 
                     {{-- CRM Status & Pipeline Controller --}}
                     <div class="space-y-2">

@@ -4,6 +4,8 @@ namespace App\Livewire\Admin;
 
 use App\Models\MoraLeadNotification;
 use App\Models\User;
+use App\Models\WaMessage;
+use App\Services\WhatsAppCloudService;
 use Livewire\Component;
 use Livewire\WithPagination;
 
@@ -31,9 +33,11 @@ class MoraLeadManager extends Component
     public string $leadDealValue = '';
     public string $newNoteText = '';
 
-    // WhatsApp Templates
+    // WhatsApp Templates & Shared Inbox
     public string $selectedTemplateKey = '';
     public string $whatsappUrl = '';
+    public string $waReplyText = '';
+    public bool $waCloudConfigured = false;
 
     // Manual Lead Form Fields
     public bool $showCreateModal = false;
@@ -57,6 +61,7 @@ class MoraLeadManager extends Component
     public function mount(): void
     {
         abort_unless($this->canAccessLeads(), 403, 'Anda tidak memiliki akses ke modul leads.');
+        $this->waCloudConfigured = app(WhatsAppCloudService::class)->isConfigured();
         $this->refreshStats();
     }
 
@@ -96,6 +101,7 @@ class MoraLeadManager extends Component
             $this->leadDealValue = $lead->deal_value ? (float)$lead->deal_value : '';
             $this->newNoteText = '';
             $this->selectedTemplateKey = '';
+            $this->waReplyText = '';
             $this->whatsappUrl = $lead->waUrl();
         }
     }
@@ -115,11 +121,120 @@ class MoraLeadManager extends Component
 
         $templates = MoraLeadNotification::getWaTemplates($lead->name, $lead->serviceLabel() ?? '');
         $message = $templates[$value] ?? '';
-        
+        $this->waReplyText = $message;
+
         $phone = preg_replace('/[^0-9]/', '', $lead->phone);
         $phone = preg_replace('/^0/', '62', $phone);
-        
+
         $this->whatsappUrl = "https://wa.me/{$phone}?text=" . urlencode($message);
+    }
+
+    /**
+     * 1-Klik Ambil/Claim Lead oleh staf yang sedang login (anti-tabrakan antar staf).
+     */
+    public function claimLead(?int $id = null): void
+    {
+        $targetId = $id ?? $this->selectedLeadId;
+        if (!$targetId) {
+            return;
+        }
+
+        $lead = MoraLeadNotification::find($targetId);
+        if (!$lead) {
+            return;
+        }
+
+        $notes = $lead->sales_notes ?? [];
+        $notes[] = [
+            'date' => now()->toIso8601String(),
+            'user' => auth()->user()?->name ?? 'Staf M2B',
+            'text' => 'Lead diambil (Claim) untuk ditindaklanjuti.',
+        ];
+
+        $lead->update([
+            'assigned_to' => auth()->id(),
+            'read_at'     => $lead->read_at ?? now(),
+            'sales_notes' => $notes,
+        ]);
+
+        $this->refreshStats();
+        $this->selectLead($lead->id);
+        session()->flash('message', 'Lead berhasil diambil atas nama ' . (auth()->user()?->name ?? 'Anda') . '.');
+    }
+
+    /**
+     * Kirim balasan WhatsApp langsung dari Shared Inbox MORA Leads.
+     * - Jika Meta Cloud API aktif: kirim langsung via nomor resmi M2B & simpan di wa_messages.
+     * - Jika Meta Cloud API belum aktif: catat di histori portal (SLA + log) & buka link wa.me siap kirim.
+     */
+    public function sendWaReply(): void
+    {
+        if (!$this->selectedLeadId) {
+            return;
+        }
+
+        $this->validate([
+            'waReplyText' => 'required|string|max:2000',
+        ], [
+            'waReplyText.required' => 'Tulis pesan balasan terlebih dahulu.',
+        ]);
+
+        $lead = MoraLeadNotification::find($this->selectedLeadId);
+        if (!$lead || !$lead->hasValidPhone()) {
+            session()->flash('error', 'Lead ini tidak memiliki nomor WhatsApp yang valid.');
+            return;
+        }
+
+        $waService = app(WhatsAppCloudService::class);
+        $text = trim($this->waReplyText);
+
+        if ($waService->isConfigured()) {
+            $msg = $waService->sendText($lead->phone, $text, $lead, auth()->id());
+
+            if ($msg->status === 'failed') {
+                session()->flash('error', 'Gagal mengirim via Meta Cloud API: ' . ($msg->error_message ?? 'Unknown error'));
+            } else {
+                $this->waReplyText = '';
+                $this->selectedTemplateKey = '';
+                session()->flash('message', 'Pesan terkirim via WhatsApp Resmi M2B.');
+            }
+        } else {
+            // Mode transisi (sebelum Meta Cloud API aktif): tetap catat ke Shared Inbox & SLA, lalu buka wa.me
+            $normalized = $waService->normalizePhone($lead->phone);
+            WaMessage::create([
+                'mora_lead_id' => $lead->id,
+                'wa_phone'     => $normalized,
+                'sender_name'  => auth()->user()?->name ?? 'Tim M2B',
+                'direction'    => WaMessage::DIRECTION_OUTBOUND,
+                'origin'       => WaMessage::ORIGIN_PORTAL_MANUAL,
+                'message_type' => 'text',
+                'body'         => $text,
+                'status'       => 'sent',
+                'sent_by'      => auth()->id(),
+                'wa_timestamp' => now(),
+            ]);
+
+            $updates = ['last_wa_message_at' => now()];
+            if (!$lead->first_responded_at) {
+                $updates['first_responded_at'] = now();
+            }
+            if ($lead->status === 'new') {
+                $updates['status'] = 'contacted';
+            }
+            if (!$lead->assigned_to) {
+                $updates['assigned_to'] = auth()->id();
+            }
+            $lead->update($updates);
+
+            $waLink = "https://wa.me/{$normalized}?text=" . urlencode($text);
+            $this->waReplyText = '';
+            $this->selectedTemplateKey = '';
+            $this->dispatch('open-wa-url', url: $waLink);
+            session()->flash('message', 'Pesan dicatat di log MORA Leads & siap dikirim via WhatsApp.');
+        }
+
+        $this->refreshStats();
+        $this->selectLead($lead->id);
     }
 
     public function saveLeadUpdate(): void
@@ -354,9 +469,11 @@ class MoraLeadManager extends Component
             })
             ->latest();
 
-        $leads = $query->paginate(15);
+        $leads = $query->withCount('waMessages')->paginate(15);
         $salesReps = User::all();
-        $selectedLead = $this->selectedLeadId ? MoraLeadNotification::with('assignee')->find($this->selectedLeadId) : null;
+        $selectedLead = $this->selectedLeadId
+            ? MoraLeadNotification::with(['assignee', 'waMessages.sender'])->find($this->selectedLeadId)
+            : null;
 
         return view('livewire.admin.mora-lead-manager', [
             'leads' => $leads,
