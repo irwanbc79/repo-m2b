@@ -199,14 +199,37 @@
                 <button wire:click="openDocReqModal" class="w-full text-xs font-bold bg-blue-700 text-white px-3 py-2 rounded-lg hover:bg-blue-800 transition">Minta Dokumen</button>
                 <button wire:click="edit" class="w-full text-xs font-bold bg-white text-slate-700 border border-slate-300 px-3 py-2 rounded-lg hover:bg-slate-50 transition">Edit Data &amp; Catatan</button>
                 @if($this->canManage())
+                @php $followUpBtnLabel = strtolower($shipment->service_type ?? '') === 'export' ? 'Re-Impor' : 'Re-Ekspor'; @endphp
                 <div class="grid grid-cols-2 gap-1.5 pt-0.5">
-                    <button wire:click="openFollowUpModal" class="text-[11px] font-bold bg-white text-indigo-700 border border-indigo-200 px-2 py-1.5 rounded-lg hover:bg-indigo-50 transition truncate" title="Buat Shipment Re-Ekspor / Re-Impor tertaut ke berkas ini">
-                        ↩️ {{ strtolower($shipment->service_type ?? '') === 'export' ? 'Re-Impor' : 'Re-Ekspor' }}
-                    </button>
-                    <button wire:click="openRegimeModal" class="text-[11px] font-bold bg-white text-slate-700 border border-slate-200 px-2 py-1.5 rounded-lg hover:bg-slate-100 transition truncate" title="Atur Rezim Kepabeanan (Impor/Ekspor Sementara) & Tenggat">
-                        🏷️ Rezim BC
-                    </button>
+                    {{-- Tombol 1: Buat Shipment Lanjutan (Re-Ekspor / Re-Impor) + Rich Tooltip --}}
+                    <div class="relative group">
+                        <button type="button" wire:click="openFollowUpModal" class="w-full text-[11px] font-bold bg-white text-indigo-700 border border-indigo-200 px-2 py-1.5 rounded-lg hover:bg-indigo-50 transition truncate">
+                            ↩️ {{ $followUpBtnLabel }}
+                        </button>
+                        <div role="tooltip" class="pointer-events-none opacity-0 invisible group-hover:opacity-100 group-hover:visible group-focus-within:opacity-100 group-focus-within:visible transition-all duration-150 absolute bottom-full right-0 mb-2 w-64 z-30 bg-slate-900 text-white rounded-xl p-3 shadow-xl border border-slate-700 text-left">
+                            <p class="text-[11px] font-black text-indigo-300 uppercase tracking-wide">Buat Shipment {{ $followUpBtnLabel }} Baru</p>
+                            <p class="text-[11px] text-slate-200 mt-1 leading-relaxed">
+                                Pilih ini jika barang <strong>akan dikirim balik</strong> (Re-Ekspor karena tolak/Lartas atau selesai Impor Sementara; atau Re-Impor karena retur/selesai Ekspor Sementara). Data barang &amp; rute otomatis disalin/dibalik, dan arsip dokumen tetap 1 rangkaian.
+                            </p>
+                        </div>
+                    </div>
+
+                    {{-- Tombol 2: Atur Rezim Kepabeanan & Tenggat + Rich Tooltip --}}
+                    <div class="relative group">
+                        <button type="button" wire:click="openRegimeModal" class="w-full text-[11px] font-bold bg-white text-slate-700 border border-slate-200 px-2 py-1.5 rounded-lg hover:bg-slate-100 transition truncate">
+                            🏷️ Rezim BC
+                        </button>
+                        <div role="tooltip" class="pointer-events-none opacity-0 invisible group-hover:opacity-100 group-hover:visible group-focus-within:opacity-100 group-focus-within:visible transition-all duration-150 absolute bottom-full right-0 mb-2 w-64 z-30 bg-slate-900 text-white rounded-xl p-3 shadow-xl border border-slate-700 text-left">
+                            <p class="text-[11px] font-black text-amber-300 uppercase tracking-wide">Tandai Rezim &amp; Tenggat Berkas Ini</p>
+                            <p class="text-[11px] text-slate-200 mt-1 leading-relaxed">
+                                Pilih ini untuk menandai berkas <strong>saat ini</strong> sebagai <em>Impor Sementara</em> / <em>Ekspor Sementara</em>, mencatat No. SKEP/SPBL, batas tenggat waktu, atau catatan jaminan. <strong>Tidak membuat shipment baru.</strong>
+                            </p>
+                        </div>
+                    </div>
                 </div>
+                <p class="text-[10px] text-slate-500 leading-snug">
+                    <span class="font-semibold text-indigo-700">{{ $followUpBtnLabel }}</span> = buat shipment balik • <span class="font-semibold text-slate-700">Rezim BC</span> = atur status sementara/tenggat
+                </p>
                 @endif
             </div>
         </div>
