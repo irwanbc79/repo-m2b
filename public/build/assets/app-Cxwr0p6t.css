@@ -1767,6 +1767,10 @@
     max-height: 85vh;
   }
 
+  .max-h-\[88vh\] {
+    max-height: 88vh;
+  }
+
   .max-h-\[90vh\] {
     max-height: 90vh;
   }
@@ -8287,6 +8291,10 @@
     --tw-ring-color: var(--color-green-500);
   }
 
+  .ring-indigo-300 {
+    --tw-ring-color: var(--color-indigo-300);
+  }
+
   .ring-indigo-500 {
     --tw-ring-color: var(--color-indigo-500);
   }
@@ -8327,6 +8335,10 @@
 
   .ring-red-500 {
     --tw-ring-color: var(--color-red-500);
+  }
+
+  .ring-rose-300 {
+    --tw-ring-color: var(--color-rose-300);
   }
 
   .ring-rose-400 {
@@ -8377,6 +8389,11 @@
 
   .ring-yellow-400 {
     --tw-ring-color: var(--color-yellow-400);
+  }
+
+  .ring-offset-2 {
+    --tw-ring-offset-width: 2px;
+    --tw-ring-offset-shadow: var(--tw-ring-inset, ) 0 0 0 var(--tw-ring-offset-width) var(--tw-ring-offset-color);
   }
 
   .\!outline {
@@ -9916,6 +9933,16 @@
       }
     }
 
+    .hover\:bg-white\/15:hover {
+      background-color: #ffffff26;
+    }
+
+    @supports (color: color-mix(in lab, red, red)) {
+      .hover\:bg-white\/15:hover {
+        background-color: color-mix(in oklab, var(--color-white) 15%, transparent);
+      }
+    }
+
     .hover\:bg-white\/20:hover {
       background-color: #fff3;
     }
@@ -10789,6 +10816,10 @@
 
     .sm\:w-10 {
       width: calc(var(--spacing) * 10);
+    }
+
+    .sm\:w-52 {
+      width: calc(var(--spacing) * 52);
     }
 
     .sm\:w-56 {

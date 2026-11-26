@@ -35,7 +35,7 @@ class MoraLeadNotification extends Model
         'remote_lead_id', 'name', 'company', 'phone', 'email',
         'score', 'source', 'service_interest', 'product_links', 'summary', 'chat_history', 'read_at',
         'first_responded_at', 'last_wa_message_at',
-        'status', 'assigned_to', 'follow_up_at', 'sales_notes', 'deal_value',
+        'status', 'assigned_to', 'wa_device_id', 'follow_up_at', 'sales_notes', 'deal_value',
     ];
 
     protected $casts = [
@@ -51,6 +51,19 @@ class MoraLeadNotification extends Model
     public function assignee()
     {
         return $this->belongsTo(User::class, 'assigned_to');
+    }
+
+    public function waDevice()
+    {
+        return $this->belongsTo(WaDevice::class, 'wa_device_id');
+    }
+
+    public function isSlaOverdue(int $hours = 24): bool
+    {
+        return $this->status === 'new'
+            && !$this->first_responded_at
+            && $this->created_at
+            && $this->created_at->lt(now()->subHours($hours));
     }
 
     public function waMessages()

@@ -16,6 +16,7 @@ class WaMessage extends Model
 
     protected $fillable = [
         'mora_lead_id',
+        'wa_device_id',
         'wa_message_id',
         'wa_phone',
         'sender_name',
@@ -40,6 +41,11 @@ class WaMessage extends Model
     public function lead(): BelongsTo
     {
         return $this->belongsTo(MoraLeadNotification::class, 'mora_lead_id');
+    }
+
+    public function device(): BelongsTo
+    {
+        return $this->belongsTo(WaDevice::class, 'wa_device_id');
     }
 
     public function sender(): BelongsTo

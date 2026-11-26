@@ -1,4 +1,5 @@
 <div class="space-y-6" x-data="{ showModal: @entangle('showCreateModal') }" x-on:open-wa-url.window="window.open($event.detail.url, '_blank')">
+    @section('header', 'MORA Leads — Sales CRM')
 
     {{-- Session Flash Alert --}}
     @if (session()->has('message'))
@@ -24,38 +25,38 @@
         </div>
     @endif
 
-    {{-- Premium Stats & Metrics Cards --}}
+    {{-- Premium Stats & Metrics Cards (Clickable Filter) --}}
     <div class="grid grid-cols-2 lg:grid-cols-4 gap-4">
-        <div class="bg-gradient-to-br from-indigo-500 to-indigo-700 text-white rounded-2xl shadow-md p-4 transition-all duration-300 hover:-translate-y-0.5 hover:shadow-lg flex flex-col justify-between h-28">
-            <div class="flex justify-between items-start">
+        <button type="button" wire:click="setFilter('new')" class="text-left bg-gradient-to-br from-indigo-500 to-indigo-700 text-white rounded-2xl shadow-md p-4 transition-all duration-300 hover:-translate-y-0.5 hover:shadow-lg flex flex-col justify-between h-28 {{ $filter === 'new' ? 'ring-2 ring-indigo-300 ring-offset-2' : '' }}">
+            <div class="flex justify-between items-start w-full">
                 <span class="text-xs font-bold uppercase tracking-wider text-indigo-100">Baru (New)</span>
                 <span class="text-2xl">📥</span>
             </div>
             <div>
                 <div class="text-3xl font-black">{{ $totalNew }}</div>
-                <div class="text-[10px] text-indigo-100 font-semibold mt-0.5">Lead perlu ditindaklanjuti</div>
+                <div class="text-[10px] text-indigo-100 font-semibold mt-0.5">Klik untuk filter lead baru</div>
             </div>
-        </div>
-        <div class="bg-gradient-to-br from-rose-500 to-rose-600 text-white rounded-2xl shadow-md p-4 transition-all duration-300 hover:-translate-y-0.5 hover:shadow-lg flex flex-col justify-between h-28">
-            <div class="flex justify-between items-start">
+        </button>
+        <button type="button" wire:click="setFilter('hot')" class="text-left bg-gradient-to-br from-rose-500 to-rose-600 text-white rounded-2xl shadow-md p-4 transition-all duration-300 hover:-translate-y-0.5 hover:shadow-lg flex flex-col justify-between h-28 {{ $filter === 'hot' ? 'ring-2 ring-rose-300 ring-offset-2' : '' }}">
+            <div class="flex justify-between items-start w-full">
                 <span class="text-xs font-bold uppercase tracking-wider text-rose-100">Hot Leads</span>
                 <span class="text-2xl">🔥</span>
             </div>
             <div>
                 <div class="text-3xl font-black">{{ $totalHot }}</div>
-                <div class="text-[10px] text-rose-100 font-semibold mt-0.5">Prospek minat tinggi</div>
+                <div class="text-[10px] text-rose-100 font-semibold mt-0.5">Klik untuk filter prospek panas</div>
             </div>
-        </div>
-        <div class="bg-gradient-to-br from-amber-500 to-amber-600 text-white rounded-2xl shadow-md p-4 transition-all duration-300 hover:-translate-y-0.5 hover:shadow-lg flex flex-col justify-between h-28">
-            <div class="flex justify-between items-start">
+        </button>
+        <button type="button" wire:click="setFilter('followup')" class="text-left bg-gradient-to-br from-amber-500 to-amber-600 text-white rounded-2xl shadow-md p-4 transition-all duration-300 hover:-translate-y-0.5 hover:shadow-lg flex flex-col justify-between h-28 {{ $filter === 'followup' ? 'ring-2 ring-amber-300 ring-offset-2' : '' }}">
+            <div class="flex justify-between items-start w-full">
                 <span class="text-xs font-bold uppercase tracking-wider text-amber-100">Follow-Up Pending</span>
                 <span class="text-2xl">⏰</span>
             </div>
             <div>
                 <div class="text-3xl font-black">{{ $totalFollowUp }}</div>
-                <div class="text-[10px] text-amber-100 font-semibold mt-0.5">Jadwal follow-up aktif</div>
+                <div class="text-[10px] text-amber-100 font-semibold mt-0.5">Klik untuk filter jadwal aktif</div>
             </div>
-        </div>
+        </button>
         <div class="bg-gradient-to-br from-emerald-500 to-emerald-600 text-white rounded-2xl shadow-md p-4 transition-all duration-300 hover:-translate-y-0.5 hover:shadow-lg flex flex-col justify-between h-28">
             <div class="flex justify-between items-start">
                 <span class="text-xs font-bold uppercase tracking-wider text-emerald-100">Pipeline Value</span>
@@ -91,14 +92,39 @@
             </div>
 
             {{-- Search & Controls --}}
-            <div class="flex gap-2 items-center justify-end w-full md:w-auto">
-                <div class="relative w-full md:w-64">
+            <div class="flex flex-wrap gap-2 items-center justify-end w-full md:w-auto">
+                <div class="relative w-full sm:w-52">
                     <input wire:model.live.debounce.300ms="search"
                         type="text" placeholder="Cari nama, perusahaan..."
                         class="text-xs border border-gray-200 rounded-lg pl-8 pr-3 py-2 w-full focus:outline-none focus:ring-2 focus:ring-indigo-300">
                     <span class="absolute left-2.5 top-2.5 text-gray-400">🔍</span>
                 </div>
-                
+
+                <select wire:model.live="filterPic" class="text-xs border border-gray-200 rounded-lg px-2.5 py-2 bg-white text-gray-700 font-semibold">
+                    <option value="">👤 Semua PIC</option>
+                    <option value="unassigned">⚠️ Belum Ada PIC ({{ $unassignedCount }})</option>
+                    <option value="mine">🙋 Lead Saya</option>
+                    @foreach($salesReps as $rep)
+                        <option value="{{ $rep->id }}">{{ $rep->name }}</option>
+                    @endforeach
+                </select>
+
+                @if($waDevices->isNotEmpty())
+                <select wire:model.live="filterDevice" class="text-xs border border-gray-200 rounded-lg px-2.5 py-2 bg-white text-gray-700 font-semibold">
+                    <option value="">📱 Semua Nomor WA</option>
+                    @foreach($waDevices as $dev)
+                        <option value="{{ $dev->id }}">{{ $dev->label }}</option>
+                    @endforeach
+                </select>
+                @endif
+
+                @if($this->canManageDevices())
+                <button wire:click="openDevicesModal"
+                    class="text-xs px-3 py-2 bg-emerald-50 hover:bg-emerald-100 text-emerald-800 border border-emerald-200 font-bold rounded-lg whitespace-nowrap transition flex items-center gap-1">
+                    📱 Perangkat WA ({{ $waDevices->count() }})
+                </button>
+                @endif
+
                 <button wire:click="exportCsv"
                     class="text-xs px-3 py-2 bg-indigo-50 hover:bg-indigo-100 text-indigo-700 font-bold rounded-lg whitespace-nowrap transition flex items-center gap-1.5">
                     📥 Export CSV
@@ -208,12 +234,23 @@
                                 <p class="text-xs text-gray-500 leading-snug line-clamp-1 mt-0.5">{{ $lead->summary }}</p>
                             @endif
 
-                            {{-- Row 4: Status Indicator --}}
-                            <div class="flex justify-between items-center mt-1 text-[10px] text-gray-400">
-                                <div class="flex items-center gap-1.5">
+                            {{-- Row 4: Status Indicator, PIC, Device, & SLA --}}
+                            <div class="flex flex-wrap justify-between items-center gap-2 mt-1 text-[10px] text-gray-400">
+                                <div class="flex flex-wrap items-center gap-1.5">
                                     <span>📞 {{ $lead->phone }}</span>
-                                    @if($lead->email)
-                                        <span>· ✉️ {{ $lead->email }}</span>
+                                    @if($lead->assignee)
+                                        <span class="px-1.5 py-0.5 rounded bg-indigo-50 text-indigo-700 font-bold border border-indigo-100">👤 {{ $lead->assignee->name }}</span>
+                                    @else
+                                        <span class="px-1.5 py-0.5 rounded bg-amber-50 text-amber-700 font-bold border border-amber-200">⚠️ Belum Ada PIC</span>
+                                    @endif
+                                    @if($lead->waDevice)
+                                        <span class="px-1.5 py-0.5 rounded bg-emerald-50 text-emerald-700 font-bold border border-emerald-100">📱 {{ $lead->waDevice->label }}</span>
+                                    @endif
+                                    @if(($lead->wa_messages_count ?? 0) > 0)
+                                        <span class="px-1.5 py-0.5 rounded bg-slate-100 text-slate-600 font-bold">💬 {{ $lead->wa_messages_count }}</span>
+                                    @endif
+                                    @if($lead->isSlaOverdue())
+                                        <span class="px-1.5 py-0.5 rounded bg-rose-100 text-rose-700 font-extrabold border border-rose-200">🔴 &gt;24j belum direspons</span>
                                     @endif
                                 </div>
                                 
@@ -243,13 +280,81 @@
             </div>
         </div>
 
-        {{-- Right: CRM Lead Details --}}
+        {{-- Right: CRM Lead Details / Executive Monitor --}}
         <div class="lg:col-span-5 bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden flex flex-col h-[650px]">
             @if(!$selectedLead)
-                <div class="m-auto text-center p-8 max-w-sm text-gray-400">
-                    <div class="text-6xl mb-4 text-indigo-100">📁</div>
-                    <h3 class="font-bold text-gray-700 text-base">Detail CRM Pipeline</h3>
-                    <p class="text-xs mt-2 leading-relaxed">Pilih salah satu lead dari daftar di sebelah kiri untuk melihat transkrip MORA Chat, memperbarui stage penjualan, menambahkan catatan sales, atau mem-follow up via WhatsApp.</p>
+                <div class="flex-1 overflow-y-auto p-5 space-y-5">
+                    <div class="bg-slate-900 text-white rounded-xl p-4">
+                        <p class="text-[10px] font-black uppercase tracking-wider text-emerald-300">📡 Executive Monitor — MORA Leads &amp; WA</p>
+                        <h3 class="font-black text-base mt-1">Ringkasan Antrean &amp; Perangkat WA</h3>
+                        <p class="text-[11px] text-slate-300 mt-0.5">Klik salah satu lead di kiri untuk membuka percakapan &amp; pipeline CRM.</p>
+
+                        <div class="grid grid-cols-2 gap-2.5 mt-3">
+                            <button type="button" wire:click="$set('filterPic', 'unassigned')" class="text-left bg-white/10 hover:bg-white/15 rounded-lg p-2.5 transition">
+                                <span class="text-[10px] text-amber-300 font-bold uppercase block">Belum Ada PIC</span>
+                                <span class="text-xl font-black text-white">{{ $unassignedCount }}</span>
+                            </button>
+                            <button type="button" wire:click="setFilter('new')" class="text-left bg-white/10 hover:bg-white/15 rounded-lg p-2.5 transition">
+                                <span class="text-[10px] text-rose-300 font-bold uppercase block">&gt;24 Jam Belum Respon</span>
+                                <span class="text-xl font-black text-white">{{ $overdueCount }}</span>
+                            </button>
+                        </div>
+                    </div>
+
+                    {{-- Monitor Perangkat WA Coexistence (Batas Aktif 13 Hari) --}}
+                    <div class="border border-slate-200 rounded-xl overflow-hidden">
+                        <div class="px-4 py-3 bg-slate-50 border-b border-slate-200 flex items-center justify-between gap-2">
+                            <div>
+                                <p class="text-xs font-black text-slate-800">📱 Status Perangkat WA (Coexistence)</p>
+                                <p class="text-[10px] text-slate-500">Pantau aturan aktif 13 hari Meta (1 Kantor + 7 Marketing)</p>
+                            </div>
+                            @if($this->canManageDevices())
+                                <button type="button" wire:click="openDevicesModal" class="text-[11px] font-bold bg-indigo-950 hover:bg-indigo-900 text-white px-2.5 py-1.5 rounded-lg transition shrink-0">
+                                    ⚙️ Kelola
+                                </button>
+                            @endif
+                        </div>
+
+                        <div class="divide-y divide-slate-100 max-h-72 overflow-y-auto">
+                            @forelse($waDevices as $dev)
+                                @php $health = $dev->coexistenceHealth(); @endphp
+                                <div class="px-4 py-2.5 flex items-center justify-between gap-2">
+                                    <div class="min-w-0">
+                                        <div class="flex items-center gap-1.5">
+                                            <span class="text-xs font-bold text-slate-800 truncate">{{ $dev->label }}</span>
+                                            @if($dev->is_primary)
+                                                <span class="text-[9px] font-black px-1.5 py-0.5 rounded bg-blue-100 text-blue-700">UTAMA</span>
+                                            @endif
+                                        </div>
+                                        <p class="text-[10px] text-slate-400 font-mono truncate">+{{ $dev->phone_number }} {{ $dev->user ? '· ' . $dev->user->name : '· Kantor' }}</p>
+                                    </div>
+                                    <div class="shrink-0 text-right">
+                                        @if(!$dev->is_active)
+                                            <span class="text-[10px] font-bold px-2 py-0.5 rounded-full bg-slate-100 text-slate-500">Nonaktif</span>
+                                        @elseif($health === 'healthy')
+                                            <span class="text-[10px] font-bold px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-700">🟢 Aktif ({{ $dev->daysSinceLastSync() }}h lalu)</span>
+                                        @elseif($health === 'warning')
+                                            <span class="text-[10px] font-bold px-2 py-0.5 rounded-full bg-amber-100 text-amber-800">🟡 {{ $dev->daysSinceLastSync() }}h — Buka WA HP!</span>
+                                        @elseif($health === 'critical')
+                                            <span class="text-[10px] font-bold px-2 py-0.5 rounded-full bg-rose-100 text-rose-700">🔴 ≥13h — Cek Koneksi</span>
+                                        @else
+                                            <span class="text-[10px] font-bold px-2 py-0.5 rounded-full bg-sky-50 text-sky-700">⏳ Menunggu Sync</span>
+                                        @endif
+                                    </div>
+                                </div>
+                            @empty
+                                <div class="p-5 text-center space-y-2">
+                                    <p class="text-xs text-slate-500">Belum ada nomor WA terdaftar di Portal M2B.</p>
+                                    <p class="text-[11px] text-slate-400">Setelah verifikasi Meta Business selesai, daftarkan 1 WA Utama + 7 WA Marketing di sini agar semua chat &amp; echo otomatis masuk.</p>
+                                    @if($this->canManageDevices())
+                                        <button type="button" wire:click="openDevicesModal" class="mt-1 inline-flex items-center gap-1 text-xs font-bold bg-emerald-600 hover:bg-emerald-700 text-white px-3 py-1.5 rounded-lg transition">
+                                            ➕ Daftarkan Nomor WA
+                                        </button>
+                                    @endif
+                                </div>
+                            @endforelse
+                        </div>
+                    </div>
                 </div>
             @else
                 {{-- Detail Header --}}
@@ -655,5 +760,108 @@
             </div>
         </div>
     </div>
+
+    {{-- Modal: Kelola Perangkat WA (Multi-Number Coexistence: 1 Kantor + 7 Marketing) --}}
+    @if($showDevicesModal)
+    <div class="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/60 backdrop-blur-sm p-4">
+        <div class="bg-white rounded-2xl shadow-2xl w-full max-w-2xl overflow-hidden border border-slate-200 max-h-[88vh] flex flex-col">
+            <div class="bg-slate-900 px-6 py-4 text-white flex items-center justify-between shrink-0">
+                <div>
+                    <h3 class="font-black text-sm">📱 Kelola Perangkat WhatsApp (Multi-Number Coexistence)</h3>
+                    <p class="text-[11px] text-slate-300 mt-0.5">Petakan Phone Number ID dari Meta WhatsApp Manager ke WA Utama Kantor &amp; 7 Staf Marketing.</p>
+                </div>
+                <button wire:click="$set('showDevicesModal', false)" class="text-slate-300 hover:text-white text-xl leading-none">&times;</button>
+            </div>
+
+            <div class="p-6 overflow-y-auto space-y-5">
+                {{-- Form Tambah / Edit Perangkat --}}
+                <form wire:submit.prevent="saveDevice" class="bg-slate-50 border border-slate-200 rounded-xl p-4 space-y-3">
+                    <div class="flex items-center justify-between">
+                        <p class="text-xs font-black text-slate-800 uppercase tracking-wide">
+                            {{ $editingDeviceId ? '✏️ Edit Perangkat WA' : '➕ Daftarkan Nomor WA Baru' }}
+                        </p>
+                        @if($editingDeviceId)
+                            <button type="button" wire:click="resetDeviceForm" class="text-[11px] font-bold text-slate-500 hover:text-slate-700 underline">Batal Edit</button>
+                        @endif
+                    </div>
+
+                    <div class="grid grid-cols-1 sm:grid-cols-2 gap-3 text-xs">
+                        <div>
+                            <label class="block font-bold text-slate-600 mb-1">Label Perangkat *</label>
+                            <input type="text" wire:model="deviceLabel" placeholder="Contoh: WA Utama M2B / Marketing - Nurul" class="w-full rounded-lg border-slate-300 text-xs">
+                            @error('deviceLabel') <span class="text-[10px] text-rose-600">{{ $message }}</span> @enderror
+                        </div>
+                        <div>
+                            <label class="block font-bold text-slate-600 mb-1">Nomor WA (628...) *</label>
+                            <input type="text" wire:model="devicePhone" placeholder="0812xxxxxxxx" class="w-full rounded-lg border-slate-300 text-xs font-mono">
+                            @error('devicePhone') <span class="text-[10px] text-rose-600">{{ $message }}</span> @enderror
+                        </div>
+                        <div>
+                            <label class="block font-bold text-slate-600 mb-1">Meta Phone Number ID *</label>
+                            <input type="text" wire:model="devicePhoneNumberId" placeholder="Salin dari Meta WhatsApp Manager" class="w-full rounded-lg border-slate-300 text-xs font-mono">
+                            @error('devicePhoneNumberId') <span class="text-[10px] text-rose-600">{{ $message }}</span> @enderror
+                        </div>
+                        <div>
+                            <label class="block font-bold text-slate-600 mb-1">Staf PIC Pemegang HP (Opsional)</label>
+                            <select wire:model="deviceUserId" class="w-full rounded-lg border-slate-300 text-xs">
+                                <option value="">-- Nomor Utama Kantor (Shared) --</option>
+                                @foreach($salesReps as $rep)
+                                    <option value="{{ $rep->id }}">{{ $rep->name }}</option>
+                                @endforeach
+                            </select>
+                        </div>
+                    </div>
+
+                    <div class="flex flex-wrap items-center justify-between gap-3 pt-1">
+                        <div class="flex items-center gap-4 text-xs">
+                            <label class="inline-flex items-center gap-1.5 cursor-pointer">
+                                <input type="checkbox" wire:model="deviceIsPrimary" class="rounded text-indigo-600">
+                                <span class="font-semibold text-slate-700">Jadikan WA Utama Kantor</span>
+                            </label>
+                            <label class="inline-flex items-center gap-1.5 cursor-pointer">
+                                <input type="checkbox" wire:model="deviceIsActive" class="rounded text-emerald-600">
+                                <span class="font-semibold text-slate-700">Aktif</span>
+                            </label>
+                        </div>
+                        <button type="submit" class="px-4 py-2 bg-indigo-950 hover:bg-indigo-900 text-white text-xs font-bold rounded-lg transition">
+                            {{ $editingDeviceId ? 'Simpan Perubahan' : 'Simpan Perangkat' }}
+                        </button>
+                    </div>
+                </form>
+
+                {{-- Daftar Perangkat Terdaftar --}}
+                <div class="border border-slate-200 rounded-xl overflow-hidden">
+                    <div class="px-4 py-2.5 bg-slate-50 border-b border-slate-200 text-xs font-bold text-slate-700">
+                        Perangkat Terdaftar ({{ $waDevices->count() }})
+                    </div>
+                    <div class="divide-y divide-slate-100">
+                        @forelse($waDevices as $dev)
+                            <div class="px-4 py-3 flex items-center justify-between gap-3">
+                                <div class="min-w-0">
+                                    <div class="flex items-center gap-1.5 flex-wrap">
+                                        <span class="text-xs font-bold text-slate-900">{{ $dev->label }}</span>
+                                        @if($dev->is_primary)
+                                            <span class="text-[9px] font-black px-1.5 py-0.5 rounded bg-blue-100 text-blue-700">UTAMA</span>
+                                        @endif
+                                        @if(!$dev->is_active)
+                                            <span class="text-[9px] font-bold px-1.5 py-0.5 rounded bg-slate-200 text-slate-600">NONAKTIF</span>
+                                        @endif
+                                    </div>
+                                    <p class="text-[11px] text-slate-500 font-mono mt-0.5">+{{ $dev->phone_number }} • ID: {{ $dev->phone_number_id }} • {{ $dev->user ? 'PIC: ' . $dev->user->name : 'Shared Kantor' }}</p>
+                                </div>
+                                <div class="flex items-center gap-1.5 shrink-0">
+                                    <button type="button" wire:click="editDevice({{ $dev->id }})" class="text-[11px] font-bold px-2.5 py-1 rounded bg-indigo-50 hover:bg-indigo-100 text-indigo-700">Edit</button>
+                                    <button type="button" wire:click="deleteDevice({{ $dev->id }})" wire:confirm="Hapus perangkat WA ini?" class="text-[11px] font-bold px-2.5 py-1 rounded bg-rose-50 hover:bg-rose-100 text-rose-700">Hapus</button>
+                                </div>
+                            </div>
+                        @empty
+                            <p class="p-4 text-center text-xs text-slate-400 italic">Belum ada perangkat WA terdaftar.</p>
+                        @endforelse
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    @endif
 
 </div>

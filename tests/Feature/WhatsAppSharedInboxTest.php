@@ -5,6 +5,7 @@ namespace Tests\Feature;
 use App\Livewire\Admin\MoraLeadManager;
 use App\Models\MoraLeadNotification;
 use App\Models\User;
+use App\Models\WaDevice;
 use App\Models\WaMessage;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Http;
@@ -194,5 +195,93 @@ class WhatsAppSharedInboxTest extends TestCase
         $this->assertNotNull($lead->first_responded_at);
         $this->assertSame(1, $lead->waMessages()->count());
         $this->assertSame(WaMessage::ORIGIN_PORTAL_MANUAL, $lead->waMessages()->first()->origin);
+    }
+
+    public function test_multi_number_coexistence_maps_phone_number_id_to_marketing_device_and_handles_revoke(): void
+    {
+        config(['whatsapp.app_secret' => '']);
+
+        $admin = User::factory()->create([
+            'name' => 'Admin M2B',
+            'role' => 'admin',
+            'roles' => ['admin'],
+            'is_active' => true,
+        ]);
+        $marketing = User::factory()->create([
+            'name' => 'Nurul Marketing',
+            'role' => 'staff_sales',
+            'roles' => ['staff_sales'],
+            'is_active' => true,
+        ]);
+
+        // Admin mendaftarkan nomor HP staf marketing lewat UI MoraLeadManager
+        Livewire::actingAs($admin)
+            ->test(MoraLeadManager::class)
+            ->call('openDevicesModal')
+            ->set('deviceLabel', 'Marketing - Nurul')
+            ->set('devicePhone', '081211112222')
+            ->set('devicePhoneNumberId', '987654321098765')
+            ->set('deviceUserId', (string) $marketing->id)
+            ->call('saveDevice')
+            ->assertHasNoErrors();
+
+        $device = WaDevice::where('phone_number_id', '987654321098765')->firstOrFail();
+        $this->assertSame('6281211112222', $device->phone_number);
+        $this->assertSame($marketing->id, $device->user_id);
+
+        // Pesan masuk ke nomor marketing tersebut -> auto-assign ke Nurul & update last_synced_at
+        $this->postJson('/api/webhooks/whatsapp', [
+            'object' => 'whatsapp_business_account',
+            'entry' => [[
+                'changes' => [[
+                    'field' => 'messages',
+                    'value' => [
+                        'metadata' => [
+                            'display_phone_number' => '6281211112222',
+                            'phone_number_id' => '987654321098765',
+                        ],
+                        'contacts' => [[
+                            'wa_id' => '6285512345678',
+                            'profile' => ['name' => 'PT Klien Baru'],
+                        ]],
+                        'messages' => [[
+                            'from' => '6285512345678',
+                            'id' => 'wamid.MULTI_IN_001',
+                            'timestamp' => (string) now()->timestamp,
+                            'type' => 'text',
+                            'text' => ['body' => 'Halo Bu Nurul, minta penawaran undername'],
+                        ]],
+                    ],
+                ]],
+            ]],
+        ])->assertOk()->assertJson(['processed' => 1]);
+
+        $device->refresh();
+        $this->assertNotNull($device->last_synced_at);
+        $this->assertSame('healthy', $device->coexistenceHealth());
+
+        $lead = MoraLeadNotification::where('phone', '6285512345678')->firstOrFail();
+        $this->assertSame($marketing->id, $lead->assigned_to);
+        $this->assertSame($device->id, $lead->wa_device_id);
+
+        // Echo revoke (pesan dihapus) ditangani rapi
+        $this->postJson('/api/webhooks/whatsapp', [
+            'object' => 'whatsapp_business_account',
+            'entry' => [[
+                'changes' => [[
+                    'field' => 'smb_message_echoes',
+                    'value' => [
+                        'metadata' => ['phone_number_id' => '987654321098765'],
+                        'message_echoes' => [[
+                            'type' => 'revoke',
+                            'revoke' => ['original_message_id' => 'wamid.MULTI_IN_001'],
+                        ]],
+                    ],
+                ]],
+            ]],
+        ])->assertOk();
+
+        $revoked = WaMessage::where('wa_message_id', 'wamid.MULTI_IN_001')->firstOrFail();
+        $this->assertSame('revoked', $revoked->status);
     }
 }

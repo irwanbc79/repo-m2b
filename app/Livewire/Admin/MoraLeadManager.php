@@ -4,8 +4,10 @@ namespace App\Livewire\Admin;
 
 use App\Models\MoraLeadNotification;
 use App\Models\User;
+use App\Models\WaDevice;
 use App\Models\WaMessage;
 use App\Services\WhatsAppCloudService;
+use Illuminate\Support\Facades\Schema;
 use Livewire\Component;
 use Livewire\WithPagination;
 
@@ -14,6 +16,8 @@ class MoraLeadManager extends Component
     use WithPagination;
 
     public string $filter = 'all';
+    public string $filterPic = ''; // '' | 'unassigned' | 'mine' | user_id
+    public string $filterDevice = ''; // '' | wa_device_id
     public string $search = '';
 
     // Stats
@@ -39,6 +43,16 @@ class MoraLeadManager extends Component
     public string $waReplyText = '';
     public bool $waCloudConfigured = false;
 
+    // Multi-Number WA Device Manager Modal (1 Kantor + 7 Marketing)
+    public bool $showDevicesModal = false;
+    public ?int $editingDeviceId = null;
+    public string $deviceLabel = '';
+    public string $devicePhone = '';
+    public string $devicePhoneNumberId = '';
+    public $deviceUserId = '';
+    public bool $deviceIsPrimary = false;
+    public bool $deviceIsActive = true;
+
     // Manual Lead Form Fields
     public bool $showCreateModal = false;
     public string $newLeadName = '';
@@ -50,7 +64,107 @@ class MoraLeadManager extends Component
     public string $newLeadSummary = '';
     public string $newLeadDealValue = '';
 
-    protected $queryString = ['filter', 'search'];
+    protected $queryString = ['filter', 'search', 'filterPic', 'filterDevice'];
+
+    public function updatingFilterPic(): void { $this->resetPage(); }
+    public function updatingFilterDevice(): void { $this->resetPage(); }
+
+    public function canManageDevices(): bool
+    {
+        $user = auth()->user();
+        return $user && (
+            $user->isAdminLevel()
+            || $user->hasRole(['super_admin', 'director', 'admin', 'manager'])
+        );
+    }
+
+    public function openDevicesModal(): void
+    {
+        abort_unless($this->canManageDevices(), 403, 'Hanya Admin/Manager/Direktur yang dapat mengelola nomor WA.');
+        $this->resetDeviceForm();
+        $this->showDevicesModal = true;
+    }
+
+    public function resetDeviceForm(): void
+    {
+        $this->resetValidation();
+        $this->editingDeviceId = null;
+        $this->deviceLabel = '';
+        $this->devicePhone = '';
+        $this->devicePhoneNumberId = '';
+        $this->deviceUserId = '';
+        $this->deviceIsPrimary = false;
+    }
+
+    public function editDevice(int $id): void
+    {
+        abort_unless($this->canManageDevices(), 403);
+        $device = WaDevice::findOrFail($id);
+        $this->editingDeviceId = $device->id;
+        $this->deviceLabel = $device->label;
+        $this->devicePhone = $device->phone_number;
+        $this->devicePhoneNumberId = $device->phone_number_id;
+        $this->deviceUserId = $device->user_id ? (string) $device->user_id : '';
+        $this->deviceIsPrimary = (bool) $device->is_primary;
+    }
+
+    public function saveDevice(): void
+    {
+        abort_unless($this->canManageDevices(), 403);
+        $uniqueRule = 'unique:wa_devices,phone_number_id' . ($this->editingDeviceId ? ',' . $this->editingDeviceId : '');
+
+        $this->validate([
+            'deviceLabel'         => 'required|string|max:120',
+            'devicePhone'         => 'required|string|max:30',
+            'devicePhoneNumberId' => ['required', 'string', 'max:80', $uniqueRule],
+            'deviceUserId'        => 'nullable|exists:users,id',
+        ], [
+            'devicePhoneNumberId.unique' => 'Phone Number ID Meta ini sudah terdaftar di perangkat lain.',
+        ]);
+
+        $waService = app(WhatsAppCloudService::class);
+        $normalizedPhone = $waService->normalizePhone($this->devicePhone);
+
+        if ($this->deviceIsPrimary) {
+            WaDevice::where('is_primary', true)->update(['is_primary' => false]);
+        }
+
+        $payload = [
+            'label'           => trim($this->deviceLabel),
+            'phone_number'    => $normalizedPhone ?: trim($this->devicePhone),
+            'phone_number_id' => trim($this->devicePhoneNumberId),
+            'user_id'         => $this->deviceUserId ?: null,
+            'is_primary'      => $this->deviceIsPrimary,
+            'is_active'       => true,
+        ];
+
+        if ($this->editingDeviceId) {
+            WaDevice::whereKey($this->editingDeviceId)->update($payload);
+            session()->flash('message', 'Perangkat WA berhasil diperbarui.');
+        } else {
+            WaDevice::create($payload);
+            session()->flash('message', 'Perangkat WA baru berhasil didaftarkan.');
+        }
+
+        $this->waCloudConfigured = $waService->isConfigured();
+        $this->resetDeviceForm();
+    }
+
+    public function toggleDeviceActive(int $id): void
+    {
+        abort_unless($this->canManageDevices(), 403);
+        $device = WaDevice::findOrFail($id);
+        $device->update(['is_active' => !$device->is_active]);
+        $this->waCloudConfigured = app(WhatsAppCloudService::class)->isConfigured();
+    }
+
+    public function deleteDevice(int $id): void
+    {
+        abort_unless($this->canManageDevices(), 403);
+        WaDevice::whereKey($id)->delete();
+        $this->waCloudConfigured = app(WhatsAppCloudService::class)->isConfigured();
+        session()->flash('message', 'Perangkat WA dihapus dari daftar.');
+    }
 
     protected function canAccessLeads(): bool
     {
@@ -453,32 +567,63 @@ class MoraLeadManager extends Component
     public function render()
     {
         $query = MoraLeadNotification::query()
+            ->with(['assignee:id,name', 'waDevice:id,label,phone_number'])
             ->when($this->search, fn($q) => $q->where(function ($q) {
                 $q->where('name', 'like', "%{$this->search}%")
                   ->orWhere('company', 'like', "%{$this->search}%")
                   ->orWhere('phone', 'like', "%{$this->search}%");
             }))
             ->when($this->filter !== 'all', function ($q) {
-                if (in_array($this->filter, ['unread'])) {
+                if ($this->filter === 'unread') {
                     $q->whereNull('read_at');
+                } elseif ($this->filter === 'followup') {
+                    $q->whereNotNull('follow_up_at')->whereNotIn('status', ['won', 'lost']);
                 } elseif (in_array($this->filter, ['hot', 'warm', 'cold'])) {
                     $q->where('score', $this->filter);
                 } else {
                     $q->where('status', $this->filter);
                 }
             })
+            ->when($this->filterPic !== '', function ($q) {
+                if ($this->filterPic === 'unassigned') {
+                    $q->whereNull('assigned_to');
+                } elseif ($this->filterPic === 'mine') {
+                    $q->where('assigned_to', auth()->id());
+                } else {
+                    $q->where('assigned_to', $this->filterPic);
+                }
+            })
+            ->when($this->filterDevice !== '', function ($q) {
+                $q->where('wa_device_id', $this->filterDevice);
+            })
             ->latest();
 
         $leads = $query->withCount('waMessages')->paginate(15);
-        $salesReps = User::all();
+        $salesReps = User::orderBy('name')->get(['id', 'name', 'role', 'roles']);
         $selectedLead = $this->selectedLeadId
-            ? MoraLeadNotification::with(['assignee', 'waMessages.sender'])->find($this->selectedLeadId)
+            ? MoraLeadNotification::with(['assignee', 'waDevice', 'waMessages.sender'])->find($this->selectedLeadId)
             : null;
 
+        $waDevices = Schema::hasTable('wa_devices')
+            ? WaDevice::with('user:id,name')->orderByDesc('is_primary')->orderBy('label')->get()
+            : collect();
+
+        $unassignedCount = MoraLeadNotification::whereNull('assigned_to')
+            ->whereNotIn('status', ['won', 'lost'])
+            ->count();
+
+        $overdueCount = MoraLeadNotification::where('status', 'new')
+            ->whereNull('first_responded_at')
+            ->where('created_at', '<', now()->subHours(24))
+            ->count();
+
         return view('livewire.admin.mora-lead-manager', [
-            'leads' => $leads,
-            'salesReps' => $salesReps,
-            'selectedLead' => $selectedLead,
+            'leads'           => $leads,
+            'salesReps'       => $salesReps,
+            'selectedLead'    => $selectedLead,
+            'waDevices'       => $waDevices,
+            'unassignedCount' => $unassignedCount,
+            'overdueCount'    => $overdueCount,
         ])->layout('layouts.admin', ['title' => 'MORA Leads — Sales CRM Dashboard']);
     }
 }
