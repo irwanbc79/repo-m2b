@@ -837,6 +837,65 @@ class ShipmentDetail extends Component
         return $this->shipment->getLinkedShipments();
     }
 
+    public function canViewFinancialSummary(): bool
+    {
+        $user = Auth::user();
+        return $user && (
+            $user->isAdminLevel()
+            || $user->hasRole([
+                'super_admin', 'director', 'admin', 'manager', 'supervisor',
+                'finance', 'staff_accounting', 'accounting', 'auditor', 'konsultan_pajak',
+            ])
+        );
+    }
+
+    /**
+     * Ringkasan keuangan gabungan 1 dossier (induk + semua lanjutan) untuk audit keuangan & pajak.
+     */
+    public function getDossierFinancialSummaryProperty(): array
+    {
+        $ids = $this->shipment->getDossierShipmentIds();
+
+        try {
+            $invoices = \App\Models\Invoice::whereIn('shipment_id', $ids)
+                ->whereNotIn('status', ['cancelled', 'void'])
+                ->get(['id', 'grand_total', 'status', 'type']);
+
+            $totalInvoiced = (float) $invoices->sum('grand_total');
+            $totalPaid = (float) $invoices->where('status', 'paid')->sum('grand_total');
+
+            $totalJobCost = 0.0;
+            $jobCostCount = 0;
+            if (class_exists(\App\Models\JobCost::class) && Schema::hasTable('job_costs')) {
+                $jobCosts = \App\Models\JobCost::whereIn('shipment_id', $ids)->get(['id', 'amount']);
+                $jobCostCount = $jobCosts->count();
+                $totalJobCost = (float) $jobCosts->sum('amount');
+            }
+
+            return [
+                'shipment_count' => count($ids),
+                'invoice_count'  => $invoices->count(),
+                'total_invoiced' => $totalInvoiced,
+                'total_paid'     => $totalPaid,
+                'total_unpaid'   => max(0, $totalInvoiced - $totalPaid),
+                'job_cost_count' => $jobCostCount,
+                'total_job_cost' => $totalJobCost,
+                'net_margin'     => $totalInvoiced - $totalJobCost,
+            ];
+        } catch (\Throwable $e) {
+            return [
+                'shipment_count' => count($ids),
+                'invoice_count'  => 0,
+                'total_invoiced' => 0.0,
+                'total_paid'     => 0.0,
+                'total_unpaid'   => 0.0,
+                'job_cost_count' => 0,
+                'total_job_cost' => 0.0,
+                'net_margin'     => 0.0,
+            ];
+        }
+    }
+
     public function getFollowUpOptionsProperty(): array
     {
         return Shipment::getFollowUpRegimesForService($this->shipment->service_type);
@@ -898,23 +957,25 @@ class ShipmentDetail extends Component
             $this->followUpRegime = $currentRegime === Shipment::REGIME_TEMPORARY_EXPORT
                 ? Shipment::REGIME_RE_IMPORT_TEMP
                 : Shipment::REGIME_RE_IMPORT_RETURN;
-            $suffix = 'RI';
+            $newPrefix = 'RIM';
             $this->markParentReExport = false;
         } else {
             $this->followUpRegime = $currentRegime === Shipment::REGIME_TEMPORARY_IMPORT
                 ? Shipment::REGIME_RE_EXPORT_TEMP
                 : Shipment::REGIME_RE_EXPORT_REJECTION;
-            $suffix = 'RE';
+            $newPrefix = 'REX';
             $this->markParentReExport = ($this->followUpRegime === Shipment::REGIME_RE_EXPORT_REJECTION);
         }
 
-        // Generate saran nomor referensi unik yang mudah dikenali staf
+        // Generate saran nomor referensi unik dengan prefix arah baru (REX- / RIM-)
+        // agar tidak salah dibaca sebagai IMP saat barang sebenarnya keluar (Re-Ekspor).
         $seq = $this->shipment->childShipments()->count() + 1;
         $baseAwb = trim((string) $this->shipment->awb_number);
-        $candidate = $baseAwb . '-' . $suffix . ($seq > 1 ? $seq : '');
+        $strippedAwb = preg_replace('/^(IMP|EXP|DOM|REX|RIM)-/i', '', $baseAwb);
+        $candidate = $newPrefix . '-' . $strippedAwb . ($seq > 1 ? '-' . $seq : '');
         while (Shipment::where('awb_number', $candidate)->exists()) {
             $seq++;
-            $candidate = $baseAwb . '-' . $suffix . $seq;
+            $candidate = $newPrefix . '-' . $strippedAwb . '-' . $seq;
         }
 
         $this->followUpAwb = $candidate;

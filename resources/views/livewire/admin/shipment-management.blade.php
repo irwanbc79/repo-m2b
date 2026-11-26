@@ -147,10 +147,11 @@
                     ][$datePreset] ?? (($filterDateFrom || $filterDateTo) ? (($filterDateFrom ?: '...') . ' s/d ' . ($filterDateTo ?: '...')) : null);
 
                     $filterAktif = collect([
-                        'filterStatus' => ['Status', ['pending' => 'Pending', 'in_progress' => 'In Progress', 'in_transit' => 'In Transit', 'completed' => 'Completed', 'cancel' => 'Cancelled'][$filterStatus] ?? $filterStatus],
+                        'filterStatus' => ['Status', ['pending' => 'Pending', 'in_progress' => 'In Progress', 'in_transit' => 'In Transit', 'completed' => 'Completed', 're_export' => 'Re-Ekspor', 'cancel' => 'Cancelled'][$filterStatus] ?? $filterStatus],
                         'filterShipmentType' => ['Moda', ['air' => 'Air', 'sea' => 'Sea', 'land' => 'Land'][$filterShipmentType] ?? $filterShipmentType],
                         'filterServiceType' => ['Layanan', ['import' => 'Import', 'export' => 'Export', 'domestic' => 'Domestic'][$filterServiceType] ?? $filterServiceType],
                         'filterLaneStatus' => ['Jalur', ['green' => 'Jalur Hijau', 'red' => 'Jalur Merah'][$filterLaneStatus] ?? $filterLaneStatus],
+                        'filterCustomsRegime' => ['Rezim BC', ['linked' => 'Berkas Terkait (Dossier)', 're_export' => 'Re-Ekspor', 're_import' => 'Re-Impor', 'temporary' => 'Impor / Ekspor Sementara', 'regular' => 'Reguler'][$filterCustomsRegime] ?? $filterCustomsRegime],
                         'filterCustomerData' => ['Data Customer', 'Perlu Dilengkapi'],
                         'datePreset' => ['Tanggal', $dateLabel],
                     ])->filter(fn ($info, $prop) => filled($info[1] ?? null) && (filled($this->{$prop}) || ($prop === 'datePreset' && (filled($this->filterDateFrom) || filled($this->filterDateTo)))));
@@ -224,6 +225,7 @@
                         <option value="in_progress">In Progress</option>
                         <option value="in_transit">In Transit</option>
                         <option value="completed">Completed</option>
+                        <option value="re_export">↩️ Re-Ekspor</option>
                         <option value="cancel">Cancelled</option>
                     </select>
 
@@ -246,6 +248,15 @@
                         <option value="">Semua Jalur</option>
                         <option value="green">🟩 Jalur Hijau</option>
                         <option value="red">🟥 Jalur Merah</option>
+                    </select>
+
+                    <select wire:model.live="filterCustomsRegime" class="px-4 py-2.5 border border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500 text-sm">
+                        <option value="">Semua Rezim BC</option>
+                        <option value="linked">🔗 Semua Berkas Terkait (Dossier)</option>
+                        <option value="re_export">↩️ Re-Ekspor</option>
+                        <option value="re_import">↪️ Re-Impor</option>
+                        <option value="temporary">⏱️ Impor / Ekspor Sementara</option>
+                        <option value="regular">📦 Reguler Saja</option>
                     </select>
 
                     <select wire:model.live="filterCustomerData" class="px-4 py-2.5 border border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500 text-sm">
@@ -381,13 +392,22 @@
                 </thead>
                 <tbody class="divide-y divide-gray-100">
                     @forelse($shipments as $shipment)
-                    <tr class="hover:bg-gray-50 transition-colors {{ in_array($shipment->id, $selectedShipments ?? []) ? 'bg-blue-50' : '' }}" {{ $shipment->status === 'cancel' ? 'bg-gray-100 opacity-60' : '' }}>
+                    @php
+                        $rowRegimeAccent = match (true) {
+                            in_array($shipment->customs_regime, [\App\Models\Shipment::REGIME_RE_EXPORT_REJECTION, \App\Models\Shipment::REGIME_RE_EXPORT_TEMP], true) || $shipment->status === 're_export' => 'border-l-4 border-l-rose-400',
+                            in_array($shipment->customs_regime, [\App\Models\Shipment::REGIME_RE_IMPORT_RETURN, \App\Models\Shipment::REGIME_RE_IMPORT_TEMP], true) => 'border-l-4 border-l-teal-400',
+                            in_array($shipment->customs_regime, [\App\Models\Shipment::REGIME_TEMPORARY_IMPORT, \App\Models\Shipment::REGIME_TEMPORARY_EXPORT], true) => 'border-l-4 border-l-indigo-400',
+                            $shipment->childShipments->isNotEmpty() || $shipment->parentShipment !== null => 'border-l-4 border-l-indigo-300',
+                            default => '',
+                        };
+                    @endphp
+                    <tr class="hover:bg-gray-50 transition-colors {{ $rowRegimeAccent }} {{ in_array($shipment->id, $selectedShipments ?? []) ? 'bg-blue-50' : '' }} {{ $shipment->status === 'cancel' ? 'bg-gray-100 opacity-60' : '' }}">
                         <td class="px-4 py-3">
                             <input type="checkbox" wire:model.live="selectedShipments" value="{{ $shipment->id }}" class="rounded border-gray-300 text-blue-600 focus:ring-blue-500">
                         </td>
                         <td class="px-4 py-3">
                             @php
-                                // Awalan nomor (IMP/EXP/DOM) dipisah jadi badge berwarna:
+                                // Awalan nomor (IMP/EXP/DOM/REX/RIM) dipisah jadi badge berwarna:
                                 // jenis pekerjaan langsung kebaca tanpa mengeja nomornya,
                                 // dan sisa nomor tidak lagi pecah tiga baris.
                                 $refPrefix = null;
@@ -400,8 +420,11 @@
                                     'IMP' => 'bg-blue-50 text-blue-700 border-blue-200',
                                     'EXP' => 'bg-emerald-50 text-emerald-700 border-emerald-200',
                                     'DOM' => 'bg-violet-50 text-violet-700 border-violet-200',
+                                    'REX' => 'bg-rose-50 text-rose-700 border-rose-200',
+                                    'RIM' => 'bg-teal-50 text-teal-700 border-teal-200',
                                     default => 'bg-slate-100 text-slate-600 border-slate-200',
                                 };
+                                $hasLinkedInfo = $shipment->hasSpecialCustomsRegime() || $shipment->parentShipment || $shipment->childShipments->isNotEmpty();
                             @endphp
                             <div class="flex items-baseline gap-1.5">
                                 @if($refPrefix)
@@ -410,10 +433,41 @@
                                 <p class="font-semibold text-gray-800 whitespace-nowrap">{{ $refRest }}</p>
                             </div>
                             <p class="text-xs text-gray-400 mt-1">{{ $shipment->created_at->format('d M Y') }}</p>
-                            @if($shipment->hasSpecialCustomsRegime())
-                                <span class="inline-block mt-1 px-1.5 py-0.5 text-[9px] font-bold rounded border {{ $shipment->getCustomsRegimeBadgeClass() }}">
-                                    {{ $shipment->getCustomsRegimeShortLabel() }}
-                                </span>
+                            @if($hasLinkedInfo)
+                                <div class="relative group inline-flex flex-wrap items-center gap-1 mt-1">
+                                    @if($shipment->hasSpecialCustomsRegime())
+                                        <span class="inline-block px-1.5 py-0.5 text-[9px] font-bold rounded border {{ $shipment->getCustomsRegimeBadgeClass() }}">
+                                            {{ $shipment->getCustomsRegimeShortLabel() }}
+                                        </span>
+                                    @endif
+                                    @if($shipment->parentShipment)
+                                        <a href="{{ route('admin.shipments.show', $shipment->parentShipment->id) }}" class="inline-flex items-center gap-0.5 px-1.5 py-0.5 text-[9px] font-bold rounded bg-slate-100 hover:bg-indigo-100 text-slate-700 hover:text-indigo-800 border border-slate-200 transition">
+                                            🔗 {{ $shipment->parentShipment->awb_number }}
+                                        </a>
+                                    @elseif($shipment->childShipments->isNotEmpty())
+                                        <a href="{{ route('admin.shipments.show', $shipment->childShipments->first()->id) }}" class="inline-flex items-center gap-0.5 px-1.5 py-0.5 text-[9px] font-bold rounded bg-indigo-50 hover:bg-indigo-100 text-indigo-700 border border-indigo-200 transition">
+                                            🔗 {{ $shipment->childShipments->count() }} lanjutan
+                                        </a>
+                                    @endif
+
+                                    {{-- Rich Audit Tooltip (zero extra column) --}}
+                                    <div role="tooltip" class="pointer-events-none opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-150 absolute left-0 top-full mt-1.5 w-64 z-40 bg-slate-900 text-white rounded-xl p-3 shadow-xl border border-slate-700 text-left space-y-1">
+                                        <p class="text-[10px] font-black uppercase tracking-wider text-indigo-300">📂 Info Dossier Kepabeanan</p>
+                                        <p class="text-[11px] text-white font-semibold">{{ $shipment->getCustomsRegimeLabel() }}</p>
+                                        @if($shipment->parentShipment)
+                                            <p class="text-[10px] text-slate-300">Berkas Asal: <span class="font-mono font-bold text-white">#{{ $shipment->parentShipment->awb_number }}</span></p>
+                                        @endif
+                                        @if($shipment->childShipments->isNotEmpty())
+                                            <p class="text-[10px] text-slate-300">Berkas Lanjutan: <span class="font-mono font-bold text-white">{{ $shipment->childShipments->pluck('awb_number')->implode(', ') }}</span></p>
+                                        @endif
+                                        @if($shipment->customs_reference_number)
+                                            <p class="text-[10px] text-amber-300">Ref BC: <span class="font-mono font-bold">{{ $shipment->customs_reference_number }}</span></p>
+                                        @endif
+                                        @if($shipment->customs_deadline_at)
+                                            <p class="text-[10px] {{ $shipment->isCustomsDeadlineOverdue() ? 'text-rose-300 font-bold' : 'text-sky-300' }}">Tenggat BC: {{ $shipment->customs_deadline_at->format('d M Y') }}</p>
+                                        @endif
+                                    </div>
+                                </div>
                             @endif
                         </td>
                         <td class="px-4 py-3">
@@ -613,7 +667,7 @@
                         </td>
                         <td class="px-4 py-3">
                             @php
-                                $statusColors = ['pending' => 'bg-yellow-100 text-yellow-700', 'document_collection' => 'bg-indigo-100 text-indigo-700', 'in_progress' => 'bg-blue-100 text-blue-700', 'in_transit' => 'bg-purple-100 text-purple-700', 'completed' => 'bg-green-100 text-green-700', 'cancel' => 'bg-red-100 text-red-700'];
+                                $statusColors = ['pending' => 'bg-yellow-100 text-yellow-700', 'document_collection' => 'bg-indigo-100 text-indigo-700', 'in_progress' => 'bg-blue-100 text-blue-700', 'in_transit' => 'bg-purple-100 text-purple-700', 'completed' => 'bg-green-100 text-green-700', 're_export' => 'bg-rose-100 text-rose-700', 'cancel' => 'bg-red-100 text-red-700'];
                             @endphp
                             @php
                                 // Label pendek supaya chip tidak pecah dua baris dan
@@ -624,6 +678,7 @@
                                     'in_progress' => 'In Progress',
                                     'in_transit' => 'In Transit',
                                     'completed' => 'Selesai',
+                                    're_export' => '↩️ Re-Ekspor',
                                     'cancel' => 'Batal',
                                 ];
                             @endphp

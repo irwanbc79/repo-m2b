@@ -31,6 +31,7 @@ class ShipmentManagement extends Component
     public $filterServiceType = '';
     public $filterShipmentType = '';
     public $filterLaneStatus = '';
+    public $filterCustomsRegime = '';
     public $filterCustomerData = ''; // '' | 'attention' = shipment milik customer yg datanya perlu dilengkapi
     public $datePreset = '';
     public $filterDateFrom = '';
@@ -174,7 +175,7 @@ class ShipmentManagement extends Component
     public $printDoAlamatBongkar = '';
     public $printDoNamaPenerima = '';
 
-    protected $queryString = ['search', 'filterStatus', 'filterCustomer', 'filterServiceType', 'filterLaneStatus', 'filterCustomerData', 'sortField', 'sortDirection'];
+    protected $queryString = ['search', 'filterStatus', 'filterCustomer', 'filterServiceType', 'filterLaneStatus', 'filterCustomsRegime', 'filterCustomerData', 'sortField', 'sortDirection'];
 
     public function canAccess(): bool
     {
@@ -222,6 +223,7 @@ class ShipmentManagement extends Component
     public function updatingFilterCustomer() { $this->resetPage(); }
     public function updatingFilterServiceType() { $this->resetPage(); }
     public function updatingFilterLaneStatus() { $this->resetPage(); }
+    public function updatingFilterCustomsRegime() { $this->resetPage(); }
     public function updatingFilterCustomerData() { $this->resetPage(); }
     public function updatingFilterShipmentType() { $this->resetPage(); }
 
@@ -241,6 +243,7 @@ class ShipmentManagement extends Component
             'filterShipmentType',
             'filterServiceType',
             'filterLaneStatus',
+            'filterCustomsRegime',
             'filterCustomerData',
             'datePreset',
             'filterDateFrom',
@@ -310,6 +313,8 @@ class ShipmentManagement extends Component
         return Shipment::with([
             'customer',
             'documents',
+            'parentShipment:id,awb_number,service_type,customs_regime',
+            'childShipments:id,parent_shipment_id,awb_number,service_type,customs_regime',
             'etaRevisions' => fn ($query) => $query->with(['creator', 'sourceDocument']),
         ])
             
@@ -319,6 +324,7 @@ class ShipmentManagement extends Component
                           ->orWhere('origin', 'like', $searchTerm)
                           ->orWhere('destination', 'like', $searchTerm)
                           ->orWhere('commodity', 'like', $searchTerm)
+                          ->orWhere('customs_reference_number', 'like', $searchTerm)
                           ->orWhereHas('customer', function($c) use ($searchTerm) {
                               $c->where('company_name', 'like', $searchTerm)
                                 ->orWhere('customer_code', 'like', $searchTerm);
@@ -339,6 +345,25 @@ class ShipmentManagement extends Component
             })
             ->when($this->filterLaneStatus, function($q) {
                 $q->where('lane_status', $this->filterLaneStatus);
+            })
+            ->when($this->filterCustomsRegime, function($q) {
+                match ($this->filterCustomsRegime) {
+                    'linked' => $q->where(function ($sub) {
+                        $sub->whereNotNull('parent_shipment_id')
+                            ->orWhereHas('childShipments')
+                            ->orWhere(function ($r) {
+                                $r->whereNotNull('customs_regime')
+                                  ->where('customs_regime', '!=', Shipment::REGIME_REGULAR);
+                            });
+                    }),
+                    're_export' => $q->where(function ($sub) {
+                        $sub->whereIn('customs_regime', [Shipment::REGIME_RE_EXPORT_REJECTION, Shipment::REGIME_RE_EXPORT_TEMP])
+                            ->orWhere('status', Shipment::STATUS_RE_EXPORT);
+                    }),
+                    're_import' => $q->whereIn('customs_regime', [Shipment::REGIME_RE_IMPORT_RETURN, Shipment::REGIME_RE_IMPORT_TEMP]),
+                    'temporary' => $q->whereIn('customs_regime', [Shipment::REGIME_TEMPORARY_IMPORT, Shipment::REGIME_TEMPORARY_EXPORT]),
+                    default => $q->where('customs_regime', $this->filterCustomsRegime),
+                };
             })
             ->when($this->filterCustomerData === 'attention', function($q) {
                 $q->whereHas('customer', function($c) {
@@ -803,7 +828,7 @@ class ShipmentManagement extends Component
         abort_unless($this->canAccess(), 403, 'Anda tidak memiliki izin untuk mengunduh data pengiriman.');
         $shipments = $this->getShipmentsQuery()->get();
 
-        $csvContent = "AWB Number,Customer,Origin,Destination,Service,Type,Mode,Status,Weight (Kg),Volume (CBM),Pieces,ETA,Created\n";
+        $csvContent = "AWB Number,Customer,Origin,Destination,Service,Customs Regime,Linked Parent AWB,Customs Ref (SPBL/SKEP),Customs Deadline,Type,Mode,Status,Weight (Kg),Volume (CBM),Pieces,ETA,Created\n";
 
         foreach ($shipments as $s) {
             $csvContent .= implode(',', [
@@ -812,6 +837,10 @@ class ShipmentManagement extends Component
                 '"' . str_replace('"', '""', $s->origin) . '"',
                 '"' . str_replace('"', '""', $s->destination) . '"',
                 $s->service_type,
+                '"' . str_replace('"', '""', $s->getCustomsRegimeLabel()) . '"',
+                $s->parentShipment?->awb_number ?? '-',
+                '"' . str_replace('"', '""', $s->customs_reference_number ?? '-') . '"',
+                $s->customs_deadline_at ? $s->customs_deadline_at->format('Y-m-d') : '-',
                 $s->shipment_type,
                 $s->container_mode ?? '-',
                 $s->status,

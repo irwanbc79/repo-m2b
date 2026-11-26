@@ -284,6 +284,33 @@
                         </a>
                     @endforeach
                 </div>
+
+                @if($this->canViewFinancialSummary())
+                    @php $fin = $this->dossierFinancialSummary; @endphp
+                    <div class="mt-3 pt-3 border-t border-indigo-200/70">
+                        <p class="text-[10px] font-black uppercase tracking-wider text-indigo-800 mb-2">
+                            📊 Ringkasan Keuangan &amp; Audit Gabungan ({{ $fin['shipment_count'] }} Berkas dalam Dossier Ini)
+                        </p>
+                        <div class="grid grid-cols-2 md:grid-cols-4 gap-2">
+                            <div class="bg-white rounded-lg border border-indigo-100 px-3 py-2">
+                                <p class="text-[10px] font-semibold text-slate-400 uppercase">Total Tagihan ({{ $fin['invoice_count'] }} Inv)</p>
+                                <p class="text-sm font-black text-slate-900 mt-0.5">Rp {{ number_format($fin['total_invoiced'], 0, ',', '.') }}</p>
+                            </div>
+                            <div class="bg-white rounded-lg border border-emerald-100 px-3 py-2">
+                                <p class="text-[10px] font-semibold text-emerald-600 uppercase">Sudah Lunas</p>
+                                <p class="text-sm font-black text-emerald-700 mt-0.5">Rp {{ number_format($fin['total_paid'], 0, ',', '.') }}</p>
+                            </div>
+                            <div class="bg-white rounded-lg border border-amber-100 px-3 py-2">
+                                <p class="text-[10px] font-semibold text-amber-600 uppercase">Total Job Cost ({{ $fin['job_cost_count'] }})</p>
+                                <p class="text-sm font-black text-amber-700 mt-0.5">Rp {{ number_format($fin['total_job_cost'], 0, ',', '.') }}</p>
+                            </div>
+                            <div class="bg-white rounded-lg border border-slate-200 px-3 py-2">
+                                <p class="text-[10px] font-semibold text-slate-500 uppercase">Estimasi Margin Kasus</p>
+                                <p class="text-sm font-black {{ $fin['net_margin'] >= 0 ? 'text-m2b-primary' : 'text-rose-600' }} mt-0.5">Rp {{ number_format($fin['net_margin'], 0, ',', '.') }}</p>
+                            </div>
+                        </div>
+                    </div>
+                @endif
             @endif
         </div>
         @endif

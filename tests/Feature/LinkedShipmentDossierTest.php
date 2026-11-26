@@ -90,6 +90,7 @@ class LinkedShipmentDossierTest extends TestCase
         $this->assertSame(Shipment::STATUS_RE_EXPORT, $importShipment->status);
 
         $reExport = Shipment::where('parent_shipment_id', $importShipment->id)->firstOrFail();
+        $this->assertSame('REX-2026-001', $reExport->awb_number);
         $this->assertSame('export', $reExport->service_type);
         $this->assertSame(Shipment::REGIME_RE_EXPORT_REJECTION, $reExport->customs_regime);
         $this->assertSame($customer->id, $reExport->customer_id);
@@ -205,6 +206,7 @@ class LinkedShipmentDossierTest extends TestCase
             ->assertHasNoErrors();
 
         $reImport = Shipment::where('parent_shipment_id', $exportShipment->id)->firstOrFail();
+        $this->assertSame('RIM-2026-010', $reImport->awb_number);
         $this->assertSame('import', $reImport->service_type);
         $this->assertSame(Shipment::REGIME_RE_IMPORT_RETURN, $reImport->customs_regime);
         $this->assertSame('SG Buyer Pte Ltd', $reImport->shipper_name);
@@ -280,5 +282,55 @@ class LinkedShipmentDossierTest extends TestCase
             ->test(CustomerShipmentDetail::class, ['id' => $child->id])
             ->call('viewLinkedDocument', $internalDoc->id)
             ->assertNotFound();
+    }
+
+    public function test_shipment_management_filters_by_customs_regime_and_shows_linked_chip(): void
+    {
+        $admin = User::factory()->create([
+            'role' => 'admin',
+            'roles' => ['admin'],
+            'is_active' => true,
+        ]);
+        [, $customer] = $this->createCustomerWithUser('CUST-FLT-01', 'PT Dira Baraka Mulia');
+
+        $regular = Shipment::create([
+            'customer_id' => $customer->id,
+            'awb_number' => 'IMP-REG-001',
+            'service_type' => 'import',
+            'shipment_type' => 'sea',
+            'origin' => 'Shanghai',
+            'destination' => 'Belawan',
+            'status' => Shipment::STATUS_IN_PROGRESS,
+        ]);
+
+        $parent = Shipment::create([
+            'customer_id' => $customer->id,
+            'awb_number' => 'IMP-261114-143',
+            'service_type' => 'import',
+            'shipment_type' => 'sea',
+            'origin' => 'Ningbo',
+            'destination' => 'Belawan',
+            'status' => Shipment::STATUS_RE_EXPORT,
+        ]);
+
+        $reExport = Shipment::create([
+            'customer_id' => $customer->id,
+            'parent_shipment_id' => $parent->id,
+            'awb_number' => 'REX-261114-143',
+            'service_type' => 'export',
+            'shipment_type' => 'sea',
+            'customs_regime' => Shipment::REGIME_RE_EXPORT_REJECTION,
+            'customs_reference_number' => 'SPBL-88/KPU/2026',
+            'origin' => 'Belawan',
+            'destination' => 'Ningbo',
+            'status' => Shipment::STATUS_PENDING,
+        ]);
+
+        Livewire::actingAs($admin)
+            ->test(\App\Livewire\Admin\ShipmentManagement::class)
+            ->set('filterCustomsRegime', 're_export')
+            ->assertSee('261114-143')
+            ->assertSee('SPBL-88/KPU/2026')
+            ->assertDontSee('REG-001');
     }
 }
